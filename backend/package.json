@@ -1,0 +1,20 @@
+{
+  "name": "greencrm-backend",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "nodemon server.js",
+    "start": "node server.js",
+    "schema:sql": "node db/generateSqlServerBootstrap.js",
+    "setup:sqlserver": "node setup-sqlserver.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "mssql": "^11.0.1",
+    "nodemailer": "^8.0.4"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.7"
+  }
+}

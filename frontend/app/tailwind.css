@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    @apply bg-[#f4f7fb] text-slate-900 antialiased;
+  }
+}
+
+@layer components {
+  .crm-surface {
+    @apply rounded-[24px] border border-slate-200/80 bg-white/95 shadow-[0_20px_50px_rgba(15,23,42,0.06)];
+  }
+
+  .crm-surface-soft {
+    @apply rounded-[18px] border border-slate-200/80 bg-slate-50/90;
+  }
+
+  .crm-kicker {
+    @apply text-[11px] font-black uppercase tracking-[0.24em] text-emerald-700/80;
+  }
+
+  .crm-input {
+    @apply w-full rounded-[16px] border border-slate-200 bg-slate-50 px-4 py-3 text-[15px] text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-300 focus:bg-white focus:ring-4 focus:ring-emerald-100/80;
+  }
+
+  .crm-btn-primary {
+    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[14px] border border-emerald-500 bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_14px_24px_rgba(34,197,94,0.18)] transition hover:border-emerald-600 hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .crm-btn-secondary {
+    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[14px] border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .crm-btn-soft {
+    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[14px] border border-emerald-100 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-700 transition hover:border-emerald-200 hover:bg-emerald-100/80 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .crm-btn-danger {
+    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[14px] border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:border-rose-300 hover:bg-rose-100/80 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .crm-pill {
+    @apply inline-flex items-center justify-center rounded-full px-3 py-1 text-[11px] font-bold tracking-wide;
+  }
+}
