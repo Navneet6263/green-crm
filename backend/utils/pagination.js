@@ -3,6 +3,10 @@ function parsePositiveInteger(value, fallback) {
   return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : fallback;
 }
 
+function parseBooleanFlag(value) {
+  return ["1", "true", "yes", "on"].includes(String(value || "").trim().toLowerCase());
+}
+
 function decodeBase64Url(value) {
   const normalized = String(value)
     .replace(/-/g, "+")
@@ -34,7 +38,8 @@ function decodeCursor(rawCursor) {
 
 function parsePagination(query = {}) {
   const page = parsePositiveInteger(query.page, 1);
-  const pageSize = Math.min(parsePositiveInteger(query.page_size || query.pageSize, 10), 100);
+  const maxPageSize = parseBooleanFlag(query.analytics || query.full_fetch || query.export_all) ? 1000 : 100;
+  const pageSize = Math.min(parsePositiveInteger(query.page_size || query.pageSize, 10), maxPageSize);
   const rawCursor = query.cursor || query.next_cursor || null;
   const cursor = decodeCursor(rawCursor);
 

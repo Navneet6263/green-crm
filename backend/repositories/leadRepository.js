@@ -213,6 +213,7 @@ async function listLeads(filters, pagination, executor) {
         p.name AS product_name,
         assignee.name AS assigned_to_name,
         creator.name AS created_by_name,
+        COUNT(*) OVER() AS total_count,
         (
           SELECT COUNT(*)
           FROM lead_notes ln
@@ -235,10 +236,20 @@ async function listLeads(filters, pagination, executor) {
     [...params, pagination.offset, pagination.limit]
   );
 
-  const inferredTotal = inferTotalFromPage(rows, pagination);
+  const totalFromWindow = rows.length ? Number(rows[0].total_count || 0) : null;
+  const normalizedRows = rows.map(({ total_count, ...row }) => row);
+  if (totalFromWindow !== null) {
+    return {
+      rows: normalizedRows,
+      total: totalFromWindow,
+      pageInfo: null,
+    };
+  }
+
+  const inferredTotal = inferTotalFromPage(normalizedRows, pagination);
   if (inferredTotal !== null) {
     return {
-      rows,
+      rows: normalizedRows,
       total: inferredTotal,
       pageInfo: null,
     };
@@ -250,7 +261,7 @@ async function listLeads(filters, pagination, executor) {
   );
 
   return {
-    rows,
+    rows: normalizedRows,
     total: countRows[0].total,
     pageInfo: null,
   };

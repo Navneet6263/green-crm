@@ -44,6 +44,11 @@ const PRIORITY_OPTIONS = [
   { value: "medium", label: "Medium Priority" },
   { value: "high", label: "High Priority" },
 ];
+const PANEL_CLASS = "rounded-[30px] border border-[#eadfcd] bg-white/82 p-5 shadow-[0_14px_36px_rgba(79,58,22,0.06)] md:p-6";
+const INPUT_CLASS = "w-full rounded-[18px] border border-[#eadfcd] bg-white px-4 py-3 text-sm text-[#060710] outline-none transition placeholder:text-[#9c8e76] focus:border-[#d7b258] focus:ring-4 focus:ring-[#f6ead0]";
+const PRIMARY_BUTTON_CLASS = "inline-flex min-h-[46px] items-center justify-center gap-2 rounded-[18px] border border-[#d7b258] bg-[#f3dfab] px-4 py-2.5 text-sm font-semibold text-[#060710] shadow-[0_16px_30px_rgba(203,169,82,0.18)] transition hover:-translate-y-0.5 hover:bg-[#efd48f] disabled:cursor-not-allowed disabled:opacity-60";
+const GHOST_BUTTON_CLASS = "inline-flex min-h-[46px] items-center justify-center gap-2 rounded-[18px] border border-[#eadfcd] bg-white px-4 py-2.5 text-sm font-semibold text-[#5d503c] transition hover:-translate-y-0.5 hover:text-[#060710] disabled:cursor-not-allowed disabled:opacity-60";
+const KICKER_CLASS = "text-[10px] font-black uppercase tracking-[0.28em] text-[#9a886d]";
 
 function createInitialForm(companyId = "") {
   return {
@@ -127,6 +132,7 @@ export default function NewLeadPage() {
     [assignableUsers, form.assigned_to]
   );
   const minimumDateTime = useMemo(() => formatDateTimeMin(), []);
+  const hideTitle = ["sales", "marketing", "admin", "manager"].includes(role);
 
   useEffect(() => {
     let ignore = false;
@@ -417,426 +423,135 @@ export default function NewLeadPage() {
   }
 
   return (
-    <DashboardShell session={session} title="Create Lead" eyebrow="Sales Intake">
-      {error ? <div className="alert error">{error}</div> : null}
-      {loading ? <div className="alert">Loading lead composer...</div> : null}
-
+    <DashboardShell session={session} title="Create Lead" hideTitle={hideTitle} heroStats={[]}>
+      {error ? <div className="rounded-[20px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div> : null}
+      {loading ? <div className="rounded-[20px] border border-[#eadfcd] bg-white px-4 py-3 text-sm font-medium text-[#6f614c]">Loading lead composer...</div> : null}
       {!loading ? (
-        <section className="lead-compose-shell">
-          <article className="lead-compose-card">
-            <div className="lead-compose-header">
-              <div className="lead-compose-title-wrap">
-                <div className="lead-compose-glyph">
-                  <DashboardIcon name="leads" />
-                </div>
-                <div className="lead-compose-title-copy">
-                  <span className="eyebrow">Lead Composer</span>
-                  <h2>Add New Lead</h2>
-                  <p>
-                    A richer intake surface mapped to the current Next.js flow and CRM backend structure.
-                  </p>
-                </div>
+        <section className="space-y-5">
+          <article className="rounded-[34px] border border-[#eadfcd] bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.95),_rgba(247,240,227,0.96)_42%,_rgba(241,232,215,1)_100%)] p-5 shadow-[0_22px_60px_rgba(79,58,22,0.08)] md:p-7">
+            <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
+              <div className="space-y-4">
+                <span className="inline-flex rounded-full border border-[#ddd3c2] bg-white/85 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.24em] text-[#7c6d55]">
+                  Lead Intake
+                </span>
+                <h2 className="text-4xl font-semibold tracking-tight text-[#060710] md:text-[3rem] md:leading-[1.04]">
+                  Create a lead with stronger context, ownership, and address detail.
+                </h2>
+                <p className="max-w-3xl text-sm leading-7 text-[#746853] md:text-base">
+                  Capture the decision maker, map the product, assign the first owner, and push the opportunity into the CRM from one cleaner intake surface.
+                </p>
               </div>
-
-              <button className="lead-compose-close" type="button" onClick={handleCancel} aria-label="Close lead form">
-                <span />
-                <span />
-              </button>
-            </div>
-
-            <div className="lead-compose-body">
-              <form className="lead-compose-form" onSubmit={handleSubmit}>
-                <section className="lead-compose-section">
-                  <div className="lead-section-head">
-                    <div>
-                      <span className="lead-kicker">Ownership</span>
-                      <h3>Tenant, product, and lead owner</h3>
-                    </div>
-                    {resourceLoading ? <span className="pill">Refreshing...</span> : null}
+              <div className="grid gap-3 xl:min-w-[420px] xl:max-w-[460px] xl:w-full sm:grid-cols-2">
+                {[
+                  { label: "Tenant", value: selectedCompany?.name || "Select tenant" },
+                  { label: "Product", value: selectedProduct?.name || "Select product" },
+                  { label: "Owner", value: selectedAssignee?.name || (isSuperAdmin ? "Assignment required" : session?.user?.name || "Self owner") },
+                  { label: "Value", value: form.estimated_value ? `INR ${Number(form.estimated_value).toLocaleString("en-IN")}` : "Not set" },
+                ].map((item, index) => (
+                  <div key={item.label} className={`rounded-[24px] border border-[#eadfcd] p-4 shadow-[0_12px_28px_rgba(79,58,22,0.05)] ${index === 1 ? "bg-[#fff6e4]" : "bg-white/88"}`}>
+                    <p className={KICKER_CLASS}>{item.label}</p>
+                    <p className="mt-4 text-xl font-semibold tracking-tight text-[#060710]">{item.value}</p>
                   </div>
-
-                  <div className="lead-field-grid">
-                    {isSuperAdmin ? (
-                      <label className={`field full-width lead-field ${errors.company_id ? "error" : ""}`}>
-                        <span>Choose Company</span>
-                        <select
-                          value={form.company_id}
-                          onChange={(event) => handleFieldChange("company_id", event.target.value)}
-                        >
-                          <option value="">Select tenant company</option>
-                          {companies.map((company) => (
-                            <option key={company.company_id} value={company.company_id}>
-                              {company.name}
-                            </option>
-                          ))}
-                        </select>
-                        {errors.company_id ? <small className="lead-field-error">{errors.company_id}</small> : null}
-                      </label>
-                    ) : null}
-
-                    <label className={`field full-width lead-field ${errors.product_id ? "error" : ""}`}>
-                      <span>Select Product or Service</span>
-                      {quickProductPicks.length ? (
-                        <div className="lead-product-picks">
-                          {quickProductPicks.map((item) => (
-                            <button
-                              key={item.product_id}
-                              className={`lead-product-pill ${form.product_id === item.product_id ? "active" : ""}`}
-                              type="button"
-                              onClick={() => handleFieldChange("product_id", item.product_id)}
-                              style={{ "--chip": item.color }}
-                            >
-                              <span className="lead-product-dot" />
-                              <strong>{item.name}</strong>
-                              <small>{item.subtitle}</small>
-                            </button>
-                          ))}
-                        </div>
-                      ) : null}
-
-                      <select
-                        value={form.product_id}
-                        onChange={(event) => handleFieldChange("product_id", event.target.value)}
-                      >
-                        <option value="">Choose a product or service</option>
-                        {products.map((product) => (
-                          <option key={product.product_id} value={product.product_id}>
-                            {product.name}
-                          </option>
-                        ))}
-                      </select>
-                      {errors.product_id ? <small className="lead-field-error">{errors.product_id}</small> : null}
-                      {!products.length ? (
-                        <small className="lead-field-note">
-                          No active products found for this workspace. Publish products first from product settings.
-                        </small>
-                      ) : null}
-                    </label>
-
-                    {canAssign ? (
-                      <label className={`field full-width lead-field ${errors.assigned_to ? "error" : ""}`}>
-                        <span>{isSuperAdmin ? "Assign Lead Owner" : "Assign To"}</span>
-                        <select
-                          value={form.assigned_to}
-                          onChange={(event) => handleFieldChange("assigned_to", event.target.value)}
-                        >
-                          <option value="">
-                            {isSuperAdmin ? "Select tenant owner or sales rep" : "Keep with me by default"}
-                          </option>
-                          {assignableUsers.map((user) => (
-                            <option key={user.user_id} value={user.user_id}>
-                              {user.name} | {user.role}
-                            </option>
-                          ))}
-                        </select>
-                        {errors.assigned_to ? <small className="lead-field-error">{errors.assigned_to}</small> : null}
-                        <small className="lead-field-note">
-                          {isSuperAdmin
-                            ? "Super admin lead must belong to an active user inside the selected tenant."
-                            : "If left blank, the lead will stay assigned to your own login."}
-                        </small>
-                      </label>
-                    ) : null}
-                  </div>
-                </section>
-
-                <section className="lead-compose-section">
-                  <div className="lead-section-head">
-                    <div>
-                      <span className="lead-kicker">Contact</span>
-                      <h3>Decision maker snapshot</h3>
-                    </div>
-                  </div>
-
-                  <div className="lead-field-grid">
-                    <label className={`field lead-field ${errors.contact_person ? "error" : ""}`}>
-                      <span>Contact Person Name</span>
-                      <input
-                        value={form.contact_person}
-                        onChange={(event) => handleFieldChange("contact_person", event.target.value)}
-                        placeholder="Enter full name"
-                      />
-                      {errors.contact_person ? <small className="lead-field-error">{errors.contact_person}</small> : null}
-                    </label>
-
-                    <label className={`field lead-field ${errors.company_name ? "error" : ""}`}>
-                      <span>Company Name</span>
-                      <input
-                        value={form.company_name}
-                        onChange={(event) => handleFieldChange("company_name", event.target.value)}
-                        placeholder="Enter company name"
-                      />
-                      {errors.company_name ? <small className="lead-field-error">{errors.company_name}</small> : null}
-                    </label>
-
-                    <label className={`field lead-field ${errors.email ? "error" : ""}`}>
-                      <span>Email Address</span>
-                      <input
-                        type="email"
-                        value={form.email}
-                        onChange={(event) => handleFieldChange("email", event.target.value)}
-                        placeholder="contact@company.com"
-                      />
-                      {errors.email ? <small className="lead-field-error">{errors.email}</small> : null}
-                    </label>
-
-                    <label className={`field lead-field ${errors.phone ? "error" : ""}`}>
-                      <span>Phone Number</span>
-                      <input
-                        value={form.phone}
-                        onChange={(event) => handleFieldChange("phone", event.target.value)}
-                        placeholder="+91 9876543210"
-                      />
-                      {errors.phone ? <small className="lead-field-error">{errors.phone}</small> : null}
-                    </label>
-                  </div>
-                </section>
-
-                <section className="lead-compose-section">
-                  <div className="lead-section-head">
-                    <div>
-                      <span className="lead-kicker">Opportunity</span>
-                      <h3>Source, value, follow-up, and notes</h3>
-                    </div>
-                  </div>
-
-                  <div className="lead-field-grid">
-                    <label className="field lead-field">
-                      <span>Industry</span>
-                      <select value={form.industry} onChange={(event) => handleFieldChange("industry", event.target.value)}>
-                        {INDUSTRY_OPTIONS.map((option) => (
-                          <option key={option.value || "blank"} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-
-                    <label className="field lead-field">
-                      <span>Lead Source</span>
-                      <select value={form.lead_source} onChange={(event) => handleFieldChange("lead_source", event.target.value)}>
-                        {LEAD_SOURCE_OPTIONS.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-
-                    {form.lead_source === "other" ? (
-                      <label className={`field full-width lead-field ${errors.custom_lead_source ? "error" : ""}`}>
-                        <span>Custom Lead Source</span>
-                        <input
-                          value={form.custom_lead_source}
-                          onChange={(event) => handleFieldChange("custom_lead_source", event.target.value)}
-                          placeholder="Specify custom source"
-                        />
-                        {errors.custom_lead_source ? (
-                          <small className="lead-field-error">{errors.custom_lead_source}</small>
-                        ) : null}
-                      </label>
-                    ) : null}
-
-                    <label className="field lead-field">
-                      <span>Follow-up Date</span>
-                      <input
-                        type="datetime-local"
-                        min={minimumDateTime}
-                        value={form.follow_up_date}
-                        onChange={(event) => handleFieldChange("follow_up_date", event.target.value)}
-                      />
-                    </label>
-
-                    <label className="field lead-field">
-                      <span>Estimated Deal Value (INR)</span>
-                      <input
-                        type="number"
-                        min="0"
-                        value={form.estimated_value}
-                        onChange={(event) => handleFieldChange("estimated_value", event.target.value)}
-                        placeholder="Enter amount"
-                      />
-                    </label>
-
-                    <label className="field lead-field">
-                      <span>Priority Level</span>
-                      <select value={form.priority} onChange={(event) => handleFieldChange("priority", event.target.value)}>
-                        {PRIORITY_OPTIONS.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-
-                    <label className="field full-width lead-field">
-                      <span>Requirements or Notes</span>
-                      <textarea
-                        rows="5"
-                        value={form.requirements}
-                        onChange={(event) => handleFieldChange("requirements", event.target.value)}
-                        placeholder="Describe the requirement, urgency, or product expectation..."
-                      />
-                    </label>
-                  </div>
-                </section>
-
-                <section className="lead-compose-section">
-                  <div className="lead-section-head">
-                    <div>
-                      <span className="lead-kicker">Address</span>
-                      <h3>Location and service geography</h3>
-                    </div>
-                  </div>
-
-                  <div className="lead-field-grid">
-                    <label className="field full-width lead-field">
-                      <span>Street Address</span>
-                      <input
-                        value={form.address_street}
-                        onChange={(event) => handleFieldChange("address_street", event.target.value)}
-                        placeholder="Enter street address"
-                      />
-                    </label>
-
-                    <label className="field lead-field">
-                      <span>City</span>
-                      <input
-                        value={form.address_city}
-                        onChange={(event) => handleFieldChange("address_city", event.target.value)}
-                        placeholder="Enter city"
-                      />
-                    </label>
-
-                    <label className="field lead-field">
-                      <span>State</span>
-                      <input
-                        value={form.address_state}
-                        onChange={(event) => handleFieldChange("address_state", event.target.value)}
-                        placeholder="Enter state"
-                      />
-                    </label>
-
-                    <label className="field lead-field">
-                      <span>Postal Code</span>
-                      <input
-                        value={form.address_zip}
-                        onChange={(event) => handleFieldChange("address_zip", event.target.value)}
-                        placeholder="Enter postal code"
-                      />
-                    </label>
-
-                    <label className="field lead-field">
-                      <span>Country</span>
-                      <input
-                        value={form.address_country}
-                        onChange={(event) => handleFieldChange("address_country", event.target.value)}
-                        placeholder="Enter country"
-                      />
-                    </label>
-                  </div>
-                </section>
-              </form>
-
-              <aside className="lead-compose-side">
-                <article className="lead-side-card accent">
-                  <span className="lead-kicker">Live Preview</span>
-                  <h3>{form.company_name || "New Lead Opportunity"}</h3>
-                  <p>
-                    {form.contact_person || "Decision maker not added yet"} | {form.email || "email pending"} |{" "}
-                    {form.phone || "phone pending"}
-                  </p>
-
-                  <div className="lead-preview-grid">
-                    <div>
-                      <span>Tenant</span>
-                      <strong>{selectedCompany?.name || "Select tenant"}</strong>
-                    </div>
-                    <div>
-                      <span>Source</span>
-                      <strong>{form.lead_source === "other" ? form.custom_lead_source || "Custom source" : form.lead_source}</strong>
-                    </div>
-                    <div>
-                      <span>Priority</span>
-                      <strong>{form.priority}</strong>
-                    </div>
-                    <div>
-                      <span>Value</span>
-                      <strong>
-                        {form.estimated_value ? `INR ${Number(form.estimated_value).toLocaleString("en-IN")}` : "Not set"}
-                      </strong>
-                    </div>
-                  </div>
-                </article>
-
-                <article className="lead-side-card">
-                  <div className="lead-side-head">
-                    <div className="lead-side-icon">
-                      <DashboardIcon name="products" />
-                    </div>
-                    <div>
-                      <span className="lead-kicker">Product</span>
-                      <h4>{selectedProduct?.name || "Select a product"}</h4>
-                    </div>
-                  </div>
-                  <p className="muted">
-                    {selectedProduct
-                      ? "Product mapped. Lead will be validated against the tenant catalog before save."
-                      : "Product selection is mandatory before this lead can be created."}
-                  </p>
-                </article>
-
-                <article className="lead-side-card">
-                  <div className="lead-side-head">
-                    <div className="lead-side-icon">
-                      <DashboardIcon name="users" />
-                    </div>
-                    <div>
-                      <span className="lead-kicker">Owner</span>
-                      <h4>
-                        {selectedAssignee?.name ||
-                          (isSuperAdmin ? "Assignment required" : session?.user?.name || "Self assignment")}
-                      </h4>
-                    </div>
-                  </div>
-                  <p className="muted">
-                    {selectedAssignee
-                      ? `${selectedAssignee.role} will receive this lead as initial owner.`
-                      : isSuperAdmin
-                        ? "Pick an active tenant user before saving."
-                        : "If no assignee is chosen, the lead stays with your current login."}
-                  </p>
-                </article>
-
-                <article className="lead-side-card">
-                  <span className="lead-kicker">Submission Checks</span>
-                  <div className="lead-checklist">
-                    {readinessItems.map((item) => (
-                      <div className={`lead-check-item ${item.done ? "done" : ""}`} key={item.label}>
-                        <span className="lead-check-dot" />
-                        <strong>{item.label}</strong>
-                      </div>
-                    ))}
-                  </div>
-                </article>
-              </aside>
-            </div>
-
-            <div className="lead-compose-footer">
-              <button className="button ghost" type="button" onClick={handleCancel}>
-                Cancel
-              </button>
-              <button
-                className="button primary"
-                type="button"
-                onClick={handleSubmit}
-                disabled={saving || resourceLoading || !products.length}
-              >
-                <DashboardIcon name={saving ? "analytics" : "message"} />
-                {saving ? "Creating..." : "Create Lead"}
-              </button>
+                ))}
+              </div>
             </div>
           </article>
+
+          <form className="grid gap-5 xl:grid-cols-[1.08fr_0.92fr] xl:items-start" onSubmit={handleSubmit}>
+            <div className={PANEL_CLASS}>
+              <div className="grid gap-5 md:grid-cols-2">
+                {[
+                  { label: isSuperAdmin ? "Choose Company" : null, name: "company_id", type: "select", options: companies.map((company) => ({ value: company.company_id, label: company.name })), hidden: !isSuperAdmin, error: errors.company_id },
+                  { label: "Product or Service", name: "product_id", type: "select", options: products.map((product) => ({ value: product.product_id, label: product.name })), error: errors.product_id },
+                  { label: canAssign ? (isSuperAdmin ? "Assign Lead Owner" : "Assign To") : null, name: "assigned_to", type: "select", options: assignableUsers.map((user) => ({ value: user.user_id, label: `${user.name} | ${user.role}` })), hidden: !canAssign, error: errors.assigned_to },
+                  { label: "Contact Person Name", name: "contact_person", type: "input", error: errors.contact_person },
+                  { label: "Company Name", name: "company_name", type: "input", error: errors.company_name },
+                  { label: "Email Address", name: "email", type: "input", inputType: "email", error: errors.email },
+                  { label: "Phone Number", name: "phone", type: "input", error: errors.phone },
+                  { label: "Industry", name: "industry", type: "select", options: INDUSTRY_OPTIONS },
+                  { label: "Lead Source", name: "lead_source", type: "select", options: LEAD_SOURCE_OPTIONS },
+                  { label: "Follow-up Date", name: "follow_up_date", type: "input", inputType: "datetime-local" },
+                  { label: "Estimated Deal Value (INR)", name: "estimated_value", type: "input", inputType: "number" },
+                  { label: "Priority Level", name: "priority", type: "select", options: PRIORITY_OPTIONS },
+                  { label: "Street Address", name: "address_street", type: "input", className: "md:col-span-2" },
+                  { label: "City", name: "address_city", type: "input" },
+                  { label: "State", name: "address_state", type: "input" },
+                  { label: "Postal Code", name: "address_zip", type: "input" },
+                  { label: "Country", name: "address_country", type: "input" },
+                ].filter((field) => !field.hidden).map((field) => (
+                  <label key={field.name} className={`space-y-2 ${field.className || ""}`}>
+                    <span className={KICKER_CLASS}>{field.label}</span>
+                    {field.type === "select" ? (
+                      <select className={INPUT_CLASS} value={form[field.name]} onChange={(event) => handleFieldChange(field.name, event.target.value)}>
+                        <option value="">{field.name === "product_id" ? "Choose a product or service" : field.name === "assigned_to" ? (isSuperAdmin ? "Select tenant owner or sales rep" : "Keep with me by default") : field.name === "company_id" ? "Select tenant company" : `Select ${field.label?.toLowerCase()}`}</option>
+                        {field.options.map((option) => (
+                          <option key={option.value || option.label} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        className={INPUT_CLASS}
+                        type={field.inputType || "text"}
+                        min={field.name === "follow_up_date" ? minimumDateTime : undefined}
+                        value={form[field.name]}
+                        onChange={(event) => handleFieldChange(field.name, event.target.value)}
+                      />
+                    )}
+                    {field.error ? <small className="text-xs font-semibold text-rose-600">{field.error}</small> : null}
+                  </label>
+                ))}
+
+                {form.lead_source === "other" ? (
+                  <label className="space-y-2 md:col-span-2">
+                    <span className={KICKER_CLASS}>Custom Lead Source</span>
+                    <input className={INPUT_CLASS} value={form.custom_lead_source} onChange={(event) => handleFieldChange("custom_lead_source", event.target.value)} />
+                    {errors.custom_lead_source ? <small className="text-xs font-semibold text-rose-600">{errors.custom_lead_source}</small> : null}
+                  </label>
+                ) : null}
+
+                <label className="space-y-2 md:col-span-2">
+                  <span className={KICKER_CLASS}>Requirements or Notes</span>
+                  <textarea className={`${INPUT_CLASS} min-h-[150px] resize-y`} rows="5" value={form.requirements} onChange={(event) => handleFieldChange("requirements", event.target.value)} placeholder="Describe the requirement, urgency, or product expectation..." />
+                </label>
+              </div>
+            </div>
+
+            <div className="space-y-5">
+              <article className={PANEL_CLASS}>
+                <p className={KICKER_CLASS}>Quick Picks</p>
+                <div className="mt-4 grid gap-3">
+                  {quickProductPicks.length ? quickProductPicks.map((item) => (
+                    <button key={item.product_id} className={`rounded-[22px] border px-4 py-4 text-left transition ${form.product_id === item.product_id ? "border-[#d7b258] bg-[#fff6e4]" : "border-[#eadfcd] bg-[#fffaf1]"}`} type="button" onClick={() => handleFieldChange("product_id", item.product_id)}>
+                      <strong className="block text-[#060710]">{item.name}</strong>
+                      <small className="mt-2 block text-xs font-semibold text-[#8f816a]">{item.subtitle}</small>
+                    </button>
+                  )) : <p className="text-sm leading-7 text-[#746853]">No active products found for this workspace.</p>}
+                </div>
+              </article>
+
+              <article className={PANEL_CLASS}>
+                <p className={KICKER_CLASS}>Readiness</p>
+                <div className="mt-4 space-y-2">
+                  {readinessItems.map((item) => (
+                    <div key={item.label} className="flex items-center gap-3 rounded-[18px] border border-[#eadfcd] bg-[#fffaf1] px-3 py-3">
+                      <span className={`h-2.5 w-2.5 rounded-full ${item.done ? "bg-emerald-500" : "bg-[#d7b258]"}`} />
+                      <strong className="text-sm text-[#060710]">{item.label}</strong>
+                    </div>
+                  ))}
+                </div>
+              </article>
+
+              <div className="flex flex-wrap justify-end gap-3">
+                <button className={GHOST_BUTTON_CLASS} type="button" onClick={handleCancel}>Cancel</button>
+                <button className={PRIMARY_BUTTON_CLASS} type="submit" disabled={saving || resourceLoading || !products.length}>
+                  <DashboardIcon name={saving ? "analytics" : "message"} className="h-4 w-4" />
+                  {saving ? "Creating..." : "Create Lead"}
+                </button>
+              </div>
+            </div>
+          </form>
         </section>
       ) : null}
     </DashboardShell>

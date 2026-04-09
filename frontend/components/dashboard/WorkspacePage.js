@@ -14,6 +14,7 @@ export default function WorkspacePage({
   allowedRoles = [],
   requestBuilder = () => [],
   heroStats = () => [],
+  hideTitle = false,
   children,
 }) {
   const router = useRouter();
@@ -77,6 +78,7 @@ export default function WorkspacePage({
     <DashboardShell
       session={session}
       title={title}
+      hideTitle={hideTitle}
       eyebrow={eyebrow}
       heroStats={heroStats({ session, data, loading })}
     >

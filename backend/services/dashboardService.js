@@ -50,11 +50,11 @@ function buildCacheKey(auth) {
   }
 
   if (auth.role === ROLES.SALES) {
-    return `dashboard:user:${auth.companyId}:${auth.role}:${auth.userId}:created`;
+    return `dashboard:user:${auth.companyId}:${auth.role}:${auth.userId}:assigned`;
   }
 
   if (auth.role === ROLES.MARKETING) {
-    return `dashboard:user:${auth.companyId}:${auth.role}:${auth.userId}:created`;
+    return `dashboard:user:${auth.companyId}:${auth.role}:${auth.userId}:assigned`;
   }
 
   return `dashboard:user:${auth.companyId}:${auth.role}:${auth.userId}:company`;
@@ -77,7 +77,7 @@ async function loadSummary(auth) {
     return dashboardRepository.getUserSummary({
       companyId: auth.companyId,
       userId: auth.userId,
-      scope: "created",
+      scope: "assigned",
     });
   }
 
@@ -85,7 +85,7 @@ async function loadSummary(auth) {
     return dashboardRepository.getUserSummary({
       companyId: auth.companyId,
       userId: auth.userId,
-      scope: "created",
+      scope: "assigned",
     });
   }
 

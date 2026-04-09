@@ -42,9 +42,9 @@ function initials(value = "?") {
 }
 
 const STATUS_TONE = {
-  new: "bg-blue-50 text-blue-700 ring-blue-200",
-  contacted: "bg-cyan-50 text-cyan-700 ring-cyan-200",
-  qualified: "bg-violet-50 text-violet-700 ring-violet-200",
+  new: "bg-[#fff4d9] text-[#8d6e27] ring-[#e7d7ab]",
+  contacted: "bg-[#fff7e8] text-[#8d6e27] ring-[#eadfcd]",
+  qualified: "bg-[#f6efe2] text-[#5d503c] ring-[#eadfcd]",
   proposal: "bg-amber-50 text-amber-700 ring-amber-200",
   negotiation: "bg-orange-50 text-orange-700 ring-orange-200",
   won: "bg-emerald-50 text-emerald-700 ring-emerald-200",
@@ -52,13 +52,13 @@ const STATUS_TONE = {
 };
 
 const ROLE_TONE = {
-  admin: "bg-blue-50 text-blue-700",
-  manager: "bg-cyan-50 text-cyan-700",
-  sales: "bg-emerald-50 text-emerald-700",
-  marketing: "bg-pink-50 text-pink-700",
-  support: "bg-rose-50 text-rose-700",
-  "legal-team": "bg-orange-50 text-orange-700",
-  "finance-team": "bg-yellow-50 text-yellow-700",
+  admin: "bg-[#fff4d9] text-[#8d6e27]",
+  manager: "bg-[#fff7e8] text-[#8d6e27]",
+  sales: "bg-[#f6efe2] text-[#5d503c]",
+  marketing: "bg-[#f8efe7] text-[#8d6e27]",
+  support: "bg-[#fff7e8] text-[#8d6e27]",
+  "legal-team": "bg-[#fff0d8] text-[#a26318]",
+  "finance-team": "bg-[#fff4d9] text-[#8d6e27]",
 };
 
 function PanelHead({ eyebrow, title, copy, action }) {
@@ -78,7 +78,7 @@ function QuickLink({ href, icon, title, desc, tone }) {
   return (
     <Link
       href={href}
-      className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-sm"
+      className="flex items-center gap-3 rounded-2xl border border-[#eadfcd] bg-white/88 px-4 py-3 transition-all hover:-translate-y-0.5 hover:border-[#d7b258] hover:bg-[#fffaf1] hover:shadow-[0_14px_32px_rgba(79,58,22,0.08)]"
     >
       <span className={`grid h-10 w-10 place-items-center rounded-xl ${tone}`}>
         <DashboardIcon name={icon} className="h-5 w-5" />
@@ -96,6 +96,7 @@ export default function AdminDashboard() {
     <WorkspacePage
       title="Admin Dashboard"
       eyebrow="Company Workspace"
+      hideTitle
       allowedRoles={["admin"]}
       requestBuilder={() => [
         { key: "summary", path: "/dashboard/summary" },
@@ -108,9 +109,9 @@ export default function AdminDashboard() {
         const summary = data?.summary || {};
         const leadCounts = summary.lead_counts || [];
         return [
-          { label: "Total Leads", value: leadCounts.reduce((sum, item) => sum + Number(item.total || 0), 0), color: "#2563eb" },
-          { label: "Closed Won", value: leadCounts.find((item) => item.status === "closed-won" || item.status === "won")?.total || 0, color: "#16a34a" },
-          { label: "Team Size", value: summary.team_size || 0, color: "#0891b2" },
+          { label: "Total Leads", value: leadCounts.reduce((sum, item) => sum + Number(item.total || 0), 0), color: "#8d6e27" },
+          { label: "Closed Won", value: leadCounts.find((item) => item.status === "closed-won" || item.status === "won")?.total || 0, color: "#1f5134" },
+          { label: "Team Size", value: summary.team_size || 0, color: "#5d503c" },
           { label: "Pending Follow-ups", value: summary.pending_reminders || 0, color: "#d97706" },
         ];
       }}
@@ -135,38 +136,38 @@ export default function AdminDashboard() {
             {error ? <div className="mb-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div> : null}
             {loading ? (
               <div className="flex items-center gap-3 py-10 text-sm text-slate-400">
-                <span className="h-4 w-4 rounded-full border-2 border-emerald-500 border-t-transparent animate-spin" />
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#cba952] border-t-transparent" />
                 Loading admin workspace...
               </div>
             ) : null}
 
             {!loading ? (
               <div className="flex flex-col gap-5">
-                <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-gradient-to-br from-sky-50 via-white to-indigo-50 shadow-sm">
+                <section className="overflow-hidden rounded-[34px] border border-[#eadfcd] bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.98),_rgba(250,241,221,0.98)_42%,_rgba(245,231,193,0.98)_100%)] shadow-[0_24px_70px_rgba(79,58,22,0.08)]">
                   <div className="grid gap-6 px-5 py-6 md:px-7 md:py-7 xl:grid-cols-[1.4fr_1fr]">
                     <div className="space-y-5">
                       <div className="space-y-3">
-                        <span className="inline-flex rounded-full bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-[0.24em] text-sky-700 ring-1 ring-sky-100">
-                          Tenant Control
+                        <span className="inline-flex rounded-full border border-[#ddd3c2] bg-white/88 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.24em] text-[#7c6d55]">
+                          Admin Desk
                         </span>
                         <div className="space-y-2">
                           <h2 className="max-w-3xl text-2xl font-bold leading-tight text-slate-900 md:text-3xl">
-                            Admin control room with the same polished rhythm as the super-admin console.
+                            Run leads, team visibility, and follow-through from one cleaner admin cockpit.
                           </h2>
                           <p className="max-w-2xl text-sm leading-6 text-slate-500">
-                            Leads, team, reminders, products, and task flow now sit in a cleaner Tailwind-based layout built for fast daily review.
+                            Pipeline, reminders, team activity, and task pressure now sit in one warmer control surface.
                           </p>
                         </div>
                       </div>
 
                       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                         {[
-                          { label: "Open Pipeline", value: openPipeline, tone: "bg-blue-50 text-blue-600", icon: "dashboard" },
-                          { label: "Tracked Leads", value: totalLeads, tone: "bg-emerald-50 text-emerald-600", icon: "leads" },
-                          { label: "Team Capacity", value: summary.team_size || users.length, tone: "bg-cyan-50 text-cyan-600", icon: "users" },
+                          { label: "Open Pipeline", value: openPipeline, tone: "bg-[#fff4d9] text-[#8d6e27]", icon: "dashboard" },
+                          { label: "Tracked Leads", value: totalLeads, tone: "bg-[#fff7e8] text-[#8d6e27]", icon: "leads" },
+                          { label: "Team Capacity", value: summary.team_size || users.length, tone: "bg-[#f6efe2] text-[#5d503c]", icon: "users" },
                           { label: "Pending Tasks", value: summary.pending_tasks || tasks.length, tone: "bg-amber-50 text-amber-600", icon: "tasks" },
                         ].map((card) => (
-                          <div key={card.label} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+                          <div key={card.label} className="rounded-[24px] border border-[#eadfcd] bg-white/82 p-4 shadow-[0_12px_30px_rgba(79,58,22,0.06)]">
                             <div className="mb-3 flex items-center gap-2.5">
                               <span className={`grid h-9 w-9 place-items-center rounded-xl ${card.tone}`}>
                                 <DashboardIcon name={card.icon} className="h-4 w-4" />
@@ -179,13 +180,13 @@ export default function AdminDashboard() {
                       </div>
                     </div>
 
-                    <div className="space-y-4 rounded-[24px] border border-white/80 bg-white/80 p-5 shadow-sm backdrop-blur">
-                      <PanelHead eyebrow="Quick Actions" title="Move the workspace" copy="Jump directly into the main admin surfaces." />
+                    <div className="space-y-4 rounded-[28px] border border-[#eadfcd] bg-white/84 p-5 shadow-[0_14px_38px_rgba(79,58,22,0.06)] backdrop-blur">
+                      <PanelHead eyebrow="Quick Actions" title="Move the workspace" copy="Jump into the main admin surfaces." />
                       <div className="grid gap-3">
-                        <QuickLink href="/leads/new" icon="leads" title="Create Lead" desc="Start a fresh pipeline record." tone="bg-blue-100 text-blue-700" />
-                        <QuickLink href="/leads" icon="dashboard" title="Lead Workspace" desc="Review active lead movement." tone="bg-emerald-100 text-emerald-700" />
-                        <QuickLink href="/settings/users" icon="users" title="Team Management" desc="Control roles and activation." tone="bg-cyan-100 text-cyan-700" />
-                        <QuickLink href="/analytics" icon="analytics" title="Analytics" desc="Read source mix and funnel shape." tone="bg-violet-100 text-violet-700" />
+                        <QuickLink href="/leads/new" icon="leads" title="Create Lead" desc="Start a fresh pipeline record." tone="bg-[#fff0c8] text-[#8d6e27]" />
+                        <QuickLink href="/leads" icon="dashboard" title="Lead Workspace" desc="Review active lead movement." tone="bg-[#fff7e8] text-[#8d6e27]" />
+                        <QuickLink href="/settings/users" icon="users" title="Team Management" desc="Control roles and activation." tone="bg-[#f6efe2] text-[#5d503c]" />
+                        <QuickLink href="/analytics" icon="analytics" title="Analytics" desc="Read source mix and funnel shape." tone="bg-[#fff4d9] text-[#8d6e27]" />
                       </div>
                     </div>
                   </div>

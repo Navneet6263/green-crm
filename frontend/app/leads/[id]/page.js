@@ -14,6 +14,15 @@ const WORKFLOW = ["sales", "legal", "finance", "completed"];
 const DOC_VIEW_ROLES = ["super-admin", "platform-admin", "platform-manager", "admin", "manager"];
 const LEGAL_TRANSFER_ROLES = ["super-admin", "platform-admin", "platform-manager", "admin", "manager", "sales"];
 const ACTIVITY_OPTIONS = ["call", "email", "meeting", "note", "task", "comment"];
+const PANEL_CLASS = "rounded-[30px] border border-[#eadfcd] bg-white/82 p-5 shadow-[0_14px_36px_rgba(79,58,22,0.06)] md:p-6";
+const SOFT_PANEL_CLASS = "rounded-[24px] border border-[#eadfcd] bg-[#fffaf1] p-4";
+const INPUT_CLASS = "w-full rounded-[18px] border border-[#eadfcd] bg-white px-4 py-3 text-sm text-[#060710] outline-none transition placeholder:text-[#9c8e76] focus:border-[#d7b258] focus:ring-4 focus:ring-[#f6ead0]";
+const PRIMARY_BUTTON_CLASS = "inline-flex min-h-[46px] items-center justify-center gap-2 rounded-[18px] border border-[#d7b258] bg-[#f3dfab] px-4 py-2.5 text-sm font-semibold text-[#060710] shadow-[0_16px_30px_rgba(203,169,82,0.18)] transition hover:-translate-y-0.5 hover:bg-[#efd48f] disabled:cursor-not-allowed disabled:opacity-60";
+const GHOST_BUTTON_CLASS = "inline-flex min-h-[46px] items-center justify-center gap-2 rounded-[18px] border border-[#eadfcd] bg-white px-4 py-2.5 text-sm font-semibold text-[#5d503c] transition hover:-translate-y-0.5 hover:text-[#060710] disabled:cursor-not-allowed disabled:opacity-60";
+const KICKER_CLASS = "text-[10px] font-black uppercase tracking-[0.28em] text-[#9a886d]";
+const HERO_PANEL_CLASS = "rounded-[36px] border border-[#eadfcd] bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.98),_rgba(250,241,221,0.98)_44%,_rgba(245,231,193,0.98)_100%)] p-6 shadow-[0_24px_70px_rgba(79,58,22,0.08)] md:p-8";
+const DARK_PANEL_CLASS = "rounded-[34px] border border-[#1d1a12] bg-[linear-gradient(155deg,#10111d_0%,#171a28_56%,#25212d_100%)] p-6 text-white shadow-[0_24px_80px_rgba(6,7,16,0.3)] md:p-7";
+const PILL_CLASS = "inline-flex rounded-full px-3 py-1 text-[11px] font-bold";
 const nice = (v) => String(v || "").split("-").filter(Boolean).map((x) => x[0].toUpperCase() + x.slice(1)).join(" ");
 const money = (v) => `INR ${Number(v || 0).toLocaleString("en-IN")}`;
 const when = (v, full = false) => !v ? "--" : new Date(v).toLocaleString("en-IN", full ? { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" } : { day: "numeric", month: "short", year: "numeric" });
@@ -22,19 +31,35 @@ const hrefForDoc = (fileUrl) => !fileUrl ? "#" : /^https?:\/\//i.test(fileUrl) ?
 function DocGroup({ title, items }) {
   if (!items?.length) return null;
   return (
-    <div className="lead-document-group">
-      <div className="lead-document-group-head"><strong>{title}</strong><span>{items.length} file{items.length === 1 ? "" : "s"}</span></div>
-      <div className="lead-document-stack">
+    <div className="rounded-[26px] border border-[#eadfcd] bg-[#fffaf1] p-4">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <strong className="text-base text-[#060710]">{title}</strong>
+        <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">
+          {items.length} file{items.length === 1 ? "" : "s"}
+        </span>
+      </div>
+      <div className="space-y-3">
         {items.map((doc, index) => (
-          <div className="lead-document-row" key={`${title}-${doc.id || doc.file_name || index}`}>
-            <div>
-              <strong>{doc.file_name || "Document"}</strong>
-              <span>{doc.uploaded_by_name || "Team"} | {when(doc.uploaded_at, true)}{doc.file_size ? ` | ${Number(doc.file_size / 1024).toFixed(1)} KB` : ""}</span>
+          <div className="rounded-[20px] border border-[#eadfcd] bg-white px-4 py-4" key={`${title}-${doc.id || doc.file_name || index}`}>
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <strong className="block text-sm text-[#060710]">{doc.file_name || "Document"}</strong>
+                <span className="mt-1 block text-xs text-[#7a6b57]">{doc.uploaded_by_name || "Team"} | {when(doc.uploaded_at, true)}{doc.file_size ? ` | ${Number(doc.file_size / 1024).toFixed(1)} KB` : ""}</span>
+              </div>
+              <a className={GHOST_BUTTON_CLASS} href={hrefForDoc(doc.file_url)} target="_blank" rel="noreferrer">Download</a>
             </div>
-            <a className="button ghost" href={hrefForDoc(doc.file_url)} target="_blank" rel="noreferrer">Download</a>
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+function DetailCell({ label, value, className = "" }) {
+  return (
+    <div className={`rounded-[22px] border border-[#eadfcd] bg-[#fffaf1] px-4 py-4 ${className}`}>
+      <span className={KICKER_CLASS}>{label}</span>
+      <strong className="mt-3 block text-sm leading-6 text-[#060710]">{value || "--"}</strong>
     </div>
   );
 }
@@ -50,6 +75,8 @@ export default function LeadDetailPage() {
   const canSeeDocs = DOC_VIEW_ROLES.includes(role);
   const canTransferToLegal = Boolean(lead?.can_transfer_to_legal) && LEGAL_TRANSFER_ROLES.includes(role);
   const legalUsers = useMemo(() => users.filter((user) => user.role === "legal-team"), [users]);
+  const leadName = lead?.contact_person || lead?.company_name || "Lead";
+  const hideWorkspaceTitle = ["sales", "marketing", "admin", "manager"].includes(role);
 
   async function loadLead(activeSession) {
     const [leadResponse, notesResponse, activityResponse] = await Promise.all([
@@ -147,75 +174,269 @@ export default function LeadDetailPage() {
   }
 
   return (
-    <DashboardShell session={session} title={lead ? lead.company_name : "Lead Detail"} eyebrow="Lead Profile" heroStats={[{ label: "Lead Score", value: intelligence.score }, { label: "Temperature", value: intelligence.temperature, color: intelligence.temperature === "Hot" ? "#b63b3b" : intelligence.temperature === "Warm" ? "#b96a00" : "#2f6fdd" }, { label: "Win Chance", value: `${intelligence.probability}%`, color: "#0f8c53" }, { label: "Notes", value: notes.length, color: "#0f8c53" }]}>
-      {error ? <div className="alert error">{error}</div> : null}
-      {!error && notice ? <div className="alert">{notice}</div> : null}
-      {loading ? <div className="alert">Loading lead details...</div> : null}
+    <DashboardShell session={session} title={lead ? lead.company_name : "Lead Detail"} hideTitle={hideWorkspaceTitle} heroStats={[]}>
+      {error ? <div className="rounded-[20px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div> : null}
+      {!error && notice ? <div className="rounded-[20px] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">{notice}</div> : null}
+      {loading ? <div className="rounded-[20px] border border-[#eadfcd] bg-white px-4 py-3 text-sm font-medium text-[#6f614c]">Loading lead details...</div> : null}
       {!loading && lead ? (
-        <section className="lead-profile-shell">
-          <article className="lead-profile-hero lead-profile-hero-expanded">
-            <button className="button ghost" type="button" onClick={() => router.back()}>Back</button>
-            <div className="lead-profile-copy">
-              <span className="lead-kicker">Lead Detail</span>
-              <h2>{lead.contact_person}</h2>
-              <p>{lead.company_name} | {lead.email || "No email"} | {lead.phone || "No phone"}</p>
-              <div className="lead-profile-tags">
-                <span className="lead-chip" style={{ background: (STATUS_ACCENT[lead.status] || STATUS_ACCENT.new)[0], color: (STATUS_ACCENT[lead.status] || STATUS_ACCENT.new)[1] }}>{nice(lead.status)}</span>
-                <span className="lead-chip" style={{ background: (PRIORITY_ACCENT[lead.priority] || PRIORITY_ACCENT.medium)[0], color: (PRIORITY_ACCENT[lead.priority] || PRIORITY_ACCENT.medium)[1] }}>{nice(lead.priority || "medium")}</span>
-                {lead.product_name ? <span className="lead-chip neutral">{lead.product_name}</span> : null}
-                <span className="lead-chip neutral">Workflow {nice(lead.workflow_stage || "sales")}</span>
-                <span className="lead-chip neutral">Notes {notes.length}</span>
+        <section className="space-y-5">
+          <article className={HERO_PANEL_CLASS}>
+            <div className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr] xl:items-start">
+              <div className="space-y-5">
+                <button className={GHOST_BUTTON_CLASS} type="button" onClick={() => router.back()}>
+                  Back
+                </button>
+
+                <div className="flex items-start gap-4">
+                  <div className="grid h-16 w-16 shrink-0 place-items-center rounded-[22px] bg-[#10111d] text-xl font-bold text-white shadow-[0_18px_32px_rgba(6,7,16,0.18)]">
+                    {leadName?.trim()?.slice(0, 1)?.toUpperCase() || "L"}
+                  </div>
+                  <div className="space-y-4">
+                    <span className="inline-flex rounded-full border border-[#ddd3c2] bg-white/85 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.24em] text-[#7c6d55]">
+                      Lead Profile
+                    </span>
+                    <div>
+                      <h2 className="text-4xl font-semibold tracking-tight text-[#060710] md:text-[3.15rem] md:leading-[1.02]">
+                        {leadName}
+                      </h2>
+                      <p className="mt-3 max-w-3xl text-sm leading-7 text-[#6f614c] md:text-base">
+                        A cleaner lead workspace for commercial context, handoff readiness, and next actions that stay visible.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <span className={PILL_CLASS} style={{ background: (STATUS_ACCENT[lead.status] || STATUS_ACCENT.new)[0], color: (STATUS_ACCENT[lead.status] || STATUS_ACCENT.new)[1] }}>{nice(lead.status)}</span>
+                  <span className={PILL_CLASS} style={{ background: (PRIORITY_ACCENT[lead.priority] || PRIORITY_ACCENT.medium)[0], color: (PRIORITY_ACCENT[lead.priority] || PRIORITY_ACCENT.medium)[1] }}>{nice(lead.priority || "medium")}</span>
+                  {lead.product_name ? <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">{lead.product_name}</span> : null}
+                  <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">Workflow {nice(lead.workflow_stage || "sales")}</span>
+                  <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">Notes {notes.length}</span>
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-3">
+                  <div className={SOFT_PANEL_CLASS}>
+                    <span className={KICKER_CLASS}>Company</span>
+                    <strong className="mt-3 block text-base font-black text-[#060710]">{lead.company_name || "No company"}</strong>
+                    <p className="mt-2 text-sm leading-6 text-[#756752]">The organization currently attached to this lead.</p>
+                  </div>
+                  <div className={SOFT_PANEL_CLASS}>
+                    <span className={KICKER_CLASS}>Email</span>
+                    <strong className="mt-3 block break-words text-base font-black text-[#060710]">{lead.email || "No email"}</strong>
+                    <p className="mt-2 text-sm leading-6 text-[#756752]">Primary inbox for outreach and handoffs.</p>
+                  </div>
+                  <div className={SOFT_PANEL_CLASS}>
+                    <span className={KICKER_CLASS}>Phone</span>
+                    <strong className="mt-3 block text-base font-black text-[#060710]">{lead.phone || "No phone"}</strong>
+                    <p className="mt-2 text-sm leading-6 text-[#756752]">Call-ready number for follow-up activity.</p>
+                  </div>
+                </div>
               </div>
-            </div>
-            <div className="lead-profile-actions">
-              <button className="button primary" type="button" onClick={() => logQuick("call", `Called ${lead.contact_person}`, `tel:${String(lead.phone || "").replace(/[^\d+]/g, "")}`)} disabled={!lead.phone}>Call</button>
-              <Link href={`/communications?entity=lead&id=${lead.lead_id}`} className="button ghost">Email Workspace</Link>
-              <Link href={`/leads/${lead.lead_id}/edit`} className="button ghost">Edit Lead</Link>
+
+              <div className="space-y-4">
+                <article className={DARK_PANEL_CLASS}>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {[{ label: "Lead Score", value: intelligence.score }, { label: "Win Chance", value: `${intelligence.probability}%` }, { label: "Temperature", value: intelligence.temperature }, { label: "Owner", value: lead.assigned_to_name || "Unassigned" }].map((item) => (
+                      <div key={item.label} className="rounded-[24px] border border-white/10 bg-white/6 p-4">
+                        <p className="text-[10px] font-black uppercase tracking-[0.24em] text-white/55">{item.label}</p>
+                        <p className="mt-3 text-2xl font-black tracking-tight text-white">{item.value}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                    <button className={PRIMARY_BUTTON_CLASS} type="button" onClick={() => logQuick("call", `Called ${leadName}`, `tel:${String(lead.phone || "").replace(/[^\d+]/g, "")}`)} disabled={!lead.phone}>
+                      Call Lead
+                    </button>
+                    <Link href={`/communications?entity=lead&id=${lead.lead_id}`} className={GHOST_BUTTON_CLASS}>
+                      Email Workspace
+                    </Link>
+                    <Link href={`/leads/${lead.lead_id}/edit`} className={GHOST_BUTTON_CLASS}>
+                      Edit Lead
+                    </Link>
+                    <button className={GHOST_BUTTON_CLASS} type="button" onClick={() => router.push("/tasks")}>
+                      Task Desk
+                    </button>
+                  </div>
+                </article>
+
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div className={SOFT_PANEL_CLASS}>
+                    <span className={KICKER_CLASS}>Follow-up</span>
+                    <strong className="mt-3 block text-base font-black text-[#060710]">{when(lead.follow_up_date, true)}</strong>
+                  </div>
+                  <div className={SOFT_PANEL_CLASS}>
+                    <span className={KICKER_CLASS}>Value</span>
+                    <strong className="mt-3 block text-base font-black text-[#060710]">{money(lead.estimated_value)}</strong>
+                  </div>
+                  <div className={SOFT_PANEL_CLASS}>
+                    <span className={KICKER_CLASS}>Created</span>
+                    <strong className="mt-3 block text-base font-black text-[#060710]">{when(lead.created_at, true)}</strong>
+                  </div>
+                </div>
+              </div>
             </div>
           </article>
 
-          <div className="lead-profile-grid">
-            <div className="lead-profile-main">
-              <article className="lead-profile-card">
-                <div className="panel-header"><div><span className="lead-kicker">Snapshot</span><h2>Lead Information</h2></div></div>
-                <div className="lead-profile-info-grid">
-                  <div><span>Contact</span><strong>{lead.contact_person}</strong></div><div><span>Company</span><strong>{lead.company_name}</strong></div><div><span>Phone</span><strong>{lead.phone || "--"}</strong></div><div><span>Email</span><strong>{lead.email || "--"}</strong></div><div><span>Owner</span><strong>{lead.assigned_to_name || "Unassigned"}</strong></div><div><span>Created By</span><strong>{lead.created_by_name || "Unknown"}</strong></div><div><span>Source</span><strong>{nice(lead.lead_source || "website")}</strong></div><div><span>Follow-up</span><strong>{when(lead.follow_up_date, true)}</strong></div><div><span>Value</span><strong>{money(lead.estimated_value)}</strong></div><div><span>Created</span><strong>{when(lead.created_at, true)}</strong></div><div><span>Workflow</span><strong>{nice(lead.workflow_stage || "sales")}</strong></div><div><span>Latest Note</span><strong>{lead.latest_note || "No note yet"}</strong></div>
+          <div className="grid gap-5 xl:grid-cols-[1.12fr_0.88fr] xl:items-start">
+            <div className="space-y-5">
+              <article className={PANEL_CLASS}>
+                <div className="mb-5">
+                  <span className={KICKER_CLASS}>Snapshot</span>
+                  <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Lead information</h2>
                 </div>
-                {lead.requirements ? <p className="lead-detail-copy" style={{ marginTop: "1rem" }}>{lead.requirements}</p> : null}
+
+                <div className="grid gap-4 xl:grid-cols-[1.08fr_0.92fr]">
+                  <div className="space-y-4">
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <DetailCell label="Contact" value={lead.contact_person} />
+                      <DetailCell label="Company" value={lead.company_name} />
+                      <DetailCell label="Phone" value={lead.phone || "--"} />
+                      <DetailCell label="Email" value={lead.email || "--"} />
+                      <DetailCell label="Owner" value={lead.assigned_to_name || "Unassigned"} />
+                      <DetailCell label="Created By" value={lead.created_by_name || "Unknown"} />
+                    </div>
+
+                    <div className={SOFT_PANEL_CLASS}>
+                      <div className="mb-2 flex items-center justify-between gap-3">
+                        <span className={KICKER_CLASS}>Requirements</span>
+                        <strong className="text-xs font-bold text-[#8f816a]">{lead.product_name || "Lead brief"}</strong>
+                      </div>
+                      <p className="text-sm leading-7 text-[#5f533f]">{lead.requirements || "No requirements have been added to this lead yet."}</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="grid gap-3">
+                      <DetailCell label="Source" value={nice(lead.lead_source || "website")} />
+                      <DetailCell label="Follow-up" value={when(lead.follow_up_date, true)} />
+                      <DetailCell label="Value" value={money(lead.estimated_value)} />
+                      <DetailCell label="Workflow" value={nice(lead.workflow_stage || "sales")} />
+                    </div>
+
+                    <div className={SOFT_PANEL_CLASS}>
+                      <div className="mb-2 flex items-center justify-between gap-3">
+                        <span className={KICKER_CLASS}>Latest Note</span>
+                        <strong className="text-xs font-bold text-[#8f816a]">{notes.length} total</strong>
+                      </div>
+                      <p className="text-sm leading-7 text-[#5f533f]">{lead.latest_note || "No note has been logged yet."}</p>
+                    </div>
+                  </div>
+                </div>
               </article>
 
-              <article className="lead-profile-card">
-                <div className="panel-header"><div><span className="lead-kicker">Workflow</span><h2>Progress & transfer path</h2></div></div>
-                <div className="lead-workflow-track">{WORKFLOW.map((step, index) => { const current = WORKFLOW.indexOf(lead.workflow_stage || "sales"); const state = index < current ? "done" : index === current ? "active" : "idle"; return <div className={`lead-workflow-step ${state}`} key={step}><span>{index + 1}</span><strong>{nice(step)}</strong></div>; })}</div>
-                {canSeeDocs ? <div className="lead-workflow-meta-grid"><div><span>Legal Owner</span><strong>{lead.legal_owner_name || "Not assigned"}</strong></div><div><span>Finance Owner</span><strong>{lead.finance_owner_name || "Not assigned"}</strong></div><div><span>Legal Docs</span><strong>{(lead.legal_documents || []).length}</strong></div><div><span>Finance Docs</span><strong>{(lead.finance_documents || []).length}</strong></div></div> : <p className="lead-detail-copy">Workflow remains visible here, while uploaded document review stays limited to admin and manager screens.</p>}
+              <article className={PANEL_CLASS}>
+                <div className="mb-5"><div><span className={KICKER_CLASS}>Workflow</span><h2 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Progress & transfer path</h2></div></div>
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  {WORKFLOW.map((step, index) => {
+                    const current = WORKFLOW.indexOf(lead.workflow_stage || "sales");
+                    const state = index < current ? "done" : index === current ? "active" : "idle";
+
+                    return (
+                      <div
+                        key={step}
+                        className={`rounded-[24px] border px-4 py-4 shadow-[0_12px_28px_rgba(79,58,22,0.05)] ${
+                          state === "active"
+                            ? "border-[#d7b258] bg-[#fff4d8]"
+                            : state === "done"
+                              ? "border-emerald-200 bg-emerald-50"
+                              : "border-[#eadfcd] bg-white"
+                        }`}
+                      >
+                        <span className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-current text-xs font-bold">
+                          {index + 1}
+                        </span>
+                        <strong className="mt-4 block text-base text-[#060710]">{nice(step)}</strong>
+                        <p className="mt-2 text-xs font-medium text-[#7c6d55]">
+                          {state === "active" ? "Current stage" : state === "done" ? "Completed stage" : "Waiting"}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+                {canSeeDocs ? (
+                  <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                    <DetailCell label="Legal Owner" value={lead.legal_owner_name || "Not assigned"} />
+                    <DetailCell label="Finance Owner" value={lead.finance_owner_name || "Not assigned"} />
+                    <DetailCell label="Legal Docs" value={(lead.legal_documents || []).length} />
+                    <DetailCell label="Finance Docs" value={(lead.finance_documents || []).length} />
+                  </div>
+                ) : (
+                  <p className="mt-4 rounded-[22px] border border-[#eadfcd] bg-[#fffaf1] px-4 py-4 text-sm leading-7 text-[#6f614c]">
+                    Workflow remains visible here, while uploaded document review stays limited to admin and manager screens.
+                  </p>
+                )}
               </article>
 
-              <article className="lead-profile-card">
-                <div className="panel-header"><div><span className="lead-kicker">Activity</span><h2>Activity Timeline</h2></div></div>
-                <form className="lead-inline-form" onSubmit={addActivity}>
-                  <select value={activityType} onChange={(event) => setActivityType(event.target.value)}>{ACTIVITY_OPTIONS.map((option) => <option key={option} value={option}>{nice(option)}</option>)}</select>
-                  <input value={activityText} onChange={(event) => setActivityText(event.target.value)} placeholder="Add a timeline entry" />
-                  <button className="button primary" type="submit" disabled={savingActivity}>{savingActivity ? "Saving..." : "Add"}</button>
+              <article className={PANEL_CLASS}>
+                <div className="mb-5"><div><span className={KICKER_CLASS}>Activity</span><h2 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Activity Timeline</h2></div></div>
+                <form className="grid gap-3 md:grid-cols-[0.9fr_1.2fr_auto]" onSubmit={addActivity}>
+                  <select className={INPUT_CLASS} value={activityType} onChange={(event) => setActivityType(event.target.value)}>{ACTIVITY_OPTIONS.map((option) => <option key={option} value={option}>{nice(option)}</option>)}</select>
+                  <input className={INPUT_CLASS} value={activityText} onChange={(event) => setActivityText(event.target.value)} placeholder="Add a timeline entry" />
+                  <button className={PRIMARY_BUTTON_CLASS} type="submit" disabled={savingActivity}>{savingActivity ? "Saving..." : "Add"}</button>
                 </form>
-                <div className="lead-timeline">{activity.length ? activity.map((item) => <div className="lead-timeline-item" key={item.activity_id}><span className="lead-timeline-dot" /><div><strong>{nice(item.type || "activity")}</strong><p>{item.description || "No description provided."}</p><small>{item.created_by_name || "User"} | {when(item.created_at, true)}</small></div></div>) : <p className="muted">No activity recorded yet.</p>}</div>
+                <div className="mt-4 space-y-3">
+                  {activity.length ? activity.map((item) => (
+                    <div key={item.activity_id} className="rounded-[22px] border border-[#eadfcd] bg-[#fffaf1] px-4 py-4">
+                      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                        <div className="space-y-2">
+                          <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">
+                            {nice(item.type || "activity")}
+                          </span>
+                          <p className="text-sm leading-7 text-[#5f533f]">{item.description || "No description provided."}</p>
+                        </div>
+                        <div className="text-sm text-[#7a6b57]">
+                          <strong className="block text-[#060710]">{item.created_by_name || "User"}</strong>
+                          <span>{when(item.created_at, true)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )) : <p className="rounded-[22px] border border-dashed border-[#ddd0bb] bg-[#fffaf1] px-4 py-10 text-center text-sm text-[#7a6b57]">No activity recorded yet.</p>}
+                </div>
               </article>
 
               {canSeeDocs ? (
                 <>
-                  <article className="lead-profile-card">
-                    <div className="panel-header"><div><span className="lead-kicker">Workflow Vault</span><h2>Uploaded documents</h2></div></div>
-                    {(lead.legal_documents || []).length || (lead.finance_documents || []).length ? <div className="lead-document-layout"><DocGroup title="Legal Documents" items={lead.legal_documents || []} /><DocGroup title="Finance Documents" items={lead.finance_documents || []} /></div> : <p className="muted">No workflow documents have been uploaded yet.</p>}
+                  <article className={PANEL_CLASS}>
+                    <div className="mb-5"><div><span className={KICKER_CLASS}>Workflow Vault</span><h2 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Uploaded documents</h2></div></div>
+                    {(lead.legal_documents || []).length || (lead.finance_documents || []).length ? <div className="grid gap-4 xl:grid-cols-2"><DocGroup title="Legal Documents" items={lead.legal_documents || []} /><DocGroup title="Finance Documents" items={lead.finance_documents || []} /></div> : <p className="rounded-[22px] border border-dashed border-[#ddd0bb] bg-[#fffaf1] px-4 py-10 text-center text-sm text-[#7a6b57]">No workflow documents have been uploaded yet.</p>}
                   </article>
-                  <article className="lead-profile-card">
-                    <div className="panel-header"><div><span className="lead-kicker">Workflow History</span><h2>Stage movement</h2></div></div>
-                    <div className="lead-history-grid">
-                      <div className="lead-history-block">
-                        <strong>Stage history</strong>
-                        <div className="lead-history-stack">{(lead.stage_history || []).length ? lead.stage_history.map((item, index) => <div className="lead-history-row" key={`stage-${item.stage}-${index}`}><div><strong>{nice(item.stage)}</strong><span>Entered {when(item.entered_at, true)}{item.exited_at ? ` | Exited ${when(item.exited_at, true)}` : " | Current stage"}</span></div><b>{item.duration ? `${item.duration} min` : "--"}</b></div>) : <p className="muted">No stage history logged yet.</p>}</div>
+                  <article className={PANEL_CLASS}>
+                    <div className="mb-5"><div><span className={KICKER_CLASS}>Workflow History</span><h2 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Stage movement</h2></div></div>
+                    <div className="grid gap-4 xl:grid-cols-2">
+                      <div className="rounded-[24px] border border-[#eadfcd] bg-[#fffaf1] p-4">
+                        <strong className="block text-lg text-[#060710]">Stage history</strong>
+                        <div className="mt-4 space-y-3">
+                          {(lead.stage_history || []).length ? lead.stage_history.map((item, index) => (
+                            <div className="rounded-[20px] border border-[#eadfcd] bg-white px-4 py-4" key={`stage-${item.stage}-${index}`}>
+                              <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                                <div className="space-y-1.5">
+                                  <strong className="block text-sm text-[#060710]">{nice(item.stage)}</strong>
+                                  <span className="block text-sm leading-6 text-[#6f614c]">
+                                    Entered {when(item.entered_at, true)}
+                                    {item.exited_at ? ` | Exited ${when(item.exited_at, true)}` : " | Current stage"}
+                                  </span>
+                                </div>
+                                <span className="text-sm font-semibold text-[#8d6e27]">{item.duration ? `${item.duration} min` : "--"}</span>
+                              </div>
+                            </div>
+                          )) : <p className="rounded-[20px] border border-dashed border-[#ddd0bb] bg-white px-4 py-8 text-center text-sm text-[#7a6b57]">No stage history logged yet.</p>}
+                        </div>
                       </div>
-                      <div className="lead-history-block">
-                        <strong>Transfer log</strong>
-                        <div className="lead-history-stack">{(lead.transfer_history || []).length ? lead.transfer_history.map((item, index) => <div className="lead-history-row" key={`transfer-${item.to_stage}-${index}`}><div><strong>{nice(item.from_stage)} to {nice(item.to_stage)}</strong><span>{item.transferred_by_name || "User"} | {when(item.transferred_at, true)}{item.transferred_to_name ? ` | Assigned to ${item.transferred_to_name}` : ""}</span>{item.notes ? <small>{item.notes}</small> : null}</div></div>) : <p className="muted">No transfer history recorded yet.</p>}</div>
+                      <div className="rounded-[24px] border border-[#eadfcd] bg-[#fffaf1] p-4">
+                        <strong className="block text-lg text-[#060710]">Transfer log</strong>
+                        <div className="mt-4 space-y-3">
+                          {(lead.transfer_history || []).length ? lead.transfer_history.map((item, index) => (
+                            <div className="rounded-[20px] border border-[#eadfcd] bg-white px-4 py-4" key={`transfer-${item.to_stage}-${index}`}>
+                              <strong className="block text-sm text-[#060710]">{nice(item.from_stage)} to {nice(item.to_stage)}</strong>
+                              <span className="mt-2 block text-sm leading-6 text-[#6f614c]">
+                                {item.transferred_by_name || "User"} | {when(item.transferred_at, true)}
+                                {item.transferred_to_name ? ` | Assigned to ${item.transferred_to_name}` : ""}
+                              </span>
+                              {item.notes ? <p className="mt-3 text-sm leading-6 text-[#5f533f]">{item.notes}</p> : null}
+                            </div>
+                          )) : <p className="rounded-[20px] border border-dashed border-[#ddd0bb] bg-white px-4 py-8 text-center text-sm text-[#7a6b57]">No transfer history recorded yet.</p>}
+                        </div>
                       </div>
                     </div>
                   </article>
@@ -223,24 +444,34 @@ export default function LeadDetailPage() {
               ) : null}
             </div>
 
-            <div className="lead-profile-side">
-              {canTransferToLegal ? <article className="lead-profile-card"><div className="panel-header"><div><span className="lead-kicker">Closed Won</span><h2>Transfer to legal</h2></div></div><form className="form-grid" onSubmit={transferToLegal}><label className="field"><span>Legal Owner</span><select value={transferOwner} onChange={(event) => setTransferOwner(event.target.value)}><option value="">Assign later</option>{legalUsers.map((user) => <option key={user.user_id} value={user.user_id}>{user.name} | {user.email}</option>)}</select></label><label className="field"><span>Transfer Note *</span><textarea rows="4" value={transferNote} onChange={(event) => setTransferNote(event.target.value)} placeholder="What is ready for legal and what should be checked next?" /></label><button className="button primary" type="submit" disabled={transferring || !transferNote.trim()}>{transferring ? "Transferring..." : "Transfer to Legal"}</button></form></article> : null}
+            <div className="space-y-5">
+              {canTransferToLegal ? <article className={`${PANEL_CLASS} bg-[#f5fbf0]`}><div className="mb-5"><div><span className={KICKER_CLASS}>Closed Won</span><h2 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Transfer to legal</h2></div></div><form className="grid gap-4" onSubmit={transferToLegal}><label className="space-y-2"><span className={KICKER_CLASS}>Legal Owner</span><select className={INPUT_CLASS} value={transferOwner} onChange={(event) => setTransferOwner(event.target.value)}><option value="">Assign later</option>{legalUsers.map((user) => <option key={user.user_id} value={user.user_id}>{user.name} | {user.email}</option>)}</select></label><label className="space-y-2"><span className={KICKER_CLASS}>Transfer Note *</span><textarea className={`${INPUT_CLASS} min-h-[150px] resize-y`} rows="4" value={transferNote} onChange={(event) => setTransferNote(event.target.value)} placeholder="What is ready for legal and what should be checked next?" /></label><button className={PRIMARY_BUTTON_CLASS} type="submit" disabled={transferring || !transferNote.trim()}>{transferring ? "Transferring..." : "Transfer to Legal"}</button></form></article> : null}
 
-              <article className="lead-profile-card">
-                <div className="panel-header"><div><span className="lead-kicker">Notes</span><h2>Lead notes</h2></div></div>
-                <form className="form-grid" onSubmit={addNote}><label className="field"><span>Add Note</span><textarea rows="4" value={noteText} onChange={(event) => setNoteText(event.target.value)} placeholder="Capture context, objections, or next steps" /></label><button className="button primary" type="submit" disabled={savingNote}>{savingNote ? "Saving..." : "Save Note"}</button></form>
-                <div className="lead-note-stack">{notes.length ? notes.map((note) => <div className="lead-note-card" key={note.id || `${note.created_at}-${note.content}`}><strong>{note.created_by_name || "User"}</strong><p>{note.content}</p><small>{when(note.created_at, true)}</small></div>) : <p className="muted">No notes yet.</p>}</div>
+              <article className={PANEL_CLASS}>
+                <div className="mb-5"><div><span className={KICKER_CLASS}>Notes</span><h2 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Lead notes</h2></div></div>
+                <form className="grid gap-4" onSubmit={addNote}><label className="space-y-2"><span className={KICKER_CLASS}>Add Note</span><textarea className={`${INPUT_CLASS} min-h-[150px] resize-y`} rows="4" value={noteText} onChange={(event) => setNoteText(event.target.value)} placeholder="Capture context, objections, or next steps" /></label><button className={PRIMARY_BUTTON_CLASS} type="submit" disabled={savingNote}>{savingNote ? "Saving..." : "Save Note"}</button></form>
+                <div className="mt-4 space-y-3">
+                  {notes.length ? notes.map((note) => (
+                    <div className="rounded-[22px] border border-[#eadfcd] bg-[#fffaf1] px-4 py-4" key={note.id || `${note.created_at}-${note.content}`}>
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <strong className="text-sm text-[#060710]">{note.created_by_name || "User"}</strong>
+                        <span className="text-xs font-semibold text-[#8f816a]">{when(note.created_at, true)}</span>
+                      </div>
+                      <p className="mt-3 text-sm leading-7 text-[#5f533f]">{note.content}</p>
+                    </div>
+                  )) : <p className="rounded-[22px] border border-dashed border-[#ddd0bb] bg-[#fffaf1] px-4 py-10 text-center text-sm text-[#7a6b57]">No notes yet.</p>}
+                </div>
               </article>
 
-              <article className="lead-profile-card">
-                <div className="panel-header"><div><span className="lead-kicker">Task Desk</span><h2>Schedule task</h2></div></div>
-                <form className="form-grid" onSubmit={createTask}>
-                  <label className="field"><span>Title</span><input value={task.title} onChange={(event) => setTask((current) => ({ ...current, title: event.target.value }))} placeholder="Follow-up call, proposal review, demo" /></label>
-                  <div className="lead-task-grid"><label className="field"><span>Type</span><select value={task.type} onChange={(event) => setTask((current) => ({ ...current, type: event.target.value }))}><option value="call">call</option><option value="email">email</option><option value="meeting">meeting</option><option value="follow-up">follow-up</option></select></label><label className="field"><span>Priority</span><select value={task.priority} onChange={(event) => setTask((current) => ({ ...current, priority: event.target.value }))}><option value="low">low</option><option value="medium">medium</option><option value="high">high</option><option value="urgent">urgent</option></select></label></div>
-                  <div className="lead-task-grid"><label className="field"><span>Date</span><input type="date" value={task.due_date} onChange={(event) => setTask((current) => ({ ...current, due_date: event.target.value }))} /></label><label className="field"><span>Time</span><input type="time" value={task.due_time} onChange={(event) => setTask((current) => ({ ...current, due_time: event.target.value }))} /></label></div>
-                  <label className="field"><span>Assignee</span><select value={task.assigned_to} onChange={(event) => setTask((current) => ({ ...current, assigned_to: event.target.value }))}><option value="">Select assignee</option>{users.map((user) => <option key={user.user_id} value={user.user_id}>{user.name} | {user.role}</option>)}</select></label>
-                  <label className="field"><span>Task Notes</span><textarea rows="3" value={task.notes} onChange={(event) => setTask((current) => ({ ...current, notes: event.target.value }))} placeholder="Optional preparation notes" /></label>
-                  <button className="button primary" type="submit" disabled={savingTask}>{savingTask ? "Scheduling..." : "Schedule Task"}</button>
+              <article className={PANEL_CLASS}>
+                <div className="mb-5"><div><span className={KICKER_CLASS}>Task Desk</span><h2 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Schedule task</h2></div></div>
+                <form className="grid gap-4" onSubmit={createTask}>
+                  <label className="space-y-2"><span className={KICKER_CLASS}>Title</span><input className={INPUT_CLASS} value={task.title} onChange={(event) => setTask((current) => ({ ...current, title: event.target.value }))} placeholder="Follow-up call, proposal review, demo" /></label>
+                  <div className="grid gap-4 sm:grid-cols-2"><label className="space-y-2"><span className={KICKER_CLASS}>Type</span><select className={INPUT_CLASS} value={task.type} onChange={(event) => setTask((current) => ({ ...current, type: event.target.value }))}><option value="call">call</option><option value="email">email</option><option value="meeting">meeting</option><option value="follow-up">follow-up</option></select></label><label className="space-y-2"><span className={KICKER_CLASS}>Priority</span><select className={INPUT_CLASS} value={task.priority} onChange={(event) => setTask((current) => ({ ...current, priority: event.target.value }))}><option value="low">low</option><option value="medium">medium</option><option value="high">high</option><option value="urgent">urgent</option></select></label></div>
+                  <div className="grid gap-4 sm:grid-cols-2"><label className="space-y-2"><span className={KICKER_CLASS}>Date</span><input className={INPUT_CLASS} type="date" value={task.due_date} onChange={(event) => setTask((current) => ({ ...current, due_date: event.target.value }))} /></label><label className="space-y-2"><span className={KICKER_CLASS}>Time</span><input className={INPUT_CLASS} type="time" value={task.due_time} onChange={(event) => setTask((current) => ({ ...current, due_time: event.target.value }))} /></label></div>
+                  <label className="space-y-2"><span className={KICKER_CLASS}>Assignee</span><select className={INPUT_CLASS} value={task.assigned_to} onChange={(event) => setTask((current) => ({ ...current, assigned_to: event.target.value }))}><option value="">Select assignee</option>{users.map((user) => <option key={user.user_id} value={user.user_id}>{user.name} | {user.role}</option>)}</select></label>
+                  <label className="space-y-2"><span className={KICKER_CLASS}>Task Notes</span><textarea className={`${INPUT_CLASS} min-h-[120px] resize-y`} rows="3" value={task.notes} onChange={(event) => setTask((current) => ({ ...current, notes: event.target.value }))} placeholder="Optional preparation notes" /></label>
+                  <button className={PRIMARY_BUTTON_CLASS} type="submit" disabled={savingTask}>{savingTask ? "Scheduling..." : "Schedule Task"}</button>
                 </form>
               </article>
             </div>

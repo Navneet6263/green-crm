@@ -17,6 +17,11 @@ const ALLOWED_ROLES = [
   "platform-admin",
   "platform-manager",
 ];
+const PANEL_CLASS = "rounded-[30px] border border-[#eadfcd] bg-white/82 p-5 shadow-[0_14px_36px_rgba(79,58,22,0.06)] md:p-6";
+const INPUT_CLASS = "w-full rounded-[18px] border border-[#eadfcd] bg-white px-4 py-3 text-sm text-[#060710] outline-none transition placeholder:text-[#9c8e76] focus:border-[#d7b258] focus:ring-4 focus:ring-[#f6ead0]";
+const PRIMARY_BUTTON_CLASS = "inline-flex min-h-[46px] items-center justify-center gap-2 rounded-[18px] border border-[#d7b258] bg-[#f3dfab] px-4 py-2.5 text-sm font-semibold text-[#060710] shadow-[0_16px_30px_rgba(203,169,82,0.18)] transition hover:-translate-y-0.5 hover:bg-[#efd48f] disabled:cursor-not-allowed disabled:opacity-60";
+const GHOST_BUTTON_CLASS = "inline-flex min-h-[46px] items-center justify-center gap-2 rounded-[18px] border border-[#eadfcd] bg-white px-4 py-2.5 text-sm font-semibold text-[#5d503c] transition hover:-translate-y-0.5 hover:text-[#060710] disabled:cursor-not-allowed disabled:opacity-60";
+const KICKER_CLASS = "text-[10px] font-black uppercase tracking-[0.28em] text-[#9a886d]";
 
 function titleCase(value) {
   return String(value || "")
@@ -167,6 +172,7 @@ async function loadRequestedEntity(type, id, token) {
 
 export default function CommunicationsPage() {
   const router = useRouter();
+  const PAGE_SIZE = 10;
   const [requestedType, setRequestedType] = useState("");
   const [requestedId, setRequestedId] = useState("");
 
@@ -178,6 +184,7 @@ export default function CommunicationsPage() {
   const [message, setMessage] = useState("");
   const [search, setSearch] = useState("");
   const [entityFilter, setEntityFilter] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
   const [selectedKey, setSelectedKey] = useState("");
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
   const [recipient, setRecipient] = useState("");
@@ -240,6 +247,11 @@ export default function CommunicationsPage() {
       return matchesType && matchesSearch;
     });
   }, [entityFilter, records, search]);
+  const totalPages = Math.max(1, Math.ceil(filteredRecords.length / PAGE_SIZE));
+  const paginatedRecords = useMemo(
+    () => filteredRecords.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [currentPage, filteredRecords]
+  );
 
   async function loadCommunicationWorkspace(activeSession) {
     setLoading(true);
@@ -307,6 +319,16 @@ export default function CommunicationsPage() {
     setSession(activeSession);
     loadCommunicationWorkspace(activeSession);
   }, [requestedId, requestedType, router]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [entityFilter, search]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   useEffect(() => {
     if (!selectedRecord) {
@@ -395,179 +417,255 @@ export default function CommunicationsPage() {
     }
   }
 
-  const heroStats = [
-    { label: "Lead Contacts", value: leads.length },
-    { label: "Customers", value: customers.length, color: "#2784ff" },
-    {
-      label: "With Email",
-      value: records.filter((record) => Boolean(record.email)).length,
-      color: "#5b7cfa",
-    },
-    {
-      label: "Selected",
-      value: selectedRecord ? titleCase(selectedRecord.entity_type) : "--",
-      color: "#66758f",
-    },
-  ];
-
   return (
     <DashboardShell
       session={session}
       title="Communications"
-      eyebrow="Email Workspace"
-      heroStats={heroStats}
+      hideTitle
+      heroStats={[]}
     >
-      {error ? <div className="alert error">{error}</div> : null}
-      {message ? <div className="alert">{message}</div> : null}
-      {loading ? <div className="alert">Loading communication workspace...</div> : null}
+      {error ? <div className="rounded-[20px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div> : null}
+      {message ? <div className="rounded-[20px] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">{message}</div> : null}
+      {loading ? <div className="rounded-[20px] border border-[#eadfcd] bg-white px-4 py-3 text-sm font-medium text-[#6f614c]">Loading communication workspace...</div> : null}
       {!loading ? (
-        <section className="comm-shell">
-          <article className="comm-intro">
-            <div>
-              <span className="eyebrow">CRM Delivery</span>
-              <h2>Lead and customer email hub</h2>
-              <p>
-                Choose a lead or customer, load a working draft, edit the message, and send it
-                directly through CRM delivery routing.
-              </p>
-            </div>
-            <div className="comm-intro-note">
-              <DashboardIcon name="message" />
-              <span>Tenant SMTP is used when saved. Otherwise the platform SMTP route handles delivery.</span>
+        <section className="space-y-5">
+          <article className="rounded-[34px] border border-[#eadfcd] bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.95),_rgba(247,240,227,0.96)_42%,_rgba(241,232,215,1)_100%)] p-5 shadow-[0_22px_60px_rgba(79,58,22,0.08)] md:p-7">
+            <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
+              <div className="space-y-4">
+                <span className="inline-flex rounded-full border border-[#ddd3c2] bg-white/85 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.24em] text-[#7c6d55]">
+                  CRM Delivery
+                </span>
+                <h2 className="text-4xl font-semibold tracking-tight text-[#060710] md:text-[3rem] md:leading-[1.04]">
+                  Lead and customer communication, cleaned into one sharper email desk.
+                </h2>
+                <p className="max-w-3xl text-sm leading-7 text-[#746853] md:text-base">
+                  Pick a lead or customer, load a ready draft, and send the message from the same premium workspace without jumping across older screens.
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  {[
+                    { label: "Lead Contacts", value: leads.length },
+                    { label: "Customers", value: customers.length },
+                    { label: "With Email", value: records.filter((record) => Boolean(record.email)).length },
+                    { label: "Selected", value: selectedRecord ? titleCase(selectedRecord.entity_type) : "--" },
+                  ].map((item, index) => (
+                    <article key={item.label} className={`rounded-[24px] border border-[#eadfcd] p-4 shadow-[0_12px_28px_rgba(79,58,22,0.05)] ${index === 0 ? "bg-[#fff6e4]" : "bg-white/82"}`}>
+                      <p className={KICKER_CLASS}>{item.label}</p>
+                      <p className="mt-4 text-2xl font-semibold tracking-tight text-[#060710]">{item.value}</p>
+                    </article>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid gap-3 xl:min-w-[400px] xl:max-w-[440px] xl:w-full">
+                <div className="rounded-[24px] border border-[#eadfcd] bg-white/85 p-4 shadow-[0_12px_28px_rgba(79,58,22,0.05)]">
+                  <div className="flex items-start gap-3">
+                    <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#10111d] text-white">
+                      <DashboardIcon name="message" className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className={KICKER_CLASS}>Routing</p>
+                      <p className="mt-2 text-sm leading-7 text-[#746853]">
+                        Tenant SMTP is used when configured. Otherwise the platform route logs and delivers the draft through CRM fallback.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {["all", "lead", "customer"].map((type) => {
+                    const active = entityFilter === type;
+                    return (
+                      <button
+                        key={type}
+                        className={`inline-flex min-h-[46px] items-center justify-center rounded-[18px] border px-4 py-2.5 text-sm font-semibold transition ${
+                          active
+                            ? "border-[#d7b258] bg-[#f3dfab] text-[#060710] shadow-[0_12px_24px_rgba(203,169,82,0.16)]"
+                            : "border-[#eadfcd] bg-white text-[#5d503c]"
+                        }`}
+                        type="button"
+                        onClick={() => setEntityFilter(type)}
+                      >
+                        {type === "all" ? "All Records" : type === "lead" ? "Leads" : "Customers"}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           </article>
 
-          <section className="comm-layout">
-            <aside className="comm-sidebar">
-              <div className="comm-sidebar-head">
+          <div className="grid gap-5 xl:grid-cols-[0.86fr_1.14fr] xl:items-start">
+            <aside className={PANEL_CLASS}>
+              <div className="mb-5 flex items-center justify-between gap-3">
                 <div>
-                  <span className="eyebrow">Directory</span>
-                  <h3>Choose a record</h3>
+                  <p className={KICKER_CLASS}>Directory</p>
+                  <h3 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Choose a record</h3>
                 </div>
-                <span>{filteredRecords.length}</span>
+                <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">
+                  Page {currentPage} of {totalPages}
+                </span>
               </div>
 
-              <div className="feature-preset-row" style={{ marginBottom: "1rem" }}>
-                <button className="button ghost" type="button" onClick={() => setEntityFilter("all")}>All</button>
-                <button className="button ghost" type="button" onClick={() => setEntityFilter("lead")}>Leads</button>
-                <button className="button ghost" type="button" onClick={() => setEntityFilter("customer")}>Customers</button>
-              </div>
-
-              <label className="field">
-                <span>Search</span>
-                <input
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search company, contact, email, or owner"
-                />
+              <label className="grid gap-2">
+                <span className={KICKER_CLASS}>Search</span>
+                <div className="relative">
+                  <DashboardIcon name="leads" className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9c8e76]" />
+                  <input
+                    className={`${INPUT_CLASS} pl-11`}
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    placeholder="Search company, contact, email, or owner"
+                  />
+                </div>
               </label>
 
-              <div className="comm-lead-list">
-                {filteredRecords.length ? (
-                  filteredRecords.map((record) => {
+              <div className="mt-4 space-y-3">
+                {paginatedRecords.length ? (
+                  paginatedRecords.map((record) => {
                     const active = record.key === selectedKey;
                     return (
                       <button
                         key={record.key}
                         type="button"
-                        className={`comm-lead-card ${active ? "active" : ""}`}
+                        className={`w-full rounded-[24px] border px-4 py-4 text-left transition ${
+                          active
+                            ? "border-[#d7b258] bg-[#fff6e4] shadow-[0_12px_28px_rgba(203,169,82,0.14)]"
+                            : "border-[#eadfcd] bg-[#fffaf1] hover:bg-white"
+                        }`}
                         onClick={() => setSelectedKey(record.key)}
                       >
-                        <div className="comm-lead-card-top">
-                          <strong>{record.title}</strong>
-                          <span>{record.status}</span>
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <strong className="block text-base text-[#060710]">{record.title}</strong>
+                            <p className="mt-1 text-sm text-[#6f614c]">{record.subtitle}</p>
+                          </div>
+                          <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">
+                            {record.status}
+                          </span>
                         </div>
-                        <p>{record.subtitle}</p>
-                        <small>
-                          {titleCase(record.entity_type)} | {record.email || "No email on file"}
-                        </small>
+                        <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold text-[#8f816a]">
+                          <span>{titleCase(record.entity_type)}</span>
+                          <span>{record.email || "No email on file"}</span>
+                        </div>
                       </button>
                     );
                   })
                 ) : (
-                  <div className="comm-empty-state">
-                    <DashboardIcon name="message" />
-                    <p>No records matched the current search.</p>
+                  <div className="rounded-[24px] border border-dashed border-[#ddd0bb] bg-[#fffaf1] px-5 py-14 text-center text-sm text-[#7a6b57]">
+                    No records matched the current search.
                   </div>
                 )}
               </div>
+              {filteredRecords.length ? (
+                <div className="mt-4 flex items-center justify-between gap-3 rounded-[22px] border border-[#eadfcd] bg-[#fffaf1] px-4 py-3">
+                  <span className="text-sm font-semibold text-[#7c6d55]">
+                    {filteredRecords.length} total records
+                  </span>
+                  <div className="flex gap-2">
+                    <button
+                      className={GHOST_BUTTON_CLASS}
+                      type="button"
+                      onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                      disabled={currentPage === 1}
+                    >
+                      Previous
+                    </button>
+                    <button
+                      className={GHOST_BUTTON_CLASS}
+                      type="button"
+                      onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                      disabled={currentPage === totalPages}
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              ) : null}
             </aside>
 
-            <article className="comm-compose">
+            <div className="space-y-5">
               {selectedRecord ? (
                 <>
-                  <div className="comm-contact-card">
-                    <div className="comm-contact-head">
-                      <div>
-                        <span className="eyebrow">{titleCase(selectedRecord.entity_type)}</span>
-                        <h3>{selectedRecord.subtitle}</h3>
-                        <p>{selectedRecord.title}</p>
+                  <article className={PANEL_CLASS}>
+                    <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="space-y-2">
+                        <span className="inline-flex rounded-full border border-[#eadfcd] bg-[#fff6e4] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.24em] text-[#7c6d55]">
+                          {titleCase(selectedRecord.entity_type)}
+                        </span>
+                        <div>
+                          <h3 className="text-2xl font-semibold tracking-tight text-[#060710]">{selectedRecord.subtitle}</h3>
+                          <p className="mt-2 text-sm leading-7 text-[#746853]">{selectedRecord.title}</p>
+                        </div>
                       </div>
-                      <div className="comm-status-pill">
+                      <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">
                         {selectedRecord.status}
-                      </div>
+                      </span>
                     </div>
 
-                    <div className="comm-contact-grid">
-                      <div>
-                        <span>Email</span>
-                        <strong>{selectedRecord.email || "Add an email before sending"}</strong>
-                      </div>
-                      <div>
-                        <span>Phone</span>
-                        <strong>{selectedRecord.phone || "No phone on file"}</strong>
-                      </div>
-                      <div>
-                        <span>Context</span>
-                        <strong>{selectedRecord.product}</strong>
-                      </div>
-                      <div>
-                        <span>Owner</span>
-                        <strong>{selectedRecord.owner}</strong>
-                      </div>
+                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                      {[
+                        ["Email", selectedRecord.email || "Add an email before sending"],
+                        ["Phone", selectedRecord.phone || "No phone on file"],
+                        ["Context", selectedRecord.product],
+                        ["Owner", selectedRecord.owner],
+                      ].map(([label, value]) => (
+                        <div key={label} className="rounded-[22px] border border-[#eadfcd] bg-[#fffaf1] px-4 py-4">
+                          <span className={KICKER_CLASS}>{label}</span>
+                          <strong className="mt-3 block text-sm leading-6 text-[#060710]">{value}</strong>
+                        </div>
+                      ))}
                     </div>
-                  </div>
+                  </article>
 
-                  <div className="comm-template-panel">
-                    <div className="comm-panel-head">
+                  <article className={PANEL_CLASS}>
+                    <div className="mb-5 flex items-center justify-between gap-3">
                       <div>
-                        <span className="eyebrow">Templates</span>
-                        <h3>Email direction</h3>
+                        <p className={KICKER_CLASS}>Templates</p>
+                        <h3 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Email direction</h3>
                       </div>
-                      <span>{templates.length} options</span>
+                      <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">
+                        {templates.length} options
+                      </span>
                     </div>
-                    <div className="comm-template-grid">
+
+                    <div className="grid gap-3 lg:grid-cols-3">
                       {templates.map((template) => (
                         <button
                           key={template.id}
                           type="button"
-                          className={`comm-template-card ${selectedTemplateId === template.id ? "active" : ""}`}
+                          className={`rounded-[22px] border px-4 py-4 text-left transition ${
+                            selectedTemplateId === template.id
+                              ? "border-[#d7b258] bg-[#fff6e4] shadow-[0_12px_28px_rgba(203,169,82,0.14)]"
+                              : "border-[#eadfcd] bg-[#fffaf1] hover:bg-white"
+                          }`}
                           onClick={() => {
                             setSelectedTemplateId(template.id);
                             setSubject(template.subject);
                             setBody(template.body);
                           }}
                         >
-                          <strong>{template.name}</strong>
-                          <span>{template.subject}</span>
+                          <strong className="block text-base text-[#060710]">{template.name}</strong>
+                          <span className="mt-2 block text-sm leading-6 text-[#746853]">{template.subject}</span>
                         </button>
                       ))}
                     </div>
-                  </div>
+                  </article>
 
-                  <div className="comm-compose-panel">
-                    <div className="comm-panel-head">
+                  <article className={PANEL_CLASS}>
+                    <div className="mb-5 flex items-center justify-between gap-3">
                       <div>
-                        <span className="eyebrow">Compose</span>
-                        <h3>Send email from CRM</h3>
+                        <p className={KICKER_CLASS}>Compose</p>
+                        <h3 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Send email from CRM</h3>
                       </div>
-                      <span>{titleCase(selectedRecord.entity_type)} sync</span>
+                      <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">
+                        {titleCase(selectedRecord.entity_type)} sync
+                      </span>
                     </div>
 
-                    <div className="form-grid">
-                      <label className="field">
-                        <span>Recipient</span>
+                    <div className="grid gap-4">
+                      <label className="grid gap-2">
+                        <span className={KICKER_CLASS}>Recipient</span>
                         <input
+                          className={INPUT_CLASS}
                           type="email"
                           value={recipient}
                           onChange={(event) => setRecipient(event.target.value)}
@@ -575,18 +673,20 @@ export default function CommunicationsPage() {
                         />
                       </label>
 
-                      <label className="field">
-                        <span>Subject</span>
+                      <label className="grid gap-2">
+                        <span className={KICKER_CLASS}>Subject</span>
                         <input
+                          className={INPUT_CLASS}
                           value={subject}
                           onChange={(event) => setSubject(event.target.value)}
                           placeholder="Email subject"
                         />
                       </label>
 
-                      <label className="field">
-                        <span>Message</span>
+                      <label className="grid gap-2">
+                        <span className={KICKER_CLASS}>Message</span>
                         <textarea
+                          className={`${INPUT_CLASS} min-h-[280px] resize-y`}
                           rows="12"
                           value={body}
                           onChange={(event) => setBody(event.target.value)}
@@ -595,32 +695,40 @@ export default function CommunicationsPage() {
                       </label>
                     </div>
 
-                    <div className="comm-action-row">
-                      <button className="button ghost" type="button" onClick={handleCopyDraft}>
-                        <DashboardIcon name="documents" />
+                    <div className="mt-5 flex flex-wrap gap-3">
+                      <button className={GHOST_BUTTON_CLASS} type="button" onClick={handleCopyDraft}>
+                        <DashboardIcon name="documents" className="h-4 w-4" />
                         {copyState === "copied" ? "Copied" : "Copy Draft"}
                       </button>
                       <button
-                        className="button primary"
+                        className={PRIMARY_BUTTON_CLASS}
                         type="button"
                         onClick={handleSendEmail}
                         disabled={sending}
                       >
-                        <DashboardIcon name="message" />
+                        <DashboardIcon name="message" className="h-4 w-4" />
                         {sending ? "Sending..." : "Send Email"}
                       </button>
                     </div>
-                  </div>
+                  </article>
                 </>
               ) : (
-                <div className="comm-empty-state large">
-                  <DashboardIcon name="message" />
-                  <h3>Select a lead or customer to start drafting</h3>
-                  <p>The composer will populate once a record is selected from the list.</p>
-                </div>
+                <article className={`${PANEL_CLASS} grid min-h-[420px] place-items-center text-center`}>
+                  <div className="space-y-4">
+                    <div className="mx-auto grid h-14 w-14 place-items-center rounded-[20px] bg-[#fff6e4] text-[#8d6e27] shadow-[0_12px_24px_rgba(79,58,22,0.08)]">
+                      <DashboardIcon name="message" className="h-6 w-6" />
+                    </div>
+                    <div className="space-y-2">
+                      <h3 className="text-2xl font-semibold tracking-tight text-[#060710]">Select a lead or customer to start drafting</h3>
+                      <p className="max-w-xl text-sm leading-7 text-[#746853]">
+                        The composer and template desk will populate once a record is selected from the directory.
+                      </p>
+                    </div>
+                  </div>
+                </article>
               )}
-            </article>
-          </section>
+            </div>
+          </div>
         </section>
       ) : null}
     </DashboardShell>

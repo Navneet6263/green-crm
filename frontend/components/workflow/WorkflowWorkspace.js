@@ -151,7 +151,7 @@ export default function WorkflowWorkspace({ mode }) {
   }
 
   return (
-    <DashboardShell session={session} title={config.title} eyebrow={config.eyebrow} heroStats={heroStats}>
+    <DashboardShell session={session} title={config.title} eyebrow={config.eyebrow} heroStats={heroStats} hideTitle>
       {error ? <div className="alert error">{error}</div> : null}
       {!error && notice ? <div className="alert">{notice}</div> : null}
       {loading ? <div className="alert">Loading workflow queue...</div> : null}

@@ -13,6 +13,40 @@ const { createPrefixedId } = require("../utils/ids");
 const AppError = require("../utils/appError");
 const { assertCompanyAccess, getAccessibleCompanyIds, isManagerRole, isPlatformOperatorRole } = require("../utils/tenant");
 
+const INVALID_LEAD_DATE = Symbol("invalid_lead_date");
+
+function normalizeLeadNumber(value) {
+  if (value === undefined || value === null || value === "") {
+    return 0;
+  }
+
+  const directNumeric = Number(value);
+  if (Number.isFinite(directNumeric)) {
+    return directNumeric;
+  }
+
+  const cleaned = String(value)
+    .replace(/[^\d.-]/g, "")
+    .trim();
+  const parsed = Number(cleaned);
+  return Number.isFinite(parsed) ? parsed : NaN;
+}
+
+function normalizeLeadDate(value) {
+  if (value === undefined || value === null || value === "") {
+    return null;
+  }
+
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? INVALID_LEAD_DATE : value;
+  }
+
+  const source = String(value).trim();
+  const normalized = source.includes("T") ? source : source.replace(" ", "T");
+  const parsed = new Date(normalized);
+  return Number.isNaN(parsed.getTime()) ? INVALID_LEAD_DATE : parsed;
+}
+
 function normalizeLeadPayload(payload) {
   return {
     contact_person: String(payload.contact_person || payload.contact_person_name || "").trim(),
@@ -26,10 +60,10 @@ function normalizeLeadPayload(payload) {
     address_country: payload.address_country || payload.country || "India",
     industry: payload.industry || null,
     lead_source: payload.lead_source || payload.source || "website",
-    follow_up_date: payload.follow_up_date || null,
+    follow_up_date: normalizeLeadDate(payload.follow_up_date),
     status: String(payload.status || "new").toLowerCase(),
     priority: String(payload.priority || "medium").toLowerCase(),
-    estimated_value: Number(payload.estimated_value || payload.estimated_deal_value || 0),
+    estimated_value: normalizeLeadNumber(payload.estimated_value || payload.estimated_deal_value || 0),
     product_id: payload.product_id || null,
     requirements: payload.requirements || payload.notes || null,
     workflow_stage: String(payload.workflow_stage || "sales").toLowerCase(),
@@ -107,12 +141,24 @@ function validateLeadPayload(lead) {
     throw new AppError("Contact person, company name, and phone are required.");
   }
 
+  if (!lead.product_id) {
+    throw new AppError("A product is required for every lead.", 400);
+  }
+
   if (!LEAD_PRIORITIES.includes(lead.priority)) {
     throw new AppError("Invalid lead priority.");
   }
 
   if (!LEAD_STATUSES.includes(lead.status)) {
     throw new AppError("Invalid lead status.");
+  }
+
+  if (!Number.isFinite(lead.estimated_value)) {
+    throw new AppError("Estimated value must be a valid number.", 400);
+  }
+
+  if (lead.follow_up_date === INVALID_LEAD_DATE) {
+    throw new AppError("Follow-up date is invalid.", 400);
   }
 }
 
@@ -188,12 +234,12 @@ async function assertLeadAccess(auth, lead) {
 
   assertCompanyAccess(auth, lead.company_id);
 
-  if (auth.role === ROLES.SALES && lead.created_by !== auth.userId) {
-    throw new AppError("Sales users can only access leads they created.", 403);
+  if (auth.role === ROLES.SALES && lead.assigned_to !== auth.userId) {
+    throw new AppError("Sales users can only access leads assigned to them.", 403);
   }
 
-  if (auth.role === ROLES.MARKETING && lead.created_by !== auth.userId) {
-    throw new AppError("Marketing users can only access their created leads.", 403);
+  if (auth.role === ROLES.MARKETING && lead.assigned_to !== auth.userId) {
+    throw new AppError("Marketing users can only access leads assigned to them.", 403);
   }
 
   if (auth.role === ROLES.LEGAL_TEAM && lead.workflow_stage !== "legal") {
@@ -249,9 +295,9 @@ function buildLeadFilters(auth, query) {
   filters.companyId = auth.companyId;
 
   if (auth.role === ROLES.SALES) {
-    filters.createdBy = auth.userId;
+    filters.assignedTo = auth.userId;
   } else if (auth.role === ROLES.MARKETING) {
-    filters.createdBy = auth.userId;
+    filters.assignedTo = auth.userId;
   } else if (auth.role === ROLES.LEGAL_TEAM) {
     filters.workflowStage = "legal";
     filters.assignedTo = auth.userId;
