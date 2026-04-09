@@ -7,10 +7,13 @@ const { ROLES } = require("../constants/roles");
 const { createPrefixedId } = require("../utils/ids");
 const { buildPaginatedResult, parsePagination } = require("../utils/pagination");
 const AppError = require("../utils/appError");
-const { assertCompanyAccess } = require("../utils/tenant");
+const { assertCompanyAccess, getAccessibleCompanyIds, isPlatformOperatorRole } = require("../utils/tenant");
 
 async function getWorkflowLead(auth, leadId) {
-  const lead = await leadRepository.getLeadById(leadId, auth.companyId);
+  const lead = await leadRepository.getLeadById(
+    leadId,
+    auth.role === ROLES.SUPER_ADMIN || isPlatformOperatorRole(auth.role) ? null : auth.companyId
+  );
   if (!lead) {
     throw new AppError("Lead not found.", 404);
   }
@@ -30,7 +33,14 @@ async function listMyAssigned(auth, query) {
 
   const { rows, total } = await workflowRepository.listWorkflowLeads(
     {
-      companyId: auth.role === ROLES.SUPER_ADMIN ? query.company_id || auth.companyId : auth.companyId,
+      companyId:
+        auth.role === ROLES.SUPER_ADMIN || isPlatformOperatorRole(auth.role)
+          ? query.company_id || null
+          : auth.companyId,
+      companyIds:
+        isPlatformOperatorRole(auth.role) && !(query.company_id || null)
+          ? getAccessibleCompanyIds(auth)
+          : null,
       stage,
       assignedUserId:
         [ROLES.LEGAL_TEAM, ROLES.FINANCE_TEAM, ROLES.SALES].includes(auth.role) ? auth.userId : query.assigned_to || null,
@@ -42,14 +52,21 @@ async function listMyAssigned(auth, query) {
 }
 
 async function getTracker(auth, query) {
-  if (![ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER].includes(auth.role)) {
+  if (![ROLES.SUPER_ADMIN, ROLES.PLATFORM_ADMIN, ROLES.PLATFORM_MANAGER, ROLES.ADMIN, ROLES.MANAGER].includes(auth.role)) {
     throw new AppError("Only managers and admins can access workflow tracker.", 403);
   }
 
   const pagination = parsePagination(query);
   const { rows, total } = await workflowRepository.listWorkflowLeads(
     {
-      companyId: auth.role === ROLES.SUPER_ADMIN ? query.company_id || auth.companyId : auth.companyId,
+      companyId:
+        auth.role === ROLES.SUPER_ADMIN || isPlatformOperatorRole(auth.role)
+          ? query.company_id || null
+          : auth.companyId,
+      companyIds:
+        isPlatformOperatorRole(auth.role) && !(query.company_id || null)
+          ? getAccessibleCompanyIds(auth)
+          : null,
       stage: query.stage || query.workflow_stage || null,
       assignedUserId: query.assigned_to || null,
       pagination,
@@ -70,7 +87,7 @@ async function getMyHistory(auth, query) {
 }
 
 async function listUsersByRole(auth, role) {
-  if (![ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER, ROLES.LEGAL_TEAM, ROLES.FINANCE_TEAM].includes(auth.role)) {
+  if (![ROLES.SUPER_ADMIN, ROLES.PLATFORM_ADMIN, ROLES.PLATFORM_MANAGER, ROLES.ADMIN, ROLES.MANAGER, ROLES.LEGAL_TEAM, ROLES.FINANCE_TEAM].includes(auth.role)) {
     throw new AppError("You cannot access workflow user lists.", 403);
   }
 
@@ -144,7 +161,7 @@ async function moveLead(auth, leadId, toStage, assignedUserId, extraUpdates = {}
 }
 
 async function transferToLegal(auth, leadId, payload) {
-  if (![ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER, ROLES.SALES].includes(auth.role)) {
+  if (![ROLES.SUPER_ADMIN, ROLES.PLATFORM_ADMIN, ROLES.PLATFORM_MANAGER, ROLES.ADMIN, ROLES.MANAGER, ROLES.SALES].includes(auth.role)) {
     throw new AppError("Your role cannot transfer leads to legal.", 403);
   }
 
@@ -163,7 +180,7 @@ async function transferToLegal(auth, leadId, payload) {
 }
 
 async function transferToFinance(auth, leadId, payload) {
-  if (![ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.LEGAL_TEAM].includes(auth.role)) {
+  if (![ROLES.SUPER_ADMIN, ROLES.PLATFORM_ADMIN, ROLES.PLATFORM_MANAGER, ROLES.ADMIN, ROLES.LEGAL_TEAM].includes(auth.role)) {
     throw new AppError("Your role cannot transfer leads to finance.", 403);
   }
 
@@ -191,7 +208,7 @@ async function transferToFinance(auth, leadId, payload) {
 }
 
 async function completeWorkflow(auth, leadId, payload) {
-  if (![ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.FINANCE_TEAM].includes(auth.role)) {
+  if (![ROLES.SUPER_ADMIN, ROLES.PLATFORM_ADMIN, ROLES.PLATFORM_MANAGER, ROLES.ADMIN, ROLES.FINANCE_TEAM].includes(auth.role)) {
     throw new AppError("Your role cannot complete workflow.", 403);
   }
 

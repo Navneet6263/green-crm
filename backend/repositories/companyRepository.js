@@ -5,6 +5,18 @@ function getExecutor(executor) {
   return executor || db;
 }
 
+function serializeJsonField(value) {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (value === null || value === "") {
+    return null;
+  }
+
+  return typeof value === "string" ? value : JSON.stringify(value);
+}
+
 async function getCompanyById(companyId, executor) {
   const active = getExecutor(executor);
   const [rows] = await active.query("SELECT TOP 1 * FROM companies WHERE company_id = ?", [companyId]);
@@ -21,10 +33,20 @@ async function getCompanyWithSettings(companyId, executor) {
   return getCompanyById(companyId, executor);
 }
 
-async function listCompanies({ search, pagination }, executor) {
+async function listCompanies({ search, pagination, companyIds = null }, executor) {
   const active = getExecutor(executor);
   const conditions = ["company_id <> ?"];
   const params = [PLATFORM_COMPANY_ID];
+  const normalizedCompanyIds = [...new Set((Array.isArray(companyIds) ? companyIds : []).map((value) => String(value || "").trim()).filter(Boolean))];
+
+  if (companyIds) {
+    if (!normalizedCompanyIds.length) {
+      return { rows: [], total: 0 };
+    }
+
+    conditions.push(`company_id IN (${normalizedCompanyIds.map(() => "?").join(", ")})`);
+    params.push(...normalizedCompanyIds);
+  }
 
   if (search) {
     conditions.push("(name LIKE ? OR slug LIKE ? OR admin_email LIKE ?)");
@@ -67,12 +89,20 @@ async function createCompany(company, executor) {
         contact_phone,
         industry,
         status,
+        address,
+        city,
+        state,
         settings_currency,
         settings_timezone,
         settings_date_format,
         country,
-        website
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        website,
+        smtp_host,
+        smtp_port,
+        smtp_user,
+        smtp_password,
+        service_settings
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
     [
       company.company_id,
@@ -83,11 +113,19 @@ async function createCompany(company, executor) {
       company.contact_phone || null,
       company.industry || null,
       company.status || "trial",
+      company.address || null,
+      company.city || null,
+      company.state || null,
       company.settings_currency || "INR",
       company.settings_timezone || "Asia/Kolkata",
       company.settings_date_format || "DD/MM/YYYY",
       company.country || "India",
       company.website || null,
+      company.smtp_host || null,
+      company.smtp_port || null,
+      company.smtp_user || null,
+      company.smtp_password || null,
+      serializeJsonField(company.service_settings),
     ]
   );
 
@@ -126,12 +164,12 @@ async function updateCompany(companyId, updates, executor) {
 
   if (Object.prototype.hasOwnProperty.call(updates, "service_access")) {
     fields.push("service_access = ?");
-    params.push(JSON.stringify(updates.service_access || {}));
+    params.push(serializeJsonField(updates.service_access || {}));
   }
 
   if (Object.prototype.hasOwnProperty.call(updates, "service_settings")) {
     fields.push("service_settings = ?");
-    params.push(JSON.stringify(updates.service_settings || {}));
+    params.push(serializeJsonField(updates.service_settings || {}));
   }
 
   if (fields.length) {

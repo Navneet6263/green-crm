@@ -520,7 +520,7 @@ export default function CustomersPage() {
                   <StatCell label="Updated" value={dateTime(selectedCustomer.updated_at || selectedCustomer.created_at)} />
                 </div>
                 <div className="mt-4 flex flex-wrap gap-3">
-                  <a className="crm-btn-secondary" href={`mailto:${selectedCustomer.email || ""}`}><DashboardIcon name="message" className="h-4 w-4" />Email</a>
+                  <Link className="crm-btn-secondary" href={`/communications?entity=customer&id=${selectedCustomer.customer_id}`}><DashboardIcon name="message" className="h-4 w-4" />Email</Link>
                   <a className="crm-btn-secondary" href={`tel:${String(selectedCustomer.phone || "").replace(/[^\d+]/g, "")}`}><DashboardIcon name="support" className="h-4 w-4" />Call</a>
                 </div>
               </article>

@@ -1,5 +1,6 @@
 const dashboardRepository = require("../repositories/dashboardRepository");
 const { ROLES } = require("../constants/roles");
+const { getAccessibleCompanyIds, isPlatformOperatorRole } = require("../utils/tenant");
 
 const dashboardCache = new Map();
 
@@ -39,6 +40,11 @@ function buildCacheKey(auth) {
     return "dashboard:platform";
   }
 
+  if (isPlatformOperatorRole(auth.role)) {
+    const companyKey = (getAccessibleCompanyIds(auth) || []).slice().sort().join(",");
+    return `dashboard:platform:${auth.role}:${auth.userId}:${companyKey}`;
+  }
+
   if ([ROLES.ADMIN, ROLES.MANAGER].includes(auth.role)) {
     return `dashboard:company:${auth.companyId}:${auth.role}`;
   }
@@ -57,6 +63,10 @@ function buildCacheKey(auth) {
 async function loadSummary(auth) {
   if (auth.role === ROLES.SUPER_ADMIN) {
     return dashboardRepository.getPlatformSummary();
+  }
+
+  if (isPlatformOperatorRole(auth.role)) {
+    return dashboardRepository.getPlatformSummary(getAccessibleCompanyIds(auth));
   }
 
   if ([ROLES.ADMIN, ROLES.MANAGER].includes(auth.role)) {

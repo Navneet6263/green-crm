@@ -4,6 +4,14 @@ function getExecutor(executor) {
   return executor || db;
 }
 
+function inferTotalFromPage(rows, pagination) {
+  if (pagination.page === 1 && rows.length < pagination.limit) {
+    return rows.length;
+  }
+
+  return null;
+}
+
 async function getUserByEmail(email, executor) {
   const active = getExecutor(executor);
   const [rows] = await active.query("SELECT TOP 1 * FROM users WHERE email = ?", [email]);
@@ -25,12 +33,20 @@ async function getUserInCompany(userId, companyId, executor) {
   return rows[0] || null;
 }
 
-async function listUsers({ companyId, role, search, pagination }, executor) {
+async function listUsers({ companyId, companyIds = null, role, search, pagination }, executor) {
   const active = getExecutor(executor);
   const conditions = [];
   const params = [];
+  const normalizedCompanyIds = [...new Set((Array.isArray(companyIds) ? companyIds : []).map((value) => String(value || "").trim()).filter(Boolean))];
 
-  if (companyId) {
+  if (companyIds) {
+    if (!normalizedCompanyIds.length) {
+      return { rows: [], total: 0 };
+    }
+
+    conditions.push(`u.company_id IN (${normalizedCompanyIds.map(() => "?").join(", ")})`);
+    params.push(...normalizedCompanyIds);
+  } else if (companyId) {
     conditions.push("u.company_id = ?");
     params.push(companyId);
   }
@@ -46,15 +62,6 @@ async function listUsers({ companyId, role, search, pagination }, executor) {
   }
 
   const whereClause = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
-
-  const [countRows] = await active.query(
-    `
-      SELECT COUNT(*) AS total
-      FROM users u
-      ${whereClause}
-    `,
-    params
-  );
 
   const [rows] = await active.query(
     `
@@ -77,6 +84,23 @@ async function listUsers({ companyId, role, search, pagination }, executor) {
       OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
     `,
     [...params, pagination.offset, pagination.limit]
+  );
+
+  const inferredTotal = inferTotalFromPage(rows, pagination);
+  if (inferredTotal !== null) {
+    return {
+      rows,
+      total: inferredTotal,
+    };
+  }
+
+  const [countRows] = await active.query(
+    `
+      SELECT COUNT(*) AS total
+      FROM users u
+      ${whereClause}
+    `,
+    params
   );
 
   return {
@@ -214,7 +238,21 @@ async function countSuperAdmins(executor) {
   return rows[0].total;
 }
 
+async function countActiveUsersByRole(companyId, role, executor) {
+  const active = getExecutor(executor);
+  const [rows] = await active.query(
+    `
+      SELECT COUNT(*) AS total
+      FROM users
+      WHERE company_id = ? AND role = ? AND is_active = 1
+    `,
+    [companyId, role]
+  );
+  return rows[0]?.total || 0;
+}
+
 module.exports = {
+  countActiveUsersByRole,
   countSuperAdmins,
   createUser,
   getUserByEmail,

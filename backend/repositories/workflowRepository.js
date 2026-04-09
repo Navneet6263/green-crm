@@ -4,10 +4,22 @@ function getExecutor(executor) {
   return executor || db;
 }
 
-async function listWorkflowLeads({ companyId, stage, assignedUserId, pagination }, executor) {
+async function listWorkflowLeads({ companyId, companyIds = null, stage, assignedUserId, pagination }, executor) {
   const active = getExecutor(executor);
-  const conditions = ["l.company_id = ?", "l.is_active = 1"];
-  const params = [companyId];
+  const conditions = ["l.is_active = 1"];
+  const params = [];
+
+  if (companyId) {
+    conditions.push("l.company_id = ?");
+    params.push(companyId);
+  } else if (Array.isArray(companyIds)) {
+    if (!companyIds.length) {
+      conditions.push("1 = 0");
+    } else {
+      conditions.push(`l.company_id IN (${companyIds.map(() => "?").join(", ")})`);
+      params.push(...companyIds);
+    }
+  }
 
   if (stage) {
     conditions.push("l.workflow_stage = ?");

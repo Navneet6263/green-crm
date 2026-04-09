@@ -5,6 +5,335 @@
   padding: 1rem 2rem 3rem;
 }
 
+.cloud-hero {
+  position: relative;
+}
+
+.cloud-hero-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(24rem, 1.02fr);
+  gap: 1.3rem;
+  align-items: stretch;
+}
+
+.cloud-hero-copy,
+.cloud-scene,
+.cloud-role-card {
+  border-radius: var(--radius-xl);
+  border: 1px solid rgba(200, 221, 242, 0.82);
+  box-shadow: 0 22px 48px rgba(62, 105, 155, 0.1);
+}
+
+.cloud-hero-copy {
+  display: grid;
+  align-content: start;
+  gap: 1.2rem;
+  padding: 2.4rem;
+  background:
+    radial-gradient(circle at 88% 12%, rgba(207, 232, 255, 0.54), transparent 15rem),
+    radial-gradient(circle at 14% 0%, rgba(184, 223, 255, 0.38), transparent 14rem),
+    linear-gradient(180deg, rgba(246, 252, 255, 0.98), rgba(234, 245, 255, 0.95));
+}
+
+.cloud-hero-copy h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(3rem, 6vw, 5.4rem);
+  line-height: 0.92;
+  color: #1f3c5b;
+}
+
+.cloud-hero-copy p {
+  margin: 0;
+  max-width: 36rem;
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.75;
+}
+
+.cloud-hero-actions,
+.cloud-proof-strip,
+.cloud-role-stack,
+.cloud-hero-inline,
+.cloud-scene-grid {
+  display: flex;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+}
+
+.cloud-hero-inline {
+  align-items: center;
+  color: var(--muted);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.cloud-proof-strip {
+  margin-top: auto;
+}
+
+.cloud-proof-card {
+  min-width: 9rem;
+  padding: 1rem 1.1rem;
+  border-radius: 1.25rem;
+  background: rgba(246, 251, 255, 0.88);
+  border: 1px solid rgba(191, 214, 236, 0.78);
+  box-shadow: 0 12px 24px rgba(62, 105, 155, 0.08);
+}
+
+.cloud-proof-card span {
+  display: block;
+  color: #6e87a2;
+  font-size: 0.76rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 800;
+}
+
+.cloud-proof-card strong {
+  display: block;
+  margin-top: 0.55rem;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  color: #234668;
+}
+
+.cloud-hero-visual {
+  display: grid;
+  gap: 1rem;
+}
+
+.cloud-scene {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  gap: 1rem;
+  padding: 1.2rem;
+  background:
+    radial-gradient(circle at 22% 18%, rgba(206, 234, 255, 0.28), transparent 11rem),
+    radial-gradient(circle at 86% 10%, rgba(184, 223, 255, 0.22), transparent 13rem),
+    linear-gradient(160deg, rgba(147, 183, 246, 0.96) 0%, rgba(103, 148, 245, 0.98) 46%, rgba(142, 215, 248, 0.94) 100%);
+  color: #eff7ff;
+}
+
+.cloud-scene::before,
+.cloud-scene::after {
+  content: "";
+  position: absolute;
+  border-radius: 999px;
+  background: rgba(191, 228, 255, 0.14);
+  filter: blur(12px);
+}
+
+.cloud-scene::before {
+  width: 14rem;
+  height: 14rem;
+  top: -5rem;
+  right: -3rem;
+}
+
+.cloud-scene::after {
+  width: 16rem;
+  height: 16rem;
+  left: -5rem;
+  bottom: -7rem;
+  background: rgba(101, 172, 241, 0.2);
+}
+
+.cloud-scene-topbar,
+.cloud-scene-stat,
+.cloud-mini-card,
+.cloud-rule-card {
+  position: relative;
+  z-index: 1;
+}
+
+.cloud-scene-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(239, 247, 255, 0.78);
+}
+
+.cloud-scene-dashboard {
+  display: grid;
+  gap: 1rem;
+}
+
+.cloud-scene-stat.major,
+.cloud-mini-card {
+  border-radius: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: linear-gradient(180deg, rgba(237, 247, 255, 0.18), rgba(206, 228, 255, 0.08));
+  backdrop-filter: blur(18px);
+}
+
+.cloud-scene-stat.major {
+  padding: 1.35rem;
+}
+
+.cloud-scene-stat span,
+.cloud-mini-card span {
+  display: block;
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(239, 247, 255, 0.72);
+}
+
+.cloud-scene-stat strong,
+.cloud-mini-card strong,
+.cloud-rule-card strong,
+.cloud-role-card strong {
+  display: block;
+}
+
+.cloud-scene-stat strong {
+  margin-top: 0.45rem;
+  font-family: var(--font-display);
+  font-size: 2rem;
+  line-height: 1.02;
+}
+
+.cloud-scene-stat p,
+.cloud-mini-card p,
+.cloud-rule-card p {
+  margin: 0.6rem 0 0;
+  line-height: 1.6;
+  color: rgba(239, 247, 255, 0.84);
+}
+
+.cloud-scene-grid {
+  align-items: stretch;
+}
+
+.cloud-mini-card {
+  flex: 1;
+  min-width: 15rem;
+  padding: 1.15rem;
+}
+
+.cloud-mini-card.highlight {
+  background: linear-gradient(180deg, rgba(86, 141, 255, 0.26), rgba(216, 235, 255, 0.08));
+}
+
+.cloud-mini-card strong {
+  margin-top: 0.4rem;
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+}
+
+.cloud-line-chart {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: end;
+  gap: 0.55rem;
+  min-height: 4rem;
+  margin-top: 1rem;
+}
+
+.cloud-line-chart span {
+  border-radius: 999px 999px 0.85rem 0.85rem;
+  background: linear-gradient(180deg, #ffd66d 0%, #ffffff 100%);
+}
+
+.cloud-line-chart span:nth-child(1) {
+  height: 1.7rem;
+}
+
+.cloud-line-chart span:nth-child(2) {
+  height: 2.8rem;
+}
+
+.cloud-line-chart span:nth-child(3) {
+  height: 2.1rem;
+}
+
+.cloud-line-chart span:nth-child(4) {
+  height: 3.3rem;
+}
+
+.cloud-rule-card {
+  display: grid;
+  grid-template-columns: 4.2rem minmax(0, 1fr);
+  gap: 1rem;
+  align-items: center;
+  padding: 1.15rem;
+  border-radius: 1.45rem;
+  background: rgba(244, 250, 255, 0.94);
+  color: #244263;
+  box-shadow: 0 16px 32px rgba(62, 105, 155, 0.14);
+}
+
+.cloud-rule-card p {
+  color: #647f99;
+}
+
+.cloud-rule-lines {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.cloud-rule-lines span {
+  display: block;
+  height: 0.52rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(92, 144, 255, 0.98), rgba(124, 204, 255, 0.74));
+}
+
+.cloud-rule-lines span:nth-child(2) {
+  width: 74%;
+}
+
+.cloud-rule-lines span:nth-child(3) {
+  width: 58%;
+}
+
+.cloud-role-stack {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.cloud-role-card {
+  padding: 1rem 1.05rem;
+  background: linear-gradient(180deg, rgba(247, 252, 255, 0.96), rgba(234, 245, 255, 0.92));
+}
+
+.cloud-role-card strong {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  color: #244263;
+}
+
+.cloud-role-card span {
+  display: block;
+  margin-top: 0.42rem;
+  color: #69829d;
+  line-height: 1.58;
+  font-size: 0.85rem;
+}
+
+.info-band,
+.cta-band {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(244, 250, 255, 0.9));
+  border: 1px solid rgba(200, 221, 242, 0.84);
+  box-shadow: 0 18px 40px rgba(62, 105, 155, 0.08);
+}
+
+.highlight-card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(240, 248, 255, 0.96));
+  border: 1px solid rgba(195, 216, 238, 0.82);
+}
+
+.highlight-card::before {
+  background: linear-gradient(90deg, #4f87f6, #7ec8ff);
+}
+
 .landing-hero {
   width: 100%;
 }
@@ -789,6 +1118,10 @@
 }
 
 @media (max-width: 1260px) {
+  .cloud-hero-panel {
+    grid-template-columns: 1fr;
+  }
+
   .hero-stage-premium {
     grid-template-columns: 1fr;
   }
@@ -828,6 +1161,12 @@
     padding-right: 1rem;
   }
 
+  .cloud-role-stack,
+  .cloud-scene-grid {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+  }
+
   .hero-console-grid,
   .hero-console-stats,
   .hero-console-panels,
@@ -865,6 +1204,19 @@
 }
 
 @media (max-width: 720px) {
+  .cloud-hero-copy,
+  .cloud-scene {
+    padding: 1.25rem;
+  }
+
+  .cloud-hero-copy h1 {
+    font-size: 2.7rem;
+  }
+
+  .cloud-rule-card {
+    grid-template-columns: 1fr;
+  }
+
   .hero-stage-copy,
   .hero-console {
     padding: 1.2rem;

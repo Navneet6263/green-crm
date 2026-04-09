@@ -2,6 +2,8 @@ import { ROLE_HOME_ROUTE, ROLE_LABEL } from "../../lib/roles";
 
 export const ROLE_COLOR = {
   "super-admin": "#9a7cff",
+  "platform-admin": "#2784ff",
+  "platform-manager": "#0ea5a4",
   admin: "#4f8cff",
   manager: "#23b5d3",
   sales: "#1fc778",
@@ -14,6 +16,8 @@ export const ROLE_COLOR = {
 
 export const ROLE_DESCRIPTIONS = {
   "super-admin": "Cross-tenant control for access, company setup, and platform safety.",
+  "platform-admin": "Delegated platform operator for assigned companies, tenant settings, and tenant users.",
+  "platform-manager": "Assigned-company operator focused on delivery, review, and daily platform oversight.",
   admin: "Tenant control across pipeline, users, settings, and analytics.",
   manager: "Team execution view for workload, follow-through, and pipeline movement.",
   sales: "Daily follow-up workspace focused on deal movement and conversions.",
@@ -77,6 +81,22 @@ export const SIDEBAR_SECTIONS = {
       ITEM("Audit Logs", "/super-admin/audit-logs", "audit"),
       ITEM("Security", "/super-admin/security", "security"),
       ITEM("System Settings", "/super-admin/settings", "settings"),
+    ]),
+  ],
+  "platform-admin": [
+    SECTION("Platform", [
+      ITEM("Dashboard", ROLE_HOME_ROUTE["platform-admin"], "dashboard"),
+      ITEM("Companies", "/super-admin/companies", "company"),
+      ITEM("Platform Users", "/super-admin/users", "users"),
+    ]),
+    SECTION("Review", [
+      ITEM("Security", "/super-admin/security", "security"),
+    ]),
+  ],
+  "platform-manager": [
+    SECTION("Platform", [
+      ITEM("Dashboard", ROLE_HOME_ROUTE["platform-manager"], "dashboard"),
+      ITEM("Companies", "/super-admin/companies", "company"),
     ]),
   ],
   admin: [
@@ -177,6 +197,15 @@ export const ROLE_SHORTCUTS = {
     ITEM("Companies", "/super-admin/companies", "company"),
     ITEM("Users", "/super-admin/users", "users"),
     ITEM("Audit", "/super-admin/audit-logs", "audit"),
+  ],
+  "platform-admin": [
+    ITEM("Companies", "/super-admin/companies", "company"),
+    ITEM("Users", "/super-admin/users", "users"),
+    ITEM("Security", "/super-admin/security", "security"),
+  ],
+  "platform-manager": [
+    ITEM("Companies", "/super-admin/companies", "company"),
+    ITEM("Dashboard", "/super-admin", "dashboard"),
   ],
   admin: [
     ITEM("New Lead", "/leads/new", "leads"),

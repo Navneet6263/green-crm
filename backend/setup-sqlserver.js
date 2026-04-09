@@ -83,6 +83,16 @@ async function runSchema() {
       CONSTRAINT uq_users_email UNIQUE (email)
     )`,
 
+    `IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'platform_user_company_access')
+    CREATE TABLE platform_user_company_access (
+      id          BIGINT IDENTITY(1,1) PRIMARY KEY,
+      user_id     NVARCHAR(20)   NOT NULL,
+      company_id  NVARCHAR(20)   NOT NULL,
+      created_by  NVARCHAR(20)   NULL,
+      created_at  DATETIME2      NOT NULL DEFAULT GETDATE(),
+      CONSTRAINT uq_platform_user_company_access UNIQUE (user_id, company_id)
+    )`,
+
     // token_blacklist
     `IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'token_blacklist')
     CREATE TABLE token_blacklist (

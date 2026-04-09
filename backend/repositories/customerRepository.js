@@ -5,8 +5,20 @@ function getExecutor(executor) {
 }
 
 function buildWhere(filters) {
-  const conditions = ["c.company_id = ?", "c.is_active = 1"];
-  const params = [filters.companyId];
+  const conditions = ["c.is_active = 1"];
+  const params = [];
+
+  if (filters.companyId) {
+    conditions.push("c.company_id = ?");
+    params.push(filters.companyId);
+  } else if (Array.isArray(filters.companyIds)) {
+    if (!filters.companyIds.length) {
+      conditions.push("1 = 0");
+    } else {
+      conditions.push(`c.company_id IN (${filters.companyIds.map(() => "?").join(", ")})`);
+      params.push(...filters.companyIds);
+    }
+  }
 
   if (filters.assignedTo) {
     conditions.push("c.assigned_to = ?");
@@ -56,8 +68,16 @@ async function listCustomers(filters, pagination, executor) {
   };
 }
 
-async function getCustomerById(customerId, companyId, executor) {
+async function getCustomerById(customerId, companyId = null, executor) {
   const active = getExecutor(executor);
+  const conditions = ["c.customer_id = ?", "c.is_active = 1"];
+  const params = [customerId];
+
+  if (companyId) {
+    conditions.push("c.company_id = ?");
+    params.push(companyId);
+  }
+
   const [rows] = await active.query(
     `
       SELECT TOP 1
@@ -65,9 +85,9 @@ async function getCustomerById(customerId, companyId, executor) {
         u.name AS assigned_to_name
       FROM customers c
       LEFT JOIN users u ON u.user_id = c.assigned_to
-      WHERE c.customer_id = ? AND c.company_id = ? AND c.is_active = 1
+      WHERE ${conditions.join(" AND ")}
     `,
-    [customerId, companyId]
+    params
   );
   return rows[0] || null;
 }

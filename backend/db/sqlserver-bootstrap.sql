@@ -204,6 +204,56 @@ END
 GO
 
 
+IF OBJECT_ID(N'dbo.platform_user_company_access', N'U') IS NULL
+BEGIN
+  CREATE TABLE [dbo].[platform_user_company_access] (
+    [id] BIGINT        NOT NULL IDENTITY(1,1),
+    [user_id] NVARCHAR(20)   NOT NULL,
+    [company_id] NVARCHAR(20)   NOT NULL,
+    [created_by] NVARCHAR(20)   NULL,
+    [created_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY ([id])
+  );
+END
+GO
+
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
+  WHERE name = N'uq_platform_user_company_access' AND object_id = OBJECT_ID(N'dbo.platform_user_company_access')
+)
+BEGIN
+  CREATE UNIQUE INDEX [uq_platform_user_company_access]
+  ON [dbo].[platform_user_company_access] ([user_id], [company_id]);
+END
+GO
+
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
+  WHERE name = N'idx_platform_access_user' AND object_id = OBJECT_ID(N'dbo.platform_user_company_access')
+)
+BEGIN
+  CREATE INDEX [idx_platform_access_user]
+  ON [dbo].[platform_user_company_access] ([user_id], [created_at]);
+END
+GO
+
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
+  WHERE name = N'idx_platform_access_company' AND object_id = OBJECT_ID(N'dbo.platform_user_company_access')
+)
+BEGIN
+  CREATE INDEX [idx_platform_access_company]
+  ON [dbo].[platform_user_company_access] ([company_id], [created_at]);
+END
+GO
+
+
 IF OBJECT_ID(N'dbo.token_blacklist', N'U') IS NULL
 BEGIN
   CREATE TABLE [dbo].[token_blacklist] (
@@ -1383,6 +1433,18 @@ GO
 IF NOT EXISTS (
   SELECT 1
   FROM sys.indexes
+  WHERE name = N'idx_platform_access_user_company_perf' AND object_id = OBJECT_ID(N'dbo.platform_user_company_access')
+)
+BEGIN
+  CREATE INDEX [idx_platform_access_user_company_perf]
+  ON [dbo].[platform_user_company_access] ([user_id], [company_id], [created_at]);
+END
+GO
+
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
   WHERE name = N'idx_products_company_active_created_perf' AND object_id = OBJECT_ID(N'dbo.products')
 )
 BEGIN
@@ -1426,5 +1488,4 @@ BEGIN
   ON [dbo].[notifications] ([company_id], [user_id], [is_read], [created_at]);
 END
 GO
-
 

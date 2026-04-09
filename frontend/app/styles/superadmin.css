@@ -1,0 +1,88 @@
+/* Super-admin dashboard overrides live here so platform visuals can be tuned
+   without editing the shared dashboard stylesheet. */
+
+.platform-signal-stack {
+  gap: 1.25rem;
+}
+
+.platform-visual-shell {
+  background:
+    radial-gradient(circle at top right, rgba(28, 107, 255, 0.18), transparent 15rem),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 248, 255, 0.96));
+  border-color: rgba(201, 219, 246, 0.96);
+  box-shadow: 0 20px 44px rgba(28, 107, 255, 0.08);
+}
+
+.platform-signal-copy h3 {
+  color: #173e73;
+}
+
+.platform-signal-copy p {
+  color: #6980a1;
+}
+
+.platform-visual-pill {
+  background: rgba(230, 239, 255, 0.94);
+  color: #1c5fd4;
+  border-color: rgba(167, 196, 245, 0.9);
+}
+
+.platform-visual-pill.muted {
+  background: rgba(246, 249, 255, 0.96);
+  color: #6e84a4;
+}
+
+.platform-chart-card,
+.platform-chart-summary-card,
+.platform-metric-card {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(246, 249, 255, 0.95));
+  border-color: rgba(212, 226, 248, 0.96);
+  box-shadow: 0 16px 36px rgba(28, 107, 255, 0.06);
+}
+
+.platform-chart-summary-card strong,
+.platform-metric-copy strong {
+  color: #173e73;
+}
+
+.platform-chart-summary-card p,
+.platform-metric-copy p,
+.platform-metric-label,
+.platform-chart-label span {
+  color: #6d84a6;
+}
+
+.platform-chart-line.primary {
+  stroke: #1c6bff;
+}
+
+.platform-chart-line.secondary {
+  stroke: rgba(255, 176, 86, 0.9);
+}
+
+.platform-chart-area {
+  fill: color-mix(in srgb, #1c6bff 16%, transparent);
+}
+
+.platform-chart-dot.primary {
+  fill: #1c6bff;
+}
+
+.platform-chart-dot.secondary {
+  fill: #ffb056;
+}
+
+.platform-metric-card::after {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--metric-accent, #1c6bff) 95%, white), rgba(255, 255, 255, 0));
+}
+
+.platform-metric-icon {
+  background: color-mix(in srgb, var(--metric-accent, #1c6bff) 14%, white);
+  color: var(--metric-accent, #1c6bff);
+}
+
+.platform-metric-tag {
+  background: rgba(235, 241, 255, 0.94);
+  color: #1d5fd2;
+}

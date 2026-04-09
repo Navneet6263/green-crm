@@ -192,6 +192,18 @@ const schemaStatements = [
     KEY idx_users_created_at (created_at)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
 
+  `CREATE TABLE IF NOT EXISTS platform_user_company_access (
+    id          BIGINT        NOT NULL AUTO_INCREMENT,
+    user_id     VARCHAR(20)   NOT NULL,
+    company_id  VARCHAR(20)   NOT NULL,
+    created_by  VARCHAR(20)   NULL,
+    created_at  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_platform_user_company_access (user_id, company_id),
+    KEY idx_platform_access_user (user_id, created_at),
+    KEY idx_platform_access_company (company_id, created_at)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
   // ── token_blacklist ────────────────────────────────────────
   `CREATE TABLE IF NOT EXISTS token_blacklist (
     id              BIGINT        NOT NULL AUTO_INCREMENT,
@@ -526,6 +538,7 @@ const performanceIndexDefinitions = [
   { table: "customers", name: "idx_customers_company_assigned_active_created_perf", columns: "company_id, assigned_to, is_active, created_at" },
   { table: "customers", name: "idx_customers_company_status_active_created_perf", columns: "company_id, status, is_active, created_at" },
   { table: "users", name: "idx_users_company_active_created_perf", columns: "company_id, is_active, created_at" },
+  { table: "platform_user_company_access", name: "idx_platform_access_user_company_perf", columns: "user_id, company_id, created_at" },
   { table: "products", name: "idx_products_company_active_created_perf", columns: "company_id, is_active, created_at" },
   { table: "tasks", name: "idx_tasks_company_assigned_status_due_created_perf", columns: "company_id, assigned_to, status, due_date, created_at" },
   { table: "tasks", name: "idx_tasks_company_status_priority_due_perf", columns: "company_id, status, priority, due_date" },

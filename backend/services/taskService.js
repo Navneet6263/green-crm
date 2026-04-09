@@ -5,18 +5,28 @@ const { ROLES } = require("../constants/roles");
 const { createPrefixedId } = require("../utils/ids");
 const { buildPaginatedResult, parsePagination } = require("../utils/pagination");
 const AppError = require("../utils/appError");
-const { assertCompanyAccess } = require("../utils/tenant");
+const { assertCompanyAccess, getAccessibleCompanyIds, isPlatformOperatorRole } = require("../utils/tenant");
 
 function buildTaskFilters(auth, query) {
   const filters = {
-    companyId: auth.role === ROLES.SUPER_ADMIN ? query.company_id || auth.companyId : auth.companyId,
+    companyId: null,
+    companyIds: null,
     status: query.status || null,
     priority: query.priority || null,
     search: query.search || "",
     assignedTo: null,
   };
 
-  if ([ROLES.ADMIN, ROLES.MANAGER, ROLES.SUPER_ADMIN].includes(auth.role)) {
+  if (auth.role === ROLES.SUPER_ADMIN) {
+    filters.companyId = query.company_id || null;
+  } else if (isPlatformOperatorRole(auth.role)) {
+    filters.companyId = query.company_id || null;
+    filters.companyIds = filters.companyId ? null : getAccessibleCompanyIds(auth);
+  } else {
+    filters.companyId = auth.companyId;
+  }
+
+  if ([ROLES.ADMIN, ROLES.MANAGER, ROLES.SUPER_ADMIN, ROLES.PLATFORM_ADMIN, ROLES.PLATFORM_MANAGER].includes(auth.role)) {
     filters.assignedTo = query.assigned_to || null;
   } else {
     filters.assignedTo = auth.userId;
@@ -29,13 +39,17 @@ async function listTasks(auth, query) {
   const pagination = parsePagination(query);
   const filters = buildTaskFilters(auth, query);
 
-  assertCompanyAccess(auth, filters.companyId);
+  if (filters.companyId) {
+    assertCompanyAccess(auth, filters.companyId);
+  }
+
   const { rows, total } = await taskRepository.listTasks(filters, pagination);
   return buildPaginatedResult(rows, total, pagination);
 }
 
 async function getTask(auth, taskId) {
-  const companyId = auth.role === ROLES.SUPER_ADMIN ? auth.companyId : auth.companyId;
+  const companyId =
+    auth.role === ROLES.SUPER_ADMIN || isPlatformOperatorRole(auth.role) ? null : auth.companyId;
   const task = await taskRepository.getTaskById(taskId, companyId);
   if (!task) {
     throw new AppError("Task not found.", 404);
@@ -43,7 +57,7 @@ async function getTask(auth, taskId) {
 
   assertCompanyAccess(auth, task.company_id);
 
-  if (![ROLES.ADMIN, ROLES.MANAGER, ROLES.SUPER_ADMIN].includes(auth.role) && task.assigned_to !== auth.userId) {
+  if (![ROLES.ADMIN, ROLES.MANAGER, ROLES.SUPER_ADMIN, ROLES.PLATFORM_ADMIN, ROLES.PLATFORM_MANAGER].includes(auth.role) && task.assigned_to !== auth.userId) {
     throw new AppError("You can only access your own tasks.", 403);
   }
 
@@ -51,7 +65,15 @@ async function getTask(auth, taskId) {
 }
 
 async function createTask(auth, payload) {
-  const companyId = auth.role === ROLES.SUPER_ADMIN ? payload.company_id || auth.companyId : auth.companyId;
+  const companyId =
+    auth.role === ROLES.SUPER_ADMIN || isPlatformOperatorRole(auth.role)
+      ? payload.company_id || null
+      : auth.companyId;
+
+  if (!companyId) {
+    throw new AppError("A company is required.");
+  }
+
   assertCompanyAccess(auth, companyId);
 
   if (!payload.title || !payload.due_date) {

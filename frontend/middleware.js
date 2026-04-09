@@ -1,17 +1,9 @@
 import { NextResponse } from "next/server";
 
 const PUBLIC_ROUTES = ["/", "/login", "/register", "/forgot-password", "/reset-password", "/book-demo"];
-
-const ROLE_ROUTE_PREFIX = {
-  "/dashboard/superadmin": "super-admin",
-  "/dashboard/admin": "admin",
-  "/dashboard/manager": "manager",
-  "/dashboard/sales": "sales",
-  "/dashboard/marketing": "marketing",
-  "/dashboard/legal": "legal-team",
-  "/dashboard/finance": "finance-team",
-  "/dashboard/support": "support",
-  "/dashboard/viewer": "viewer",
+const PLATFORM_CONSOLE_ROLES = ["super-admin", "platform-admin", "platform-manager"];
+const LEGACY_DASHBOARD_REDIRECTS = {
+  "/dashboard/superadmin": "/super-admin",
 };
 
 export function middleware(request) {
@@ -27,12 +19,12 @@ export function middleware(request) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  if (pathname.startsWith("/super-admin") && role !== "super-admin") {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+  const legacyDashboardMatch = Object.entries(LEGACY_DASHBOARD_REDIRECTS).find(([prefix]) => pathname.startsWith(prefix));
+  if (legacyDashboardMatch) {
+    return NextResponse.redirect(new URL(legacyDashboardMatch[1], request.url));
   }
 
-  const dashboardMatch = Object.entries(ROLE_ROUTE_PREFIX).find(([prefix]) => pathname.startsWith(prefix));
-  if (dashboardMatch && role !== dashboardMatch[1]) {
+  if (pathname.startsWith("/super-admin") && !PLATFORM_CONSOLE_ROLES.includes(role)) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 

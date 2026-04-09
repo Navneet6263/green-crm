@@ -4,12 +4,14 @@ const companyRepository = require("../repositories/companyRepository");
 const userRepository = require("../repositories/userRepository");
 const auditRepository = require("../repositories/auditRepository");
 const emailService = require("./emailService");
+const { PLATFORM_COMPANY_ID } = require("../db/schema");
 const { ROLES } = require("../constants/roles");
 const { buildTalentId, createPrefixedId, slugify } = require("../utils/ids");
 const { hashPassword } = require("../utils/auth");
 const { buildPaginatedResult, parsePagination } = require("../utils/pagination");
 const AppError = require("../utils/appError");
-const { assertCompanyAccess } = require("../utils/tenant");
+const { buildServiceSettingsPatch, mergeDeep, parseCompanySettings } = require("../utils/companySettings");
+const { assertCompanyAccess, getAccessibleCompanyIds, isPlatformOperatorRole } = require("../utils/tenant");
 
 function sanitizeUser(user) {
   if (!user) {
@@ -33,7 +35,41 @@ function buildTemporaryPassword(length = 12) {
   return generated.join("");
 }
 
+async function getPlatformCompany() {
+  return companyRepository.getCompanyWithSettings(PLATFORM_COMPANY_ID);
+}
+
 async function listCompanies(auth, query) {
+  if (auth.role === ROLES.SUPER_ADMIN) {
+    const pagination = parsePagination(query);
+    const { rows, total } = await companyRepository.listCompanies({
+      search: query.search || "",
+      pagination,
+    });
+
+    return buildPaginatedResult(rows, total, pagination);
+  }
+
+  if (isPlatformOperatorRole(auth.role)) {
+    const pagination = parsePagination(query);
+    const companyId = query.company_id || null;
+
+    if (companyId) {
+      assertCompanyAccess(auth, companyId);
+      const company = await companyRepository.getCompanyWithSettings(companyId);
+      const items = company ? [company] : [];
+      return buildPaginatedResult(items, items.length, { ...pagination, page: 1, offset: 0, limit: Math.max(items.length, 1) });
+    }
+
+    const { rows, total } = await companyRepository.listCompanies({
+      search: query.search || "",
+      pagination,
+      companyIds: getAccessibleCompanyIds(auth),
+    });
+
+    return buildPaginatedResult(rows, total, pagination);
+  }
+
   if (auth.role !== ROLES.SUPER_ADMIN) {
     const company = await companyRepository.getCompanyWithSettings(auth.companyId);
     return {
@@ -47,13 +83,15 @@ async function listCompanies(auth, query) {
     };
   }
 
-  const pagination = parsePagination(query);
-  const { rows, total } = await companyRepository.listCompanies({
-    search: query.search || "",
-    pagination,
-  });
-
-  return buildPaginatedResult(rows, total, pagination);
+  return {
+    items: [],
+    meta: {
+      page: 1,
+      page_size: 1,
+      total: 0,
+      total_pages: 1,
+    },
+  };
 }
 
 async function getCompany(auth, companyId) {
@@ -86,6 +124,23 @@ async function createCompany(auth, payload) {
 
   const adminPassword =
     String(payload.admin_password || "").trim() || buildTemporaryPassword();
+  const serviceSettings = mergeDeep(
+    {
+      onboarding_profile: {
+        source: "super-admin-company-create",
+      },
+    },
+    buildServiceSettingsPatch(payload)
+  );
+
+  if (
+    payload.admin_email &&
+    payload.admin_name &&
+    parseCompanySettings(serviceSettings).staff_limits?.[ROLES.ADMIN] !== null &&
+    parseCompanySettings(serviceSettings).staff_limits?.[ROLES.ADMIN] < 1
+  ) {
+    throw new AppError("Admin seat limit must be at least 1 when creating a company admin.", 400);
+  }
 
   const result = await db.withTransaction(async (transaction) => {
     const companyId = await createPrefixedId("cmp");
@@ -104,6 +159,11 @@ async function createCompany(auth, payload) {
         settings_date_format: payload.settings_date_format || "DD/MM/YYYY",
         country: payload.country || "India",
         website: payload.website || null,
+        smtp_host: payload.smtp_host || null,
+        smtp_port: payload.smtp_port || null,
+        smtp_user: payload.smtp_user || null,
+        smtp_password: payload.smtp_password || null,
+        service_settings: serviceSettings,
       },
       transaction
     );
@@ -159,8 +219,10 @@ async function createCompany(auth, payload) {
   let credentialDelivery = null;
 
   if (result.admin_user) {
-    credentialDelivery = await emailService.sendUserCredentialsEmail({
+    const platformCompany = await getPlatformCompany();
+    credentialDelivery = await emailService.dispatchUserCredentialsEmail({
       company: result.company,
+      platformCompany,
       user: result.admin_user,
       temporaryPassword: adminPassword,
       createdByName: auth.name || auth.email || "GreenCRM",
@@ -181,8 +243,8 @@ async function createCompany(auth, payload) {
 async function updateCompany(auth, companyId, payload) {
   assertCompanyAccess(auth, companyId);
 
-  if (![ROLES.SUPER_ADMIN, ROLES.ADMIN].includes(auth.role)) {
-    throw new AppError("Only super admins and company admins can update company settings.", 403);
+  if (![ROLES.SUPER_ADMIN, ROLES.PLATFORM_ADMIN, ROLES.ADMIN].includes(auth.role)) {
+    throw new AppError("Only super admins, platform admins, and company admins can update company settings.", 403);
   }
 
   const company = await companyRepository.getCompanyById(companyId);
@@ -208,7 +270,6 @@ async function updateCompany(auth, companyId, payload) {
     "smtp_user",
     "smtp_password",
     "service_access",
-    "service_settings",
   ].forEach((key) => {
     if (Object.prototype.hasOwnProperty.call(payload, key)) {
       updates[key] = payload[key];
@@ -223,8 +284,18 @@ async function updateCompany(auth, companyId, payload) {
     updates.settings_timezone = payload.settings_timezone || payload.timezone;
   }
 
-  if (auth.role === ROLES.SUPER_ADMIN && payload.status) {
+  if ([ROLES.SUPER_ADMIN, ROLES.PLATFORM_ADMIN].includes(auth.role) && payload.status) {
     updates.status = payload.status;
+  }
+
+  const serviceSettingsPatch = buildServiceSettingsPatch(payload);
+  if (Object.keys(serviceSettingsPatch).length) {
+    updates.service_settings = mergeDeep(parseCompanySettings(company.service_settings), serviceSettingsPatch);
+  } else if (Object.prototype.hasOwnProperty.call(payload, "service_settings")) {
+    updates.service_settings = mergeDeep(
+      parseCompanySettings(company.service_settings),
+      parseCompanySettings(payload.service_settings)
+    );
   }
 
   const updatedCompany = await companyRepository.updateCompany(companyId, updates);
@@ -295,6 +366,7 @@ async function getCompanyStats(auth, companyId) {
     pending_tasks: taskRows[0].total,
     products: productRows[0].total,
     status: company.status,
+    service_settings: parseCompanySettings(company.service_settings),
   };
 }
 

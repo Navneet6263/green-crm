@@ -5,19 +5,29 @@ const { ROLES } = require("../constants/roles");
 const { createPrefixedId } = require("../utils/ids");
 const { buildPaginatedResult, parsePagination } = require("../utils/pagination");
 const AppError = require("../utils/appError");
-const { assertCompanyAccess } = require("../utils/tenant");
+const { assertCompanyAccess, getAccessibleCompanyIds, isPlatformOperatorRole } = require("../utils/tenant");
 
 function buildCustomerFilters(auth, query) {
   const filters = {
-    companyId: auth.role === ROLES.SUPER_ADMIN ? query.company_id || auth.companyId : auth.companyId,
+    companyId: null,
+    companyIds: null,
     status: query.status || null,
     search: query.search || "",
     assignedTo: null,
   };
 
+  if (auth.role === ROLES.SUPER_ADMIN) {
+    filters.companyId = query.company_id || null;
+  } else if (isPlatformOperatorRole(auth.role)) {
+    filters.companyId = query.company_id || null;
+    filters.companyIds = filters.companyId ? null : getAccessibleCompanyIds(auth);
+  } else {
+    filters.companyId = auth.companyId;
+  }
+
   if ([ROLES.SALES, ROLES.MARKETING].includes(auth.role)) {
     filters.assignedTo = auth.userId;
-  } else if ([ROLES.ADMIN, ROLES.MANAGER, ROLES.SUPER_ADMIN].includes(auth.role)) {
+  } else if ([ROLES.ADMIN, ROLES.MANAGER, ROLES.SUPER_ADMIN, ROLES.PLATFORM_ADMIN, ROLES.PLATFORM_MANAGER].includes(auth.role)) {
     filters.assignedTo = query.assigned_to || null;
   }
 
@@ -27,14 +37,20 @@ function buildCustomerFilters(auth, query) {
 async function listCustomers(auth, query) {
   const pagination = parsePagination(query);
   const filters = buildCustomerFilters(auth, query);
-  assertCompanyAccess(auth, filters.companyId);
+
+  if (filters.companyId) {
+    assertCompanyAccess(auth, filters.companyId);
+  }
 
   const { rows, total } = await customerRepository.listCustomers(filters, pagination);
   return buildPaginatedResult(rows, total, pagination);
 }
 
 async function getCustomer(auth, customerId) {
-  const customer = await customerRepository.getCustomerById(customerId, auth.companyId);
+  const customer = await customerRepository.getCustomerById(
+    customerId,
+    auth.role === ROLES.SUPER_ADMIN || isPlatformOperatorRole(auth.role) ? null : auth.companyId
+  );
   if (!customer) {
     throw new AppError("Customer not found.", 404);
   }
@@ -48,7 +64,15 @@ async function createCustomer(auth, payload) {
     throw new AppError("View-only users cannot create customers.", 403);
   }
 
-  const companyId = auth.role === ROLES.SUPER_ADMIN ? payload.company_id || auth.companyId : auth.companyId;
+  const companyId =
+    auth.role === ROLES.SUPER_ADMIN || isPlatformOperatorRole(auth.role)
+      ? payload.company_id || null
+      : auth.companyId;
+
+  if (!companyId) {
+    throw new AppError("A company is required.");
+  }
+
   assertCompanyAccess(auth, companyId);
 
   if (!payload.name || !payload.company_name || !payload.email || !payload.phone) {

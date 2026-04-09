@@ -11,7 +11,7 @@ const { parseCsv } = require("../utils/csv");
 const { buildPaginatedResult, parsePagination } = require("../utils/pagination");
 const { createPrefixedId } = require("../utils/ids");
 const AppError = require("../utils/appError");
-const { assertCompanyAccess, isManagerRole } = require("../utils/tenant");
+const { assertCompanyAccess, getAccessibleCompanyIds, isManagerRole, isPlatformOperatorRole } = require("../utils/tenant");
 
 function normalizeLeadPayload(payload) {
   return {
@@ -34,6 +34,71 @@ function normalizeLeadPayload(payload) {
     requirements: payload.requirements || payload.notes || null,
     workflow_stage: String(payload.workflow_stage || "sales").toLowerCase(),
     assigned_to: payload.assigned_to || null,
+  };
+}
+
+function isImportEmpty(value) {
+  if (value === undefined || value === null) {
+    return true;
+  }
+
+  const normalized = String(value).trim();
+  return !normalized || /^null$/i.test(normalized);
+}
+
+function getImportValue(row, keys) {
+  for (const key of keys) {
+    if (Object.prototype.hasOwnProperty.call(row || {}, key) && !isImportEmpty(row[key])) {
+      return String(row[key]).trim();
+    }
+  }
+
+  return null;
+}
+
+function getImportNumber(row, keys, fallback = 0) {
+  const rawValue = getImportValue(row, keys);
+  if (rawValue === null) {
+    return fallback;
+  }
+
+  const numericValue = Number(rawValue);
+  return Number.isFinite(numericValue) ? numericValue : fallback;
+}
+
+function buildBulkImportLeadPayload(row, defaultCompanyId = null) {
+  const assignedCode = getImportValue(row, [
+    "assigned_to",
+    "assigned_emp_code",
+    "assigned_employee_code",
+    "assigned_user_id",
+    "employee_code",
+    "emp_code",
+  ]);
+  const productCode = getImportValue(row, ["product_id", "product_code"]);
+
+  return {
+    company_id: getImportValue(row, ["company_id", "company_code"]) || defaultCompanyId || null,
+    product_id: productCode,
+    assigned_to: assignedCode || null,
+    contact_person: getImportValue(row, ["contact_person", "contact_person_name"]) || "",
+    company_name: getImportValue(row, ["company_name"]) || "",
+    email: getImportValue(row, ["email"]) || "",
+    phone: getImportValue(row, ["phone"]) || "",
+    industry: getImportValue(row, ["industry"]),
+    lead_source: getImportValue(row, ["lead_source", "source"]) || "website",
+    follow_up_date: getImportValue(row, ["follow_up_date"]),
+    estimated_value: getImportNumber(row, ["estimated_value", "estimated_deal_value"], 0),
+    priority: getImportValue(row, ["priority"]) || "medium",
+    address_street: getImportValue(row, ["address_street", "street"]),
+    address_city: getImportValue(row, ["address_city", "city"]),
+    address_state: getImportValue(row, ["address_state", "state"]),
+    address_zip: getImportValue(row, ["address_zip", "postal_code"]),
+    address_country: getImportValue(row, ["address_country", "country"]) || "India",
+    status: "new",
+    requirements: null,
+    workflow_stage: "sales",
+    row_number: Number(row.__row_number || row.row_number || 0) || null,
   };
 }
 
@@ -156,7 +221,10 @@ async function ensureLeadContext(companyId, productId) {
 
 function buildLeadFilters(auth, query) {
   const filters = {
+    companyId: null,
+    companyIds: null,
     status: query.status || null,
+    quickFilter: query.quick_filter || query.quickFilter || null,
     priority: query.priority || null,
     search: query.search || "",
     workflowStage: query.workflow_stage || null,
@@ -165,6 +233,14 @@ function buildLeadFilters(auth, query) {
 
   if (auth.role === ROLES.SUPER_ADMIN) {
     filters.companyId = query.company_id || null;
+    filters.assignedTo = query.assigned_to || null;
+    filters.createdBy = query.created_by || null;
+    return filters;
+  }
+
+  if (isPlatformOperatorRole(auth.role)) {
+    filters.companyId = query.company_id || null;
+    filters.companyIds = filters.companyId ? null : getAccessibleCompanyIds(auth);
     filters.assignedTo = query.assigned_to || null;
     filters.createdBy = query.created_by || null;
     return filters;
@@ -193,6 +269,11 @@ function buildLeadFilters(auth, query) {
 async function listLeads(auth, query) {
   const pagination = parsePagination(query);
   const filters = buildLeadFilters(auth, query);
+
+  if (filters.companyId) {
+    assertCompanyAccess(auth, filters.companyId);
+  }
+
   const { rows, total, pageInfo } = await leadRepository.listLeads(filters, pagination);
 
   return buildPaginatedResult(rows, total, pagination, pageInfo);
@@ -201,7 +282,7 @@ async function listLeads(auth, query) {
 async function getLead(auth, leadId) {
   const lead = await leadRepository.getLeadById(
     leadId,
-    auth.role === ROLES.SUPER_ADMIN ? null : auth.companyId
+    auth.role === ROLES.SUPER_ADMIN || isPlatformOperatorRole(auth.role) ? null : auth.companyId
   );
 
   await assertLeadAccess(auth, lead);
@@ -230,7 +311,10 @@ async function createLead(auth, payload) {
     throw new AppError("Your role cannot create leads.", 403);
   }
 
-  const companyId = auth.role === ROLES.SUPER_ADMIN ? payload.company_id : auth.companyId;
+  const companyId =
+    auth.role === ROLES.SUPER_ADMIN || isPlatformOperatorRole(auth.role)
+      ? payload.company_id
+      : auth.companyId;
   if (!companyId) {
     throw new AppError("A company is required.");
   }
@@ -513,9 +597,23 @@ async function listLeadNotes(auth, leadId, query) {
 async function listReminders(auth, query) {
   const pagination = parsePagination(query);
   const filters = {
-    companyId: auth.role === ROLES.SUPER_ADMIN ? query.company_id || null : auth.companyId,
+    companyId: null,
+    companyIds: null,
     userId: auth.role === ROLES.SALES ? auth.userId : query.user_id || null,
   };
+
+  if (auth.role === ROLES.SUPER_ADMIN) {
+    filters.companyId = query.company_id || null;
+  } else if (isPlatformOperatorRole(auth.role)) {
+    filters.companyId = query.company_id || null;
+    filters.companyIds = filters.companyId ? null : getAccessibleCompanyIds(auth);
+  } else {
+    filters.companyId = auth.companyId;
+  }
+
+  if (filters.companyId) {
+    assertCompanyAccess(auth, filters.companyId);
+  }
 
   const { rows, total, pageInfo } = await leadRepository.listReminders(filters, pagination);
   return buildPaginatedResult(rows, total, pagination, pageInfo);
@@ -528,16 +626,36 @@ async function listMyLeads(auth, query) {
   });
 }
 
-async function getProductStats(auth) {
-  return leadRepository.getProductStats(auth.companyId);
+async function getProductStats(auth, query = {}) {
+  const companyId =
+    auth.role === ROLES.SUPER_ADMIN || isPlatformOperatorRole(auth.role)
+      ? query.company_id || null
+      : auth.companyId;
+
+  if (!companyId) {
+    throw new AppError("Select a company before viewing product stats.", 400);
+  }
+
+  assertCompanyAccess(auth, companyId);
+  return leadRepository.getProductStats(companyId);
 }
 
-async function getUserProductHistory(auth) {
-  return leadRepository.getUserProductHistory(auth.userId, auth.companyId);
+async function getUserProductHistory(auth, query = {}) {
+  const companyId =
+    auth.role === ROLES.SUPER_ADMIN || isPlatformOperatorRole(auth.role)
+      ? query.company_id || null
+      : auth.companyId;
+
+  if (!companyId) {
+    throw new AppError("Select a company before viewing product history.", 400);
+  }
+
+  assertCompanyAccess(auth, companyId);
+  return leadRepository.getUserProductHistory(query.user_id || auth.userId, companyId);
 }
 
 async function bulkUpload(auth, payload) {
-  if (![ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER, ROLES.MARKETING].includes(auth.role)) {
+  if (![ROLES.SUPER_ADMIN, ROLES.PLATFORM_ADMIN, ROLES.PLATFORM_MANAGER, ROLES.ADMIN, ROLES.MANAGER, ROLES.MARKETING].includes(auth.role)) {
     throw new AppError("Your role cannot bulk import leads.", 403);
   }
 
@@ -546,15 +664,43 @@ async function bulkUpload(auth, payload) {
     throw new AppError("No CSV rows were provided.");
   }
 
+  if (rows.length > 250) {
+    throw new AppError("Bulk import supports up to 250 rows at a time.");
+  }
+
+  const defaultCompanyId =
+    auth.role === ROLES.SUPER_ADMIN || isPlatformOperatorRole(auth.role)
+      ? payload.company_id || null
+      : auth.companyId;
   const imported = [];
-  for (const row of rows.slice(0, 250)) {
-    const createdLead = await createLead(auth, row);
-    imported.push(createdLead.lead_id);
+  const errors = [];
+
+  for (const [index, row] of rows.entries()) {
+    const mappedRow = buildBulkImportLeadPayload(row, defaultCompanyId);
+    const rowNumber = mappedRow.row_number || index + 1;
+
+    try {
+      const createdLead = await createLead(auth, mappedRow);
+
+      imported.push({
+        row: rowNumber,
+        lead_id: createdLead.lead_id,
+        company_id: createdLead.company_id,
+      });
+    } catch (error) {
+      errors.push({
+        row: rowNumber,
+        message: error.message || "Lead import failed.",
+      });
+    }
   }
 
   return {
     imported: imported.length,
-    lead_ids: imported,
+    failed: errors.length,
+    items: imported,
+    errors,
+    lead_ids: imported.map((item) => item.lead_id),
   };
 }
 

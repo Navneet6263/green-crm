@@ -4,10 +4,30 @@ function getExecutor(executor) {
   return executor || db;
 }
 
-async function listNotifications({ companyId, userId, unreadOnly, pagination }, executor) {
+function inferTotalFromPage(rows, pagination) {
+  if (pagination.page === 1 && rows.length < pagination.limit) {
+    return rows.length;
+  }
+
+  return null;
+}
+
+async function listNotifications({ companyId, companyIds = null, userId, unreadOnly, pagination }, executor) {
   const active = getExecutor(executor);
-  const conditions = ["company_id = ?"];
-  const params = [companyId];
+  const conditions = [];
+  const params = [];
+
+  if (companyId) {
+    conditions.push("company_id = ?");
+    params.push(companyId);
+  } else if (Array.isArray(companyIds)) {
+    if (!companyIds.length) {
+      conditions.push("1 = 0");
+    } else {
+      conditions.push(`company_id IN (${companyIds.map(() => "?").join(", ")})`);
+      params.push(...companyIds);
+    }
+  }
 
   if (userId) {
     conditions.push("user_id = ?");
@@ -18,11 +38,7 @@ async function listNotifications({ companyId, userId, unreadOnly, pagination }, 
     conditions.push("is_read = 0");
   }
 
-  const whereClause = `WHERE ${conditions.join(" AND ")}`;
-  const [countRows] = await active.query(
-    `SELECT COUNT(*) AS total FROM notifications ${whereClause}`,
-    params
-  );
+  const whereClause = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
   const [rows] = await active.query(
     `
       SELECT *
@@ -34,17 +50,45 @@ async function listNotifications({ companyId, userId, unreadOnly, pagination }, 
     [...params, pagination.offset, pagination.limit]
   );
 
+  const inferredTotal = inferTotalFromPage(rows, pagination);
+  if (inferredTotal !== null) {
+    return {
+      rows,
+      total: inferredTotal,
+    };
+  }
+
+  const [countRows] = await active.query(
+    `SELECT COUNT(*) AS total FROM notifications ${whereClause}`,
+    params
+  );
+
   return {
     rows,
     total: countRows[0].total,
   };
 }
 
-async function getNotificationById(notifId, companyId, executor) {
+async function getNotificationById(notifId, companyId = null, companyIds = null, executor) {
   const active = getExecutor(executor);
+  const conditions = ["notif_id = ?"];
+  const params = [notifId];
+
+  if (companyId) {
+    conditions.push("company_id = ?");
+    params.push(companyId);
+  } else if (Array.isArray(companyIds)) {
+    if (!companyIds.length) {
+      conditions.push("1 = 0");
+    } else {
+      conditions.push(`company_id IN (${companyIds.map(() => "?").join(", ")})`);
+      params.push(...companyIds);
+    }
+  }
+
   const [rows] = await active.query(
-    "SELECT TOP 1 * FROM notifications WHERE notif_id = ? AND company_id = ?",
-    [notifId, companyId]
+    `SELECT TOP 1 * FROM notifications WHERE ${conditions.join(" AND ")}`,
+    params
   );
   return rows[0] || null;
 }

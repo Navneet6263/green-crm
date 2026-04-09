@@ -30,6 +30,14 @@ function buildCursorPage(rows, limit, getCursorPayload) {
   };
 }
 
+function inferTotalFromPage(rows, pagination) {
+  if (pagination.page === 1 && rows.length < pagination.limit) {
+    return rows.length;
+  }
+
+  return null;
+}
+
 function buildWhere(filters) {
   const conditions = ["l.is_active = 1"];
   const params = [];
@@ -37,6 +45,13 @@ function buildWhere(filters) {
   if (filters.companyId) {
     conditions.push("l.company_id = ?");
     params.push(filters.companyId);
+  } else if (Array.isArray(filters.companyIds)) {
+    if (!filters.companyIds.length) {
+      conditions.push("1 = 0");
+    } else {
+      conditions.push(`l.company_id IN (${filters.companyIds.map(() => "?").join(", ")})`);
+      params.push(...filters.companyIds);
+    }
   }
 
   if (filters.assignedTo) {
@@ -62,6 +77,21 @@ function buildWhere(filters) {
   if (filters.status) {
     conditions.push("l.status = ?");
     params.push(filters.status);
+  }
+
+  if (filters.quickFilter === "active") {
+    conditions.push("l.status IN (?, ?, ?, ?)");
+    params.push("contacted", "qualified", "proposal", "negotiation");
+  } else if (filters.quickFilter === "pending") {
+    conditions.push("l.status IN (?, ?)");
+    params.push("new", "pending");
+  } else if (filters.quickFilter === "assigned") {
+    conditions.push("l.assigned_to IS NOT NULL");
+  } else if (filters.quickFilter === "unassigned") {
+    conditions.push("l.assigned_to IS NULL");
+  } else if (filters.quickFilter === "transferred") {
+    conditions.push("l.workflow_stage IN (?, ?, ?)");
+    params.push("legal", "finance", "completed");
   }
 
   if (filters.priority) {
@@ -176,11 +206,6 @@ async function listLeads(filters, pagination, executor) {
     }));
   }
 
-  const [countRows] = await active.query(
-    `SELECT COUNT(*) AS total FROM leads l ${whereClause}`,
-    params
-  );
-
   const [rows] = await active.query(
     `
       SELECT
@@ -208,6 +233,20 @@ async function listLeads(filters, pagination, executor) {
       OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
     `,
     [...params, pagination.offset, pagination.limit]
+  );
+
+  const inferredTotal = inferTotalFromPage(rows, pagination);
+  if (inferredTotal !== null) {
+    return {
+      rows,
+      total: inferredTotal,
+      pageInfo: null,
+    };
+  }
+
+  const [countRows] = await active.query(
+    `SELECT COUNT(*) AS total FROM leads l ${whereClause}`,
+    params
   );
 
   return {
@@ -466,6 +505,13 @@ async function listReminders(filters, pagination, executor) {
   if (filters.companyId) {
     conditions.push("company_id = ?");
     params.push(filters.companyId);
+  } else if (Array.isArray(filters.companyIds)) {
+    if (!filters.companyIds.length) {
+      conditions.push("1 = 0");
+    } else {
+      conditions.push(`company_id IN (${filters.companyIds.map(() => "?").join(", ")})`);
+      params.push(...filters.companyIds);
+    }
   }
 
   if (filters.userId) {
@@ -508,10 +554,6 @@ async function listReminders(filters, pagination, executor) {
     }));
   }
 
-  const [countRows] = await active.query(
-    `SELECT COUNT(*) AS total FROM leads ${whereClause}`,
-    params
-  );
   const [rows] = await active.query(
     `
       SELECT
@@ -529,6 +571,20 @@ async function listReminders(filters, pagination, executor) {
       OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
     `,
     [...params, pagination.offset, pagination.limit]
+  );
+
+  const inferredTotal = inferTotalFromPage(rows, pagination);
+  if (inferredTotal !== null) {
+    return {
+      rows,
+      total: inferredTotal,
+      pageInfo: null,
+    };
+  }
+
+  const [countRows] = await active.query(
+    `SELECT COUNT(*) AS total FROM leads ${whereClause}`,
+    params
   );
 
   return {

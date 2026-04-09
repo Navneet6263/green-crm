@@ -1,35 +1,29 @@
 const db = require("../db/connection");
 const userRepository = require("../repositories/userRepository");
 const auditRepository = require("../repositories/auditRepository");
-const { MAX_SUPER_ADMINS, ROLES } = require("../constants/roles");
+const userService = require("./userService");
+const { MAX_SUPER_ADMINS, PLATFORM_OPERATOR_ROLES, ROLES } = require("../constants/roles");
 const { PLATFORM_COMPANY_ID } = require("../db/schema");
 const { createPrefixedId } = require("../utils/ids");
 const { hashPassword } = require("../utils/auth");
-const { buildPaginatedResult, parsePagination } = require("../utils/pagination");
 const AppError = require("../utils/appError");
+const { assertCompanyAccess, getAccessibleCompanyIds } = require("../utils/tenant");
 
-async function assertSuperAdmin(auth) {
-  if (auth.role !== ROLES.SUPER_ADMIN) {
-    throw new AppError("Only super admins can access this route.", 403);
+function assertPlatformUserAccess(auth) {
+  if (![ROLES.SUPER_ADMIN, ROLES.PLATFORM_ADMIN].includes(auth.role)) {
+    throw new AppError("Only super admins and platform admins can access this route.", 403);
   }
 }
 
 async function listAdminUsers(auth, query) {
-  await assertSuperAdmin(auth);
-  const pagination = parsePagination(query);
-  const { rows, total } = await userRepository.listUsers({
-    companyId: query.company_id || null,
-    role: query.role || null,
-    search: query.search || "",
-    pagination,
-  });
-
-  const filteredRows = rows.filter((row) => [ROLES.SUPER_ADMIN, ROLES.ADMIN].includes(row.role));
-  return buildPaginatedResult(filteredRows, query.role ? total : filteredRows.length, pagination);
+  assertPlatformUserAccess(auth);
+  return userService.listUsers(auth, query);
 }
 
 async function createSuperAdmin(auth, payload) {
-  await assertSuperAdmin(auth);
+  if (auth.role !== ROLES.SUPER_ADMIN) {
+    throw new AppError("Only super admins can access this route.", 403);
+  }
 
   const total = await userRepository.countSuperAdmins();
   if (total >= MAX_SUPER_ADMINS) {
@@ -76,10 +70,17 @@ async function createSuperAdmin(auth, payload) {
 }
 
 async function setActivation(auth, userId, isActive) {
-  await assertSuperAdmin(auth);
+  assertPlatformUserAccess(auth);
   const user = await userRepository.getUserById(userId);
   if (!user) {
     throw new AppError("User not found.", 404);
+  }
+
+  if (auth.role === ROLES.PLATFORM_ADMIN) {
+    assertCompanyAccess(auth, user.company_id);
+    if ([ROLES.SUPER_ADMIN, ...PLATFORM_OPERATOR_ROLES].includes(user.role)) {
+      throw new AppError("Platform admins can manage tenant users only.", 403);
+    }
   }
 
   const updated = await userRepository.setUserActive(user.user_id, user.company_id, isActive, auth.userId);
@@ -98,10 +99,17 @@ async function setActivation(auth, userId, isActive) {
 }
 
 async function resetPassword(auth, userId, payload) {
-  await assertSuperAdmin(auth);
+  assertPlatformUserAccess(auth);
   const user = await userRepository.getUserById(userId);
   if (!user) {
     throw new AppError("User not found.", 404);
+  }
+
+  if (auth.role === ROLES.PLATFORM_ADMIN) {
+    assertCompanyAccess(auth, user.company_id);
+    if ([ROLES.SUPER_ADMIN, ...PLATFORM_OPERATOR_ROLES].includes(user.role)) {
+      throw new AppError("Platform admins can manage tenant users only.", 403);
+    }
   }
 
   const nextPassword = String(payload.password || payload.new_password || "").trim();
@@ -129,11 +137,27 @@ async function resetPassword(auth, userId, payload) {
 }
 
 async function getSafetyStatus(auth) {
-  await assertSuperAdmin(auth);
+  assertPlatformUserAccess(auth);
   const total = await userRepository.countSuperAdmins();
+  const managedCompanyIds = auth.role === ROLES.SUPER_ADMIN ? null : getAccessibleCompanyIds(auth);
+  const companyFilter =
+    managedCompanyIds === null
+      ? { clause: "", params: [] }
+      : managedCompanyIds.length
+        ? {
+            clause: ` AND company_id IN (${managedCompanyIds.map(() => "?").join(", ")})`,
+            params: managedCompanyIds,
+          }
+        : { clause: " AND 1 = 0", params: [] };
   const [inactiveAdminsResult, suspendedCompaniesResult] = await Promise.all([
-    db.query("SELECT COUNT(*) AS total FROM users WHERE role = 'admin' AND is_active = 0"),
-    db.query("SELECT COUNT(*) AS total FROM companies WHERE status = 'suspended'"),
+    db.query(
+      `SELECT COUNT(*) AS total FROM users WHERE role = 'admin' AND is_active = 0${companyFilter.clause}`,
+      companyFilter.params
+    ),
+    db.query(
+      `SELECT COUNT(*) AS total FROM companies WHERE status = 'suspended'${companyFilter.clause}`,
+      companyFilter.params
+    ),
   ]);
   const inactiveAdmins = inactiveAdminsResult[0];
   const suspendedCompanies = suspendedCompaniesResult[0];

@@ -8,7 +8,15 @@ import DashboardIcon from "../../components/dashboard/icons";
 import { apiRequest } from "../../lib/api";
 import { loadSession } from "../../lib/session";
 
-const ALLOWED_ROLES = ["admin", "manager", "sales", "marketing", "support"];
+const ALLOWED_ROLES = [
+  "admin",
+  "manager",
+  "sales",
+  "marketing",
+  "support",
+  "platform-admin",
+  "platform-manager",
+];
 
 function titleCase(value) {
   return String(value || "")
@@ -18,15 +26,88 @@ function titleCase(value) {
     .join(" ");
 }
 
-function buildMailto(recipient, subject, body) {
-  return `mailto:${encodeURIComponent(recipient)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+function buildEntityRecords(leads, customers) {
+  const leadRecords = (leads || []).map((lead) => ({
+    key: `lead:${lead.lead_id}`,
+    entity_type: "lead",
+    entity_id: lead.lead_id,
+    title: lead.company_name || "Unnamed lead",
+    subtitle: lead.contact_person || "No contact person",
+    email: lead.email || "",
+    phone: lead.phone || "",
+    owner: lead.assigned_to_name || lead.created_by_name || "Unassigned",
+    status: titleCase(lead.status || "new"),
+    product: lead.product_name || "No product tagged",
+    raw: lead,
+  }));
+
+  const customerRecords = (customers || []).map((customer) => ({
+    key: `customer:${customer.customer_id}`,
+    entity_type: "customer",
+    entity_id: customer.customer_id,
+    title: customer.company_name || customer.name || "Unnamed customer",
+    subtitle: customer.name || "Primary contact",
+    email: customer.email || "",
+    phone: customer.phone || "",
+    owner: customer.assigned_to_name || "Unassigned",
+    status: titleCase(customer.status || "active"),
+    product: `Value ${Number(customer.total_value || 0).toLocaleString("en-IN")}`,
+    raw: customer,
+  }));
+
+  return [...leadRecords, ...customerRecords];
 }
 
-function buildTemplates(lead) {
-  const contact = lead?.contact_person || "[Contact name]";
-  const company = lead?.company_name || "[Company name]";
+function buildTemplates(record) {
+  const contact = record?.subtitle || "[Contact name]";
+  const company = record?.title || "[Company name]";
   const sender = "[Your name]";
-  const product = lead?.product_name || "our CRM workspace";
+
+  if (record?.entity_type === "customer") {
+    return [
+      {
+        id: "account-check-in",
+        name: "Account Check-in",
+        subject: `Quick check-in for ${company}`,
+        body: `Hello ${contact},
+
+Checking in on your current priorities for ${company}.
+
+If there is anything pending from our side, please reply here and I will coordinate the next step immediately.
+
+Regards,
+${sender}`,
+      },
+      {
+        id: "renewal",
+        name: "Renewal / Upsell",
+        subject: `Next growth step for ${company}`,
+        body: `Hello ${contact},
+
+We wanted to share the next recommended step for ${company} based on the current usage and support history.
+
+If helpful, I can send a short summary with the most relevant improvements and rollout options.
+
+Regards,
+${sender}`,
+      },
+      {
+        id: "support-follow-up",
+        name: "Support Follow-up",
+        subject: `Following up on the latest request from ${company}`,
+        body: `Hello ${contact},
+
+Following up on the recent activity from ${company}.
+
+Please let me know if the last update resolved the issue or if you want us to continue with the next action from our side.
+
+Regards,
+${sender}`,
+      },
+    ];
+  }
+
+  const product = record?.product && record.product !== "No product tagged" ? record.product : "our CRM workspace";
 
   return [
     {
@@ -49,15 +130,10 @@ ${sender}`,
     {
       id: "follow-up",
       name: "Follow-up",
-      subject: `Following up on our previous discussion with ${company}`,
+      subject: `Following up with ${company}`,
       body: `Hello ${contact},
 
-Following up on my earlier note regarding support for ${company}.
-
-Based on what we discussed, the main areas where we can help are:
-- cleaner lead tracking
-- faster follow-up visibility
-- clearer ownership across the team
+Following up on my earlier note regarding ${company}.
 
 If this is still relevant, I can send a concise walkthrough or arrange a short discussion this week.
 
@@ -70,28 +146,9 @@ ${sender}`,
       subject: `Working proposal for ${company}`,
       body: `Hello ${contact},
 
-I have prepared a working proposal for ${company} based on your current requirements.
+I have prepared a working proposal for ${company} based on the current requirements we discussed.
 
-The proposal focuses on:
-- lead intake and qualification
-- follow-up discipline
-- reporting visibility for admins and managers
-- smoother movement from lead to customer
-
-If helpful, I can walk you through the scope, rollout approach, and expected outcomes in a short review call.
-
-Regards,
-${sender}`,
-    },
-    {
-      id: "check-in",
-      name: "Check-in",
-      subject: `Checking in on next steps for ${company}`,
-      body: `Hello ${contact},
-
-Checking in to see whether you would like to continue the conversation around ${product} for ${company}.
-
-If priorities have shifted, I can keep this concise and reconnect at a better time. If the need is active, I can send the next recommended steps today.
+If useful, I can walk you through the scope, rollout approach, and expected outcomes in a short review call.
 
 Regards,
 ${sender}`,
@@ -99,89 +156,35 @@ ${sender}`,
   ];
 }
 
+async function loadRequestedEntity(type, id, token) {
+  if (!type || !id) {
+    return null;
+  }
+
+  const path = type === "customer" ? `/customers/${id}` : `/leads/${id}`;
+  return apiRequest(path, { token });
+}
+
 export default function CommunicationsPage() {
   const router = useRouter();
+  const [requestedType, setRequestedType] = useState("");
+  const [requestedId, setRequestedId] = useState("");
+
   const [session, setSession] = useState(null);
   const [leads, setLeads] = useState([]);
+  const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [requestedLeadId, setRequestedLeadId] = useState("");
+  const [message, setMessage] = useState("");
   const [search, setSearch] = useState("");
-  const [selectedLeadId, setSelectedLeadId] = useState(requestedLeadId);
-  const [selectedTemplateId, setSelectedTemplateId] = useState("intro");
+  const [entityFilter, setEntityFilter] = useState("all");
+  const [selectedKey, setSelectedKey] = useState("");
+  const [selectedTemplateId, setSelectedTemplateId] = useState("");
   const [recipient, setRecipient] = useState("");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [copyState, setCopyState] = useState("idle");
-  const [openingMail, setOpeningMail] = useState(false);
-
-  const selectedLead = useMemo(
-    () => leads.find((item) => item.lead_id === selectedLeadId) || null,
-    [leads, selectedLeadId]
-  );
-
-  const templates = useMemo(
-    () => buildTemplates(selectedLead),
-    [selectedLead]
-  );
-
-  const filteredLeads = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    const ordered = [...leads].sort(
-      (left, right) => new Date(right.updated_at || right.created_at || 0) - new Date(left.updated_at || left.created_at || 0)
-    );
-
-    if (!query) {
-      return ordered;
-    }
-
-    return ordered.filter((lead) =>
-      [
-        lead.company_name,
-        lead.contact_person,
-        lead.email,
-        lead.phone,
-        lead.status,
-        lead.product_name,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase()
-        .includes(query)
-    );
-  }, [leads, search]);
-
-  async function loadCommunicationWorkspace(activeSession) {
-    setLoading(true);
-    setError("");
-
-    try {
-      const response = await apiRequest("/leads?page_size=80", { token: activeSession.token });
-      let items = response.items || [];
-
-      if (
-        requestedLeadId &&
-        !items.some((item) => item.lead_id === requestedLeadId)
-      ) {
-        try {
-          const focusedLead = await apiRequest(`/leads/${requestedLeadId}`, {
-            token: activeSession.token,
-          });
-          items = [focusedLead, ...items];
-        } catch (_error) {
-          // Ignore a missing preselected lead and fall back to the loaded list.
-        }
-      }
-
-      setLeads(items);
-      setSelectedLeadId((current) => current || requestedLeadId || items[0]?.lead_id || "");
-    } catch (requestError) {
-      setError(requestError.message);
-      setLeads([]);
-    } finally {
-      setLoading(false);
-    }
-  }
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -189,8 +192,105 @@ export default function CommunicationsPage() {
     }
 
     const params = new URLSearchParams(window.location.search);
-    setRequestedLeadId(params.get("lead") || "");
+    const nextType =
+      params.get("entity") ||
+      (params.get("customer") ? "customer" : params.get("lead") ? "lead" : "");
+    const nextId = params.get("id") || params.get("customer") || params.get("lead") || "";
+
+    setRequestedType(nextType);
+    setRequestedId(nextId);
+    setEntityFilter(nextType || "all");
+    setSelectedKey(nextType && nextId ? `${nextType}:${nextId}` : "");
   }, []);
+
+  const records = useMemo(() => buildEntityRecords(leads, customers), [customers, leads]);
+  const selectedRecord = useMemo(
+    () => records.find((item) => item.key === selectedKey) || null,
+    [records, selectedKey]
+  );
+  const templates = useMemo(() => buildTemplates(selectedRecord), [selectedRecord]);
+
+  const filteredRecords = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    const ordered = [...records].sort((left, right) =>
+      left.entity_type === right.entity_type
+        ? String(left.title || "").localeCompare(String(right.title || ""))
+        : left.entity_type === "lead"
+          ? -1
+          : 1
+    );
+
+    return ordered.filter((record) => {
+      const matchesType = entityFilter === "all" || record.entity_type === entityFilter;
+      const matchesSearch =
+        !query ||
+        [
+          record.title,
+          record.subtitle,
+          record.email,
+          record.phone,
+          record.owner,
+          record.status,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase()
+          .includes(query);
+
+      return matchesType && matchesSearch;
+    });
+  }, [entityFilter, records, search]);
+
+  async function loadCommunicationWorkspace(activeSession) {
+    setLoading(true);
+    setError("");
+
+    try {
+      const [leadResponse, customerResponse] = await Promise.all([
+        apiRequest("/leads?page_size=80", { token: activeSession.token }),
+        apiRequest("/customers?page_size=80", { token: activeSession.token }),
+      ]);
+
+      let nextLeads = leadResponse.items || [];
+      let nextCustomers = customerResponse.items || [];
+
+      if (requestedType && requestedId) {
+        try {
+          const focusedEntity = await loadRequestedEntity(
+            requestedType,
+            requestedId,
+            activeSession.token
+          );
+          if (requestedType === "lead" && focusedEntity && !nextLeads.some((item) => item.lead_id === requestedId)) {
+            nextLeads = [focusedEntity, ...nextLeads];
+          }
+          if (requestedType === "customer" && focusedEntity && !nextCustomers.some((item) => item.customer_id === requestedId)) {
+            nextCustomers = [focusedEntity, ...nextCustomers];
+          }
+        } catch (_error) {
+          // Ignore deep-link misses and keep the loaded workspace usable.
+        }
+      }
+
+      setLeads(nextLeads);
+      setCustomers(nextCustomers);
+
+      const nextRecords = buildEntityRecords(nextLeads, nextCustomers);
+      setSelectedKey((current) =>
+        current && nextRecords.some((item) => item.key === current)
+          ? current
+          : requestedType && requestedId
+            ? `${requestedType}:${requestedId}`
+            : nextRecords[0]?.key || ""
+      );
+    } catch (requestError) {
+      setError(requestError.message);
+      setLeads([]);
+      setCustomers([]);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
     const activeSession = loadSession();
@@ -206,34 +306,21 @@ export default function CommunicationsPage() {
 
     setSession(activeSession);
     loadCommunicationWorkspace(activeSession);
-  }, [requestedLeadId, router]);
+  }, [requestedId, requestedType, router]);
 
   useEffect(() => {
-    if (!selectedLeadId && requestedLeadId) {
-      setSelectedLeadId(requestedLeadId);
-    }
-  }, [requestedLeadId, selectedLeadId]);
-
-  useEffect(() => {
-    if (!selectedLead) {
+    if (!selectedRecord) {
       return;
     }
 
-    setRecipient(selectedLead.email || "");
-  }, [selectedLead]);
-
-  useEffect(() => {
-    const activeTemplate =
-      templates.find((item) => item.id === selectedTemplateId) || templates[0];
-
-    if (!activeTemplate) {
-      return;
+    setRecipient(selectedRecord.email || "");
+    const nextTemplate = buildTemplates(selectedRecord)[0];
+    if (nextTemplate) {
+      setSelectedTemplateId(nextTemplate.id);
+      setSubject(nextTemplate.subject);
+      setBody(nextTemplate.body);
     }
-
-    setSelectedTemplateId(activeTemplate.id);
-    setSubject(activeTemplate.subject);
-    setBody(activeTemplate.body);
-  }, [selectedLeadId, selectedTemplateId, templates]);
+  }, [selectedRecord?.key]);
 
   async function handleCopyDraft() {
     if (!recipient || !subject || !body) {
@@ -250,49 +337,75 @@ export default function CommunicationsPage() {
     }
   }
 
-  async function handleOpenMail() {
+  async function handleSendEmail() {
+    if (!selectedRecord) {
+      setError("Choose a lead or customer before sending an email.");
+      return;
+    }
+
     if (!recipient || !subject || !body) {
       setError("Recipient, subject, and message body are required.");
       return;
     }
 
+    setSending(true);
     setError("");
-    setOpeningMail(true);
+    setMessage("");
 
     try {
-      if (selectedLead?.lead_id && session?.token) {
-        await apiRequest(`/leads/${selectedLead.lead_id}/activity`, {
-          method: "POST",
-          token: session.token,
-          body: {
-            type: "email",
-            description: `Prepared email draft: ${subject}`,
-          },
-        });
+      const response = await apiRequest("/communications/send", {
+        method: "POST",
+        token: session.token,
+        body: {
+          entity_type: selectedRecord.entity_type,
+          entity_id: selectedRecord.entity_id,
+          to: recipient.trim(),
+          subject: subject.trim(),
+          body: body.trim(),
+        },
+      });
+
+      if (response.entity_type === "lead" && response.entity) {
+        setLeads((current) =>
+          current.map((lead) =>
+            lead.lead_id === response.entity.lead_id ? { ...lead, ...response.entity } : lead
+          )
+        );
       }
-    } catch (_error) {
-      // Keep the flow usable even if activity logging fails.
+
+      if (response.entity_type === "customer" && response.entity) {
+        setCustomers((current) =>
+          current.map((customer) =>
+            customer.customer_id === response.entity.customer_id
+              ? { ...customer, ...response.entity }
+              : customer
+          )
+        );
+      }
+
+      setMessage(
+        response.delivery?.delivery === "email"
+          ? "Email sent successfully."
+          : "Email logged in CRM, but delivery fell back to preview mode."
+      );
+    } catch (requestError) {
+      setError(requestError.message);
     } finally {
-      setOpeningMail(false);
-      window.location.href = buildMailto(recipient, subject, body);
+      setSending(false);
     }
   }
 
   const heroStats = [
     { label: "Lead Contacts", value: leads.length },
+    { label: "Customers", value: customers.length, color: "#2784ff" },
     {
       label: "With Email",
-      value: leads.filter((lead) => Boolean(lead.email)).length,
+      value: records.filter((record) => Boolean(record.email)).length,
       color: "#5b7cfa",
     },
     {
-      label: "Needs Follow-up",
-      value: leads.filter((lead) => lead.follow_up_date).length,
-      color: "#b58a31",
-    },
-    {
-      label: "Selected Lead",
-      value: selectedLead ? titleCase(selectedLead.status || "active") : "--",
+      label: "Selected",
+      value: selectedRecord ? titleCase(selectedRecord.entity_type) : "--",
       color: "#66758f",
     },
   ];
@@ -305,21 +418,22 @@ export default function CommunicationsPage() {
       heroStats={heroStats}
     >
       {error ? <div className="alert error">{error}</div> : null}
+      {message ? <div className="alert">{message}</div> : null}
       {loading ? <div className="alert">Loading communication workspace...</div> : null}
       {!loading ? (
         <section className="comm-shell">
           <article className="comm-intro">
             <div>
-              <span className="eyebrow">Drafting</span>
-              <h2>Email communication hub</h2>
+              <span className="eyebrow">CRM Delivery</span>
+              <h2>Lead and customer email hub</h2>
               <p>
-                Select a lead, load a structured draft, adjust the message, and
-                open the mail app with the draft prefilled.
+                Choose a lead or customer, load a working draft, edit the message, and send it
+                directly through CRM delivery routing.
               </p>
             </div>
             <div className="comm-intro-note">
               <DashboardIcon name="message" />
-              <span>Email is enabled here for now. WhatsApp and meeting actions can be added later without changing the lead workflow.</span>
+              <span>Tenant SMTP is used when saved. Otherwise the platform SMTP route handles delivery.</span>
             </div>
           </article>
 
@@ -327,81 +441,89 @@ export default function CommunicationsPage() {
             <aside className="comm-sidebar">
               <div className="comm-sidebar-head">
                 <div>
-                  <span className="eyebrow">Lead List</span>
-                  <h3>Choose a lead</h3>
+                  <span className="eyebrow">Directory</span>
+                  <h3>Choose a record</h3>
                 </div>
-                <span>{filteredLeads.length}</span>
+                <span>{filteredRecords.length}</span>
+              </div>
+
+              <div className="feature-preset-row" style={{ marginBottom: "1rem" }}>
+                <button className="button ghost" type="button" onClick={() => setEntityFilter("all")}>All</button>
+                <button className="button ghost" type="button" onClick={() => setEntityFilter("lead")}>Leads</button>
+                <button className="button ghost" type="button" onClick={() => setEntityFilter("customer")}>Customers</button>
               </div>
 
               <label className="field">
-                <span>Search leads</span>
+                <span>Search</span>
                 <input
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search company, contact, email, or status"
+                  placeholder="Search company, contact, email, or owner"
                 />
               </label>
 
               <div className="comm-lead-list">
-                {filteredLeads.length ? (
-                  filteredLeads.map((lead) => {
-                    const active = lead.lead_id === selectedLeadId;
+                {filteredRecords.length ? (
+                  filteredRecords.map((record) => {
+                    const active = record.key === selectedKey;
                     return (
                       <button
-                        key={lead.lead_id}
+                        key={record.key}
                         type="button"
                         className={`comm-lead-card ${active ? "active" : ""}`}
-                        onClick={() => setSelectedLeadId(lead.lead_id)}
+                        onClick={() => setSelectedKey(record.key)}
                       >
                         <div className="comm-lead-card-top">
-                          <strong>{lead.company_name || "Unnamed company"}</strong>
-                          <span>{titleCase(lead.status || "new")}</span>
+                          <strong>{record.title}</strong>
+                          <span>{record.status}</span>
                         </div>
-                        <p>{lead.contact_person || "No contact person"}</p>
-                        <small>{lead.email || "No email on file"}</small>
+                        <p>{record.subtitle}</p>
+                        <small>
+                          {titleCase(record.entity_type)} | {record.email || "No email on file"}
+                        </small>
                       </button>
                     );
                   })
                 ) : (
                   <div className="comm-empty-state">
-                    <DashboardIcon name="leads" />
-                    <p>No leads matched the current search.</p>
+                    <DashboardIcon name="message" />
+                    <p>No records matched the current search.</p>
                   </div>
                 )}
               </div>
             </aside>
 
             <article className="comm-compose">
-              {selectedLead ? (
+              {selectedRecord ? (
                 <>
                   <div className="comm-contact-card">
                     <div className="comm-contact-head">
                       <div>
-                        <span className="eyebrow">Selected Lead</span>
-                        <h3>{selectedLead.contact_person || "Lead contact"}</h3>
-                        <p>{selectedLead.company_name || "No company name"}</p>
+                        <span className="eyebrow">{titleCase(selectedRecord.entity_type)}</span>
+                        <h3>{selectedRecord.subtitle}</h3>
+                        <p>{selectedRecord.title}</p>
                       </div>
                       <div className="comm-status-pill">
-                        {titleCase(selectedLead.status || "new")}
+                        {selectedRecord.status}
                       </div>
                     </div>
 
                     <div className="comm-contact-grid">
                       <div>
                         <span>Email</span>
-                        <strong>{selectedLead.email || "Add an email before sending"}</strong>
+                        <strong>{selectedRecord.email || "Add an email before sending"}</strong>
                       </div>
                       <div>
                         <span>Phone</span>
-                        <strong>{selectedLead.phone || "No phone on file"}</strong>
+                        <strong>{selectedRecord.phone || "No phone on file"}</strong>
                       </div>
                       <div>
-                        <span>Product</span>
-                        <strong>{selectedLead.product_name || "No product tagged"}</strong>
+                        <span>Context</span>
+                        <strong>{selectedRecord.product}</strong>
                       </div>
                       <div>
                         <span>Owner</span>
-                        <strong>{selectedLead.assigned_to_name || selectedLead.created_by_name || "Unassigned"}</strong>
+                        <strong>{selectedRecord.owner}</strong>
                       </div>
                     </div>
                   </div>
@@ -437,9 +559,9 @@ export default function CommunicationsPage() {
                     <div className="comm-panel-head">
                       <div>
                         <span className="eyebrow">Compose</span>
-                        <h3>Email draft</h3>
+                        <h3>Send email from CRM</h3>
                       </div>
-                      <span>Mail app handoff</span>
+                      <span>{titleCase(selectedRecord.entity_type)} sync</span>
                     </div>
 
                     <div className="form-grid">
@@ -474,22 +596,18 @@ export default function CommunicationsPage() {
                     </div>
 
                     <div className="comm-action-row">
-                      <button
-                        className="button ghost"
-                        type="button"
-                        onClick={handleCopyDraft}
-                      >
+                      <button className="button ghost" type="button" onClick={handleCopyDraft}>
                         <DashboardIcon name="documents" />
                         {copyState === "copied" ? "Copied" : "Copy Draft"}
                       </button>
                       <button
                         className="button primary"
                         type="button"
-                        onClick={handleOpenMail}
-                        disabled={openingMail}
+                        onClick={handleSendEmail}
+                        disabled={sending}
                       >
                         <DashboardIcon name="message" />
-                        {openingMail ? "Opening..." : "Open Mail App"}
+                        {sending ? "Sending..." : "Send Email"}
                       </button>
                     </div>
                   </div>
@@ -497,8 +615,8 @@ export default function CommunicationsPage() {
               ) : (
                 <div className="comm-empty-state large">
                   <DashboardIcon name="message" />
-                  <h3>Select a lead to start drafting</h3>
-                  <p>The composer will populate once a lead is selected from the list.</p>
+                  <h3>Select a lead or customer to start drafting</h3>
+                  <p>The composer will populate once a record is selected from the list.</p>
                 </div>
               )}
             </article>

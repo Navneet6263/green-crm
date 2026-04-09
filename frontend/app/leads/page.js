@@ -6,11 +6,19 @@ import { useRouter } from "next/navigation";
 import DashboardShell from "../../components/dashboard/DashboardShell";
 import DashboardIcon from "../../components/dashboard/icons";
 import { apiRequest } from "../../lib/api";
+import {
+  buildLeadBulkImportSheet,
+  BULK_IMPORT_COLUMNS,
+  BULK_IMPORT_FIELDS,
+  BULK_IMPORT_MAX_ROWS,
+  parseLeadBulkImportText,
+} from "../../lib/leadBulkImport";
 import { loadSession } from "../../lib/session";
 
-const OK_ROLES = ["super-admin", "admin", "manager", "sales", "marketing", "viewer"];
-const MANAGER_ROLES = ["super-admin", "admin", "manager"];
-const CREATE_ROLES = ["super-admin", "admin", "manager", "sales", "marketing"];
+const OK_ROLES = ["super-admin", "platform-admin", "platform-manager", "admin", "manager", "sales", "marketing", "viewer"];
+const MANAGER_ROLES = ["super-admin", "platform-admin", "platform-manager", "admin", "manager"];
+const CREATE_ROLES = ["super-admin", "platform-admin", "platform-manager", "admin", "manager", "sales", "marketing"];
+const LEADS_PAGE_SIZE = 12;
 const STATUS = { new: ["rgba(79,140,255,.12)", "#2f6fdd"], contacted: ["rgba(56,189,248,.14)", "#0077b8"], qualified: ["rgba(167,139,250,.14)", "#6d46d6"], proposal: ["rgba(245,164,45,.14)", "#b96a00"], negotiation: ["rgba(251,146,60,.14)", "#c96200"], "closed-won": ["rgba(31,199,120,.16)", "#0f8c53"], "closed-lost": ["rgba(224,82,82,.14)", "#b63b3b"], pending: ["rgba(245,164,45,.14)", "#b96a00"] };
 const PRIORITY = { low: ["rgba(56,189,248,.12)", "#0077b8"], medium: ["rgba(245,164,45,.14)", "#b96a00"], high: ["rgba(255,108,156,.14)", "#c4356b"], urgent: ["rgba(224,82,82,.14)", "#b63b3b"] };
 
@@ -44,14 +52,34 @@ const leadSecondaryName = (lead = {}) => {
   if ((!contact || !hasLetters(contact)) && company && contact && company !== contact) return contact;
   return "";
 };
-const statusMatch = (lead, filter) => filter === "all" || (filter === "active" ? ["qualified", "proposal", "negotiation", "contacted"].includes(lead.status) : filter === "pending" ? ["new", "pending"].includes(lead.status) : filter === "assigned" ? Boolean(lead.assigned_to) : filter === "unassigned" ? !lead.assigned_to : filter === "transferred" ? ["legal", "finance", "completed"].includes(lead.workflow_stage || "sales") : lead.status === filter);
 
 export default function LeadsPage() {
   const router = useRouter();
-  const [session, setSession] = useState(null), [companies, setCompanies] = useState([]), [team, setTeam] = useState([]), [leads, setLeads] = useState([]);
+  const [session, setSession] = useState(null), [companies, setCompanies] = useState([]), [team, setTeam] = useState([]), [leads, setLeads] = useState([]), [productOptions, setProductOptions] = useState([]), [leadMeta, setLeadMeta] = useState({ page: 1, page_size: LEADS_PAGE_SIZE, total: 0, total_pages: 1 });
   const [selectedId, setSelectedId] = useState(""), [selected, setSelected] = useState(null), [search, setSearch] = useState(""), [status, setStatus] = useState("all"), [product, setProduct] = useState("all"), [company, setCompany] = useState("all"), [page, setPage] = useState(1), [picked, setPicked] = useState([]), [bulkOwner, setBulkOwner] = useState(""), [bulkNote, setBulkNote] = useState(""), [owner, setOwner] = useState("");
-  const [booting, setBooting] = useState(true), [loading, setLoading] = useState(false), [detailLoading, setDetailLoading] = useState(false), [assigning, setAssigning] = useState(false), [bulkAssigning, setBulkAssigning] = useState(false), [transferring, setTransferring] = useState(false), [deleting, setDeleting] = useState(""), [error, setError] = useState(""), [notice, setNotice] = useState(""), [ownerNote, setOwnerNote] = useState(""), [legalTransferOwner, setLegalTransferOwner] = useState(""), [legalTransferNote, setLegalTransferNote] = useState("");
-  const role = session?.user?.role || "", isSuper = role === "super-admin", canManage = MANAGER_ROLES.includes(role), canCreate = CREATE_ROLES.includes(role), canEdit = role !== "viewer";
+  const [booting, setBooting] = useState(true), [loading, setLoading] = useState(false), [detailLoading, setDetailLoading] = useState(false), [assigning, setAssigning] = useState(false), [bulkAssigning, setBulkAssigning] = useState(false), [bulkImporting, setBulkImporting] = useState(false), [transferring, setTransferring] = useState(false), [deleting, setDeleting] = useState(""), [error, setError] = useState(""), [notice, setNotice] = useState(""), [ownerNote, setOwnerNote] = useState(""), [legalTransferOwner, setLegalTransferOwner] = useState(""), [legalTransferNote, setLegalTransferNote] = useState("");
+  const [showBulkUpload, setShowBulkUpload] = useState(false), [bulkUploadText, setBulkUploadText] = useState(""), [bulkUploadFile, setBulkUploadFile] = useState(""), [bulkUploadReport, setBulkUploadReport] = useState(null), [refreshSeed, setRefreshSeed] = useState(0);
+  const role = session?.user?.role || "", isPlatformConsole = ["super-admin", "platform-admin", "platform-manager"].includes(role), isSuper = role === "super-admin", canManage = MANAGER_ROLES.includes(role), canCreate = CREATE_ROLES.includes(role), canEdit = role !== "viewer";
+  const scopedCompanyId = isPlatformConsole && company !== "all" ? company : undefined;
+  const blankBulkSheet = useMemo(() => buildLeadBulkImportSheet({ includeSample: false }), []);
+  const sampleBulkSheet = useMemo(() => buildLeadBulkImportSheet({ includeSample: true }), []);
+  const bulkUploadPreview = useMemo(() => {
+    try {
+      return {
+        ...parseLeadBulkImportText(bulkUploadText),
+        error: "",
+      };
+    } catch (previewError) {
+      return {
+        rows: [],
+        rowCount: 0,
+        hasHeader: false,
+        delimiter: "tab",
+        preview: null,
+        error: previewError.message,
+      };
+    }
+  }, [bulkUploadText]);
 
   useEffect(() => {
     let ignore = false;
@@ -60,7 +88,7 @@ export default function LeadsPage() {
       if (!s) return router.replace("/login");
       if (!OK_ROLES.includes(s.user?.role)) return router.replace("/dashboard");
       try {
-        if (s.user?.role === "super-admin") {
+        if (["super-admin", "platform-admin", "platform-manager"].includes(s.user?.role)) {
           const res = await apiRequest("/companies?page_size=50", { token: s.token });
           if (!ignore) setCompanies(res.items || []);
         }
@@ -76,20 +104,74 @@ export default function LeadsPage() {
     (async () => {
       setLoading(true); setError("");
       try {
-        const companyId = isSuper && company !== "all" ? company : undefined;
-        const reqs = [apiRequest(qp("/leads", { page_size: 200, company_id: companyId }), { token: session.token })];
-        reqs.push(canManage && (!isSuper || companyId) ? apiRequest(qp("/auth/users", { page_size: 60, company_id: companyId }), { token: session.token }) : Promise.resolve({ items: [] }));
-        const [leadRes, userRes] = await Promise.all(reqs);
+        const quickFilter = ["active", "pending", "assigned", "unassigned", "transferred"].includes(status) ? status : undefined;
+        const leadRes = await apiRequest(qp("/leads", {
+          page,
+          page_size: LEADS_PAGE_SIZE,
+          company_id: scopedCompanyId,
+          search: search.trim() || undefined,
+          product_id: product !== "all" ? product : undefined,
+          status: quickFilter ? undefined : status,
+          quick_filter: quickFilter,
+        }), { token: session.token });
         if (ignore) return;
+        const nextMeta = {
+          page: Number(leadRes.meta?.page || page || 1),
+          page_size: Number(leadRes.meta?.page_size || LEADS_PAGE_SIZE),
+          total: Number(leadRes.meta?.total || 0),
+          total_pages: Math.max(Number(leadRes.meta?.total_pages || 1), 1),
+        };
+        if (nextMeta.total_pages && page > nextMeta.total_pages) {
+          setLeadMeta(nextMeta);
+          setPage(nextMeta.total_pages);
+          return;
+        }
         const items = leadRes.items || [];
-        setLeads(items); setTeam((userRes.items || []).filter((u) => u.is_active)); setPicked((cur) => cur.filter((id) => items.some((lead) => lead.lead_id === id)));
+        setLeadMeta(nextMeta);
+        setLeads(items);
+        setPicked((cur) => cur.filter((id) => items.some((lead) => lead.lead_id === id)));
         setSelectedId((cur) => items.some((lead) => lead.lead_id === cur) ? cur : (items[0]?.lead_id || ""));
-      } catch (e) { if (!ignore) { setError(e.message); setLeads([]); setTeam([]); } } finally { if (!ignore) setLoading(false); }
+      } catch (e) { if (!ignore) { setError(e.message); setLeads([]); setLeadMeta({ page: 1, page_size: LEADS_PAGE_SIZE, total: 0, total_pages: 1 }); } } finally { if (!ignore) setLoading(false); }
     })();
     return () => { ignore = true; };
-  }, [session, company, canManage, isSuper]);
+  }, [session, scopedCompanyId, search, status, product, page, refreshSeed]);
 
   useEffect(() => { setPage(1); }, [search, status, product, company]);
+
+  useEffect(() => {
+    if (!session) return;
+    let ignore = false;
+    (async () => {
+      try {
+        const reqs = [
+          canManage && (!isPlatformConsole || scopedCompanyId)
+            ? apiRequest(qp("/auth/users", { page_size: 60, company_id: scopedCompanyId }), { token: session.token })
+            : Promise.resolve({ items: [] }),
+          !isPlatformConsole || scopedCompanyId
+            ? apiRequest(qp("/leads/stats/products", { company_id: scopedCompanyId }), { token: session.token })
+            : Promise.resolve([]),
+        ];
+        const [userRes, productStats] = await Promise.all(reqs);
+        if (ignore) return;
+        setTeam((userRes.items || []).filter((u) => u.is_active));
+        setProductOptions(
+          (Array.isArray(productStats) ? productStats : [])
+            .map((item) => ({
+              value: item.product_id,
+              label: item.name || "Unnamed Product",
+              count: Number(item.total_leads || 0),
+            }))
+            .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label))
+        );
+      } catch (_error) {
+        if (!ignore) {
+          setTeam([]);
+          setProductOptions([]);
+        }
+      }
+    })();
+    return () => { ignore = true; };
+  }, [session, scopedCompanyId, canManage, isPlatformConsole, refreshSeed]);
 
   useEffect(() => {
     if (!session?.token || !selectedId) { setSelected(null); setOwner(""); return; }
@@ -111,27 +193,32 @@ export default function LeadsPage() {
   }, [selectedId, session, leads]);
 
   const products = useMemo(() => {
+    if (productOptions.length) {
+      return productOptions;
+    }
+
     const map = new Map();
     leads.forEach((lead) => { const key = lead.product_id || lead.product_name; if (!key) return; const cur = map.get(key) || { value: key, label: lead.product_name || "Unnamed Product", count: 0 }; cur.count += 1; map.set(key, cur); });
     return [...map.values()].sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
-  }, [leads]);
-  const filtered = useMemo(() => leads.filter((lead) => {
-    const key = (lead.product_id || lead.product_name || "");
-    const text = [lead.company_name, lead.contact_person, lead.email, lead.phone, lead.status, lead.priority, lead.lead_source, lead.product_name, lead.assigned_to_name, lead.created_by_name, lead.address_city].filter(Boolean).join(" ").toLowerCase();
-    return (!search || text.includes(search.toLowerCase())) && statusMatch(lead, status) && (product === "all" || key === product);
-  }), [leads, product, search, status]);
-  const pages = Math.max(1, Math.ceil(filtered.length / 12));
-  const rows = filtered.slice((page - 1) * 12, page * 12);
-  const allPicked = !!filtered.length && filtered.every((lead) => picked.includes(lead.lead_id));
+  }, [leads, productOptions]);
+  const rows = leads;
+  const totalMatched = Number(leadMeta.total || 0);
+  const pages = Math.max(Number(leadMeta.total_pages || 1), 1);
+  const allPicked = !!rows.length && rows.every((lead) => picked.includes(lead.lead_id));
   const activeLead = selected || leads.find((lead) => lead.lead_id === selectedId) || null;
-  const ownershipLabel = ["sales", "marketing"].includes(role) ? "Created by you" : isSuper ? company === "all" ? "Cross-tenant" : "Single tenant" : "Tenant-wide";
-  const closedWonCount = filtered.filter((lead) => lead.status === "closed-won").length;
-  const transferredCount = filtered.filter((lead) => ["legal", "finance", "completed"].includes(lead.workflow_stage || "sales")).length;
+  const ownershipLabel = ["sales", "marketing"].includes(role) ? "Created by you" : isPlatformConsole ? company === "all" ? isSuper ? "Cross-tenant" : "Assigned companies" : "Single tenant" : "Tenant-wide";
+  const closedWonCount = status === "closed-won" ? totalMatched : leads.filter((lead) => lead.status === "closed-won").length;
+  const transferredCount = status === "transferred" ? totalMatched : leads.filter((lead) => ["legal", "finance", "completed"].includes(lead.workflow_stage || "sales")).length;
   const legalTeam = team.filter((user) => user.role === "legal-team");
-  const canTransferActiveLead = Boolean(activeLead?.can_transfer_to_legal) && ["super-admin", "admin", "manager", "sales"].includes(role);
-  const heroStats = useMemo(() => [{ label: "Visible Leads", value: filtered.length }, { label: "Pipeline Value", value: money(filtered.reduce((s, lead) => s + Number(lead.estimated_value || 0), 0)), color: "#0f8c53" }, { label: "Assigned", value: filtered.filter((lead) => lead.assigned_to).length, color: "#2f6fdd" }, { label: "Closed Won", value: filtered.filter((lead) => lead.status === "closed-won").length, color: "#0f8c53" }], [filtered]);
+  const canTransferActiveLead = Boolean(activeLead?.can_transfer_to_legal) && ["super-admin", "platform-admin", "platform-manager", "admin", "manager", "sales"].includes(role);
+  const heroStats = useMemo(() => [{ label: "Matched Leads", value: totalMatched }, { label: "Page Value", value: money(leads.reduce((s, lead) => s + Number(lead.estimated_value || 0), 0)), color: "#0f8c53" }, { label: "Loaded", value: leads.length, color: "#2f6fdd" }, { label: "Closed Won", value: closedWonCount, color: "#0f8c53" }], [closedWonCount, leads, totalMatched]);
 
-  useEffect(() => { if (page > pages) setPage(pages); if (filtered.length && !filtered.some((lead) => lead.lead_id === selectedId)) setSelectedId(filtered[0].lead_id); if (!filtered.length) setSelectedId(""); }, [filtered, page, pages, selectedId]);
+  useEffect(() => {
+    if (product === "all") return;
+    if (!products.some((item) => item.value === product)) {
+      setProduct("all");
+    }
+  }, [product, products]);
 
   const applyOwner = (leadIds, nextOwner, label) => {
     setLeads((cur) => cur.map((lead) => leadIds.includes(lead.lead_id) ? { ...lead, assigned_to: nextOwner, assigned_to_name: label } : lead));
@@ -169,6 +256,97 @@ export default function LeadsPage() {
     } catch (e) { setError(e.message); } finally { setBulkAssigning(false); }
   }
 
+  function resetBulkUploadPanel() {
+    setBulkUploadText("");
+    setBulkUploadFile("");
+    setBulkUploadReport(null);
+  }
+
+  async function handleBulkFileChange(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      setBulkUploadText(text);
+      setBulkUploadFile(file.name);
+      setBulkUploadReport(null);
+      setShowBulkUpload(true);
+    } catch (e) {
+      setError("Could not read the selected file.");
+    } finally {
+      event.target.value = "";
+    }
+  }
+
+  function downloadBulkTemplate(filename, content) {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  }
+
+  function loadBulkTemplate(content, label) {
+    setBulkUploadText(content);
+    setBulkUploadFile(label);
+    setBulkUploadReport(null);
+    setError("");
+    setNotice(`${label} loaded in the upload sheet.`);
+  }
+
+  async function submitBulkUpload() {
+    if (!session?.token) return;
+
+    if (bulkUploadPreview.error) {
+      setError(bulkUploadPreview.error);
+      return;
+    }
+
+    if (!bulkUploadPreview.rows.length) {
+      setError("Paste at least one formatted lead row before uploading.");
+      return;
+    }
+
+    setBulkImporting(true);
+    setError("");
+    setNotice("");
+    setBulkUploadReport(null);
+
+    try {
+      const response = await apiRequest("/leads/bulk-upload", {
+        method: "POST",
+        token: session.token,
+        body: {
+          rows: bulkUploadPreview.rows,
+        },
+      });
+
+      setBulkUploadReport(response);
+      setRefreshSeed((current) => current + 1);
+
+      if (response.failed) {
+        setNotice(`${response.imported} leads imported. ${response.failed} rows need review.`);
+      } else {
+        setNotice(`${response.imported} leads imported successfully.`);
+        resetBulkUploadPanel();
+        setShowBulkUpload(false);
+      }
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBulkImporting(false);
+    }
+  }
+
   async function archiveLead(id) {
     const lead = leads.find((item) => item.lead_id === id);
     if (!window.confirm(`Archive "${lead?.company_name || "this lead"}"?`)) return;
@@ -180,7 +358,9 @@ export default function LeadsPage() {
     setDeleting(id); setError(""); setNotice("");
     try {
       await apiRequest(`/leads/${id}`, { method: "DELETE", token: session.token, body: { change_note: archiveNote } });
-      setLeads((cur) => cur.filter((leadItem) => leadItem.lead_id !== id)); setPicked((cur) => cur.filter((item) => item !== id)); if (selectedId === id) setSelectedId("");
+      setPicked((cur) => cur.filter((item) => item !== id));
+      if (selectedId === id) setSelectedId("");
+      setRefreshSeed((current) => current + 1);
       setNotice(`Lead "${lead?.company_name || ""}" archived successfully.`);
     } catch (e) { setError(e.message); } finally { setDeleting(""); }
   }
@@ -208,7 +388,7 @@ export default function LeadsPage() {
   }
 
   return (
-    <DashboardShell session={session} title={["sales", "marketing"].includes(role) ? "My Leads" : "Lead Pipeline"} eyebrow={isSuper ? "Platform · All Tenants" : "Sales Workspace"} heroStats={heroStats}>
+    <DashboardShell session={session} title={["sales", "marketing"].includes(role) ? "My Leads" : "Lead Pipeline"} eyebrow={isPlatformConsole ? `Platform · ${isSuper ? "All Tenants" : "Assigned Companies"}` : "Sales Workspace"} heroStats={heroStats}>
       {error ? <div className="alert error">{error}</div> : null}
       {!error && notice ? <div className="alert">{notice}</div> : null}
       {booting || loading ? <div className="alert">Loading leads workspace...</div> : null}
@@ -218,17 +398,181 @@ export default function LeadsPage() {
             <div>
               <span className="lead-kicker">Lead Control</span>
               <h2>{["sales", "marketing"].includes(role) ? "My Created Leads" : "All Leads Command Center"}</h2>
-              <p>{isSuper ? "Use the company filter to focus on one tenant before managing ownership and lead flow." : ["admin", "manager"].includes(role) ? "Admins and managers can review the full tenant pipeline here. Sales and marketing only see the leads they created." : ["sales", "marketing"].includes(role) ? "This view only shows leads created by your account." : "Read-only lead review mode is active."}</p>
+              <p>{isPlatformConsole ? "Use the company filter to focus on one tenant before managing ownership and lead flow." : ["admin", "manager"].includes(role) ? "Admins and managers can review the full tenant pipeline here. Sales and marketing only see the leads they created." : ["sales", "marketing"].includes(role) ? "This view only shows leads created by your account." : "Read-only lead review mode is active."}</p>
             </div>
             <div className="lead-board-actions">
               {canCreate ? <Link href="/leads/new" className="button primary"><DashboardIcon name="leads" />Create Lead</Link> : null}
+              {canCreate ? <button className="button ghost" type="button" onClick={() => setShowBulkUpload((current) => !current)}><DashboardIcon name="analytics" />{showBulkUpload ? "Hide Bulk Upload" : "Bulk Upload"}</button> : null}
               <Link href="/leads/history" className="button ghost"><DashboardIcon name="analytics" />Lead History</Link>
             </div>
           </article>
 
+          {canCreate && showBulkUpload ? (
+            <article className="lead-import-panel">
+              <div className="lead-import-head">
+                <div>
+                  <span className="lead-kicker">Bulk Upload</span>
+                  <h3>Import leads with the same fields used in Add Lead</h3>
+                  <p>
+                    Paste tab-separated rows or upload a text, TSV, or CSV file in the exact {BULK_IMPORT_COLUMNS.length}-column order.
+                    Legal transfer, finance transfer, and auto-import notes are not part of this sheet.
+                  </p>
+                </div>
+
+                <div className="lead-import-head-actions">
+                  <label className="button ghost lead-import-file">
+                    <DashboardIcon name="products" />
+                    {bulkUploadFile ? `File: ${bulkUploadFile}` : "Choose File"}
+                    <input type="file" accept=".txt,.tsv,.csv" onChange={handleBulkFileChange} hidden />
+                  </label>
+                  <button
+                    className="button ghost"
+                    type="button"
+                    onClick={() => downloadBulkTemplate("greencrm-lead-template.csv", blankBulkSheet)}
+                  >
+                    <DashboardIcon name="message" />
+                    Download Blank Sheet
+                  </button>
+                  <button
+                    className="button ghost"
+                    type="button"
+                    onClick={() => downloadBulkTemplate("greencrm-lead-sample.csv", sampleBulkSheet)}
+                  >
+                    <DashboardIcon name="analytics" />
+                    Download Sample Sheet
+                  </button>
+                </div>
+              </div>
+
+              <div className="lead-import-grid">
+                <div className="lead-import-compose">
+                  <label className="field full-width lead-field">
+                    <span>Paste Lead Rows</span>
+                    <textarea
+                      rows="10"
+                      value={bulkUploadText}
+                      onChange={(event) => setBulkUploadText(event.target.value)}
+                      placeholder="Paste rows here in the same order as the table on the right..."
+                    />
+                  </label>
+
+                  <div className="lead-import-meta">
+                    <span>{bulkUploadPreview.rowCount || 0} rows ready</span>
+                    <span>{bulkUploadPreview.hasHeader ? "Template header detected" : "Header optional"}</span>
+                    <span>{bulkUploadPreview.delimiter === "tab" ? "Tab-separated format" : "CSV format"}</span>
+                    <span>Max {BULK_IMPORT_MAX_ROWS} rows</span>
+                  </div>
+
+                  {bulkUploadPreview.error ? <div className="alert error">{bulkUploadPreview.error}</div> : null}
+
+                  {bulkUploadPreview.preview ? (
+                    <div className="lead-import-preview">
+                      <div>
+                        <span>Company Code</span>
+                        <strong>{bulkUploadPreview.preview.company_id || "--"}</strong>
+                      </div>
+                      <div>
+                        <span>Product Code</span>
+                        <strong>{bulkUploadPreview.preview.product_id || "--"}</strong>
+                      </div>
+                      <div>
+                        <span>Contact</span>
+                        <strong>{bulkUploadPreview.preview.contact_person || "--"}</strong>
+                      </div>
+                      <div>
+                        <span>Company Name</span>
+                        <strong>{bulkUploadPreview.preview.company_name || "--"}</strong>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {bulkUploadReport ? (
+                    <div className="lead-import-report">
+                      <div className="lead-import-report-summary">
+                        <strong>{bulkUploadReport.imported} imported</strong>
+                        <span>{bulkUploadReport.failed || 0} failed</span>
+                      </div>
+                      {bulkUploadReport.errors?.length ? (
+                        <div className="lead-import-report-list">
+                          {bulkUploadReport.errors.slice(0, 6).map((item) => (
+                            <div key={`${item.row}-${item.message}`} className="lead-import-report-item">
+                              <strong>Row {item.row}</strong>
+                              <span>{item.message}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+
+                <div className="lead-import-template">
+                  <div className="lead-import-template-head">
+                    <span className="lead-kicker">Sheet Template</span>
+                    <strong>Simple Add Lead sheet</strong>
+                  </div>
+                  <p>
+                    Ye plain sheet sirf wahi fields rakhti hai jo Add Lead form me dikhte hain. Extra transfer aur note columns hata diye gaye hain.
+                  </p>
+                  <div className="lead-sheet-actions">
+                    <button className="button ghost" type="button" onClick={() => loadBulkTemplate(blankBulkSheet, "Blank sheet template")}>
+                      Use Blank Sheet
+                    </button>
+                    <button className="button ghost" type="button" onClick={() => loadBulkTemplate(sampleBulkSheet, "Sample sheet template")}>
+                      Use Sample Sheet
+                    </button>
+                  </div>
+                  <div className="lead-sheet-template">
+                    <div className="lead-sheet-scroll">
+                      <table className="lead-sheet-table">
+                        <thead>
+                          <tr>
+                            <th>Column</th>
+                            <th>Label</th>
+                            <th>Required</th>
+                            <th>Example</th>
+                            <th>Use</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {BULK_IMPORT_FIELDS.map((item) => (
+                            <tr key={item.key}>
+                              <td><code>{item.key}</code></td>
+                              <td>{item.label}</td>
+                              <td>{item.required}</td>
+                              <td>{item.example || "--"}</td>
+                              <td>{item.note}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <small>
+                      Keep the exact order shown in this table. Max {BULK_IMPORT_MAX_ROWS} rows in one upload.
+                    </small>
+                  </div>
+                </div>
+              </div>
+
+              <div className="lead-import-footer">
+                <button className="button ghost" type="button" onClick={resetBulkUploadPanel}>
+                  Clear Upload
+                </button>
+                <button
+                  className="button primary"
+                  type="button"
+                  onClick={submitBulkUpload}
+                  disabled={bulkImporting || !bulkUploadPreview.rowCount || Boolean(bulkUploadPreview.error)}
+                >
+                  {bulkImporting ? "Uploading..." : `Upload ${bulkUploadPreview.rowCount || 0} Leads`}
+                </button>
+              </div>
+            </article>
+          ) : null}
+
           <article className="lead-board-toolbar">
             <div className="lead-filter-grid">
-              {isSuper ? (
+              {isPlatformConsole ? (
                 <label className="field">
                   <span>Tenant Company</span>
                   <select value={company} onChange={(event) => setCompany(event.target.value)}>
@@ -264,7 +608,7 @@ export default function LeadsPage() {
             </div>
             <div className="lead-toolbar-meta">
               <div className="lead-toolbar-pills">
-                <div className="lead-toolbar-pill"><span>Visible Scope</span><strong>{filtered.length} leads matched</strong></div>
+                <div className="lead-toolbar-pill"><span>Visible Scope</span><strong>{totalMatched} leads matched</strong></div>
                 <div className="lead-toolbar-pill"><span>Ownership</span><strong>{ownershipLabel}</strong></div>
                 <button className={`lead-toolbar-chip ${status === "closed-won" ? "active" : ""}`} type="button" onClick={() => { setStatus("closed-won"); setPage(1); }}>Closed Won {closedWonCount}</button>
                 <button className={`lead-toolbar-chip ${status === "transferred" ? "active" : ""}`} type="button" onClick={() => { setStatus("transferred"); setPage(1); }}>Transferred {transferredCount}</button>
@@ -296,7 +640,7 @@ export default function LeadsPage() {
                     placeholder="Why are these selected leads being reassigned?"
                   />
                 </label>
-                <button className="button primary" type="button" onClick={bulkAssign} disabled={bulkAssigning || !bulkOwner || !bulkNote.trim() || (isSuper && company === "all")}>{bulkAssigning ? "Assigning..." : "Assign Selected"}</button>
+                <button className="button primary" type="button" onClick={bulkAssign} disabled={bulkAssigning || !bulkOwner || !bulkNote.trim() || (isPlatformConsole && company === "all")}>{bulkAssigning ? "Assigning..." : "Assign Selected"}</button>
                 <button className="button ghost" type="button" onClick={() => { setPicked([]); setBulkOwner(""); setBulkNote(""); }}>Clear</button>
               </div>
             </article>
@@ -308,7 +652,7 @@ export default function LeadsPage() {
                 <div><span className="lead-kicker">Roster</span><h3>Lead list</h3></div>
                 <div className="lead-roster-head-meta">
                   <span>Page {Math.min(page, pages)} of {pages}</span>
-                  {canManage && filtered.length ? <label className="lead-select-all"><input type="checkbox" checked={allPicked} onChange={() => setPicked(allPicked ? [] : filtered.map((lead) => lead.lead_id))} /><span>Select all</span></label> : null}
+                  {canManage && rows.length ? <label className="lead-select-all"><input type="checkbox" checked={allPicked} onChange={() => setPicked(allPicked ? [] : rows.map((lead) => lead.lead_id))} /><span>Select page</span></label> : null}
                   {canManage && picked.length ? <span className="lead-select-count">{picked.length} selected</span> : null}
                 </div>
               </div>
@@ -355,7 +699,7 @@ export default function LeadsPage() {
                 )}
               </div>
 
-              {filtered.length > 12 ? <div className="lead-pagination"><button className="button ghost" type="button" disabled={page === 1} onClick={() => setPage((cur) => Math.max(1, cur - 1))}>Previous</button><span>{Math.min((page - 1) * 12 + 1, filtered.length)}-{Math.min(page * 12, filtered.length)} of {filtered.length}</span><button className="button ghost" type="button" disabled={page === pages} onClick={() => setPage((cur) => Math.min(pages, cur + 1))}>Next</button></div> : null}
+              {totalMatched > leadMeta.page_size ? <div className="lead-pagination"><button className="button ghost" type="button" disabled={page === 1} onClick={() => setPage((cur) => Math.max(1, cur - 1))}>Previous</button><span>{totalMatched ? (page - 1) * leadMeta.page_size + 1 : 0}-{Math.min(page * leadMeta.page_size, totalMatched)} of {totalMatched}</span><button className="button ghost" type="button" disabled={page === pages} onClick={() => setPage((cur) => Math.min(pages, cur + 1))}>Next</button></div> : null}
             </article>
 
             <aside className="lead-detail-stack">
@@ -410,7 +754,7 @@ export default function LeadsPage() {
                   {canManage ? (
                     <article className="lead-detail-card">
                       <div className="lead-detail-head"><div><span className="lead-kicker">Assignment</span><h4>Lead owner control</h4></div></div>
-                      {isSuper && company === "all" ? <p className="muted">Select a company before updating ownership.</p> : team.length ? <div className="form-grid"><div className="lead-assign-row"><select value={owner} onChange={(event) => setOwner(event.target.value)}><option value="">Select lead owner</option>{team.map((item) => <option key={item.user_id} value={item.user_id}>{item.name} | {item.role}</option>)}</select><button className="button primary" type="button" disabled={assigning || !owner || owner === activeLead.assigned_to || !ownerNote.trim()} onClick={saveOwner}>{assigning ? "Saving..." : "Update Owner"}</button></div><label className="field"><span>Change Note *</span><textarea rows="3" value={ownerNote} onChange={(event) => setOwnerNote(event.target.value)} placeholder="Why are you changing the owner? This note will be saved in lead history." /></label></div> : <p className="muted">No active users available for assignment.</p>}
+                      {isPlatformConsole && company === "all" ? <p className="muted">Select a company before updating ownership.</p> : team.length ? <div className="form-grid"><div className="lead-assign-row"><select value={owner} onChange={(event) => setOwner(event.target.value)}><option value="">Select lead owner</option>{team.map((item) => <option key={item.user_id} value={item.user_id}>{item.name} | {item.role}</option>)}</select><button className="button primary" type="button" disabled={assigning || !owner || owner === activeLead.assigned_to || !ownerNote.trim()} onClick={saveOwner}>{assigning ? "Saving..." : "Update Owner"}</button></div><label className="field"><span>Change Note *</span><textarea rows="3" value={ownerNote} onChange={(event) => setOwnerNote(event.target.value)} placeholder="Why are you changing the owner? This note will be saved in lead history." /></label></div> : <p className="muted">No active users available for assignment.</p>}
                     </article>
                   ) : null}
 

@@ -1,5 +1,6 @@
 const db = require("../db/connection");
 const companyRepository = require("../repositories/companyRepository");
+const platformAccessRepository = require("../repositories/platformAccessRepository");
 const userRepository = require("../repositories/userRepository");
 const auditRepository = require("../repositories/auditRepository");
 const emailService = require("./emailService");
@@ -8,6 +9,8 @@ const { PLATFORM_COMPANY_ID } = require("../db/schema");
 const { buildAuthToken, buildTimedToken, hashPassword, verifyPassword, verifyToken } = require("../utils/auth");
 const { buildTalentId, createPrefixedId, slugify } = require("../utils/ids");
 const AppError = require("../utils/appError");
+const { isPlatformOperatorRole } = require("../utils/tenant");
+const { getAuthCacheKey, rememberRevokedAuthKey } = require("../utils/requestAuthCache");
 
 function sanitizeUser(user) {
   if (!user) {
@@ -21,11 +24,35 @@ function sanitizeUser(user) {
   };
 }
 
+async function getPlatformCompany() {
+  return companyRepository.getCompanyWithSettings(PLATFORM_COMPANY_ID);
+}
+
+async function hydrateUser(user) {
+  const safeUser = sanitizeUser(user);
+
+  if (!safeUser || !isPlatformOperatorRole(safeUser.role)) {
+    return safeUser;
+  }
+
+  return {
+    ...safeUser,
+    managed_company_ids: await platformAccessRepository.listCompanyIdsByUser(safeUser.user_id),
+  };
+}
+
 async function registerCompany(payload) {
   const companyName = String(payload.company_name || payload.name || "").trim();
   const companySlug = slugify(payload.company_slug || payload.slug || companyName);
   const adminName = String(payload.admin_name || "").trim();
   const adminEmail = String(payload.admin_email || "").trim().toLowerCase();
+  const adminPhone = String(payload.admin_phone || payload.phone || "").trim();
+  const roleInCompany = String(payload.role_in_company || payload.company_role || payload.designation || "").trim();
+  const companyWebsite = String(payload.company_url || payload.website || "").trim();
+  const city = String(payload.city || "").trim();
+  const state = String(payload.state || "").trim();
+  const country = String(payload.country || "India").trim() || "India";
+  const teamSize = String(payload.team_size || "").trim();
   const password = String(payload.password || "");
 
   if (!companyName || !companySlug || !adminName || !adminEmail || password.length < 8) {
@@ -53,14 +80,24 @@ async function registerCompany(payload) {
         slug: companySlug,
         contact_email: payload.contact_email || adminEmail,
         admin_email: adminEmail,
-        contact_phone: payload.contact_phone || payload.phone || null,
+        contact_phone: payload.contact_phone || adminPhone || null,
         industry: payload.industry || null,
         status: payload.status || "trial",
+        address: payload.address || null,
+        city: city || null,
+        state: state || null,
         settings_currency: payload.default_currency || payload.settings_currency || "INR",
         settings_timezone: payload.timezone || payload.settings_timezone || "Asia/Kolkata",
         settings_date_format: payload.settings_date_format || "DD/MM/YYYY",
-        country: payload.country || "India",
-        website: payload.website || null,
+        country,
+        website: companyWebsite || null,
+        service_settings: {
+          onboarding_profile: {
+            role_in_company: roleInCompany || null,
+            team_size: teamSize || null,
+            source: "self-serve-signup",
+          },
+        },
       },
       transaction
     );
@@ -72,8 +109,8 @@ async function registerCompany(payload) {
         role: ROLES.ADMIN,
         name: adminName,
         email: adminEmail,
-        phone: payload.admin_phone || null,
-        department: "Administration",
+        phone: adminPhone || null,
+        department: roleInCompany || "Administration",
         password: await hashPassword(password),
       },
       transaction
@@ -91,6 +128,8 @@ async function registerCompany(payload) {
         details: {
           company_name: companyName,
           company_slug: companySlug,
+          role_in_company: roleInCompany || null,
+          team_size: teamSize || null,
         },
       },
       transaction
@@ -104,7 +143,7 @@ async function registerCompany(payload) {
 
   return {
     company: result.company,
-    user: sanitizeUser(result.user),
+    user: await hydrateUser(result.user),
     token: buildAuthToken(result.user),
   };
 }
@@ -135,7 +174,7 @@ async function login(payload) {
   const company = await companyRepository.getCompanyWithSettings(user.company_id);
 
   return {
-    user: sanitizeUser(user),
+    user: await hydrateUser(user),
     company,
     token: buildAuthToken(user),
   };
@@ -150,7 +189,7 @@ async function getProfile(auth) {
   }
 
   return {
-    user: sanitizeUser(user),
+    user: await hydrateUser(user),
     company,
   };
 }
@@ -170,14 +209,20 @@ async function verify(auth) {
 
 async function logout(auth, tokenPayload) {
   if (tokenPayload?.jti && tokenPayload?.exp) {
+    const expiresAt = new Date(Number(tokenPayload.exp) * 1000);
+    const cacheKey = getAuthCacheKey(tokenPayload);
     await db.query(
       `
-        INSERT IGNORE INTO token_blacklist
-          (company_id, user_id, token_id, reason, deactivated_by, expires_at)
-        VALUES (?, ?, ?, 'LOGOUT', ?, FROM_UNIXTIME(?))
+        IF NOT EXISTS (SELECT 1 FROM token_blacklist WHERE token_id = ?)
+        BEGIN
+          INSERT INTO token_blacklist
+            (company_id, user_id, token_id, reason, deactivated_by, expires_at)
+          VALUES (?, ?, ?, 'LOGOUT', ?, ?)
+        END
       `,
-      [auth.companyId, auth.userId, tokenPayload.jti, auth.userId, tokenPayload.exp]
+      [tokenPayload.jti, auth.companyId, auth.userId, tokenPayload.jti, auth.userId, expiresAt]
     );
+    rememberRevokedAuthKey(cacheKey, tokenPayload.exp);
   }
 
   return { logged_out: true };
@@ -207,12 +252,13 @@ async function forgotPassword(payload) {
     60 * 30
   );
 
-  const frontendBase = emailService.getFrontendUrl();
-  const resetUrl = `${frontendBase}/reset-password?token=${encodeURIComponent(token)}`;
   const company = await companyRepository.getCompanyWithSettings(user.company_id);
+  const platformCompany = await getPlatformCompany();
+  const resetUrl = emailService.buildPasswordResetUrl(company, platformCompany, token);
   const delivery = await emailService.sendPasswordResetEmail({
     user,
     company,
+    platformCompany,
     resetUrl,
   });
   const exposeDebugPreview = process.env.NODE_ENV !== "production";

@@ -11,8 +11,8 @@ import { loadSession } from "../../../lib/session";
 const STATUS_ACCENT = { new: ["rgba(79,140,255,.12)", "#2f6fdd"], contacted: ["rgba(56,189,248,.14)", "#0077b8"], qualified: ["rgba(167,139,250,.14)", "#6d46d6"], proposal: ["rgba(245,164,45,.14)", "#b96a00"], negotiation: ["rgba(251,146,60,.14)", "#c96200"], "closed-won": ["rgba(31,199,120,.16)", "#0f8c53"], "closed-lost": ["rgba(224,82,82,.14)", "#b63b3b"] };
 const PRIORITY_ACCENT = { low: ["rgba(56,189,248,.12)", "#0077b8"], medium: ["rgba(245,164,45,.14)", "#b96a00"], high: ["rgba(255,108,156,.14)", "#c4356b"], urgent: ["rgba(224,82,82,.14)", "#b63b3b"] };
 const WORKFLOW = ["sales", "legal", "finance", "completed"];
-const DOC_VIEW_ROLES = ["super-admin", "admin", "manager"];
-const LEGAL_TRANSFER_ROLES = ["super-admin", "admin", "manager", "sales"];
+const DOC_VIEW_ROLES = ["super-admin", "platform-admin", "platform-manager", "admin", "manager"];
+const LEGAL_TRANSFER_ROLES = ["super-admin", "platform-admin", "platform-manager", "admin", "manager", "sales"];
 const ACTIVITY_OPTIONS = ["call", "email", "meeting", "note", "task", "comment"];
 const nice = (v) => String(v || "").split("-").filter(Boolean).map((x) => x[0].toUpperCase() + x.slice(1)).join(" ");
 const money = (v) => `INR ${Number(v || 0).toLocaleString("en-IN")}`;
@@ -52,12 +52,17 @@ export default function LeadDetailPage() {
   const legalUsers = useMemo(() => users.filter((user) => user.role === "legal-team"), [users]);
 
   async function loadLead(activeSession) {
-    const [leadResponse, notesResponse, activityResponse, usersResponse] = await Promise.all([
+    const [leadResponse, notesResponse, activityResponse] = await Promise.all([
       apiRequest(`/leads/${params.id}`, { token: activeSession.token }),
       apiRequest(`/leads/${params.id}/notes?page_size=12`, { token: activeSession.token }),
       apiRequest(`/leads/${params.id}/activity?page_size=12`, { token: activeSession.token }),
-      apiRequest("/auth/users?page_size=100", { token: activeSession.token }),
     ]);
+    const usersResponse = await apiRequest(
+      ["super-admin", "platform-admin", "platform-manager"].includes(activeSession.user?.role)
+        ? `/auth/users?page_size=100&company_id=${leadResponse.company_id}`
+        : "/auth/users?page_size=100",
+      { token: activeSession.token }
+    );
     setLead(leadResponse);
     setNotes(notesResponse.items || []);
     setActivity(activityResponse.items || []);
@@ -164,7 +169,7 @@ export default function LeadDetailPage() {
             </div>
             <div className="lead-profile-actions">
               <button className="button primary" type="button" onClick={() => logQuick("call", `Called ${lead.contact_person}`, `tel:${String(lead.phone || "").replace(/[^\d+]/g, "")}`)} disabled={!lead.phone}>Call</button>
-              <Link href={`/communications?lead=${lead.lead_id}`} className="button ghost">Email Workspace</Link>
+              <Link href={`/communications?entity=lead&id=${lead.lead_id}`} className="button ghost">Email Workspace</Link>
               <Link href={`/leads/${lead.lead_id}/edit`} className="button ghost">Edit Lead</Link>
             </div>
           </article>

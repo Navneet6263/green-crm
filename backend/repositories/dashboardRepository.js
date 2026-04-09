@@ -6,26 +6,55 @@ async function queryRows(sqlText, params = []) {
   return rows;
 }
 
-async function getPlatformSummary() {
+function buildScopedCompanyClause(companyIds, columnName = "company_id") {
+  if (!Array.isArray(companyIds)) {
+    return {
+      clause: "",
+      params: [],
+    };
+  }
+
+  if (!companyIds.length) {
+    return {
+      clause: " AND 1 = 0",
+      params: [],
+    };
+  }
+
+  return {
+    clause: ` AND ${columnName} IN (${companyIds.map(() => "?").join(", ")})`,
+    params: companyIds,
+  };
+}
+
+async function getPlatformSummary(companyIds = null) {
+  const companyScope = buildScopedCompanyClause(companyIds, "company_id");
   const [summaryRows, recentCompanies] = await Promise.all([
     queryRows(
       `
         SELECT
-          (SELECT COUNT(*) FROM companies WHERE company_id <> ?) AS companies,
-          (SELECT COUNT(*) FROM users WHERE company_id <> ? AND is_active = 1) AS users,
-          (SELECT COUNT(*) FROM leads WHERE is_active = 1) AS leads,
-          (SELECT COUNT(*) FROM products WHERE is_active = 1) AS products
+          (SELECT COUNT(*) FROM companies WHERE company_id <> ?${companyScope.clause}) AS companies,
+          (SELECT COUNT(*) FROM users WHERE company_id <> ? AND is_active = 1${companyScope.clause}) AS users,
+          (SELECT COUNT(*) FROM leads WHERE is_active = 1${companyScope.clause}) AS leads,
+          (SELECT COUNT(*) FROM products WHERE is_active = 1${companyScope.clause}) AS products
       `,
-      [PLATFORM_COMPANY_ID, PLATFORM_COMPANY_ID]
+      [
+        PLATFORM_COMPANY_ID,
+        ...companyScope.params,
+        PLATFORM_COMPANY_ID,
+        ...companyScope.params,
+        ...companyScope.params,
+        ...companyScope.params,
+      ]
     ),
     queryRows(
       `
         SELECT TOP 5 company_id, name, slug, status, settings_currency, settings_timezone, created_at
         FROM companies
-        WHERE company_id <> ?
+        WHERE company_id <> ?${companyScope.clause}
         ORDER BY created_at DESC, id DESC
       `,
-      [PLATFORM_COMPANY_ID]
+      [PLATFORM_COMPANY_ID, ...companyScope.params]
     ),
   ]);
   const summary = summaryRows[0] || {};

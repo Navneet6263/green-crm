@@ -5,8 +5,20 @@ function getExecutor(executor) {
 }
 
 function buildWhere(filters) {
-  const conditions = ["t.company_id = ?"];
-  const params = [filters.companyId];
+  const conditions = [];
+  const params = [];
+
+  if (filters.companyId) {
+    conditions.push("t.company_id = ?");
+    params.push(filters.companyId);
+  } else if (Array.isArray(filters.companyIds)) {
+    if (!filters.companyIds.length) {
+      conditions.push("1 = 0");
+    } else {
+      conditions.push(`t.company_id IN (${filters.companyIds.map(() => "?").join(", ")})`);
+      params.push(...filters.companyIds);
+    }
+  }
 
   if (filters.assignedTo) {
     conditions.push("t.assigned_to = ?");
@@ -29,7 +41,7 @@ function buildWhere(filters) {
   }
 
   return {
-    whereClause: `WHERE ${conditions.join(" AND ")}`,
+    whereClause: conditions.length ? `WHERE ${conditions.join(" AND ")}` : "",
     params,
   };
 }
@@ -63,8 +75,16 @@ async function listTasks(filters, pagination, executor) {
   };
 }
 
-async function getTaskById(taskId, companyId, executor) {
+async function getTaskById(taskId, companyId = null, executor) {
   const active = getExecutor(executor);
+  const conditions = ["t.task_id = ?"];
+  const params = [taskId];
+
+  if (companyId) {
+    conditions.push("t.company_id = ?");
+    params.push(companyId);
+  }
+
   const [rows] = await active.query(
     `
       SELECT TOP 1
@@ -74,9 +94,9 @@ async function getTaskById(taskId, companyId, executor) {
       FROM tasks t
       LEFT JOIN users u ON u.user_id = t.assigned_to
       LEFT JOIN users creator ON creator.user_id = t.created_by
-      WHERE t.task_id = ? AND t.company_id = ?
+      WHERE ${conditions.join(" AND ")}
     `,
-    [taskId, companyId]
+    params
   );
   return rows[0] || null;
 }

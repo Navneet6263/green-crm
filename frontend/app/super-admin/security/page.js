@@ -8,7 +8,7 @@ export default function SuperAdminSecurityPage() {
     <WorkspacePage
       title="Security"
       eyebrow="Safety Controls"
-      allowedRoles={["super-admin"]}
+      allowedRoles={["super-admin", "platform-admin"]}
       requestBuilder={() => [{ key: "safety", path: "/super-admin/safety-status" }]}
       heroStats={({ data }) => [
         { label: "Super Admins", value: data.safety?.super_admin_count || 0, color: "#a78bfa" },

@@ -1,41 +1,43 @@
 import Link from "next/link";
 
 const previewMetrics = [
-  { label: "Pipeline", value: "INR 4.8Cr" },
-  { label: "Active Teams", value: "12" },
-  { label: "Unread Alerts", value: "28" },
+  { label: "Active Leads", value: "148" },
+  { label: "Teams Live", value: "07" },
+  { label: "Reply Time", value: "9m" },
 ];
 
 const roleSignals = [
-  { title: "Super Admin", text: "Tenant launch, platform safety, and access governance." },
-  { title: "Admin", text: "Company control across leads, team, products, and support." },
-  { title: "Support", text: "Inbox, escalations, and unread notifications from one surface." },
+  { title: "Admin View", text: "Company setup, user access, and product control from one place." },
+  { title: "Sales View", text: "Warm leads, follow-ups, pipeline stages, and faster owner visibility." },
+  { title: "Support View", text: "Notifications, tasks, and action queues without a noisy dashboard." },
 ];
 
 export default function LandingHero() {
   return (
-    <section className="landing-hero">
-      <div className="hero-stage-premium">
-        <div className="hero-stage-copy">
-          <span className="eyebrow large">GreenCRM Control Room</span>
-          <h1>One serious CRM workspace for sales, support, admins, and platform ops.</h1>
+    <section className="landing-hero cloud-hero">
+      <div className="cloud-hero-panel">
+        <div className="cloud-hero-copy">
+          <span className="eyebrow large">Cloud Weather Workspace</span>
+          <h1>Your CRM, Your Rules</h1>
           <p>
-            Role-aware dashboards, tenant-safe data, workflow visibility, notifications, and company onboarding
-            built into one premium operating layer.
+            GreenCRM gives your company a calmer sky-blue workspace for leads, tasks, onboarding, access control, and
+            role-based dashboards without the heavy dark look.
           </p>
 
-          <div className="hero-actions-inline">
-            <Link href="/register" className="button primary">
-              Launch Workspace
-            </Link>
-            <Link href="/login" className="button ghost">
-              View CRM
+          <div className="cloud-hero-actions">
+            <Link href="/login" className="button primary">
+              Get Start
             </Link>
           </div>
 
-          <div className="hero-proof-strip">
+          <div className="cloud-hero-inline">
+            <span>Need a new workspace?</span>
+            <Link href="/register">Create company account</Link>
+          </div>
+
+          <div className="cloud-proof-strip">
             {previewMetrics.map((item) => (
-              <article className="hero-proof-card" key={item.label}>
+              <article className="cloud-proof-card" key={item.label}>
                 <span>{item.label}</span>
                 <strong>{item.value}</strong>
               </article>
@@ -43,88 +45,56 @@ export default function LandingHero() {
           </div>
         </div>
 
-        <div className="hero-stage-visual">
-          <div className="hero-console">
-            <div className="hero-console-topbar">
-              <div className="hero-console-brand">
-                <span className="hero-console-logo">G</span>
-                <div>
-                  <strong>GreenCRM</strong>
-                  <span>Premium command center</span>
-                </div>
-              </div>
-              <div className="hero-console-actions">
-                <span>Live alerts</span>
-                <span className="hero-console-badge">28 unread</span>
-              </div>
+        <div className="cloud-hero-visual">
+          <div className="cloud-scene">
+            <div className="cloud-scene-topbar">
+              <span>Live company onboarding</span>
+              <span>Skyline mode</span>
             </div>
 
-            <div className="hero-console-grid">
-              <aside className="hero-console-sidebar">
-                <span>Dashboard</span>
-                <span>Companies</span>
-                <span>Users</span>
-                <span>Notifications</span>
-                <span>Support</span>
-              </aside>
-
-              <div className="hero-console-main">
-                <div className="hero-console-stats">
-                  <article>
-                    <span>Today</span>
-                    <strong>156 leads</strong>
-                  </article>
-                  <article>
-                    <span>Won</span>
-                    <strong>32 deals</strong>
-                  </article>
-                  <article>
-                    <span>Support</span>
-                    <strong>11 pending</strong>
-                  </article>
-                </div>
-
-                <div className="hero-console-panels">
-                  <section className="hero-mini-panel">
-                    <div className="hero-mini-header">
-                      <strong>Notification Center</strong>
-                      <span>Polling now</span>
-                    </div>
-                    <div className="hero-mini-list">
-                      <div>
-                        <strong>Lead reassigned to support</strong>
-                        <span>2 mins ago</span>
-                      </div>
-                      <div>
-                        <strong>Legal docs uploaded</strong>
-                        <span>7 mins ago</span>
-                      </div>
-                      <div>
-                        <strong>Finance invoice pending</strong>
-                        <span>12 mins ago</span>
-                      </div>
-                    </div>
-                  </section>
-
-                  <section className="hero-mini-panel accent">
-                    <div className="hero-mini-header">
-                      <strong>Access Flow</strong>
-                      <span>Super admin</span>
-                    </div>
-                    <div className="hero-mini-timeline">
-                      <span>Create company</span>
-                      <span>Create admin</span>
-                      <span>Admin builds support team</span>
-                    </div>
-                  </section>
-                </div>
+            <div className="cloud-scene-dashboard">
+              <div className="cloud-scene-stat major">
+                <span>Morning overview</span>
+                <strong>142 leads moving</strong>
+                <p>Assignments, reminders, and product tags update in one clean board.</p>
               </div>
+
+              <div className="cloud-scene-grid">
+                <article className="cloud-mini-card">
+                  <span>Today</span>
+                  <strong>32 follow-ups</strong>
+                  <div className="cloud-line-chart">
+                    <span />
+                    <span />
+                    <span />
+                    <span />
+                  </div>
+                </article>
+
+                <article className="cloud-mini-card highlight">
+                  <span>Workspace access</span>
+                  <strong>Admin owner live</strong>
+                  <p>Signup captures company name, URL, team details, and owner context.</p>
+                </article>
+              </div>
+
+              <article className="cloud-rule-card">
+                <div className="cloud-rule-lines">
+                  <span />
+                  <span />
+                  <span />
+                </div>
+                <div>
+                  <strong>Your CRM, Your Rules</strong>
+                  <p>Keep every team, lead, and workflow under your company's own structure.</p>
+                </div>
+              </article>
             </div>
           </div>
 
-          <div className="hero-role-stack">
+          <div className="cloud-role-stack">
             {roleSignals.map((item) => (
-              <article className="hero-role-card" key={item.title}>
+              <article className="cloud-role-card" key={item.title}>
                 <strong>{item.title}</strong>
                 <span>{item.text}</span>
               </article>
