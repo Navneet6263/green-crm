@@ -14,6 +14,8 @@ const SOFT_PANEL_CLASS = "rounded-[24px] border border-[#eadfcd] bg-[#fffaf1] p-
 const INPUT_CLASS = "w-full rounded-[18px] border border-[#eadfcd] bg-white px-4 py-3 text-sm text-[#060710] outline-none transition placeholder:text-[#9c8e76] focus:border-[#d7b258] focus:ring-4 focus:ring-[#f6ead0]";
 const PRIMARY_BUTTON_CLASS = "inline-flex min-h-[46px] items-center justify-center gap-2 rounded-[18px] border border-[#d7b258] bg-[#f3dfab] px-4 py-2.5 text-sm font-semibold text-[#060710] shadow-[0_16px_30px_rgba(203,169,82,0.18)] transition hover:-translate-y-0.5 hover:bg-[#efd48f] disabled:cursor-not-allowed disabled:opacity-60";
 const GHOST_BUTTON_CLASS = "inline-flex min-h-[46px] items-center justify-center gap-2 rounded-[18px] border border-[#eadfcd] bg-white px-4 py-2.5 text-sm font-semibold text-[#5d503c] transition hover:-translate-y-0.5 hover:text-[#060710] disabled:cursor-not-allowed disabled:opacity-60";
+const ACTION_CARD_PRIMARY = "flex min-h-[74px] items-center gap-3 rounded-[22px] border border-[#d7b258] bg-[#f3dfab] px-4 py-4 text-left text-[#060710] shadow-[0_16px_30px_rgba(203,169,82,0.18)] transition hover:-translate-y-0.5 hover:bg-[#efd48f]";
+const ACTION_CARD_GHOST = "flex min-h-[74px] items-center gap-3 rounded-[22px] border border-white/10 bg-white px-4 py-4 text-left text-[#060710] transition hover:-translate-y-0.5 hover:bg-[#f8f3e7]";
 const KICKER_CLASS = "text-[10px] font-black uppercase tracking-[0.28em] text-[#9a886d]";
 const HERO_PANEL_CLASS = "rounded-[36px] border border-[#eadfcd] bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.98),_rgba(250,241,221,0.98)_44%,_rgba(245,231,193,0.98)_100%)] p-6 shadow-[0_24px_70px_rgba(79,58,22,0.08)] md:p-8";
 const DARK_PANEL_CLASS = "rounded-[34px] border border-[#1d1a12] bg-[linear-gradient(155deg,#10111d_0%,#171a28_56%,#25212d_100%)] p-6 text-white shadow-[0_24px_80px_rgba(6,7,16,0.3)] md:p-7";
@@ -62,6 +64,31 @@ function initials(value = "Lead") {
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase() || "")
     .join("") || "L";
+}
+
+function EditActionCard({ href, onClick, title, copy, primary = false, children }) {
+  const className = primary ? ACTION_CARD_PRIMARY : ACTION_CARD_GHOST;
+  const content = (
+    <>
+      <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl ${primary ? "bg-[#10111d] text-white" : "bg-[#f6efe2] text-[#8d6e27]"}`}>
+        {children}
+      </span>
+      <span className="min-w-0 flex-1">
+        <strong className="block text-sm font-semibold">{title}</strong>
+        <span className="mt-1 block text-xs text-[#6f614c]">{copy}</span>
+      </span>
+    </>
+  );
+
+  if (href) {
+    return <Link href={href} className={className}>{content}</Link>;
+  }
+
+  return (
+    <button className={className} type="button" onClick={onClick}>
+      {content}
+    </button>
+  );
 }
 
 export default function EditLeadPage() {
@@ -278,14 +305,22 @@ export default function EditLeadPage() {
                 ))}
               </div>
 
-              <div className="mt-8 flex flex-wrap gap-3">
-                <Link href={`/leads/${params.id}`} className={GHOST_BUTTON_CLASS}>
-                  <DashboardIcon name="leads" className="h-4 w-4" />
-                  View Lead
-                </Link>
-                <button className={GHOST_BUTTON_CLASS} type="button" onClick={() => router.back()}>
-                  Cancel
-                </button>
+              <div className="mt-8 grid gap-3 sm:grid-cols-2">
+                <EditActionCard
+                  primary
+                  href={`/leads/${params.id}`}
+                  title="View Current Lead"
+                  copy="Open the live detail page before saving."
+                >
+                  <DashboardIcon name="leads" className="h-5 w-5" />
+                </EditActionCard>
+                <EditActionCard
+                  onClick={() => router.back()}
+                  title="Back to Workspace"
+                  copy="Return without leaving this edit context abruptly."
+                >
+                  <DashboardIcon name="tasks" className="h-5 w-5" />
+                </EditActionCard>
               </div>
             </article>
           </div>
@@ -398,9 +433,11 @@ export default function EditLeadPage() {
 
                 <div className="mt-5 flex flex-wrap justify-end gap-3">
                   <button className={GHOST_BUTTON_CLASS} type="button" onClick={() => router.back()}>
+                    <DashboardIcon name="workflow" className="h-4 w-4" />
                     Cancel
                   </button>
                   <button className={PRIMARY_BUTTON_CLASS} type="submit" disabled={saving || (requiresChangeNote && !changeNote.trim())}>
+                    <DashboardIcon name="settings" className="h-4 w-4" />
                     {saving ? "Saving..." : "Save Changes"}
                   </button>
                 </div>

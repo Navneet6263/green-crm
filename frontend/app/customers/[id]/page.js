@@ -283,7 +283,12 @@ export default function CustomerDetailPage() {
                     Email Workspace
                   </Link>
                   <a className={GHOST_BUTTON_CLASS} href={`tel:${String(customer.phone || "").replace(/[^\d+]/g, "")}`}>
-                    <DashboardIcon name="support" className="h-4 w-4" />
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M5 12a7 7 0 0 1 14 0" />
+                      <path d="M5 12v3a2 2 0 0 0 2 2h2v-5H7a2 2 0 0 0-2 2Z" />
+                      <path d="M19 12v3a2 2 0 0 1-2 2h-2v-5h2a2 2 0 0 1 2 2Z" />
+                      <path d="M9 18a3 3 0 0 0 6 0" />
+                    </svg>
                     Call Customer
                   </a>
                 </div>

@@ -226,19 +226,8 @@ function SalesDashboardView({ data, error, loading }) {
             </div>
           ) : (
             <div className="space-y-6">
-              <header className="grid gap-5 xl:grid-cols-[1.25fr_0.75fr] xl:items-start">
-                <div className="space-y-4">
-                  <div className="space-y-3">
-                    <h2 className="max-w-4xl text-4xl font-semibold tracking-tight text-[#060710] md:text-[3.25rem] md:leading-[1.02]">
-                      Sales & lead management, shaped into one cleaner daily cockpit.
-                    </h2>
-                    <p className="max-w-3xl text-sm leading-7 text-[#746853] md:text-base">
-                      Keep lead movement, reminders, task pressure, and deal visibility inside one premium workspace without the old dashboard clutter.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="space-y-4 xl:justify-self-end xl:w-full xl:max-w-[520px]">
+              <header className="flex justify-end">
+                <div className="space-y-4 w-full xl:max-w-[520px]">
                   <label className="flex items-center gap-2 rounded-[24px] border border-[#eadfcd] bg-white/88 px-4 py-3 text-sm text-[#6f614c] shadow-[0_10px_22px_rgba(79,58,22,0.05)]">
                     <DashboardIcon name="leads" className="h-4 w-4 text-[#8f816a]" />
                     <input

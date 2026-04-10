@@ -119,7 +119,7 @@ function SidebarNavItem({ item, active }) {
         "group flex items-center gap-3 rounded-[22px] px-3 py-3 text-sm font-semibold transition",
         active
           ? "bg-[#f3e1ae] text-[#060710] shadow-[0_14px_28px_rgba(203,169,82,0.22)]"
-          : "text-[#5d503c] hover:bg-white/80 hover:text-[#060710]"
+          : "text-[#3d3529] hover:bg-white/80 hover:text-[#060710]"
       )}
     >
       <span
@@ -133,7 +133,7 @@ function SidebarNavItem({ item, active }) {
         <DashboardIcon name={item.icon} className="h-4 w-4" />
       </span>
       <span className="min-w-0 flex-1">
-        <strong>{item.label}</strong>
+        <span className={active ? "font-semibold" : "font-medium"}>{item.label}</span>
       </span>
       {active ? <span className="h-2.5 w-2.5 rounded-full bg-[#cba952]" /> : null}
     </Link>

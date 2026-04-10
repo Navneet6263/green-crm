@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 
 import DashboardShell from "../../../components/dashboard/DashboardShell";
+import DashboardIcon from "../../../components/dashboard/icons";
 import { API_BASE, apiRequest } from "../../../lib/api";
 import { loadSession } from "../../../lib/session";
 
@@ -19,6 +20,8 @@ const SOFT_PANEL_CLASS = "rounded-[24px] border border-[#eadfcd] bg-[#fffaf1] p-
 const INPUT_CLASS = "w-full rounded-[18px] border border-[#eadfcd] bg-white px-4 py-3 text-sm text-[#060710] outline-none transition placeholder:text-[#9c8e76] focus:border-[#d7b258] focus:ring-4 focus:ring-[#f6ead0]";
 const PRIMARY_BUTTON_CLASS = "inline-flex min-h-[46px] items-center justify-center gap-2 rounded-[18px] border border-[#d7b258] bg-[#f3dfab] px-4 py-2.5 text-sm font-semibold text-[#060710] shadow-[0_16px_30px_rgba(203,169,82,0.18)] transition hover:-translate-y-0.5 hover:bg-[#efd48f] disabled:cursor-not-allowed disabled:opacity-60";
 const GHOST_BUTTON_CLASS = "inline-flex min-h-[46px] items-center justify-center gap-2 rounded-[18px] border border-[#eadfcd] bg-white px-4 py-2.5 text-sm font-semibold text-[#5d503c] transition hover:-translate-y-0.5 hover:text-[#060710] disabled:cursor-not-allowed disabled:opacity-60";
+const DARK_ACTION_PRIMARY = "flex min-h-[74px] items-center gap-3 rounded-[22px] border border-[#d7b258] bg-[#f3dfab] px-4 py-4 text-left text-[#060710] shadow-[0_16px_30px_rgba(203,169,82,0.18)] transition hover:-translate-y-0.5 hover:bg-[#efd48f] disabled:cursor-not-allowed disabled:opacity-60";
+const DARK_ACTION_GHOST = "flex min-h-[74px] items-center gap-3 rounded-[22px] border border-white/10 bg-[#060710] px-4 py-4 text-left text-white transition hover:-translate-y-0.5 hover:bg-[#1a1b2e]";
 const KICKER_CLASS = "text-[10px] font-black uppercase tracking-[0.28em] text-[#9a886d]";
 const HERO_PANEL_CLASS = "rounded-[36px] border border-[#eadfcd] bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.98),_rgba(250,241,221,0.98)_44%,_rgba(245,231,193,0.98)_100%)] p-6 shadow-[0_24px_70px_rgba(79,58,22,0.08)] md:p-8";
 const DARK_PANEL_CLASS = "rounded-[34px] border border-[#1d1a12] bg-[linear-gradient(155deg,#10111d_0%,#171a28_56%,#25212d_100%)] p-6 text-white shadow-[0_24px_80px_rgba(6,7,16,0.3)] md:p-7";
@@ -61,6 +64,31 @@ function DetailCell({ label, value, className = "" }) {
       <span className={KICKER_CLASS}>{label}</span>
       <strong className="mt-3 block text-sm leading-6 text-[#060710]">{value || "--"}</strong>
     </div>
+  );
+}
+
+function ActionCard({ href, onClick, disabled = false, title, copy, primary = false, children }) {
+  const className = primary ? DARK_ACTION_PRIMARY : DARK_ACTION_GHOST;
+  const content = (
+    <>
+      <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl ${primary ? "bg-[#10111d] text-white" : "bg-white/15 text-white"}`}>
+        {children}
+      </span>
+      <span className="min-w-0 flex-1">
+        <strong className="block text-sm font-semibold">{title}</strong>
+        <span className="mt-1 block text-xs text-white/60">{copy}</span>
+      </span>
+    </>
+  );
+
+  if (href) {
+    return <Link href={href} className={className}>{content}</Link>;
+  }
+
+  return (
+    <button className={className} type="button" onClick={onClick} disabled={disabled}>
+      {content}
+    </button>
   );
 }
 
@@ -245,18 +273,41 @@ export default function LeadDetailPage() {
                   </div>
 
                   <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                    <button className={PRIMARY_BUTTON_CLASS} type="button" onClick={() => logQuick("call", `Called ${leadName}`, `tel:${String(lead.phone || "").replace(/[^\d+]/g, "")}`)} disabled={!lead.phone}>
-                      Call Lead
-                    </button>
-                    <Link href={`/communications?entity=lead&id=${lead.lead_id}`} className={GHOST_BUTTON_CLASS}>
-                      Email Workspace
-                    </Link>
-                    <Link href={`/leads/${lead.lead_id}/edit`} className={GHOST_BUTTON_CLASS}>
-                      Edit Lead
-                    </Link>
-                    <button className={GHOST_BUTTON_CLASS} type="button" onClick={() => router.push("/tasks")}>
-                      Task Desk
-                    </button>
+                    <ActionCard
+                      primary
+                      title="Call Lead"
+                      copy={lead.phone ? "Jump into the contact number directly." : "Phone not available yet."}
+                      onClick={() => logQuick("call", `Called ${leadName}`, `tel:${String(lead.phone || "").replace(/[^\d+]/g, "")}`)}
+                      disabled={!lead.phone}
+                    >
+                      <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M5 12a7 7 0 0 1 14 0" />
+                        <path d="M5 12v3a2 2 0 0 0 2 2h2v-5H7a2 2 0 0 0-2 2Z" />
+                        <path d="M19 12v3a2 2 0 0 1-2 2h-2v-5h2a2 2 0 0 1 2 2Z" />
+                        <path d="M9 18a3 3 0 0 0 6 0" />
+                      </svg>
+                    </ActionCard>
+                    <ActionCard
+                      href={`/communications?entity=lead&id=${lead.lead_id}`}
+                      title="Email Workspace"
+                      copy="Open drafts, notes, and outreach context."
+                    >
+                      <DashboardIcon name="message" className="h-5 w-5" />
+                    </ActionCard>
+                    <ActionCard
+                      href={`/leads/${lead.lead_id}/edit`}
+                      title="Edit Lead"
+                      copy="Update commercial data and workflow fields."
+                    >
+                      <DashboardIcon name="settings" className="h-5 w-5" />
+                    </ActionCard>
+                    <ActionCard
+                      title="Task Desk"
+                      copy="Move into the full task workspace."
+                      onClick={() => router.push("/tasks")}
+                    >
+                      <DashboardIcon name="tasks" className="h-5 w-5" />
+                    </ActionCard>
                   </div>
                 </article>
 
