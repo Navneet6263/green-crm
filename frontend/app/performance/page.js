@@ -16,6 +16,15 @@ const ROLE_TONE = {
   "finance-team": "bg-[#fff4d9] text-[#8d6e27]",
   viewer: "bg-[#f6efe2] text-[#5d503c]",
 };
+const STATUS_TONE = {
+  new: "bg-[#eef4ff] text-[#2563eb] ring-[#d7e4ff]",
+  contacted: "bg-[#fff4d9] text-[#8d6e27] ring-[#f0dfaa]",
+  qualified: "bg-[#ebf8ee] text-[#217346] ring-[#ccebd7]",
+  negotiation: "bg-[#fff2e8] text-[#b4681f] ring-[#f1ddc8]",
+  won: "bg-[#e8f8ee] text-[#1f7a46] ring-[#c9e7d7]",
+  "closed-won": "bg-[#e8f8ee] text-[#1f7a46] ring-[#c9e7d7]",
+  "closed-lost": "bg-[#fbe9e7] text-[#b85a3f] ring-[#f0cfc8]",
+};
 
 function compact(value) {
   const num = Number(value || 0);
@@ -68,10 +77,9 @@ export default function PerformancePage() {
       hideTitle
       allowedRoles={["manager", "admin"]}
       requestBuilder={() => [
-        { key: "summary", path: "/dashboard/summary" },
-        { key: "users", path: "/auth/users?page_size=120" },
-        { key: "tasks", path: "/tasks?page_size=120" },
-        { key: "leads", path: "/leads?page_size=120" },
+        { key: "users", path: "/users?page_size=1000&analytics=1" },
+        { key: "tasks", path: "/tasks?page_size=1000&analytics=1" },
+        { key: "leads", path: "/leads?page_size=1000&analytics=1" },
       ]}
       heroStats={() => []}
     >
@@ -185,7 +193,7 @@ export default function PerformancePage() {
                         </span>
                         <div className="space-y-2">
                           <h2 className="max-w-4xl text-[2.3rem] font-semibold leading-[1.02] tracking-tight text-[#060710] md:text-[3.2rem]">
-                            Read team output, ownership load, and execution slippage from one premium review board.
+                            Review team performance, lead conversions, and task completion across your team.
                           </h2>
                           <p className="max-w-2xl text-sm leading-7 text-[#746853] md:text-base">
                             Reps, tasks, wins, overdue movement, and stage depth all stay visible without the older stacked performance view.
@@ -232,11 +240,11 @@ export default function PerformancePage() {
                             </div>
                           </div>
                           <div className="grid gap-3 sm:grid-cols-2">
-                            <Link href="/leads" className="inline-flex min-h-[46px] items-center justify-center gap-2 rounded-[18px] border border-[#d7b258] bg-[#f3dfab] px-4 py-2.5 text-sm font-semibold text-[#060710] shadow-[0_16px_30px_rgba(203,169,82,0.18)] transition hover:-translate-y-0.5 hover:bg-[#efd48f]">
+                            <Link prefetch={false} href="/leads" className="inline-flex min-h-[46px] items-center justify-center gap-2 rounded-[18px] border border-[#d7b258] bg-[#f3dfab] px-4 py-2.5 text-sm font-semibold text-[#060710] shadow-[0_16px_30px_rgba(203,169,82,0.18)] transition hover:-translate-y-0.5 hover:bg-[#efd48f]">
                               <DashboardIcon name="leads" className="h-4 w-4" />
                               Open Leads
                             </Link>
-                            <Link href="/tasks" className="inline-flex min-h-[46px] items-center justify-center gap-2 rounded-[18px] border border-[#eadfcd] bg-white px-4 py-2.5 text-sm font-semibold text-[#5d503c] transition hover:-translate-y-0.5 hover:text-[#060710]">
+                            <Link prefetch={false} href="/tasks" className="inline-flex min-h-[46px] items-center justify-center gap-2 rounded-[18px] border border-[#eadfcd] bg-white px-4 py-2.5 text-sm font-semibold text-[#5d503c] transition hover:-translate-y-0.5 hover:text-[#060710]">
                               <DashboardIcon name="tasks" className="h-4 w-4" />
                               Open Tasks
                             </Link>
@@ -336,7 +344,7 @@ export default function PerformancePage() {
                     </div>
                     <div className="space-y-3">
                       {visibleLeads.length ? visibleLeads.slice(0, 6).map((lead) => (
-                        <Link key={lead.lead_id} href={`/leads/${lead.lead_id}`} className="block rounded-[24px] border border-[#eadfcd] bg-[#fffaf1] px-4 py-4 transition hover:-translate-y-0.5 hover:border-[#d7b258] hover:bg-white">
+                        <Link prefetch={false} key={lead.lead_id} href={`/leads/${lead.lead_id}`} className="block rounded-[24px] border border-[#eadfcd] bg-[#fffaf1] px-4 py-4 transition hover:-translate-y-0.5 hover:border-[#d7b258] hover:bg-white">
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
                               <p className="truncate text-sm font-semibold text-[#060710]">{lead.company_name || "Untitled lead"}</p>

@@ -662,9 +662,9 @@ export default function LeadsPage() {
                 </div>
 
                 <div className="flex flex-wrap gap-3">
-                  {canCreate ? <Link href="/leads/new" className={LEAD_PRIMARY_BUTTON_CLASS}><DashboardIcon name="leads" className="h-4 w-4" />Create Lead</Link> : null}
+                  {canCreate ? <Link prefetch={false} href="/leads/new" className={LEAD_PRIMARY_BUTTON_CLASS}><DashboardIcon name="leads" className="h-4 w-4" />Create Lead</Link> : null}
                   {canCreate ? <button className={LEAD_GHOST_BUTTON_CLASS} type="button" onClick={() => setShowBulkUpload((current) => !current)}><DashboardIcon name="analytics" className="h-4 w-4" />{showBulkUpload ? "Hide Bulk Upload" : "Bulk Upload"}</button> : null}
-                  <Link href="/leads/history" className={LEAD_GHOST_BUTTON_CLASS}><DashboardIcon name="analytics" className="h-4 w-4" />Lead History</Link>
+                  <Link prefetch={false} href="/leads/history" className={LEAD_GHOST_BUTTON_CLASS}><DashboardIcon name="analytics" className="h-4 w-4" />Lead History</Link>
                 </div>
               </div>
             </div>
@@ -1124,10 +1124,10 @@ export default function LeadsPage() {
                           ) : null}
 
                           <div className="flex flex-wrap gap-3">
-                            <Link href={`/leads/${selectedLead.lead_id}`} className={LEAD_GHOST_BUTTON_CLASS}>
+                            <Link prefetch={false} href={`/leads/${selectedLead.lead_id}`} className={LEAD_GHOST_BUTTON_CLASS}>
                               View Lead
                             </Link>
-                            {canEdit ? <Link href={`/leads/${selectedLead.lead_id}/edit`} className={LEAD_GHOST_BUTTON_CLASS}>Edit Lead</Link> : null}
+                            {canEdit ? <Link prefetch={false} href={`/leads/${selectedLead.lead_id}/edit`} className={LEAD_GHOST_BUTTON_CLASS}>Edit Lead</Link> : null}
                           </div>
 
                           {canTransferRow ? (

@@ -252,6 +252,7 @@ export default function DashboardShell({ session, children, title, heroStats = [
   useEffect(() => {
     let ignore = false;
     let intervalId;
+    let initialLoadTimeout;
 
     async function loadNotifications() {
       if (!session?.token) {
@@ -281,11 +282,14 @@ export default function DashboardShell({ session, children, title, heroStats = [
       }
     }
 
-    loadNotifications();
-    intervalId = setInterval(loadNotifications, 30000);
+    initialLoadTimeout = setTimeout(() => {
+      loadNotifications();
+      intervalId = setInterval(loadNotifications, 30000);
+    }, 1200);
 
     return () => {
       ignore = true;
+      clearTimeout(initialLoadTimeout);
       clearInterval(intervalId);
     };
   }, [session?.token]);
@@ -398,7 +402,7 @@ export default function DashboardShell({ session, children, title, heroStats = [
         )}
       >
         <div className="flex items-center justify-between gap-3">
-          <Link href={ROLE_HOME_ROUTE[role] || "/"} className="flex items-center gap-3">
+          <Link href={ROLE_HOME_ROUTE[role] || "/"} prefetch={false} className="flex items-center gap-3">
             <span className="grid h-12 w-12 place-items-center rounded-2xl bg-[#060710] text-lg font-black text-white shadow-[0_16px_28px_rgba(6,7,16,0.2)]">
               G
             </span>
@@ -448,6 +452,7 @@ export default function DashboardShell({ session, children, title, heroStats = [
               <div className="mt-4 grid gap-2">
                 <Link
                   href="/settings/profile"
+                  prefetch={false}
                   className="inline-flex min-h-[44px] w-full items-center justify-center rounded-2xl border border-[#eadfcd] bg-[#fffaf1] px-3 text-sm font-semibold text-[#5d503c] transition hover:bg-white hover:text-[#060710]"
                 >
                   Profile
@@ -455,6 +460,7 @@ export default function DashboardShell({ session, children, title, heroStats = [
                 {showSeparateSettingsLink ? (
                   <Link
                     href={settingsHref}
+                    prefetch={false}
                     className="inline-flex min-h-[44px] w-full items-center justify-center rounded-2xl border border-[#eadfcd] bg-[#fffaf1] px-3 text-sm font-semibold text-[#5d503c] transition hover:bg-white hover:text-[#060710]"
                   >
                     Settings
@@ -462,6 +468,7 @@ export default function DashboardShell({ session, children, title, heroStats = [
                 ) : null}
                 <Link
                   href="/support"
+                  prefetch={false}
                   className="inline-flex min-h-[44px] w-full items-center justify-center rounded-2xl border border-[#eadfcd] bg-[#fffaf1] px-3 text-sm font-semibold text-[#5d503c] transition hover:bg-white hover:text-[#060710]"
                 >
                   Support
@@ -620,11 +627,11 @@ export default function DashboardShell({ session, children, title, heroStats = [
                       </div>
 
                       <div className="mt-4 grid gap-2">
-                        <Link href="/settings/profile" className="rounded-2xl border border-[#eadfcd] px-4 py-3 text-sm font-semibold text-[#5d503c]" onClick={() => setShowAccountMenu(false)}>Profile</Link>
+                        <Link prefetch={false} href="/settings/profile" className="rounded-2xl border border-[#eadfcd] px-4 py-3 text-sm font-semibold text-[#5d503c]" onClick={() => setShowAccountMenu(false)}>Profile</Link>
                         {showSeparateSettingsLink ? (
-                          <Link href={settingsHref} className="rounded-2xl border border-[#eadfcd] px-4 py-3 text-sm font-semibold text-[#5d503c]" onClick={() => setShowAccountMenu(false)}>Settings</Link>
+                          <Link prefetch={false} href={settingsHref} className="rounded-2xl border border-[#eadfcd] px-4 py-3 text-sm font-semibold text-[#5d503c]" onClick={() => setShowAccountMenu(false)}>Settings</Link>
                         ) : null}
-                        <Link href="/support" className="rounded-2xl border border-[#eadfcd] px-4 py-3 text-sm font-semibold text-[#5d503c]" onClick={() => setShowAccountMenu(false)}>Support</Link>
+                        <Link prefetch={false} href="/support" className="rounded-2xl border border-[#eadfcd] px-4 py-3 text-sm font-semibold text-[#5d503c]" onClick={() => setShowAccountMenu(false)}>Support</Link>
                       </div>
                       <button
                         className="mt-4 inline-flex w-full items-center justify-center rounded-2xl bg-[#060710] px-4 py-3 text-sm font-semibold text-white"
@@ -665,10 +672,10 @@ export default function DashboardShell({ session, children, title, heroStats = [
                   </p>
                 </div>
                 <div className="mt-5 flex flex-wrap gap-3">
-                  <Link href={ROLE_HOME_ROUTE[role] || "/dashboard"} className="inline-flex min-h-[46px] items-center justify-center rounded-2xl bg-[#060710] px-5 text-sm font-semibold text-white">
+                  <Link prefetch={false} href={ROLE_HOME_ROUTE[role] || "/dashboard"} className="inline-flex min-h-[46px] items-center justify-center rounded-2xl bg-[#060710] px-5 text-sm font-semibold text-white">
                     Go to Dashboard
                   </Link>
-                  <Link href="/settings/profile" className="inline-flex min-h-[46px] items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700">
+                  <Link prefetch={false} href="/settings/profile" className="inline-flex min-h-[46px] items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700">
                     Open Profile
                   </Link>
                 </div>

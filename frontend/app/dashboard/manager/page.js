@@ -123,6 +123,7 @@ function ActionLink({ href, icon, title, copy, tone }) {
   return (
     <Link
       href={href}
+      prefetch={false}
       className="flex items-center gap-3 rounded-[24px] border border-[#eadfcd] bg-white/88 px-4 py-4 transition hover:-translate-y-0.5 hover:border-[#d7b258] hover:bg-[#fffaf1] hover:shadow-[0_14px_30px_rgba(79,58,22,0.08)]"
     >
       <span className={`grid h-11 w-11 place-items-center rounded-2xl ${tone}`}>
@@ -252,7 +253,7 @@ export default function ManagerDashboard() {
                         <p className={KICKER}>Stage Momentum</p>
                         <h3 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Pipeline pressure by status</h3>
                       </div>
-                      <Link href="/workflow" className="inline-flex rounded-[16px] border border-[#eadfcd] bg-white px-3 py-2 text-xs font-semibold text-[#5d503c] transition hover:border-[#d7b258] hover:text-[#060710]">
+                      <Link prefetch={false} href="/workflow" className="inline-flex rounded-[16px] border border-[#eadfcd] bg-white px-3 py-2 text-xs font-semibold text-[#5d503c] transition hover:border-[#d7b258] hover:text-[#060710]">
                         Open Workflow
                       </Link>
                     </div>
@@ -269,7 +270,7 @@ export default function ManagerDashboard() {
                         <article key={lead.lead_id} className="rounded-[24px] border border-[#eadfcd] bg-[#fffaf1] px-4 py-4 transition hover:-translate-y-0.5 hover:border-[#d7b258] hover:bg-white">
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
-                              <Link href={`/leads/${lead.lead_id}`} className="truncate text-sm font-semibold text-[#060710] hover:text-[#8d6e27]">
+                              <Link prefetch={false} href={`/leads/${lead.lead_id}`} className="truncate text-sm font-semibold text-[#060710] hover:text-[#8d6e27]">
                                 {lead.company_name || "Untitled lead"}
                               </Link>
                               <p className="mt-1 truncate text-xs text-[#8f816a]">{lead.contact_person || "No contact"} | {lead.assigned_to_name || "Unassigned"}</p>
@@ -282,7 +283,7 @@ export default function ManagerDashboard() {
                           <div className="mt-4 grid gap-3 sm:grid-cols-3 text-sm">
                             <div><p className={KICKER}>Value</p><p className="mt-2 font-semibold text-[#060710]">{money(lead.estimated_value)}</p></div>
                             <div><p className={KICKER}>Source</p><p className="mt-2 font-semibold text-[#060710]">{titleize(lead.lead_source || "unknown")}</p></div>
-                            <div className="space-y-2"><p className={KICKER}>Follow-up</p><p className="mt-2 font-semibold text-[#060710]">{when(lead.follow_up_date, true)}</p><Link href={`/leads/${lead.lead_id}`} className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-semibold text-[#5d503c] hover:border-[#d7b258] hover:text-[#060710]">Open</Link></div>
+                            <div className="space-y-2"><p className={KICKER}>Follow-up</p><p className="mt-2 font-semibold text-[#060710]">{when(lead.follow_up_date, true)}</p><Link prefetch={false} href={`/leads/${lead.lead_id}`} className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-semibold text-[#5d503c] hover:border-[#d7b258] hover:text-[#060710]">Open</Link></div>
                           </div>
                         </article>
                       )) : <div className="rounded-[24px] border border-dashed border-[#ddd0bb] bg-[#fffaf1] px-5 py-12 text-center text-sm text-[#7a6b57]">No coaching leads visible yet.</div>}
@@ -297,7 +298,7 @@ export default function ManagerDashboard() {
                         <p className={KICKER}>Team Load</p>
                         <h3 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Who needs manager attention</h3>
                       </div>
-                      <Link href="/settings/users" className="inline-flex rounded-[16px] border border-[#eadfcd] bg-white px-3 py-2 text-xs font-semibold text-[#5d503c] transition hover:border-[#d7b258] hover:text-[#060710]">
+                      <Link prefetch={false} href="/settings/users" className="inline-flex rounded-[16px] border border-[#eadfcd] bg-white px-3 py-2 text-xs font-semibold text-[#5d503c] transition hover:border-[#d7b258] hover:text-[#060710]">
                         Open Team
                       </Link>
                     </div>
@@ -364,7 +365,7 @@ export default function ManagerDashboard() {
                         <p className={KICKER}>Lead Queue</p>
                         <h3 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Recent team leads</h3>
                       </div>
-                      <Link href="/leads" className="inline-flex rounded-[16px] border border-[#eadfcd] bg-white px-3 py-2 text-xs font-semibold text-[#5d503c] transition hover:border-[#d7b258] hover:text-[#060710]">
+                      <Link prefetch={false} href="/leads" className="inline-flex rounded-[16px] border border-[#eadfcd] bg-white px-3 py-2 text-xs font-semibold text-[#5d503c] transition hover:border-[#d7b258] hover:text-[#060710]">
                         View all
                       </Link>
                     </div>
@@ -375,7 +376,7 @@ export default function ManagerDashboard() {
                             <div className="flex min-w-0 items-center gap-3">
                               <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#10111d] text-sm font-bold text-white">{initials(lead.company_name)}</span>
                               <div className="min-w-0">
-                                <Link href={`/leads/${lead.lead_id}`} className="truncate text-sm font-semibold text-[#060710] hover:text-[#8d6e27]">
+                                <Link prefetch={false} href={`/leads/${lead.lead_id}`} className="truncate text-sm font-semibold text-[#060710] hover:text-[#8d6e27]">
                                   {lead.company_name || "Unnamed lead"}
                                 </Link>
                                 <p className="truncate text-xs text-[#8f816a]">{lead.contact_person || lead.contact_person_name || "No contact on file"}</p>
@@ -389,7 +390,7 @@ export default function ManagerDashboard() {
                           <div className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
                             <div><p className={KICKER}>Value</p><p className="mt-2 font-semibold text-[#060710]">{money(lead.estimated_value)}</p></div>
                             <div><p className={KICKER}>Workflow</p><p className="mt-2 font-semibold text-[#060710]">{titleize(lead.workflow_stage || "sales")}</p></div>
-                            <div className="space-y-2"><p className={KICKER}>Added</p><p className="mt-2 font-semibold text-[#060710]">{when(lead.created_at)}</p><Link href={`/leads/${lead.lead_id}`} className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-semibold text-[#5d503c] hover:border-[#d7b258] hover:text-[#060710]">Open</Link></div>
+                            <div className="space-y-2"><p className={KICKER}>Added</p><p className="mt-2 font-semibold text-[#060710]">{when(lead.created_at)}</p><Link prefetch={false} href={`/leads/${lead.lead_id}`} className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-semibold text-[#5d503c] hover:border-[#d7b258] hover:text-[#060710]">Open</Link></div>
                           </div>
                         </article>
                       )) : <div className="rounded-[24px] border border-dashed border-[#ddd0bb] bg-[#fffaf1] px-5 py-12 text-center text-sm text-[#7a6b57]">No leads loaded yet.</div>}

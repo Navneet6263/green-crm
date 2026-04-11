@@ -255,6 +255,7 @@ function SalesDashboardView({ data, error, loading, session }) {
                       <Link
                         key={action.href}
                         href={action.href}
+                        prefetch={false}
                         className="flex items-center gap-2 rounded-[24px] border border-[#eadfcd] bg-white/88 px-3 py-3 text-sm font-semibold text-[#5d503c] transition hover:-translate-y-0.5 hover:text-[#060710]"
                       >
                         <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#f7f0e2] text-[#8d6e27]">
@@ -304,7 +305,7 @@ function SalesDashboardView({ data, error, loading, session }) {
                       <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#8f816a]">Important Updates</p>
                       <h3 className="mt-2 text-lg font-semibold text-[#060710]">Your queue today</h3>
                     </div>
-                    <Link href="/tasks" className="text-xs font-semibold text-[#8d6e27] hover:text-[#060710]">
+                    <Link prefetch={false} href="/tasks" className="text-xs font-semibold text-[#8d6e27] hover:text-[#060710]">
                       Open tasks
                     </Link>
                   </div>
@@ -342,7 +343,7 @@ function SalesDashboardView({ data, error, loading, session }) {
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <PanelTag>{fmtCompact(filteredLeads.length)} shown</PanelTag>
-                    <Link href="/leads" className="rounded-full border border-[#ddd3c2] bg-white px-4 py-2 text-xs font-semibold text-[#5d503c] hover:text-[#060710]">
+                    <Link prefetch={false} href="/leads" className="rounded-full border border-[#ddd3c2] bg-white px-4 py-2 text-xs font-semibold text-[#5d503c] hover:text-[#060710]">
                       View all
                     </Link>
                   </div>
@@ -365,7 +366,7 @@ function SalesDashboardView({ data, error, loading, session }) {
                           className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1.15fr)_minmax(0,1fr)_minmax(0,1.1fr)] gap-3 px-4 py-4 text-sm transition hover:bg-[#fdf9f0]"
                         >
                           <div className="min-w-0">
-                            <Link href={`/leads/${lead.lead_id}`} className="flex items-center gap-3">
+                            <Link prefetch={false} href={`/leads/${lead.lead_id}`} className="flex items-center gap-3">
                               <span className="grid h-10 w-10 flex-shrink-0 place-items-center rounded-2xl bg-[#f3e1ae] text-sm font-bold text-[#060710]">
                                 {initials(lead.company_name || lead.contact_person)}
                               </span>
@@ -389,7 +390,7 @@ function SalesDashboardView({ data, error, loading, session }) {
                           <div className="py-1 font-semibold text-[#060710]">{fmtCurrency(lead.estimated_value)}</div>
                           <div className="space-y-2 py-1 text-[#6f614c]">
                             <p>{fmtDate(lead.updated_at || lead.created_at, true)}</p>
-                            <Link href={`/leads/${lead.lead_id}`} className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-semibold text-[#5d503c] hover:border-[#d7b258] hover:text-[#060710]">
+                            <Link prefetch={false} href={`/leads/${lead.lead_id}`} className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-semibold text-[#5d503c] hover:border-[#d7b258] hover:text-[#060710]">
                               Open
                             </Link>
                           </div>
