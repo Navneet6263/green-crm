@@ -29,6 +29,10 @@ function pruneRecentResponses() {
   }
 }
 
+function invalidateGetCache() {
+  RECENT_GET_RESPONSES.clear();
+}
+
 function clonePayload(payload) {
   if (payload === null || payload === undefined) {
     return payload;
@@ -93,6 +97,10 @@ export async function apiRequest(path, options = {}) {
         payload: clonePayload(result),
         expiresAt: Date.now() + getDedupeWindowMs(),
       });
+    }
+
+    if (!requestKey) {
+      invalidateGetCache();
     }
 
     return clonePayload(result);

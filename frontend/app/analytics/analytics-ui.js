@@ -134,8 +134,8 @@ export function AnalyticsWorkspace({
           <div className="space-y-5">
             <div>
               <span className="inline-flex rounded-full border border-[#ddd3c2] bg-white/85 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.24em] text-[#7c6d55]">Analytics Desk</span>
-              <h2 className="mt-4 text-[2.2rem] font-semibold tracking-tight text-[#060710] md:text-[3.2rem] md:leading-[1.02]">Lead analytics with a cleaner premium depth view.</h2>
-              <p className="mt-3 max-w-3xl text-sm leading-7 text-[#746853] md:text-base">Range switch, pipeline pulse, source mix, owner load, and a deeper lead inspection rail from one Tailwind workspace.</p>
+              <h2 className="mt-4 text-[2.2rem] font-semibold tracking-tight text-[#060710] md:text-[3.2rem] md:leading-[1.02]">Track pipeline health, source mix, and team performance in real time.</h2>
+              <p className="mt-3 max-w-3xl text-sm leading-7 text-[#746853] md:text-base">Filter by status, owner, source, and time range to uncover what is moving your pipeline forward.</p>
             </div>
             <div className="flex flex-wrap gap-3">
               {deck.topCards.map((item) => <div key={item.label} className="rounded-[22px] border border-[#eadfcd] bg-white/82 px-4 py-4 shadow-[0_10px_24px_rgba(79,58,22,0.05)]"><p className={KICKER}>{item.label}</p><strong className="mt-2 block text-xl font-black text-[#060710]">{item.value}</strong><span className="mt-1 block text-xs text-[#8f816a]">{item.hint}</span></div>)}

@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import WorkspacePage from "../../../components/dashboard/WorkspacePage";
 import DashboardIcon from "../../../components/dashboard/icons";
+import LeadQuickStatusControl from "../../../components/leads/LeadQuickStatusControl";
 
 const PANEL = "rounded-[30px] border border-[#eadfcd] bg-white/84 p-5 shadow-[0_14px_36px_rgba(79,58,22,0.06)] md:p-6";
 const SOFT = "rounded-[24px] border border-[#eadfcd] bg-[#fffaf1] p-4";
@@ -151,7 +152,7 @@ export default function ManagerDashboard() {
       ]}
       heroStats={() => []}
     >
-      {({ data, error, loading }) => {
+      {({ data, error, loading, session, refresh }) => {
         const summary = data?.summary || {};
         const leads = data?.leads?.items || [];
         const users = data?.users?.items || [];
@@ -265,20 +266,25 @@ export default function ManagerDashboard() {
                     </div>
                     <div className="space-y-3">
                       {coachingLeads.length ? coachingLeads.map((lead) => (
-                        <Link key={lead.lead_id} href={`/leads/${lead.lead_id}`} className="block rounded-[24px] border border-[#eadfcd] bg-[#fffaf1] px-4 py-4 transition hover:-translate-y-0.5 hover:border-[#d7b258] hover:bg-white">
+                        <article key={lead.lead_id} className="rounded-[24px] border border-[#eadfcd] bg-[#fffaf1] px-4 py-4 transition hover:-translate-y-0.5 hover:border-[#d7b258] hover:bg-white">
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
-                              <p className="truncate text-sm font-semibold text-[#060710]">{lead.company_name || "Untitled lead"}</p>
+                              <Link href={`/leads/${lead.lead_id}`} className="truncate text-sm font-semibold text-[#060710] hover:text-[#8d6e27]">
+                                {lead.company_name || "Untitled lead"}
+                              </Link>
                               <p className="mt-1 truncate text-xs text-[#8f816a]">{lead.contact_person || "No contact"} | {lead.assigned_to_name || "Unassigned"}</p>
                             </div>
-                            <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ${STATUS_TONE[lead.status] || "bg-[#f6efe2] text-[#5d503c] ring-[#eadfcd]"}`}>{titleize(lead.status || "new")}</span>
+                            <div className="space-y-2 text-right">
+                              <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ${STATUS_TONE[lead.status] || "bg-[#f6efe2] text-[#5d503c] ring-[#eadfcd]"}`}>{titleize(lead.status || "new")}</span>
+                              <LeadQuickStatusControl lead={lead} token={session?.token} onUpdated={() => refresh?.()} />
+                            </div>
                           </div>
                           <div className="mt-4 grid gap-3 sm:grid-cols-3 text-sm">
                             <div><p className={KICKER}>Value</p><p className="mt-2 font-semibold text-[#060710]">{money(lead.estimated_value)}</p></div>
                             <div><p className={KICKER}>Source</p><p className="mt-2 font-semibold text-[#060710]">{titleize(lead.lead_source || "unknown")}</p></div>
-                            <div><p className={KICKER}>Follow-up</p><p className="mt-2 font-semibold text-[#060710]">{when(lead.follow_up_date, true)}</p></div>
+                            <div className="space-y-2"><p className={KICKER}>Follow-up</p><p className="mt-2 font-semibold text-[#060710]">{when(lead.follow_up_date, true)}</p><Link href={`/leads/${lead.lead_id}`} className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-semibold text-[#5d503c] hover:border-[#d7b258] hover:text-[#060710]">Open</Link></div>
                           </div>
-                        </Link>
+                        </article>
                       )) : <div className="rounded-[24px] border border-dashed border-[#ddd0bb] bg-[#fffaf1] px-5 py-12 text-center text-sm text-[#7a6b57]">No coaching leads visible yet.</div>}
                     </div>
                   </section>
@@ -364,23 +370,28 @@ export default function ManagerDashboard() {
                     </div>
                     <div className="grid gap-3">
                       {leads.length ? leads.map((lead) => (
-                        <Link key={lead.lead_id} href={`/leads/${lead.lead_id}`} className="rounded-[24px] border border-[#eadfcd] bg-[#fffaf1] p-4 transition hover:-translate-y-0.5 hover:border-[#d7b258] hover:bg-white">
+                        <article key={lead.lead_id} className="rounded-[24px] border border-[#eadfcd] bg-[#fffaf1] p-4 transition hover:-translate-y-0.5 hover:border-[#d7b258] hover:bg-white">
                           <div className="flex items-start justify-between gap-3">
                             <div className="flex min-w-0 items-center gap-3">
                               <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#10111d] text-sm font-bold text-white">{initials(lead.company_name)}</span>
                               <div className="min-w-0">
-                                <p className="truncate text-sm font-semibold text-[#060710]">{lead.company_name || "Unnamed lead"}</p>
+                                <Link href={`/leads/${lead.lead_id}`} className="truncate text-sm font-semibold text-[#060710] hover:text-[#8d6e27]">
+                                  {lead.company_name || "Unnamed lead"}
+                                </Link>
                                 <p className="truncate text-xs text-[#8f816a]">{lead.contact_person || lead.contact_person_name || "No contact on file"}</p>
                               </div>
                             </div>
-                            <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ${STATUS_TONE[lead.status] || "bg-[#f6efe2] text-[#5d503c] ring-[#eadfcd]"}`}>{titleize(lead.status || "new")}</span>
+                            <div className="space-y-2 text-right">
+                              <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ${STATUS_TONE[lead.status] || "bg-[#f6efe2] text-[#5d503c] ring-[#eadfcd]"}`}>{titleize(lead.status || "new")}</span>
+                              <LeadQuickStatusControl lead={lead} token={session?.token} onUpdated={() => refresh?.()} />
+                            </div>
                           </div>
                           <div className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
                             <div><p className={KICKER}>Value</p><p className="mt-2 font-semibold text-[#060710]">{money(lead.estimated_value)}</p></div>
                             <div><p className={KICKER}>Workflow</p><p className="mt-2 font-semibold text-[#060710]">{titleize(lead.workflow_stage || "sales")}</p></div>
-                            <div><p className={KICKER}>Added</p><p className="mt-2 font-semibold text-[#060710]">{when(lead.created_at)}</p></div>
+                            <div className="space-y-2"><p className={KICKER}>Added</p><p className="mt-2 font-semibold text-[#060710]">{when(lead.created_at)}</p><Link href={`/leads/${lead.lead_id}`} className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-semibold text-[#5d503c] hover:border-[#d7b258] hover:text-[#060710]">Open</Link></div>
                           </div>
-                        </Link>
+                        </article>
                       )) : <div className="rounded-[24px] border border-dashed border-[#ddd0bb] bg-[#fffaf1] px-5 py-12 text-center text-sm text-[#7a6b57]">No leads loaded yet.</div>}
                     </div>
                   </section>

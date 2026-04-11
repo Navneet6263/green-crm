@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import DashboardShell from "../../components/dashboard/DashboardShell";
 import DashboardIcon from "../../components/dashboard/icons";
+import LeadQuickStatusControl from "../../components/leads/LeadQuickStatusControl";
 import { apiRequest } from "../../lib/api";
 import {
   buildLeadBulkImportSheet,
@@ -142,6 +143,40 @@ export default function LeadsPage() {
     setLeads(items);
     setPicked((cur) => cur.filter((id) => items.some((lead) => lead.lead_id === id)));
     setSelectedId((cur) => items.some((lead) => lead.lead_id === cur) ? cur : (items[0]?.lead_id || ""));
+  }
+
+  function mergeUpdatedLead(updatedLead) {
+    if (!updatedLead?.lead_id) return;
+
+    leadPageCacheRef.current.forEach((pageCache) => {
+      pageCache.forEach((entry, pageKey) => {
+        if (!entry?.items?.some((lead) => lead.lead_id === updatedLead.lead_id)) return;
+        pageCache.set(pageKey, {
+          ...entry,
+          items: entry.items.map((lead) => (lead.lead_id === updatedLead.lead_id ? { ...lead, ...updatedLead } : lead)),
+        });
+      });
+    });
+
+    leadFullCacheRef.current.forEach((entry, cacheKey) => {
+      if (!entry?.items?.some((lead) => lead.lead_id === updatedLead.lead_id)) return;
+      leadFullCacheRef.current.set(cacheKey, {
+        ...entry,
+        items: entry.items.map((lead) => (lead.lead_id === updatedLead.lead_id ? { ...lead, ...updatedLead } : lead)),
+      });
+    });
+
+    setLeads((current) =>
+      current.map((lead) => (lead.lead_id === updatedLead.lead_id ? { ...lead, ...updatedLead } : lead))
+    );
+    setSelected((current) =>
+      current?.lead_id === updatedLead.lead_id ? { ...current, ...updatedLead } : current
+    );
+  }
+
+  function handleInlineStatusUpdate(updatedLead) {
+    mergeUpdatedLead(updatedLead);
+    setNotice(`Lead status moved to ${nice(updatedLead.status || "new")}.`);
   }
 
   async function prefetchLeadPage(token, cacheKey, pageNumber, totalPages) {
@@ -992,15 +1027,6 @@ export default function LeadsPage() {
                                     {secondaryName ? <p className="mt-1 text-sm text-[#746853]">{secondaryName}</p> : null}
                                   </div>
                                 </div>
-
-                                <div className="flex flex-wrap gap-2">
-                                  <span className="inline-flex rounded-full px-3 py-1 text-[11px] font-bold" style={{ background: s[0], color: s[1] }}>
-                                    {nice(lead.status)}
-                                  </span>
-                                  <span className="inline-flex rounded-full px-3 py-1 text-[11px] font-bold" style={{ background: p[0], color: p[1] }}>
-                                    {nice(lead.priority || "medium")}
-                                  </span>
-                                </div>
                               </div>
 
                               <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-[#7a6b57]">
@@ -1030,7 +1056,29 @@ export default function LeadsPage() {
                           </button>
                         </div>
 
-                        <div className="flex items-center justify-between gap-3 xl:min-w-[180px] xl:flex-col xl:items-end">
+                        <div className="space-y-3 xl:min-w-[220px] xl:max-w-[240px] xl:self-start">
+                          <div className="flex flex-wrap gap-2 xl:justify-end">
+                            {!canEdit ? (
+                              <span className="inline-flex rounded-full px-3 py-1 text-[11px] font-bold" style={{ background: s[0], color: s[1] }}>
+                                {nice(lead.status)}
+                              </span>
+                            ) : null}
+                            <span className="inline-flex rounded-full px-3 py-1 text-[11px] font-bold" style={{ background: p[0], color: p[1] }}>
+                              {nice(lead.priority || "medium")}
+                            </span>
+                            {canEdit ? (
+                              <LeadQuickStatusControl
+                                lead={selectedLead}
+                                token={session?.token}
+                                onUpdated={handleInlineStatusUpdate}
+                                hideLabel
+                                className="xl:w-[176px]"
+                                selectClassName="min-h-[36px] w-full bg-white/95 pr-8 text-[11px] shadow-none"
+                                notePanelClassName="xl:min-w-[220px]"
+                                placeholder="Why is this lead moving to the new status?"
+                              />
+                            ) : null}
+                          </div>
                           <div className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold ${lead.assigned_to ? "border-[#dce8cf] bg-[#eff9e9] text-[#2a7f43]" : "border-[#eadfcd] bg-white text-[#7c6d55]"}`}>
                             <DashboardIcon name="user" className="h-4 w-4" />
                             <span>{lead.assigned_to_name || "Unassigned"}</span>

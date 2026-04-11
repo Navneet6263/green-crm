@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import WorkspacePage from "../../../components/dashboard/WorkspacePage";
 import DashboardIcon from "../../../components/dashboard/icons";
+import LeadQuickStatusControl from "../../../components/leads/LeadQuickStatusControl";
 
 const STATUS_ORDER = ["new", "contacted", "qualified", "proposal", "negotiation", "closed-won"];
 
@@ -162,10 +163,11 @@ function SalesChart({ items = [] }) {
   );
 }
 
-function SalesDashboardView({ data, error, loading }) {
+function SalesDashboardView({ data, error, loading, session }) {
   const [query, setQuery] = useState("");
   const summary = data?.summary || {};
-  const leads = data?.leads?.items || [];
+  const sourceLeads = data?.leads?.items || [];
+  const [leadRows, setLeadRows] = useState(sourceLeads);
   const tasks = data?.tasks?.items || [];
   const reminders = data?.reminders?.items || [];
   const leadCounts = summary.lead_counts || [];
@@ -174,18 +176,22 @@ function SalesDashboardView({ data, error, loading }) {
   const negotiationLeads = getStatusCount(leadCounts, "proposal") + getStatusCount(leadCounts, "negotiation");
   const closedLeads = getStatusCount(leadCounts, "closed-won");
   const trendSeries = useMemo(() => buildTrendSeries(leadCounts), [leadCounts]);
+  useEffect(() => {
+    setLeadRows(sourceLeads);
+  }, [sourceLeads]);
+
   const filteredLeads = useMemo(() => {
     const term = query.trim().toLowerCase();
     if (!term) {
-      return leads;
+      return leadRows;
     }
 
-    return leads.filter((lead) =>
+    return leadRows.filter((lead) =>
       [lead.company_name, lead.contact_person, lead.email, lead.phone, lead.lead_source, lead.product_name]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(term))
     );
-  }, [leads, query]);
+  }, [leadRows, query]);
   const updates = useMemo(() => {
     const reminderItems = reminders.slice(0, 3).map((item) => ({
       key: item.reminder_id,
@@ -212,6 +218,12 @@ function SalesDashboardView({ data, error, loading }) {
     { label: "Negotiation", value: fmtCompact(negotiationLeads), hint: "Proposal and negotiation stage" },
     { label: "Closed Deals", value: fmtCompact(closedLeads), hint: "Closed-won accounts" },
   ];
+
+  function handleLeadUpdated(updatedLead) {
+    setLeadRows((current) =>
+      current.map((lead) => (lead.lead_id === updatedLead.lead_id ? { ...lead, ...updatedLead } : lead))
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -348,13 +360,12 @@ function SalesDashboardView({ data, error, loading }) {
                   <div className="divide-y divide-[#f0e8da]">
                     {filteredLeads.length ? (
                       filteredLeads.map((lead) => (
-                        <Link
+                        <div
                           key={lead.lead_id}
-                          href={`/leads/${lead.lead_id}`}
-                          className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.1fr)] gap-3 px-4 py-4 text-sm transition hover:bg-[#fdf9f0]"
+                          className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1.15fr)_minmax(0,1fr)_minmax(0,1.1fr)] gap-3 px-4 py-4 text-sm transition hover:bg-[#fdf9f0]"
                         >
                           <div className="min-w-0">
-                            <div className="flex items-center gap-3">
+                            <Link href={`/leads/${lead.lead_id}`} className="flex items-center gap-3">
                               <span className="grid h-10 w-10 flex-shrink-0 place-items-center rounded-2xl bg-[#f3e1ae] text-sm font-bold text-[#060710]">
                                 {initials(lead.company_name || lead.contact_person)}
                               </span>
@@ -362,17 +373,27 @@ function SalesDashboardView({ data, error, loading }) {
                                 <p className="truncate font-semibold text-[#060710]">{lead.company_name || "Unnamed lead"}</p>
                                 <p className="truncate text-xs text-[#8f816a]">{lead.contact_person || "No contact available"}</p>
                               </div>
-                            </div>
+                            </Link>
                           </div>
                           <div className="min-w-0 py-1 text-[#6f614c]">{titleize(lead.lead_source || "Direct")}</div>
-                          <div className="py-1">
+                          <div className="space-y-2 py-1">
                             <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ${STATUS_TONE[lead.status] || "bg-[#f4efe5] text-[#6f614c] ring-[#e6dccb]"}`}>
                               {titleize(lead.status || "new")}
                             </span>
+                            <LeadQuickStatusControl
+                              lead={lead}
+                              token={session?.token}
+                              onUpdated={handleLeadUpdated}
+                            />
                           </div>
                           <div className="py-1 font-semibold text-[#060710]">{fmtCurrency(lead.estimated_value)}</div>
-                          <div className="py-1 text-[#6f614c]">{fmtDate(lead.updated_at || lead.created_at, true)}</div>
-                        </Link>
+                          <div className="space-y-2 py-1 text-[#6f614c]">
+                            <p>{fmtDate(lead.updated_at || lead.created_at, true)}</p>
+                            <Link href={`/leads/${lead.lead_id}`} className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-semibold text-[#5d503c] hover:border-[#d7b258] hover:text-[#060710]">
+                              Open
+                            </Link>
+                          </div>
+                        </div>
                       ))
                     ) : (
                       <div className="px-5 py-14 text-center text-sm text-[#8f816a]">No leads match the current search.</div>
@@ -402,11 +423,12 @@ export default function SalesDashboard() {
         { key: "reminders", path: "/leads/reminders?page_size=5" },
       ]}
     >
-      {({ data, error, loading }) => (
+      {({ data, error, loading, session }) => (
         <SalesDashboardView
           data={data}
           error={error}
           loading={loading}
+          session={session}
         />
       )}
     </WorkspacePage>
