@@ -25,6 +25,15 @@ function buildWhere(filters) {
     params.push(filters.assignedTo);
   }
 
+  if (filters.teamIds) {
+    if (!filters.teamIds.length) {
+      conditions.push("1 = 0");
+    } else {
+      conditions.push(`c.team_id IN (${filters.teamIds.map(() => "?").join(", ")})`);
+      params.push(...filters.teamIds);
+    }
+  }
+
   if (filters.status) {
     conditions.push("c.status = ?");
     params.push(filters.status);
@@ -52,9 +61,12 @@ async function listCustomers(filters, pagination, executor) {
     `
       SELECT
         c.*,
-        u.name AS assigned_to_name
+        u.name AS assigned_to_name,
+        t.name AS team_name,
+        t.code AS team_code
       FROM customers c
       LEFT JOIN users u ON u.user_id = c.assigned_to
+      LEFT JOIN teams t ON t.team_id = c.team_id
       ${whereClause}
       ORDER BY c.created_at DESC
       OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
@@ -82,9 +94,12 @@ async function getCustomerById(customerId, companyId = null, executor) {
     `
       SELECT TOP 1
         c.*,
-        u.name AS assigned_to_name
+        u.name AS assigned_to_name,
+        t.name AS team_name,
+        t.code AS team_code
       FROM customers c
       LEFT JOIN users u ON u.user_id = c.assigned_to
+      LEFT JOIN teams t ON t.team_id = c.team_id
       WHERE ${conditions.join(" AND ")}
     `,
     params
@@ -97,8 +112,8 @@ async function createCustomer(customer, executor) {
   await active.query(
     `
       INSERT INTO customers
-        (customer_id, company_id, name, company_name, email, phone, converted_from_lead_id, total_value, status, assigned_to, last_interaction, next_follow_up, notes, is_active)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+        (customer_id, company_id, name, company_name, email, phone, converted_from_lead_id, total_value, status, team_id, assigned_to, last_interaction, next_follow_up, notes, is_active)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
     `,
     [
       customer.customer_id,
@@ -110,6 +125,7 @@ async function createCustomer(customer, executor) {
       customer.converted_from_lead_id || null,
       customer.total_value || 0,
       customer.status || "active",
+      customer.team_id || null,
       customer.assigned_to || null,
       customer.last_interaction || null,
       customer.next_follow_up || null,
@@ -133,6 +149,7 @@ async function updateCustomer(customerId, companyId, updates, executor) {
     "converted_from_lead_id",
     "total_value",
     "status",
+    "team_id",
     "assigned_to",
     "last_interaction",
     "next_follow_up",

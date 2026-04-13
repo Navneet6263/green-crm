@@ -1,6 +1,7 @@
 "use client";
 
 import WorkspacePage from "../../components/dashboard/WorkspacePage";
+import { teamBadgeLabel } from "../../lib/teamScope";
 
 const PANEL_CLASS = "rounded-[30px] border border-[#eadfcd] bg-white/82 p-5 shadow-[0_14px_36px_rgba(79,58,22,0.06)] md:p-6";
 const KICKER_CLASS = "text-[10px] font-black uppercase tracking-[0.28em] text-[#9a886d]";
@@ -31,7 +32,7 @@ export default function TasksPage() {
       title="Tasks"
       eyebrow="Execution Queue"
       hideTitle
-      allowedRoles={["super-admin", "admin", "manager", "sales", "marketing", "legal-team", "finance-team", "support"]}
+      allowedRoles={["super-admin", "platform-admin", "platform-manager", "admin", "manager", "sales", "marketing", "legal-team", "finance-team", "support"]}
       requestBuilder={() => [{ key: "tasks", path: "/tasks?page_size=20" }]}
       heroStats={() => []}
     >
@@ -53,10 +54,10 @@ export default function TasksPage() {
                       Task Board
                     </span>
                     <h2 className="text-4xl font-semibold tracking-tight text-[#060710] md:text-[3rem] md:leading-[1.04]">
-                      Daily execution queue, cleaned into one sharper task surface.
+                      Daily execution queue for live follow-up work.
                     </h2>
                     <p className="max-w-3xl text-sm leading-7 text-[#746853] md:text-base">
-                      Review pending work, catch overdue follow-ups, and keep the team moving without the old dashboard clutter.
+                      Pending tasks already arrive team-scoped from the CRM backend, so this page can stay focused on due work and ownership.
                     </p>
                     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                       {[
@@ -97,6 +98,11 @@ export default function TasksPage() {
                               <span className={`inline-flex rounded-full px-3 py-1 text-[11px] font-bold ${task.status === "done" ? "bg-emerald-100 text-emerald-700" : task.status === "pending" ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-700"}`}>
                                 {nice(task.status || "pending")}
                               </span>
+                              {teamBadgeLabel(task) ? (
+                                <span className="inline-flex rounded-full border border-[#eadfcd] bg-[#fff4d9] px-3 py-1 text-[11px] font-bold text-[#8d6e27]">
+                                  {teamBadgeLabel(task)}
+                                </span>
+                              ) : null}
                             </div>
                             <h4 className="text-lg font-semibold text-[#060710]">{task.title || "Untitled task"}</h4>
                             <p className="text-sm text-[#746853]">{task.notes || "No task notes added yet."}</p>
@@ -104,13 +110,14 @@ export default function TasksPage() {
                           <div className="grid gap-3 text-sm text-[#7a6b57] md:min-w-[220px]">
                             <div><strong className="block text-[#060710]">Due</strong><span>{when(task.due_date)}</span></div>
                             <div><strong className="block text-[#060710]">Assignee</strong><span>{task.assigned_to_name || "Unassigned"}</span></div>
+                            <div><strong className="block text-[#060710]">Team</strong><span>{teamBadgeLabel(task) || "Auto team"}</span></div>
                             <div><strong className="block text-[#060710]">Priority</strong><span>{nice(task.priority || "medium")}</span></div>
                           </div>
                         </div>
                       </article>
                     )) : (
                       <div className="rounded-[24px] border border-dashed border-[#ddd0bb] bg-[#fffaf1] px-5 py-14 text-center text-sm text-[#7a6b57]">
-                        No tasks found.
+                        No team-scoped tasks are available right now.
                       </div>
                     )}
                   </div>

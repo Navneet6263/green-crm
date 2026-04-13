@@ -6,8 +6,64 @@ const { createPrefixedId } = require("../utils/ids");
 const { buildPaginatedResult, parsePagination } = require("../utils/pagination");
 const AppError = require("../utils/appError");
 const { assertCompanyAccess, getAccessibleCompanyIds, isPlatformOperatorRole } = require("../utils/tenant");
+const leadRepository = require("../repositories/leadRepository");
+const customerRepository = require("../repositories/customerRepository");
+const {
+  assertRecordTeamAccess,
+  assertTeamAccess,
+  ensureTeamIdWhenTeamsConfigured,
+  ensureUserBelongsToTeam,
+  parseRequestedTeamIds,
+  resolveDefaultTeamId,
+  resolvePreferredTeamId,
+  resolveTeamScope,
+} = require("./accessScopeService");
 
-function buildTaskFilters(auth, query) {
+async function resolveTaskTeamId(auth, companyId, payload, existingTask = null) {
+  const requestedTeamIds = parseRequestedTeamIds(payload);
+  if (requestedTeamIds.length) {
+    const [teamId] = requestedTeamIds;
+    await assertTeamAccess(auth, companyId, teamId, {
+      includeManaged: true,
+      includeMembership: true,
+    });
+    return teamId;
+  }
+
+  if (payload.related_to === "lead" && payload.related_id) {
+    const lead = await leadRepository.getLeadById(payload.related_id, companyId);
+    if (lead?.team_id) {
+      return lead.team_id;
+    }
+  }
+
+  if (payload.related_to === "customer" && payload.related_id) {
+    const customer = await customerRepository.getCustomerById(payload.related_id, companyId);
+    if (customer?.team_id) {
+      return customer.team_id;
+    }
+  }
+
+  if (existingTask?.team_id) {
+    return existingTask.team_id;
+  }
+
+  if (payload.assigned_to) {
+    const preferredAssigneeTeam = await resolvePreferredTeamId(companyId, payload.assigned_to);
+    if (preferredAssigneeTeam) {
+      return preferredAssigneeTeam;
+    }
+  }
+
+  const creatorTeamId = await resolvePreferredTeamId(companyId, auth.userId);
+  if (creatorTeamId) {
+    return creatorTeamId;
+  }
+
+  return resolveDefaultTeamId(companyId);
+}
+
+async function buildTaskFilters(auth, query) {
   const filters = {
     companyId: null,
     companyIds: null,
@@ -15,6 +71,7 @@ function buildTaskFilters(auth, query) {
     priority: query.priority || null,
     search: query.search || "",
     assignedTo: null,
+    teamIds: null,
   };
 
   if (auth.role === ROLES.SUPER_ADMIN) {
@@ -32,12 +89,20 @@ function buildTaskFilters(auth, query) {
     filters.assignedTo = auth.userId;
   }
 
+  if (filters.companyId) {
+    const teamScope = await resolveTeamScope(auth, filters.companyId, parseRequestedTeamIds(query), {
+      includeManaged: true,
+      includeMembership: true,
+    });
+    filters.teamIds = teamScope.teamIds;
+  }
+
   return filters;
 }
 
 async function listTasks(auth, query) {
   const pagination = parsePagination(query);
-  const filters = buildTaskFilters(auth, query);
+  const filters = await buildTaskFilters(auth, query);
 
   if (filters.companyId) {
     assertCompanyAccess(auth, filters.companyId);
@@ -56,6 +121,10 @@ async function getTask(auth, taskId) {
   }
 
   assertCompanyAccess(auth, task.company_id);
+  await assertRecordTeamAccess(auth, task, {
+    includeManaged: true,
+    includeMembership: true,
+  });
 
   if (![ROLES.ADMIN, ROLES.MANAGER, ROLES.SUPER_ADMIN, ROLES.PLATFORM_ADMIN, ROLES.PLATFORM_MANAGER].includes(auth.role) && task.assigned_to !== auth.userId) {
     throw new AppError("You can only access your own tasks.", 403);
@@ -89,6 +158,15 @@ async function createTask(auth, payload) {
     assignee = user.user_id;
   }
 
+  const teamId = await ensureTeamIdWhenTeamsConfigured(
+    companyId,
+    await resolveTaskTeamId(auth, companyId, {
+      ...payload,
+      assigned_to: assignee,
+    })
+  );
+  await ensureUserBelongsToTeam(companyId, assignee, teamId, "Task owner");
+
   const task = await taskRepository.createTask({
     task_id: await createPrefixedId("tsk"),
     company_id: companyId,
@@ -97,6 +175,7 @@ async function createTask(auth, payload) {
     status: payload.status || "pending",
     priority: payload.priority || "medium",
     due_date: payload.due_date,
+    team_id: teamId,
     assigned_to: assignee,
     related_to: payload.related_to || null,
     related_id: payload.related_id || null,
@@ -132,12 +211,32 @@ async function updateTask(auth, taskId, payload) {
     assignee = user.user_id;
   }
 
+  const nextTeamId = await ensureTeamIdWhenTeamsConfigured(
+    task.company_id,
+    await resolveTaskTeamId(
+      auth,
+      task.company_id,
+      {
+        ...payload,
+        assigned_to: assignee !== undefined ? assignee : task.assigned_to,
+      },
+      task
+    )
+  );
+  await ensureUserBelongsToTeam(
+    task.company_id,
+    assignee !== undefined ? assignee : task.assigned_to,
+    nextTeamId,
+    "Task owner"
+  );
+
   const updates = {
     title: payload.title !== undefined ? String(payload.title || "").trim() : task.title,
     type: payload.type !== undefined ? payload.type : task.type,
     status: payload.status !== undefined ? payload.status : task.status,
     priority: payload.priority !== undefined ? payload.priority : task.priority,
     due_date: payload.due_date !== undefined ? payload.due_date : task.due_date,
+    team_id: nextTeamId,
     assigned_to: assignee !== undefined ? assignee : task.assigned_to,
     related_to: payload.related_to !== undefined ? payload.related_to : task.related_to,
     related_id: payload.related_id !== undefined ? payload.related_id : task.related_id,

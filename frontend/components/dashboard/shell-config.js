@@ -60,6 +60,7 @@ export const PAGE_SUMMARY = {
   "System Settings": "Review platform defaults and system-wide controls inside the same shared shell.",
   "Super Admin Panel": "Summarize platform posture with cleaner safety and growth signals.",
   "Company Settings": "Manage tenant profile data with a more focused configuration surface.",
+  Teams: "Create teams, manage membership, and keep ownership rules explicit across the CRM.",
   "User Settings": "Create teammates, review access, and manage activation from a cleaner control view.",
   "Product Settings": "Publish and organize tenant products with a sharper catalog layout.",
   "Profile Settings": "Update personal identity and account details without leaving the shared shell.",
@@ -108,7 +109,7 @@ export const SIDEBAR_SECTIONS = {
     ]),
     SECTION("Operations", [
       ITEM("Products", "/settings/products", "products", "products"),
-      ITEM("Team", "/settings/users", "users", "team_management"),
+      ITEM("Teams", "/settings/teams", "users", "team_management"),
       ITEM("Tasks", "/tasks", "tasks", "tasks"),
       ITEM("Calendar", "/calendar", "calendar", "calendar"),
       ITEM("Communications", "/communications", "message", "communications"),
@@ -128,6 +129,7 @@ export const SIDEBAR_SECTIONS = {
     ]),
     SECTION("Team", [
       ITEM("Customers", "/customers", "customers", "customers"),
+      ITEM("Teams", "/settings/teams", "users", "team_management"),
       ITEM("Performance", "/performance", "performance", "performance"),
       ITEM("Analytics", "/analytics", "analytics", "analytics"),
       ITEM("Workflow", "/workflow", "workflow", "workflow"),
@@ -209,12 +211,12 @@ export const ROLE_SHORTCUTS = {
   ],
   admin: [
     ITEM("New Lead", "/leads/new", "leads"),
-    ITEM("Team", "/settings/users", "users"),
+    ITEM("Teams", "/settings/teams", "users"),
     ITEM("Analytics", "/analytics", "analytics"),
   ],
   manager: [
     ITEM("Leads", "/leads", "leads"),
-    ITEM("Performance", "/performance", "performance"),
+    ITEM("Teams", "/settings/teams", "users"),
     ITEM("Tasks", "/tasks", "tasks"),
   ],
   sales: [

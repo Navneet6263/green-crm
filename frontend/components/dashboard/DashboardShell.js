@@ -66,6 +66,7 @@ const ACCESS_ROUTE_RULES = [
   { prefix: "/customers", accessKey: "customers", label: "Customers" },
   { prefix: "/workflow", accessKey: "workflow", label: "Workflow" },
   { prefix: "/settings/products", accessKey: "products", label: "Products" },
+  { prefix: "/settings/teams", accessKey: "team_management", label: "Team Management" },
   { prefix: "/settings/users", accessKey: "team_management", label: "Team Management" },
   { prefix: "/tasks", accessKey: "tasks", label: "Tasks" },
   { prefix: "/calendar", accessKey: "calendar", label: "Calendar" },

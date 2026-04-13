@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -7,9 +8,26 @@ import DashboardShell from "../../../components/dashboard/DashboardShell";
 import DashboardIcon from "../../../components/dashboard/icons";
 import { apiRequest } from "../../../lib/api";
 import { loadSession } from "../../../lib/session";
+import {
+  canManageScopedAssignments,
+  formatScopedError,
+  filterRecordsByTeam,
+  getTeamAssignmentState,
+  isPlatformConsoleRole,
+  loadProductsForScope,
+  loadTeamScopeResources,
+  scopedOwnersHelperText,
+  scopedProductsHelperText,
+  shouldShowTeamSelector,
+  scopedProductsEmptyMessage,
+  scopedUsersEmptyMessage,
+  teamBadgeLabel,
+  teamSelectLabel,
+  teamSelectionRequiredMessage,
+  resolveScopedCompanyId,
+} from "../../../lib/teamScope";
 
-const ALLOWED_ROLES = ["super-admin", "admin", "manager", "sales", "marketing"];
-const ASSIGNMENT_ROLES = ["super-admin", "admin", "manager"];
+const ALLOWED_ROLES = ["super-admin", "platform-admin", "platform-manager", "admin", "manager", "sales", "marketing"];
 
 const INDUSTRY_OPTIONS = [
   { value: "", label: "Select industry" },
@@ -53,6 +71,7 @@ const KICKER_CLASS = "text-[10px] font-black uppercase tracking-[0.28em] text-[#
 function createInitialForm(companyId = "") {
   return {
     company_id: companyId,
+    team_id: "",
     product_id: "",
     contact_person: "",
     company_name: "",
@@ -74,19 +93,6 @@ function createInitialForm(companyId = "") {
   };
 }
 
-function buildScopedPath(path, query = {}) {
-  const search = new URLSearchParams();
-
-  Object.entries(query).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== "") {
-      search.set(key, value);
-    }
-  });
-
-  const queryString = search.toString();
-  return queryString ? `${path}?${queryString}` : path;
-}
-
 function formatDateTimeMin() {
   const now = new Date();
   const year = now.getFullYear();
@@ -101,6 +107,7 @@ export default function NewLeadPage() {
   const router = useRouter();
   const [session, setSession] = useState(null);
   const [companies, setCompanies] = useState([]);
+  const [teams, setTeams] = useState([]);
   const [products, setProducts] = useState([]);
   const [assignableUsers, setAssignableUsers] = useState([]);
   const [productHistory, setProductHistory] = useState([]);
@@ -112,9 +119,10 @@ export default function NewLeadPage() {
   const [saving, setSaving] = useState(false);
 
   const role = session?.user?.role || "";
-  const canAssign = ASSIGNMENT_ROLES.includes(role);
+  const canAssign = canManageScopedAssignments(role);
+  const isPlatformConsole = isPlatformConsoleRole(role);
   const isSuperAdmin = role === "super-admin";
-  const selectedCompanyId = isSuperAdmin ? form.company_id : session?.user?.company_id || session?.company?.company_id || "";
+  const selectedCompanyId = resolveScopedCompanyId(session, form.company_id);
   const selectedCompany = useMemo(
     () =>
       companies.find((company) => company.company_id === selectedCompanyId) ||
@@ -127,12 +135,84 @@ export default function NewLeadPage() {
     () => products.find((product) => product.product_id === form.product_id) || null,
     [products, form.product_id]
   );
+  const teamAssignment = useMemo(
+    () => getTeamAssignmentState(teams, form.team_id, "lead"),
+    [form.team_id, teams]
+  );
+  const selectedTeam = teamAssignment.selectedTeam;
+  const teamSelectorVisible = shouldShowTeamSelector(role, teams);
+  const teamSelectionPending = teamSelectorVisible && !form.team_id;
+  const filteredProducts = useMemo(
+    () => (teamSelectionPending ? [] : filterRecordsByTeam(products, form.team_id)),
+    [products, form.team_id, teamSelectionPending]
+  );
   const selectedAssignee = useMemo(
     () => assignableUsers.find((user) => user.user_id === form.assigned_to) || null,
     [assignableUsers, form.assigned_to]
   );
   const minimumDateTime = useMemo(() => formatDateTimeMin(), []);
-  const hideTitle = ["sales", "marketing", "admin", "manager"].includes(role);
+  const hideTitle = ["sales", "marketing", "admin", "manager", "platform-admin", "platform-manager"].includes(role);
+  const canOpenTeamWorkspace = ["super-admin", "platform-admin", "platform-manager", "admin", "manager"].includes(role);
+  const ownerScopeSummary = useMemo(() => {
+    if (teamSelectionPending) {
+      return "Choose a team first. Available owners load after selection.";
+    }
+
+    if (selectedTeam) {
+      return scopedOwnersHelperText(selectedTeam);
+    }
+
+    if (teamAssignment.mode === "none") {
+      return "Create a team first before owner filtering becomes team-specific.";
+    }
+
+    return "Available owners update after you choose a team.";
+  }, [selectedTeam, teamAssignment.mode, teamSelectionPending]);
+  const productScopeSummary = useMemo(() => {
+    if (teamSelectionPending) {
+      return "Choose a team first. Products load after selection.";
+    }
+
+    if (selectedTeam) {
+      return scopedProductsHelperText(selectedTeam);
+    }
+
+    if (teamAssignment.mode === "none") {
+      return "Create a team first before product scope becomes team-specific.";
+    }
+
+    return "Products update after you choose a team.";
+  }, [selectedTeam, teamAssignment.mode, teamSelectionPending]);
+  const ownerHelperMessage = useMemo(() => {
+    if (!canAssign || resourceLoading) {
+      return "";
+    }
+
+    if (teamSelectionPending) {
+      return "Choose a team to load available owners.";
+    }
+
+    if (!assignableUsers.length) {
+      return scopedUsersEmptyMessage(selectedTeam);
+    }
+
+    return ownerScopeSummary;
+  }, [assignableUsers.length, canAssign, ownerScopeSummary, resourceLoading, selectedTeam, teamSelectionPending]);
+  const productHelperMessage = useMemo(() => {
+    if (resourceLoading) {
+      return "";
+    }
+
+    if (teamSelectionPending) {
+      return "Choose a team to load products for this lead.";
+    }
+
+    if (!filteredProducts.length) {
+      return scopedProductsEmptyMessage(selectedTeam);
+    }
+
+    return productScopeSummary;
+  }, [filteredProducts.length, productScopeSummary, resourceLoading, selectedTeam, teamSelectionPending]);
 
   useEffect(() => {
     let ignore = false;
@@ -152,7 +232,7 @@ export default function NewLeadPage() {
       setSession(activeSession);
 
       try {
-        if (activeSession.user?.role === "super-admin") {
+        if (["super-admin", "platform-admin", "platform-manager"].includes(activeSession.user?.role)) {
           const companyResponse = await apiRequest("/companies?page_size=50", {
             token: activeSession.token,
           });
@@ -206,7 +286,8 @@ export default function NewLeadPage() {
         return;
       }
 
-      if (isSuperAdmin && !form.company_id) {
+      if (isPlatformConsole && !form.company_id) {
+        setTeams([]);
         setProducts([]);
         setAssignableUsers([]);
         setProductHistory([]);
@@ -217,49 +298,54 @@ export default function NewLeadPage() {
       setError("");
 
       try {
-        const productPath = buildScopedPath("/products", {
-          page_size: 50,
-          company_id: isSuperAdmin ? form.company_id : undefined,
-        });
-        const requests = [apiRequest(productPath, { token: session.token })];
-
-        if (canAssign) {
-          requests.push(
-            apiRequest(
-              buildScopedPath("/auth/users", {
-                page_size: 50,
-                company_id: isSuperAdmin ? form.company_id : undefined,
-              }),
-              { token: session.token }
-            )
-          );
-        }
+        const shouldLoadScopedUsers = canAssign && !teamSelectionPending;
+        const shouldLoadScopedProducts = !teamSelectionPending;
+        const requests = [
+          loadTeamScopeResources(session.token, {
+            companyId: selectedCompanyId,
+            teamId: form.team_id,
+            includeUsers: shouldLoadScopedUsers,
+            userPageSize: 80,
+          }),
+          shouldLoadScopedProducts
+            ? loadProductsForScope(session.token, {
+                companyId: isPlatformConsole ? selectedCompanyId : undefined,
+                teamId: form.team_id,
+                pageSize: 50,
+              })
+            : Promise.resolve([]),
+        ];
 
         if (!isSuperAdmin) {
           requests.push(apiRequest("/leads/user/product-history", { token: session.token }));
         }
 
-        const [productResponse, userResponse, historyResponse] = await Promise.all(requests);
+        const [scopeResponse, productResponse, historyResponse] = await Promise.all(requests);
 
         if (ignore) {
           return;
         }
 
-        const nextProducts = productResponse.items || [];
-        const nextUsers = canAssign ? (userResponse?.items || []).filter((user) => user.is_active) : [];
+        const nextProducts = productResponse || [];
+        const nextTeams = scopeResponse.teams || [];
+        const nextUsers = scopeResponse.users || [];
         const nextHistory = !isSuperAdmin ? historyResponse || [] : [];
+        const nextTeamId = scopeResponse.teamId || "";
+        const scopedProducts = filterRecordsByTeam(nextProducts, nextTeamId);
 
+        setTeams(nextTeams);
         setProducts(nextProducts);
         setAssignableUsers(nextUsers);
         setProductHistory(nextHistory);
         setForm((current) => ({
           ...current,
-          product_id: nextProducts.some((product) => product.product_id === current.product_id) ? current.product_id : "",
+          team_id: nextTeamId,
+          product_id: scopedProducts.some((product) => product.product_id === current.product_id) ? current.product_id : "",
           assigned_to: nextUsers.some((user) => user.user_id === current.assigned_to) ? current.assigned_to : "",
         }));
       } catch (requestError) {
         if (!ignore) {
-          setError(requestError.message);
+          setError(formatScopedError(requestError, "Failed to load lead scope."));
         }
       } finally {
         if (!ignore) {
@@ -273,7 +359,7 @@ export default function NewLeadPage() {
     return () => {
       ignore = true;
     };
-  }, [canAssign, form.company_id, isSuperAdmin, session]);
+  }, [canAssign, form.company_id, form.team_id, isPlatformConsole, isSuperAdmin, selectedCompanyId, session, teamSelectionPending]);
 
   const quickProductPicks = useMemo(() => {
     if (productHistory.length) {
@@ -288,26 +374,27 @@ export default function NewLeadPage() {
             color: product?.color || "#16b67b",
           };
         })
-        .filter((item) => item.product_id);
+        .filter((item) => item.product_id && filteredProducts.some((product) => product.product_id === item.product_id));
     }
 
-    return products.slice(0, 3).map((product) => ({
+    return filteredProducts.slice(0, 3).map((product) => ({
       product_id: product.product_id,
       name: product.name,
       subtitle: "Quick pick",
       color: product.color || "#16b67b",
     }));
-  }, [productHistory, products]);
+  }, [filteredProducts, productHistory, products]);
 
   const readinessItems = useMemo(
     () => [
       { label: "Tenant linked", done: !isSuperAdmin || Boolean(form.company_id) },
+      { label: "Team chosen", done: teamAssignment.mode !== "none" && (!teamSelectorVisible || Boolean(form.team_id)) },
       { label: "Product selected", done: Boolean(form.product_id) },
       { label: "Decision maker added", done: Boolean(form.contact_person.trim()) },
       { label: "Contact channel ready", done: Boolean(form.email.trim() && form.phone.trim()) },
-      { label: "Lead owner ready", done: isSuperAdmin ? Boolean(form.assigned_to) : true },
+      { label: "Lead owner ready", done: isPlatformConsole ? Boolean(form.assigned_to) : true },
     ],
-    [form.assigned_to, form.company_id, form.contact_person, form.email, form.phone, form.product_id, isSuperAdmin]
+    [form.assigned_to, form.company_id, form.contact_person, form.email, form.phone, form.product_id, form.team_id, isPlatformConsole, teamAssignment.mode, teamSelectorVisible]
   );
 
   function handleFieldChange(field, value) {
@@ -327,8 +414,12 @@ export default function NewLeadPage() {
   function validateForm() {
     const nextErrors = {};
 
-    if (isSuperAdmin && !form.company_id) {
+    if (isPlatformConsole && !form.company_id) {
       nextErrors.company_id = "Select a company before creating a lead.";
+    }
+
+    if (teamSelectorVisible && !form.team_id) {
+      nextErrors.team_id = teamSelectionRequiredMessage("lead");
     }
 
     if (!form.product_id) {
@@ -362,8 +453,8 @@ export default function NewLeadPage() {
       nextErrors.custom_lead_source = "Enter the custom lead source.";
     }
 
-    if (isSuperAdmin && !form.assigned_to) {
-      nextErrors.assigned_to = "Super admin must assign this lead to a tenant user.";
+    if (isPlatformConsole && !form.assigned_to) {
+      nextErrors.assigned_to = "Choose the tenant owner who should receive this lead.";
     }
 
     setErrors(nextErrors);
@@ -389,7 +480,8 @@ export default function NewLeadPage() {
         method: "POST",
         token: session.token,
         body: {
-          company_id: isSuperAdmin ? form.company_id : undefined,
+          company_id: isPlatformConsole ? form.company_id : undefined,
+          team_id: form.team_id || undefined,
           product_id: form.product_id,
           contact_person: form.contact_person.trim(),
           company_name: form.company_name.trim(),
@@ -412,7 +504,7 @@ export default function NewLeadPage() {
 
       router.push(`/leads/${response.lead_id}`);
     } catch (requestError) {
-      setError(requestError.message);
+      setError(formatScopedError(requestError, "Failed to create lead."));
     } finally {
       setSaving(false);
     }
@@ -441,12 +533,13 @@ export default function NewLeadPage() {
                   Capture the decision maker, map the product, assign the first owner, and push the opportunity into the CRM from one cleaner intake surface.
                 </p>
               </div>
-              <div className="grid gap-3 xl:min-w-[420px] xl:max-w-[460px] xl:w-full sm:grid-cols-2">
-                {[
-                  { label: "Tenant", value: selectedCompany?.name || "Select tenant" },
-                  { label: "Product", value: selectedProduct?.name || "Select product" },
-                  { label: "Owner", value: selectedAssignee?.name || (isSuperAdmin ? "Assignment required" : session?.user?.name || "Self owner") },
-                  { label: "Value", value: form.estimated_value ? `INR ${Number(form.estimated_value).toLocaleString("en-IN")}` : "Not set" },
+                <div className="grid gap-3 xl:min-w-[420px] xl:max-w-[460px] xl:w-full sm:grid-cols-2">
+                  {[
+                    { label: "Tenant", value: selectedCompany?.name || "Select tenant" },
+                    { label: "Team", value: selectedTeam?.name || (teamAssignment.mode === "none" ? "No team yet" : teams.length ? "Select team" : "Auto team") },
+                    { label: "Product", value: selectedProduct?.name || "Select product" },
+                    { label: "Owner", value: selectedAssignee?.name || (isPlatformConsole ? "Assignment required" : session?.user?.name || "Self owner") },
+                    { label: "Value", value: form.estimated_value ? `INR ${Number(form.estimated_value).toLocaleString("en-IN")}` : "Not set" },
                 ].map((item, index) => (
                   <div key={item.label} className={`rounded-[24px] border border-[#eadfcd] p-4 shadow-[0_12px_28px_rgba(79,58,22,0.05)] ${index === 1 ? "bg-[#fff6e4]" : "bg-white/88"}`}>
                     <p className={KICKER_CLASS}>{item.label}</p>
@@ -459,10 +552,71 @@ export default function NewLeadPage() {
 
           <form className="grid gap-5 xl:grid-cols-[1.08fr_0.92fr] xl:items-start" onSubmit={handleSubmit}>
             <div className={PANEL_CLASS}>
-              <div className="grid gap-5 md:grid-cols-2">
+              <article className="rounded-[24px] border border-[#eadfcd] bg-[#fffaf1] px-4 py-4">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                  <div>
+                    <p className={KICKER_CLASS}>Team Ownership</p>
+                    <h3 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">{teamAssignment.title}</h3>
+                    <p className="mt-3 max-w-2xl text-sm leading-7 text-[#746853]">{teamAssignment.description}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">
+                      {teamAssignment.mode === "auto"
+                        ? "Auto-selected"
+                        : teamAssignment.mode === "selected"
+                          ? "Team selected"
+                          : teamAssignment.mode === "manual"
+                            ? "Selection required"
+                            : "No team configured"}
+                    </span>
+                    {selectedTeam ? (
+                      <>
+                        <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">
+                          {teamBadgeLabel(selectedTeam)}
+                        </span>
+                        <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">
+                          {selectedTeam.member_count || 0} members
+                        </span>
+                        <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">
+                          {selectedTeam.manager_count || 0} managers
+                        </span>
+                      </>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="mt-4 grid gap-3 md:grid-cols-2">
+                  <div className="rounded-[20px] border border-[#eadfcd] bg-white px-4 py-4">
+                    <span className={KICKER_CLASS}>Owners</span>
+                    <p className="mt-3 text-sm leading-6 text-[#746853]">{ownerScopeSummary}</p>
+                  </div>
+                  <div className="rounded-[20px] border border-[#eadfcd] bg-white px-4 py-4">
+                    <span className={KICKER_CLASS}>Products</span>
+                    <p className="mt-3 text-sm leading-6 text-[#746853]">{productScopeSummary}</p>
+                  </div>
+                </div>
+
+                {selectedTeam ? (
+                  <p className="mt-4 text-sm leading-7 text-[#746853]">
+                    This lead, its follow-up tasks, and later customer conversion will stay under the selected team scope.
+                  </p>
+                ) : null}
+
+                {teamAssignment.mode === "none" && canOpenTeamWorkspace ? (
+                  <div className="mt-4">
+                    <Link prefetch={false} href="/settings/teams" className={GHOST_BUTTON_CLASS}>
+                      <DashboardIcon name="users" className="h-4 w-4" />
+                      Open Teams
+                    </Link>
+                  </div>
+                ) : null}
+              </article>
+
+              <div className="mt-5 grid gap-5 md:grid-cols-2">
                 {[
-                  { label: isSuperAdmin ? "Choose Company" : null, name: "company_id", type: "select", options: companies.map((company) => ({ value: company.company_id, label: company.name })), hidden: !isSuperAdmin, error: errors.company_id },
-                  { label: "Product or Service", name: "product_id", type: "select", options: products.map((product) => ({ value: product.product_id, label: product.name })), error: errors.product_id },
+                  { label: isPlatformConsole ? "Choose Company" : null, name: "company_id", type: "select", options: companies.map((company) => ({ value: company.company_id, label: company.name })), hidden: !isPlatformConsole, error: errors.company_id },
+                  { label: "Team", name: "team_id", type: "select", options: teams.map((team) => ({ value: team.team_id, label: teamSelectLabel(team) })), hidden: !teamSelectorVisible, error: errors.team_id },
+                  { label: "Product or Service", name: "product_id", type: "select", options: filteredProducts.map((product) => ({ value: product.product_id, label: product.name })), error: errors.product_id },
                   { label: canAssign ? (isSuperAdmin ? "Assign Lead Owner" : "Assign To") : null, name: "assigned_to", type: "select", options: assignableUsers.map((user) => ({ value: user.user_id, label: `${user.name} | ${user.role}` })), hidden: !canAssign, error: errors.assigned_to },
                   { label: "Contact Person Name", name: "contact_person", type: "input", error: errors.contact_person },
                   { label: "Company Name", name: "company_name", type: "input", error: errors.company_name },
@@ -482,8 +636,16 @@ export default function NewLeadPage() {
                   <label key={field.name} className={`space-y-2 ${field.className || ""}`}>
                     <span className={KICKER_CLASS}>{field.label}</span>
                     {field.type === "select" ? (
-                      <select className={INPUT_CLASS} value={form[field.name]} onChange={(event) => handleFieldChange(field.name, event.target.value)}>
-                        <option value="">{field.name === "product_id" ? "Choose a product or service" : field.name === "assigned_to" ? (isSuperAdmin ? "Select tenant owner or sales rep" : "Keep with me by default") : field.name === "company_id" ? "Select tenant company" : `Select ${field.label?.toLowerCase()}`}</option>
+                      <select
+                        className={INPUT_CLASS}
+                        value={form[field.name]}
+                        onChange={(event) => handleFieldChange(field.name, event.target.value)}
+                        disabled={
+                          (field.name === "product_id" || field.name === "assigned_to") &&
+                          (resourceLoading || teamSelectionPending)
+                        }
+                      >
+                        <option value="">{field.name === "product_id" ? "Choose a product or service" : field.name === "assigned_to" ? (isPlatformConsole ? "Select tenant owner or sales rep" : "Keep with me by default") : field.name === "company_id" ? "Select tenant company" : `Select ${field.label?.toLowerCase()}`}</option>
                         {field.options.map((option) => (
                           <option key={option.value || option.label} value={option.value}>
                             {option.label}
@@ -500,6 +662,9 @@ export default function NewLeadPage() {
                       />
                     )}
                     {field.error ? <small className="text-xs font-semibold text-rose-600">{field.error}</small> : null}
+                    {field.name === "team_id" && !field.error ? <small className="text-xs font-semibold text-[#8f816a]">{teamAssignment.description}</small> : null}
+                    {field.name === "product_id" && !field.error && productHelperMessage ? <small className="text-xs font-semibold text-[#8f816a]">{productHelperMessage}</small> : null}
+                    {field.name === "assigned_to" && !field.error && ownerHelperMessage ? <small className="text-xs font-semibold text-[#8f816a]">{ownerHelperMessage}</small> : null}
                   </label>
                 ))}
 
@@ -527,7 +692,7 @@ export default function NewLeadPage() {
                       <strong className="block text-[#060710]">{item.name}</strong>
                       <small className="mt-2 block text-xs font-semibold text-[#8f816a]">{item.subtitle}</small>
                     </button>
-                  )) : <p className="text-sm leading-7 text-[#746853]">No active products found for this workspace.</p>}
+                  )) : <p className="text-sm leading-7 text-[#746853]">{productHelperMessage || "No active products found for this workspace."}</p>}
                 </div>
               </article>
 
@@ -545,7 +710,7 @@ export default function NewLeadPage() {
 
               <div className="flex flex-wrap justify-end gap-3">
                 <button className={GHOST_BUTTON_CLASS} type="button" onClick={handleCancel}>Cancel</button>
-                <button className={PRIMARY_BUTTON_CLASS} type="submit" disabled={saving || resourceLoading || !products.length}>
+                <button className={PRIMARY_BUTTON_CLASS} type="submit" disabled={saving || resourceLoading || !filteredProducts.length}>
                   <DashboardIcon name={saving ? "analytics" : "message"} className="h-4 w-4" />
                   {saving ? "Creating..." : "Create Lead"}
                 </button>

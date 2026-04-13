@@ -9,8 +9,16 @@ import DashboardIcon from "../../components/dashboard/icons";
 import { apiRequest } from "../../lib/api";
 import { customerProfileSummary, parseCustomerProfile, stripCustomerProfile } from "../../lib/customerProfile";
 import { loadSession } from "../../lib/session";
+import {
+  formatScopedError,
+  isPlatformConsoleRole,
+  loadTeamScopeResources,
+  resolveSessionCompanyId,
+  teamBadgeLabel,
+  teamSelectLabel,
+} from "../../lib/teamScope";
 
-const ALLOWED_ROLES = ["admin", "manager", "sales", "marketing", "support", "viewer"];
+const ALLOWED_ROLES = ["super-admin", "platform-admin", "platform-manager", "admin", "manager", "sales", "marketing", "support", "viewer"];
 const STATUS_STYLES = {
   active: { label: "Active", badge: "border-[#e7d7ab] bg-[#fff4d9] text-[#8d6e27]" },
   inactive: { label: "Inactive", badge: "border-rose-200 bg-rose-50 text-rose-700" },
@@ -26,6 +34,17 @@ const SOFT_BUTTON_CLASS = "inline-flex min-h-[46px] items-center justify-center 
 const DANGER_BUTTON_CLASS = "inline-flex min-h-[46px] items-center justify-center gap-2 rounded-[18px] border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:-translate-y-0.5 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60";
 const PILL_CLASS = "inline-flex rounded-full px-3 py-1 text-[11px] font-bold";
 const TINT_PANEL_CLASS = "rounded-[24px] border border-[#eadfcd] bg-[#fffaf1] p-4";
+const buildPath = (path, params = {}) => {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === "" || value === "all") {
+      return;
+    }
+    query.set(key, value);
+  });
+  const queryString = query.toString();
+  return queryString ? `${path}?${queryString}` : path;
+};
 
 function money(value) { return `INR ${Number(value || 0).toLocaleString("en-IN")}`; }
 function dateOnly(value) {
@@ -87,6 +106,8 @@ function StatCell({ label, value, danger = false }) {
 export default function CustomersPage() {
   const router = useRouter();
   const [session, setSession] = useState(null);
+  const [companies, setCompanies] = useState([]);
+  const [teams, setTeams] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -94,16 +115,21 @@ export default function CustomersPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [followUpFilter, setFollowUpFilter] = useState("all");
   const [sortBy, setSortBy] = useState("recent");
+  const [companyFilter, setCompanyFilter] = useState("all");
+  const [teamFilter, setTeamFilter] = useState("all");
   const [savingState, setSavingState] = useState("");
 
   const role = session?.user?.role || "viewer";
+  const isPlatformConsole = isPlatformConsoleRole(role);
   const canManage = role !== "viewer";
-  const canDelete = ["admin", "manager"].includes(role);
+  const canDelete = ["super-admin", "platform-admin", "platform-manager", "admin", "manager"].includes(role);
+  const teamCompanyId = isPlatformConsole ? (companyFilter !== "all" ? companyFilter : "") : resolveSessionCompanyId(session);
+  const selectedTeam = useMemo(() => teams.find((team) => team.team_id === teamFilter) || null, [teamFilter, teams]);
 
   const filteredCustomers = useMemo(() => {
     const query = search.trim().toLowerCase();
     const nextCustomers = customers.filter((customer) => {
-      const text = [customer.name, customer.company_name, customer.email, customer.phone, customer.status, customer.assigned_to_name, latestNote(customer.notes)].filter(Boolean).join(" ").toLowerCase();
+      const text = [customer.name, customer.company_name, customer.email, customer.phone, customer.status, customer.assigned_to_name, customer.team_name, customer.team_code, latestNote(customer.notes)].filter(Boolean).join(" ").toLowerCase();
       const matchesSearch = !query || text.includes(query);
       const matchesStatus = statusFilter === "all" || customer.status === statusFilter;
       const hasFollowUp = Boolean(customer.next_follow_up);
@@ -134,14 +160,21 @@ export default function CustomersPage() {
     value: customers.reduce((sum, customer) => sum + Number(customer.total_value || 0), 0),
   }), [customers]);
 
-  async function loadCustomers(activeSession) {
+  async function loadCustomers(activeSession, nextCompanyFilter = "all", nextTeamFilter = "all") {
     setLoading(true);
     setError("");
     try {
-      const customerResponse = await apiRequest("/customers?page_size=120", { token: activeSession.token });
+      const customerResponse = await apiRequest(
+        buildPath("/customers", {
+          page_size: 120,
+          company_id: isPlatformConsole ? nextCompanyFilter : undefined,
+          team_ids: nextTeamFilter,
+        }),
+        { token: activeSession.token }
+      );
       setCustomers(customerResponse.items || []);
     } catch (requestError) {
-      setError(requestError.message);
+      setError(formatScopedError(requestError, "Could not load customers."));
       setCustomers([]);
     } finally {
       setLoading(false);
@@ -153,8 +186,59 @@ export default function CustomersPage() {
     if (!activeSession) return router.replace("/login");
     if (!ALLOWED_ROLES.includes(activeSession.user?.role)) return router.replace("/dashboard");
     setSession(activeSession);
-    loadCustomers(activeSession);
+    if (isPlatformConsoleRole(activeSession.user?.role)) {
+      apiRequest("/companies?page_size=120", { token: activeSession.token })
+        .then((response) => {
+          const items = response.items || [];
+          setCompanies(items);
+          setCompanyFilter(activeSession.company?.company_id || activeSession.user?.company_id || "all");
+        })
+        .catch((requestError) => setError(formatScopedError(requestError, "Could not load companies.")));
+    }
   }, [router]);
+
+  useEffect(() => {
+    if (!session) {
+      return;
+    }
+    loadCustomers(session, companyFilter, teamFilter);
+  }, [companyFilter, isPlatformConsole, session, teamFilter]);
+
+  useEffect(() => {
+    if (!session?.token || !teamCompanyId) {
+      setTeams([]);
+      setTeamFilter("all");
+      return;
+    }
+
+    let ignore = false;
+
+    (async () => {
+      try {
+        const { teams: nextTeams } = await loadTeamScopeResources(session.token, {
+          companyId: teamCompanyId,
+        });
+
+        if (ignore) {
+          return;
+        }
+
+        setTeams(nextTeams || []);
+        if (teamFilter !== "all" && !(nextTeams || []).some((team) => team.team_id === teamFilter)) {
+          setTeamFilter("all");
+        }
+      } catch (_error) {
+        if (!ignore) {
+          setTeams([]);
+          setTeamFilter("all");
+        }
+      }
+    })();
+
+    return () => {
+      ignore = true;
+    };
+  }, [session, teamCompanyId, teamFilter]);
 
   async function deleteCustomer(customerId, customerName) {
     if (!canDelete || !session?.token) return;
@@ -165,7 +249,7 @@ export default function CustomersPage() {
       await apiRequest(`/customers/${customerId}`, { method: "DELETE", token: session.token });
       setCustomers((current) => current.filter((item) => item.customer_id !== customerId));
     } catch (requestError) {
-      setError(requestError.message);
+      setError(formatScopedError(requestError, "Could not delete this customer."));
     } finally {
       setSavingState("");
     }
@@ -176,7 +260,7 @@ export default function CustomersPage() {
       setError("No customer data is available for export.");
       return;
     }
-    const rows = [["Customer", "Company", "Email", "Phone", "Status", "Owner", "Total Value", "Next Follow-up", "Latest Note"], ...filteredCustomers.map((customer) => [customer.name || "", customer.company_name || "", customer.email || "", customer.phone || "", customer.status || "", customer.assigned_to_name || "Unassigned", Number(customer.total_value || 0), customer.next_follow_up || "", latestNote(customer.notes) || ""])];
+    const rows = [["Customer", "Company", "Email", "Phone", "Status", "Owner", "Team", "Total Value", "Next Follow-up", "Latest Note"], ...filteredCustomers.map((customer) => [customer.name || "", customer.company_name || "", customer.email || "", customer.phone || "", customer.status || "", customer.assigned_to_name || "Unassigned", teamBadgeLabel(customer) || "", Number(customer.total_value || 0), customer.next_follow_up || "", latestNote(customer.notes) || ""])];
     const blob = new Blob([rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n")], { type: "text/csv;charset=utf-8;" });
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -235,7 +319,7 @@ export default function CustomersPage() {
                   {stats.overdue} overdue
                 </span>
               </div>
-              <div className="grid gap-4 xl:grid-cols-[minmax(280px,1.6fr)_repeat(3,minmax(170px,0.72fr))]">
+              <div className={`grid gap-4 ${isPlatformConsole || teams.length > 1 ? "xl:grid-cols-[minmax(240px,1.3fr)_repeat(5,minmax(150px,0.7fr))]" : "xl:grid-cols-[minmax(280px,1.6fr)_repeat(3,minmax(170px,0.72fr))]"}`}>
                 <label className="grid gap-2">
                   <span className={KICKER_CLASS}>Search</span>
                   <div className="relative">
@@ -243,6 +327,24 @@ export default function CustomersPage() {
                     <input className={`${INPUT_CLASS} pl-11`} value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search customer, company, email, phone, note" />
                   </div>
                 </label>
+                {isPlatformConsole ? (
+                  <label className="grid gap-2">
+                    <span className={KICKER_CLASS}>Company</span>
+                    <select className={INPUT_CLASS} value={companyFilter} onChange={(event) => setCompanyFilter(event.target.value)}>
+                      <option value="all">All companies</option>
+                      {companies.map((company) => <option key={company.company_id} value={company.company_id}>{company.name}</option>)}
+                    </select>
+                  </label>
+                ) : null}
+                {teams.length > 1 ? (
+                  <label className="grid gap-2">
+                    <span className={KICKER_CLASS}>Team</span>
+                    <select className={INPUT_CLASS} value={teamFilter} onChange={(event) => setTeamFilter(event.target.value)}>
+                      <option value="all">All teams</option>
+                      {teams.map((team) => <option key={team.team_id} value={team.team_id}>{teamSelectLabel(team)}</option>)}
+                    </select>
+                  </label>
+                ) : null}
                 <label className="grid gap-2">
                   <span className={KICKER_CLASS}>Status</span>
                   <select className={INPUT_CLASS} value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
@@ -312,18 +414,29 @@ export default function CustomersPage() {
                     <div className="flex flex-wrap gap-2">
                       <span className={`${PILL_CLASS} border border-[#eadfcd] bg-[#fff4d9] text-[#8d6e27]`}>Notes {notesCount}</span>
                       <span className={`${PILL_CLASS} border border-slate-200 bg-slate-100 text-slate-600`}>{customer.assigned_to_name || "Unassigned"}</span>
+                      {teamBadgeLabel(customer) ? <span className={`${PILL_CLASS} border border-[#eadfcd] bg-white text-[#7c6d55]`}>{teamBadgeLabel(customer)}</span> : null}
                       <span className={`${PILL_CLASS} border ${overdue ? "border-rose-200 bg-rose-50 text-rose-700" : "border-amber-200 bg-amber-50 text-amber-700"}`}>
                         {overdue ? "Follow-up overdue" : customer.next_follow_up ? "Follow-up set" : "No follow-up"}
                       </span>
                     </div>
 
-                    <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+                    <div className="grid gap-4 xl:grid-cols-[1.08fr_0.92fr]">
                       <div className="space-y-4">
                         <div className="grid gap-3 sm:grid-cols-2">
-                          <StatCell label="Email" value={customer.email || "No email"} />
-                          <StatCell label="Phone" value={customer.phone || "No phone"} />
+                          <div className={`${TINT_PANEL_CLASS} sm:col-span-2`}>
+                            <div className="grid gap-3 sm:grid-cols-2">
+                              <div>
+                                <span className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">Email</span>
+                                <strong className="mt-2 block break-words text-[15px] font-bold text-slate-900">{customer.email || "No email"}</strong>
+                              </div>
+                              <div>
+                                <span className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">Phone</span>
+                                <strong className="mt-2 block text-[15px] font-bold text-slate-900">{customer.phone || "No phone"}</strong>
+                              </div>
+                            </div>
+                          </div>
                           <StatCell label="Owner" value={customer.assigned_to_name || "Unassigned"} />
-                          <StatCell label="Value" value={money(customer.total_value)} />
+                          <StatCell label="Team" value={teamBadgeLabel(customer) || "Auto team"} />
                         </div>
 
                         <div className={TINT_PANEL_CLASS}>
@@ -355,14 +468,17 @@ export default function CustomersPage() {
                             {overdue ? "This account needs attention now." : customer.next_follow_up ? "The next account touchpoint is already lined up." : "No follow-up has been scheduled yet."}
                           </p>
                         </div>
-                        <div className={TINT_PANEL_CLASS}>
-                          <span className={KICKER_CLASS}>Last Update</span>
-                          <strong className="mt-3 block text-lg font-black text-[#060710]">
-                            {dateOnly(customer.updated_at || customer.created_at)}
-                          </strong>
-                          <p className="mt-2 text-sm leading-6 text-[#756752]">
-                            Latest customer record update or creation date.
-                          </p>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <StatCell label="Value" value={money(customer.total_value)} />
+                          <div className={TINT_PANEL_CLASS}>
+                            <span className={KICKER_CLASS}>Last Update</span>
+                            <strong className="mt-3 block text-lg font-black text-[#060710]">
+                              {dateOnly(customer.updated_at || customer.created_at)}
+                            </strong>
+                            <p className="mt-2 text-sm leading-6 text-[#756752]">
+                              Latest customer record update or creation date.
+                            </p>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -385,7 +501,7 @@ export default function CustomersPage() {
                     </div>
                     <div className="space-y-2">
                       <h3 className="text-xl font-black text-slate-900">No customers matched the current filters</h3>
-                      <p className="max-w-xl text-sm leading-6 text-slate-600">Try a different search or clear the filters to view the full list.</p>
+                      <p className="max-w-xl text-sm leading-6 text-slate-600">{teamFilter !== "all" && selectedTeam ? `Try a different search or clear ${teamSelectLabel(selectedTeam)} to view more customers.` : "Try a different search or clear the filters to view the full list."}</p>
                     </div>
                   </div>
                 </article>

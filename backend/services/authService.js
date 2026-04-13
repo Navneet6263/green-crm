@@ -11,6 +11,7 @@ const { buildTalentId, createPrefixedId, slugify } = require("../utils/ids");
 const AppError = require("../utils/appError");
 const { isPlatformOperatorRole } = require("../utils/tenant");
 const { getAuthCacheKey, rememberRevokedAuthKey } = require("../utils/requestAuthCache");
+const { ensureInitialCompanyTeam } = require("./teamProvisioningService");
 
 function sanitizeUser(user) {
   if (!user) {
@@ -112,6 +113,16 @@ async function registerCompany(payload) {
         phone: adminPhone || null,
         department: roleInCompany || "Administration",
         password: await hashPassword(password),
+      },
+      transaction
+    );
+
+    await ensureInitialCompanyTeam(
+      {
+        companyId,
+        actorUserId: adminUserId,
+        managerUserIds: [adminUserId],
+        memberUserIds: [adminUserId],
       },
       transaction
     );

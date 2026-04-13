@@ -9,6 +9,7 @@ import DashboardShell from "../../../components/dashboard/DashboardShell";
 import { apiRequest } from "../../../lib/api";
 import { ROLE_HOME_ROUTE } from "../../../lib/roles";
 import { loadSession } from "../../../lib/session";
+import { teamBadgeLabel } from "../../../lib/teamScope";
 
 const OK_ROLES = ["super-admin", "platform-admin", "platform-manager", "admin", "manager", "sales", "marketing", "viewer"];
 const PAGE_SIZE_OPTIONS = [10, 15];
@@ -345,6 +346,11 @@ export default function LeadHistoryPage() {
                               <span className="inline-flex rounded-full border border-[#eadfcd] bg-[#fffaf1] px-3 py-1 text-[11px] font-bold text-[#7c6d55]">
                                 {nice(lead.workflow_stage || "sales")}
                               </span>
+                              {teamBadgeLabel(lead) ? (
+                                <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">
+                                  {teamBadgeLabel(lead)}
+                                </span>
+                              ) : null}
                             </div>
                             <div className="min-w-0">
                               <h3 className="truncate text-[1.35rem] font-black tracking-tight text-[#060710]">

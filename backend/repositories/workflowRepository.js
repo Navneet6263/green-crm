@@ -4,7 +4,7 @@ function getExecutor(executor) {
   return executor || db;
 }
 
-async function listWorkflowLeads({ companyId, companyIds = null, stage, assignedUserId, pagination }, executor) {
+async function listWorkflowLeads({ companyId, companyIds = null, stage, assignedUserId, teamIds = null, pagination }, executor) {
   const active = getExecutor(executor);
   const conditions = ["l.is_active = 1"];
   const params = [];
@@ -24,6 +24,15 @@ async function listWorkflowLeads({ companyId, companyIds = null, stage, assigned
   if (stage) {
     conditions.push("l.workflow_stage = ?");
     params.push(stage);
+  }
+
+  if (teamIds) {
+    if (!teamIds.length) {
+      conditions.push("1 = 0");
+    } else {
+      conditions.push(`l.team_id IN (${teamIds.map(() => "?").join(", ")})`);
+      params.push(...teamIds);
+    }
   }
 
   if (assignedUserId) {
@@ -91,15 +100,21 @@ async function listWorkflowLeads({ companyId, companyIds = null, stage, assigned
   };
 }
 
-async function listTransferHistory({ companyId, userId, pagination }, executor) {
+async function listTransferHistory({ companyId, userId, teamIds = null, pagination }, executor) {
   const active = getExecutor(executor);
+  const teamClause = teamIds
+    ? teamIds.length
+      ? ` AND l.team_id IN (${teamIds.map(() => "?").join(", ")})`
+      : " AND 1 = 0"
+    : "";
   const [countRows] = await active.query(
     `
       SELECT COUNT(*) AS total
-      FROM lead_transfer_history
-      WHERE company_id = ? AND (transferred_by = ? OR transferred_to = ?)
+      FROM lead_transfer_history h
+      INNER JOIN leads l ON l.lead_id = h.lead_id AND l.company_id = h.company_id
+      WHERE h.company_id = ? AND (h.transferred_by = ? OR h.transferred_to = ?)${teamClause}
     `,
-    [companyId, userId, userId]
+    [companyId, userId, userId, ...(teamIds || [])]
   );
   const [rows] = await active.query(
     `
@@ -108,12 +123,12 @@ async function listTransferHistory({ companyId, userId, pagination }, executor) 
         l.company_name,
         l.contact_person
       FROM lead_transfer_history h
-      INNER JOIN leads l ON l.lead_id = h.lead_id
-      WHERE h.company_id = ? AND (h.transferred_by = ? OR h.transferred_to = ?)
+      INNER JOIN leads l ON l.lead_id = h.lead_id AND l.company_id = h.company_id
+      WHERE h.company_id = ? AND (h.transferred_by = ? OR h.transferred_to = ?)${teamClause}
       ORDER BY h.transferred_at DESC
       OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
     `,
-    [companyId, userId, userId, pagination.offset, pagination.limit]
+    [companyId, userId, userId, ...(teamIds || []), pagination.offset, pagination.limit]
   );
 
   return {

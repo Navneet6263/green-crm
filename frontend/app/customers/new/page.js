@@ -8,6 +8,18 @@ import DashboardIcon from "../../../components/dashboard/icons";
 import { apiRequest } from "../../../lib/api";
 import { buildCustomerNotes } from "../../../lib/customerProfile";
 import { loadSession } from "../../../lib/session";
+import {
+  canManageScopedAssignments,
+  formatScopedError,
+  isPlatformConsoleRole,
+  loadTeamScopeResources,
+  resolveScopedCompanyId,
+  shouldShowTeamSelector,
+  scopedUsersEmptyMessage,
+  teamBadgeLabel,
+  teamSelectLabel,
+  teamSelectionRequiredMessage,
+} from "../../../lib/teamScope";
 
 const PANEL_CLASS = "rounded-[30px] border border-[#eadfcd] bg-white/82 p-5 shadow-[0_14px_36px_rgba(79,58,22,0.06)] md:p-6";
 const SOFT_PANEL_CLASS = "rounded-[24px] border border-[#eadfcd] bg-[#fffaf1] p-4";
@@ -27,12 +39,15 @@ function initials(value = "Customer") {
     .join("") || "C";
 }
 
-function createInitialForm() {
+function createInitialForm(companyId = "") {
   return {
+    company_id: companyId,
     name: "",
     company_name: "",
     email: "",
     phone: "",
+    team_id: "",
+    assigned_to: "",
     total_value: "",
     website: "",
     industry: "",
@@ -49,9 +64,37 @@ function createInitialForm() {
 export default function NewCustomerPage() {
   const router = useRouter();
   const [session, setSession] = useState(null);
+  const [companies, setCompanies] = useState([]);
+  const [teams, setTeams] = useState([]);
+  const [users, setUsers] = useState([]);
   const [form, setForm] = useState(createInitialForm());
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [resourceLoading, setResourceLoading] = useState(true);
+
+  const role = session?.user?.role || "";
+  const isPlatformConsole = isPlatformConsoleRole(role);
+  const companyId = resolveScopedCompanyId(session, form.company_id);
+  const canAssign = canManageScopedAssignments(role);
+  const teamSelectorVisible = shouldShowTeamSelector(role, teams);
+  const teamSelectionPending = teamSelectorVisible && !form.team_id;
+  const selectedTeam = useMemo(() => teams.find((team) => team.team_id === form.team_id) || null, [form.team_id, teams]);
+  const selectedOwner = useMemo(() => users.find((user) => user.user_id === form.assigned_to) || null, [form.assigned_to, users]);
+  const ownerEmptyMessage = useMemo(() => {
+    if (!canAssign || resourceLoading) {
+      return "";
+    }
+
+    if (teamSelectionPending) {
+      return "Choose a team to load available owners.";
+    }
+
+    if (!users.length) {
+      return scopedUsersEmptyMessage(selectedTeam);
+    }
+
+    return "";
+  }, [canAssign, resourceLoading, selectedTeam, teamSelectionPending, users.length]);
 
   useEffect(() => {
     const activeSession = loadSession();
@@ -60,22 +103,112 @@ export default function NewCustomerPage() {
       return;
     }
 
+    if (activeSession.user?.role === "viewer") {
+      router.replace("/customers");
+      return;
+    }
+
     setSession(activeSession);
+    if (isPlatformConsoleRole(activeSession.user?.role)) {
+      apiRequest("/companies?page_size=50", { token: activeSession.token })
+        .then((response) => {
+          const items = response.items || [];
+          const defaultCompanyId = items[0]?.company_id || "";
+          setCompanies(items);
+          setForm(createInitialForm(defaultCompanyId));
+        })
+        .catch((requestError) => setError(formatScopedError(requestError, "Failed to load companies.")));
+      return;
+    }
+
+    const currentCompany = activeSession.company
+      ? [
+          {
+            company_id: activeSession.company.company_id || activeSession.user?.company_id,
+            name: activeSession.company.name,
+          },
+        ]
+      : [];
+
+    setCompanies(currentCompany);
+    setForm(createInitialForm(activeSession.user?.company_id || activeSession.company?.company_id || ""));
   }, [router]);
+
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadResources() {
+      if (!session?.token || !companyId) {
+        setTeams([]);
+        setUsers([]);
+        setResourceLoading(false);
+        return;
+      }
+
+      setResourceLoading(true);
+
+      try {
+        const scopeResponse = await loadTeamScopeResources(session.token, {
+          companyId,
+          teamId: form.team_id,
+          includeUsers: canAssign && !teamSelectionPending,
+        });
+
+        if (ignore) {
+          return;
+        }
+
+        const teamItems = scopeResponse.teams || [];
+        const userItems = scopeResponse.users || [];
+        const nextTeamId = scopeResponse.teamId || "";
+        setTeams(teamItems);
+        setUsers(userItems);
+        setForm((current) => ({
+          ...current,
+          team_id: nextTeamId,
+          assigned_to: userItems.some((user) => user.user_id === current.assigned_to) ? current.assigned_to : "",
+        }));
+      } catch (requestError) {
+        if (!ignore) {
+          setError(formatScopedError(requestError, "Failed to load customer scope."));
+        }
+      } finally {
+        if (!ignore) {
+          setResourceLoading(false);
+        }
+      }
+    }
+
+    loadResources();
+
+    return () => {
+      ignore = true;
+    };
+  }, [canAssign, companyId, form.team_id, session, teamSelectionPending]);
 
   const readinessItems = useMemo(
     () => [
+      { label: "Tenant linked", done: !isPlatformConsole || Boolean(form.company_id) },
       { label: "Primary contact added", done: Boolean(form.name.trim()) },
       { label: "Company identity ready", done: Boolean(form.company_name.trim()) },
+      { label: "Team mapped", done: !teams.length || Boolean(form.team_id) },
       { label: "Email and phone ready", done: Boolean(form.email.trim() && form.phone.trim()) },
       { label: "Business summary added", done: Boolean(form.business_summary.trim()) },
       { label: "Location added", done: Boolean(form.address_city.trim() || form.address_state.trim() || form.country.trim()) },
     ],
-    [form]
+    [form, isPlatformConsole, teams.length]
   );
 
   async function handleSubmit(event) {
     event.preventDefault();
+    if (isPlatformConsole && !form.company_id) {
+      setError("Choose a company before creating a customer.");
+      return;
+    }
+    if (teamSelectorVisible && !form.team_id) {
+      setError(teamSelectionRequiredMessage("customer"));
+      return;
+    }
     setSaving(true);
     setError("");
 
@@ -84,10 +217,13 @@ export default function NewCustomerPage() {
         method: "POST",
         token: session.token,
         body: {
+          company_id: isPlatformConsole ? form.company_id : undefined,
           name: form.name.trim(),
           company_name: form.company_name.trim(),
           email: form.email.trim(),
           phone: form.phone.trim(),
+          team_id: form.team_id || undefined,
+          assigned_to: canAssign ? form.assigned_to || undefined : undefined,
           total_value: Number(form.total_value || 0),
           notes: buildCustomerNotes(
             {
@@ -106,7 +242,7 @@ export default function NewCustomerPage() {
       });
       router.push(`/customers/${response.customer_id}`);
     } catch (requestError) {
-      setError(requestError.message);
+      setError(formatScopedError(requestError, "Failed to create customer."));
     } finally {
       setSaving(false);
     }
@@ -138,8 +274,8 @@ export default function NewCustomerPage() {
               </div>
             </div>
 
-            <div className="mt-8 grid gap-4 md:grid-cols-3">
-              <div className="rounded-[24px] border border-[#eadfcd] bg-white/90 p-5 shadow-[0_14px_28px_rgba(79,58,22,0.05)]">
+              <div className="mt-8 grid gap-4 md:grid-cols-3">
+                <div className="rounded-[24px] border border-[#eadfcd] bg-white/90 p-5 shadow-[0_14px_28px_rgba(79,58,22,0.05)]">
                 <p className={KICKER_CLASS}>Primary Contact</p>
                 <strong className="mt-4 block text-2xl font-black tracking-tight text-[#060710]">{form.name || "--"}</strong>
                 <p className="mt-2 text-sm leading-6 text-[#766952]">The person the account team will recognize first.</p>
@@ -153,6 +289,11 @@ export default function NewCustomerPage() {
                 <p className={KICKER_CLASS}>Market Position</p>
                 <strong className="mt-4 block text-2xl font-black tracking-tight text-[#060710]">{form.industry || "Not set"}</strong>
                 <p className="mt-2 text-sm leading-6 text-[#766952]">Useful for handoffs, routing, and account understanding.</p>
+              </div>
+              <div className="rounded-[24px] border border-[#eadfcd] bg-[#fff7e8] p-5 shadow-[0_14px_28px_rgba(79,58,22,0.05)]">
+                <p className={KICKER_CLASS}>Team Ownership</p>
+                <strong className="mt-4 block text-2xl font-black tracking-tight text-[#060710]">{selectedTeam?.name || "Auto team"}</strong>
+                <p className="mt-2 text-sm leading-6 text-[#766952]">{selectedOwner?.name || session?.user?.name || "Current user"} will keep this customer inside the chosen team scope.</p>
               </div>
             </div>
           </article>
@@ -206,6 +347,19 @@ export default function NewCustomerPage() {
                 </div>
               </div>
               <div className="grid gap-4 md:grid-cols-2">
+                {isPlatformConsole ? (
+                  <label className="space-y-2">
+                    <span className={KICKER_CLASS}>Company</span>
+                    <select className={INPUT_CLASS} value={form.company_id} onChange={(event) => setForm((current) => ({ ...current, company_id: event.target.value, team_id: "", assigned_to: "" }))}>
+                      <option value="">Select company</option>
+                      {companies.map((company) => (
+                        <option key={company.company_id} value={company.company_id}>
+                          {company.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
                 <label className="space-y-2">
                   <span className={KICKER_CLASS}>Contact Name</span>
                   <input className={INPUT_CLASS} value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} required />
@@ -222,7 +376,39 @@ export default function NewCustomerPage() {
                   <span className={KICKER_CLASS}>Phone</span>
                   <input className={INPUT_CLASS} value={form.phone} onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))} required />
                 </label>
+                {teamSelectorVisible ? (
+                  <label className="space-y-2">
+                    <span className={KICKER_CLASS}>Team</span>
+                    <select className={INPUT_CLASS} value={form.team_id} onChange={(event) => setForm((current) => ({ ...current, team_id: event.target.value }))}>
+                      <option value="">Select team</option>
+                      {teams.map((team) => (
+                        <option key={team.team_id} value={team.team_id}>
+                          {teamSelectLabel(team)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
+                {canAssign ? (
+                  <label className="space-y-2">
+                    <span className={KICKER_CLASS}>Owner</span>
+                    <select className={INPUT_CLASS} value={form.assigned_to} onChange={(event) => setForm((current) => ({ ...current, assigned_to: event.target.value }))} disabled={resourceLoading || teamSelectionPending}>
+                      <option value="">Keep with current user</option>
+                      {users.map((user) => (
+                        <option key={user.user_id} value={user.user_id}>
+                          {user.name} | {user.role}
+                        </option>
+                      ))}
+                    </select>
+                    {ownerEmptyMessage ? <small className="text-xs font-semibold text-[#8f816a]">{ownerEmptyMessage}</small> : null}
+                  </label>
+                ) : null}
               </div>
+              {selectedTeam ? (
+                <div className="mt-4 rounded-[22px] border border-[#eadfcd] bg-[#fffaf1] px-4 py-4 text-sm leading-7 text-[#6f614c]">
+                  <strong className="text-[#060710]">Team scope:</strong> {teamBadgeLabel(selectedTeam)}
+                </div>
+              ) : null}
             </article>
 
             <article className={PANEL_CLASS}>
@@ -306,7 +492,7 @@ export default function NewCustomerPage() {
               <button className={GHOST_BUTTON_CLASS} type="button" onClick={() => router.push("/customers")}>
                 Cancel
               </button>
-              <button className={PRIMARY_BUTTON_CLASS} type="submit" disabled={saving}>
+                  <button className={PRIMARY_BUTTON_CLASS} type="submit" disabled={saving || resourceLoading}>
                 <DashboardIcon name="customers" className="h-4 w-4" />
                 {saving ? "Creating..." : "Create Customer"}
               </button>

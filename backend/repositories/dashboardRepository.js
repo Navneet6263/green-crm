@@ -27,6 +27,27 @@ function buildScopedCompanyClause(companyIds, columnName = "company_id") {
   };
 }
 
+function buildScopedTeamClause(teamIds, columnName = "team_id") {
+  if (!Array.isArray(teamIds)) {
+    return {
+      clause: "",
+      params: [],
+    };
+  }
+
+  if (!teamIds.length) {
+    return {
+      clause: " AND 1 = 0",
+      params: [],
+    };
+  }
+
+  return {
+    clause: ` AND ${columnName} IN (${teamIds.map(() => "?").join(", ")})`,
+    params: teamIds,
+  };
+}
+
 async function getPlatformSummary(companyIds = null) {
   const companyScope = buildScopedCompanyClause(companyIds, "company_id");
   const [summaryRows, recentCompanies] = await Promise.all([
@@ -68,7 +89,8 @@ async function getPlatformSummary(companyIds = null) {
   };
 }
 
-async function getCompanySummary(companyId) {
+async function getCompanySummary(companyId, teamIds = null) {
+  const teamScope = buildScopedTeamClause(teamIds, "team_id");
   const [
     teamRows,
     taskSummaryRows,
@@ -78,52 +100,72 @@ async function getCompanySummary(companyId) {
     recentLeads,
     recentProducts,
   ] = await Promise.all([
-    queryRows("SELECT COUNT(*) AS total FROM users WHERE company_id = ? AND is_active = 1", [companyId]),
+    queryRows(
+      `SELECT COUNT(DISTINCT u.user_id) AS total
+       FROM users u
+       ${
+         Array.isArray(teamIds)
+           ? `INNER JOIN (
+                SELECT company_id, team_id, user_id
+                FROM team_members
+                WHERE is_active = 1
+                UNION
+                SELECT company_id, team_id, user_id
+                FROM team_managers
+                WHERE is_active = 1
+              ) scoped_team_users
+              ON scoped_team_users.user_id = u.user_id
+             AND scoped_team_users.company_id = u.company_id`
+           : ""
+       }
+       WHERE u.company_id = ? AND u.is_active = 1${Array.isArray(teamIds) ? teamScope.clause.replace(/team_id/g, "scoped_team_users.team_id") : ""}`,
+      [companyId, ...(Array.isArray(teamIds) ? teamScope.params : [])]
+    ),
     queryRows(
       `
         SELECT
           SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS pending_tasks,
           SUM(CASE WHEN status = 'pending' AND due_date < GETDATE() THEN 1 ELSE 0 END) AS overdue_tasks
         FROM tasks
-        WHERE company_id = ?
+        WHERE company_id = ?${teamScope.clause}
       `,
-      [companyId]
+      [companyId, ...teamScope.params]
     ),
     queryRows(
-      "SELECT COUNT(*) AS total FROM leads WHERE company_id = ? AND is_active = 1 AND follow_up_date IS NOT NULL",
-      [companyId]
+      `SELECT COUNT(*) AS total FROM leads WHERE company_id = ? AND is_active = 1 AND follow_up_date IS NOT NULL${teamScope.clause}`,
+      [companyId, ...teamScope.params]
     ),
     queryRows(
-      "SELECT status, COUNT(*) AS total FROM leads WHERE company_id = ? AND is_active = 1 GROUP BY status",
-      [companyId]
+      `SELECT status, COUNT(*) AS total FROM leads WHERE company_id = ? AND is_active = 1${teamScope.clause} GROUP BY status`,
+      [companyId, ...teamScope.params]
     ),
     queryRows(
       `
         SELECT TOP 5 lead_source, COUNT(*) AS total
         FROM leads
-        WHERE company_id = ? AND is_active = 1
+        WHERE company_id = ? AND is_active = 1${teamScope.clause}
         GROUP BY lead_source
         ORDER BY total DESC, lead_source ASC
       `,
-      [companyId]
+      [companyId, ...teamScope.params]
     ),
     queryRows(
       `
         SELECT TOP 5 lead_id, company_name, contact_person, status, priority, workflow_stage, estimated_value, created_at
         FROM leads
-        WHERE company_id = ? AND is_active = 1
+        WHERE company_id = ? AND is_active = 1${teamScope.clause}
         ORDER BY created_at DESC, id DESC
       `,
-      [companyId]
+      [companyId, ...teamScope.params]
     ),
     queryRows(
       `
         SELECT TOP 5 product_id, name, color, created_at
         FROM products
-        WHERE company_id = ? AND is_active = 1
+        WHERE company_id = ? AND is_active = 1${teamScope.clause}
         ORDER BY created_at DESC, id DESC
       `,
-      [companyId]
+      [companyId, ...teamScope.params]
     ),
   ]);
   const taskSummary = taskSummaryRows[0] || {};
@@ -140,10 +182,12 @@ async function getCompanySummary(companyId) {
   };
 }
 
-async function getUserSummary({ companyId, userId, scope }) {
+async function getUserSummary({ companyId, userId, scope, teamIds = null }) {
   const column = scope === "created" ? "created_by" : scope === "assigned" ? "assigned_to" : null;
   const params = [companyId];
   const scopedCondition = column ? `AND ${column} = ?` : "";
+  const activityScopedCondition = column ? ` AND l.${column} = ?` : "";
+  const teamScope = buildScopedTeamClause(teamIds, "team_id");
 
   if (column) {
     params.push(userId);
@@ -162,10 +206,10 @@ async function getUserSummary({ companyId, userId, scope }) {
       `
         SELECT status, COUNT(*) AS total
         FROM leads
-        WHERE company_id = ? AND is_active = 1 ${scopedCondition}
+        WHERE company_id = ? AND is_active = 1 ${scopedCondition} ${teamScope.clause}
         GROUP BY status
       `,
-      params
+      [...params, ...teamScope.params]
     ),
     queryRows(
       `
@@ -173,17 +217,17 @@ async function getUserSummary({ companyId, userId, scope }) {
           SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS pending_tasks,
           SUM(CASE WHEN status = 'pending' AND due_date < GETDATE() THEN 1 ELSE 0 END) AS overdue_tasks
         FROM tasks
-        WHERE company_id = ? ${taskCondition}
+        WHERE company_id = ? ${taskCondition} ${teamScope.clause}
       `,
-      taskParams
+      [...taskParams, ...teamScope.params]
     ),
     queryRows(
       `
         SELECT COUNT(*) AS total
         FROM leads
-        WHERE company_id = ? AND is_active = 1 ${scopedCondition} AND follow_up_date IS NOT NULL
+        WHERE company_id = ? AND is_active = 1 ${scopedCondition} ${teamScope.clause} AND follow_up_date IS NOT NULL
       `,
-      params
+      [...params, ...teamScope.params]
     ),
     queryRows(
       `
@@ -196,10 +240,10 @@ async function getUserSummary({ companyId, userId, scope }) {
           l.contact_person
         FROM lead_activities la
         INNER JOIN leads l ON l.lead_id = la.lead_id
-        WHERE la.company_id = ?
+        WHERE la.company_id = ?${activityScopedCondition}${teamScope.clause.replace(/team_id/g, "l.team_id")}
         ORDER BY la.created_at DESC, la.id DESC
       `,
-      [companyId]
+      [companyId, ...(column ? [userId] : []), ...teamScope.params]
     ),
   ]);
   const taskSummary = taskSummaryRows[0] || {};

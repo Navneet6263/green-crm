@@ -124,7 +124,7 @@ export default function UserSettingsPage() {
     setCreating(true); setError(""); setMessage("");
     try {
       const response = await apiRequest("/auth/create-employee", { method: "POST", token: session.token, body: { ...createForm, company_id: isSuperAdmin ? scopedCompanyId : undefined } });
-      setMessage(response.temporary_password ? `User created. Temporary password: ${response.temporary_password}` : "User created successfully.");
+      setMessage(response.temporary_password ? `User created. Temporary password: ${response.temporary_password}. Add this user to a team from the Teams page.` : "User created successfully. Add this user to a team from the Teams page.");
       setCreateForm(formDraft(scopedCompanyId)); await loadWorkspace(session, scopedCompanyId); if (response.user_id) setSelectedUserId(response.user_id);
     } catch (requestError) { setError(requestError.message); } finally { setCreating(false); }
   }

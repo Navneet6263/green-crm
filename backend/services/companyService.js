@@ -12,6 +12,7 @@ const { buildPaginatedResult, parsePagination } = require("../utils/pagination")
 const AppError = require("../utils/appError");
 const { buildServiceSettingsPatch, mergeDeep, parseCompanySettings } = require("../utils/companySettings");
 const { assertCompanyAccess, getAccessibleCompanyIds, isPlatformOperatorRole } = require("../utils/tenant");
+const { ensureInitialCompanyTeam } = require("./teamProvisioningService");
 
 function sanitizeUser(user) {
   if (!user) {
@@ -188,6 +189,16 @@ async function createCompany(auth, payload) {
           department: "Administration",
           password: await hashPassword(adminPassword),
           created_by: auth.userId,
+        },
+        transaction
+      );
+
+      await ensureInitialCompanyTeam(
+        {
+          companyId,
+          actorUserId: adminUser.user_id,
+          managerUserIds: [adminUser.user_id],
+          memberUserIds: [adminUser.user_id],
         },
         transaction
       );

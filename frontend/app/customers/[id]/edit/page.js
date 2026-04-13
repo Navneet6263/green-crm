@@ -8,6 +8,16 @@ import DashboardIcon from "../../../../components/dashboard/icons";
 import { apiRequest } from "../../../../lib/api";
 import { buildCustomerNotes, parseCustomerProfile, stripCustomerProfile } from "../../../../lib/customerProfile";
 import { loadSession } from "../../../../lib/session";
+import {
+  canManageScopedAssignments,
+  formatScopedError,
+  loadTeamScopeResources,
+  shouldShowTeamSelector,
+  scopedUsersEmptyMessage,
+  teamBadgeLabel,
+  teamSelectLabel,
+  teamSelectionRequiredMessage,
+} from "../../../../lib/teamScope";
 
 const PANEL_CLASS = "rounded-[30px] border border-[#eadfcd] bg-white/82 p-5 shadow-[0_14px_36px_rgba(79,58,22,0.06)] md:p-6";
 const SOFT_PANEL_CLASS = "rounded-[24px] border border-[#eadfcd] bg-[#fffaf1] p-4";
@@ -37,6 +47,7 @@ function createInitialForm(customer = null) {
     phone: customer?.phone || "",
     status: customer?.status || "active",
     total_value: String(customer?.total_value || ""),
+    team_id: customer?.team_id || "",
     assigned_to: customer?.assigned_to || "",
     next_follow_up: customer?.next_follow_up ? new Date(customer.next_follow_up).toISOString().slice(0, 16) : "",
     website: profile.website || "",
@@ -56,14 +67,34 @@ export default function EditCustomerPage() {
   const [session, setSession] = useState(null);
   const [customer, setCustomer] = useState(null);
   const [users, setUsers] = useState([]);
+  const [teams, setTeams] = useState([]);
   const [form, setForm] = useState(createInitialForm());
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [resourceLoading, setResourceLoading] = useState(false);
 
   const role = session?.user?.role || "";
-  const canAssign = ["admin", "manager", "super-admin", "platform-admin", "platform-manager"].includes(role);
+  const canAssign = canManageScopedAssignments(role);
+  const teamSelectorVisible = shouldShowTeamSelector(role, teams);
+  const teamSelectionPending = teamSelectorVisible && !form.team_id;
+  const selectedTeam = useMemo(() => teams.find((team) => team.team_id === form.team_id) || null, [form.team_id, teams]);
   const hideTitle = true;
+  const ownerEmptyMessage = useMemo(() => {
+    if (!canAssign || resourceLoading) {
+      return "";
+    }
+
+    if (teamSelectionPending) {
+      return "Choose a team to load available owners.";
+    }
+
+    if (!users.length) {
+      return scopedUsersEmptyMessage(selectedTeam);
+    }
+
+    return "";
+  }, [canAssign, resourceLoading, selectedTeam, teamSelectionPending, users.length]);
 
   const readinessItems = useMemo(
     () => [
@@ -89,23 +120,99 @@ export default function EditCustomerPage() {
     }
 
     setSession(activeSession);
+    const allowAssignments = canManageScopedAssignments(activeSession.user?.role);
     Promise.all([
       apiRequest(`/customers/${params.id}`, { token: activeSession.token }),
-      canAssign ? apiRequest("/auth/users?page_size=120", { token: activeSession.token }) : Promise.resolve({ items: [] }),
     ])
-      .then(([customerResponse, usersResponse]) => {
+      .then(async ([customerResponse]) => {
+        const companyId = customerResponse.company_id || activeSession.user?.company_id || activeSession.company?.company_id || "";
+        const scopeResponse = await loadTeamScopeResources(activeSession.token, {
+          companyId,
+          teamId: customerResponse.team_id || "",
+          includeUsers: allowAssignments,
+        });
+        const teamItems = scopeResponse.teams || [];
+        const userItems = scopeResponse.users || [];
+
         setCustomer(customerResponse);
-        setForm(createInitialForm(customerResponse));
-        setUsers(usersResponse.items || []);
+        setTeams(teamItems);
+        setForm(() => ({
+          ...createInitialForm(customerResponse),
+          team_id: scopeResponse.teamId || "",
+          assigned_to: userItems.some((user) => user.user_id === customerResponse.assigned_to)
+            ? customerResponse.assigned_to
+            : "",
+        }));
+        setUsers(userItems);
       })
-      .catch((requestError) => setError(requestError.message))
+      .catch((requestError) => setError(formatScopedError(requestError, "Failed to load customer.")))
       .finally(() => setLoading(false));
-  }, [canAssign, params.id, router]);
+  }, [params.id, router]);
+
+  useEffect(() => {
+    let ignore = false;
+
+    async function reloadScopedUsers() {
+      if (!session?.token || !customer?.company_id || !canAssign) {
+        return;
+      }
+
+      setResourceLoading(true);
+
+      try {
+        if (teamSelectionPending) {
+          if (!ignore) {
+            setUsers([]);
+            setForm((current) => ({
+              ...current,
+              assigned_to: "",
+            }));
+          }
+          return;
+        }
+
+        const scopedResponse = await loadTeamScopeResources(session.token, {
+          companyId: customer.company_id,
+          teamId: form.team_id,
+          includeUsers: true,
+        });
+        const scopedUsers = scopedResponse.users || [];
+
+        if (ignore) {
+          return;
+        }
+
+        setUsers(scopedUsers);
+        setForm((current) => ({
+          ...current,
+          assigned_to: scopedUsers.some((user) => user.user_id === current.assigned_to) ? current.assigned_to : "",
+        }));
+      } catch (_error) {
+        if (!ignore) {
+          setUsers([]);
+        }
+      } finally {
+        if (!ignore) {
+          setResourceLoading(false);
+        }
+      }
+    }
+
+    reloadScopedUsers();
+
+    return () => {
+      ignore = true;
+    };
+  }, [canAssign, customer?.company_id, form.team_id, session, teamSelectionPending]);
 
   async function handleSubmit(event) {
     event.preventDefault();
     if (!form.name.trim() || !form.company_name.trim() || !form.email.trim() || !form.phone.trim()) {
       setError("Name, company name, email, and phone are required.");
+      return;
+    }
+    if (teamSelectorVisible && !form.team_id) {
+      setError(teamSelectionRequiredMessage("customer"));
       return;
     }
 
@@ -123,6 +230,7 @@ export default function EditCustomerPage() {
           phone: form.phone.trim(),
           status: form.status,
           total_value: Number(form.total_value || 0),
+          team_id: form.team_id || undefined,
           assigned_to: canAssign ? form.assigned_to || null : undefined,
           next_follow_up: form.next_follow_up || null,
           notes: buildCustomerNotes(
@@ -143,7 +251,7 @@ export default function EditCustomerPage() {
       });
       router.push(`/customers/${params.id}`);
     } catch (requestError) {
-      setError(requestError.message);
+      setError(formatScopedError(requestError, "Failed to save customer."));
     } finally {
       setSaving(false);
     }
@@ -189,6 +297,10 @@ export default function EditCustomerPage() {
                 <div className="rounded-[24px] border border-[#eadfcd] bg-[#fff7e8] p-4">
                   <p className={KICKER_CLASS}>Current Value</p>
                   <strong className="mt-3 block text-2xl font-black tracking-tight text-[#060710]">INR {Number(form.total_value || 0).toLocaleString("en-IN")}</strong>
+                </div>
+                <div className="rounded-[24px] border border-[#eadfcd] bg-white/90 p-4">
+                  <p className={KICKER_CLASS}>Current Team</p>
+                  <strong className="mt-3 block text-2xl font-black tracking-tight text-[#060710]">{selectedTeam?.name || customer.team_name || "Auto team"}</strong>
                 </div>
               </div>
             </article>
@@ -332,7 +444,7 @@ export default function EditCustomerPage() {
                   </label>
                   <label className="space-y-2">
                     <span className={KICKER_CLASS}>Owner</span>
-                    <select className={INPUT_CLASS} value={form.assigned_to} onChange={(event) => setForm((current) => ({ ...current, assigned_to: event.target.value }))} disabled={!canAssign}>
+                    <select className={INPUT_CLASS} value={form.assigned_to} onChange={(event) => setForm((current) => ({ ...current, assigned_to: event.target.value }))} disabled={!canAssign || resourceLoading || teamSelectionPending}>
                       <option value="">Unassigned</option>
                       {users.map((user) => (
                         <option key={user.user_id} value={user.user_id}>
@@ -340,8 +452,27 @@ export default function EditCustomerPage() {
                         </option>
                       ))}
                     </select>
+                    {ownerEmptyMessage ? <small className="text-xs font-semibold text-[#8f816a]">{ownerEmptyMessage}</small> : null}
                   </label>
+                  {teamSelectorVisible ? (
+                    <label className="space-y-2">
+                      <span className={KICKER_CLASS}>Team</span>
+                      <select className={INPUT_CLASS} value={form.team_id} onChange={(event) => setForm((current) => ({ ...current, team_id: event.target.value }))}>
+                        <option value="">Select team</option>
+                        {teams.map((team) => (
+                          <option key={team.team_id} value={team.team_id}>
+                            {teamSelectLabel(team)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ) : null}
                 </div>
+                {selectedTeam ? (
+                  <div className="mt-4 rounded-[22px] border border-[#eadfcd] bg-[#fffaf1] px-4 py-4 text-sm leading-7 text-[#6f614c]">
+                    <strong className="text-[#060710]">Team scope:</strong> {teamBadgeLabel(selectedTeam)}
+                  </div>
+                ) : null}
 
                 <div className="mt-5 flex flex-wrap justify-end gap-3">
                   <button className={GHOST_BUTTON_CLASS} type="button" onClick={() => router.push(`/customers/${params.id}`)}>

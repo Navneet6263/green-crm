@@ -33,11 +33,12 @@ async function getUserInCompany(userId, companyId, executor) {
   return rows[0] || null;
 }
 
-async function listUsers({ companyId, companyIds = null, role, search, pagination }, executor) {
+async function listUsers({ companyId, companyIds = null, role, search, teamIds = null, pagination }, executor) {
   const active = getExecutor(executor);
   const conditions = [];
   const params = [];
   const normalizedCompanyIds = [...new Set((Array.isArray(companyIds) ? companyIds : []).map((value) => String(value || "").trim()).filter(Boolean))];
+  const normalizedTeamIds = [...new Set((Array.isArray(teamIds) ? teamIds : []).map((value) => String(value || "").trim()).filter(Boolean))];
 
   if (companyIds) {
     if (!normalizedCompanyIds.length) {
@@ -59,6 +60,31 @@ async function listUsers({ companyId, companyIds = null, role, search, paginatio
   if (search) {
     conditions.push("(u.name LIKE ? OR u.email LIKE ?)");
     params.push(`%${search}%`, `%${search}%`);
+  }
+
+  if (teamIds) {
+    if (!normalizedTeamIds.length) {
+      return { rows: [], total: 0 };
+    }
+
+    conditions.push(`
+      EXISTS (
+        SELECT 1
+        FROM (
+          SELECT company_id, team_id, user_id
+          FROM team_members
+          WHERE is_active = 1
+          UNION
+          SELECT company_id, team_id, user_id
+          FROM team_managers
+          WHERE is_active = 1
+        ) scoped_team_users
+        WHERE scoped_team_users.company_id = u.company_id
+          AND scoped_team_users.user_id = u.user_id
+          AND scoped_team_users.team_id IN (${normalizedTeamIds.map(() => "?").join(", ")})
+      )
+    `);
+    params.push(...normalizedTeamIds);
   }
 
   const whereClause = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
@@ -109,8 +135,28 @@ async function listUsers({ companyId, companyIds = null, role, search, paginatio
   };
 }
 
-async function listUsersByRole(companyId, role, executor) {
+async function listUsersByRole(companyId, role, options = {}, executor) {
   const active = getExecutor(executor);
+  const normalizedTeamIds = [...new Set((Array.isArray(options.teamIds) ? options.teamIds : []).map((value) => String(value || "").trim()).filter(Boolean))];
+  const teamClause = normalizedTeamIds.length
+    ? `
+      AND EXISTS (
+        SELECT 1
+        FROM (
+          SELECT company_id, team_id, user_id
+          FROM team_members
+          WHERE is_active = 1
+          UNION
+          SELECT company_id, team_id, user_id
+          FROM team_managers
+          WHERE is_active = 1
+        ) scoped_team_users
+        WHERE scoped_team_users.company_id = u.company_id
+          AND scoped_team_users.user_id = u.user_id
+          AND scoped_team_users.team_id IN (${normalizedTeamIds.map(() => "?").join(", ")})
+      )
+    `
+    : "";
   const [rows] = await active.query(
     `
       SELECT
@@ -126,10 +172,49 @@ async function listUsersByRole(companyId, role, executor) {
         u.created_at
       FROM users u
       WHERE u.company_id = ? AND u.role = ? AND u.is_active = 1
+      ${teamClause}
       ORDER BY u.name ASC
     `,
-    [companyId, role]
+    [companyId, role, ...normalizedTeamIds]
   );
+  return rows;
+}
+
+async function listActiveUsersInCompany(companyId, options = {}, executor) {
+  const active = getExecutor(executor);
+  const search = String(options.search || "").trim();
+  const params = [companyId];
+  const searchClause = search
+    ? "AND (u.name LIKE ? OR u.email LIKE ? OR u.role LIKE ? OR u.department LIKE ?)"
+    : "";
+
+  if (search) {
+    const pattern = `%${search}%`;
+    params.push(pattern, pattern, pattern, pattern);
+  }
+
+  const [rows] = await active.query(
+    `
+      SELECT
+        u.user_id,
+        u.company_id,
+        u.role,
+        u.name,
+        u.email,
+        u.phone,
+        u.department,
+        u.is_active,
+        u.last_login_at,
+        u.created_at
+      FROM users u
+      WHERE u.company_id = ?
+        AND u.is_active = 1
+        ${searchClause}
+      ORDER BY u.name ASC, u.created_at DESC
+    `,
+    params
+  );
+
   return rows;
 }
 
@@ -259,6 +344,7 @@ module.exports = {
   getUserById,
   getUserInCompany,
   listUsersByRole,
+  listActiveUsersInCompany,
   listUsers,
   setUserActive,
   updateUser,

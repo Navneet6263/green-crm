@@ -9,6 +9,7 @@ import DashboardIcon from "../../../components/dashboard/icons";
 import { apiRequest } from "../../../lib/api";
 import { buildCustomerNotes, parseCustomerProfile, stripCustomerProfile } from "../../../lib/customerProfile";
 import { loadSession } from "../../../lib/session";
+import { formatScopedError, teamBadgeLabel } from "../../../lib/teamScope";
 
 const PANEL_CLASS = "rounded-[30px] border border-[#eadfcd] bg-white/82 p-5 shadow-[0_14px_36px_rgba(79,58,22,0.06)] md:p-6";
 const SOFT_PANEL_CLASS = "rounded-[24px] border border-[#eadfcd] bg-[#fffaf1] p-4";
@@ -97,7 +98,7 @@ export default function CustomerDetailPage() {
       return;
     }
     setSession(activeSession);
-    loadCustomer(activeSession).catch((requestError) => setError(requestError.message));
+    loadCustomer(activeSession).catch((requestError) => setError(formatScopedError(requestError, "Could not load this customer.")));
   }, [params.id, router]);
 
   const profile = useMemo(() => parseCustomerProfile(customer?.notes), [customer?.notes]);
@@ -121,7 +122,7 @@ export default function CustomerDetailPage() {
       setNotice("Customer note saved.");
       await loadCustomer(session);
     } catch (requestError) {
-      setError(requestError.message);
+      setError(formatScopedError(requestError, "Could not save this customer note."));
     } finally {
       setSavingNote(false);
     }
@@ -143,7 +144,7 @@ export default function CustomerDetailPage() {
       setNotice("Follow-up scheduled.");
       await loadCustomer(session);
     } catch (requestError) {
-      setError(requestError.message);
+      setError(formatScopedError(requestError, "Could not schedule this follow-up."));
     } finally {
       setSavingFollowUp(false);
     }
@@ -172,7 +173,7 @@ export default function CustomerDetailPage() {
       setNotice("Follow-up marked complete.");
       await loadCustomer(session);
     } catch (requestError) {
-      setError(requestError.message);
+      setError(formatScopedError(requestError, "Could not complete this follow-up."));
     } finally {
       setCompletingFollowUp(false);
     }
@@ -214,24 +215,43 @@ export default function CustomerDetailPage() {
                         {customer.company_name || customer.name}
                       </h2>
                       <p className="mt-2 max-w-3xl text-sm leading-7 text-[#6f614c] md:text-base">
-                        {customer.name || "Primary contact"}{customer.email ? ` · ${customer.email}` : ""}{customer.phone ? ` · ${customer.phone}` : ""}
+                        {customer.name || "Primary contact"}{customer.email ? ` | ${customer.email}` : ""}{customer.phone ? ` | ${customer.phone}` : ""}
                       </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {teamBadgeLabel(customer) ? (
+                        <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">
+                          {teamBadgeLabel(customer)}
+                        </span>
+                      ) : null}
+                      <span className="inline-flex rounded-full border border-[#eadfcd] bg-[#fffaf1] px-3 py-1 text-[11px] font-bold text-[#7c6d55]">
+                        {customer.assigned_to_name || "Unassigned"}
+                      </span>
                     </div>
                   </div>
                 </div>
 
-                <div className="grid gap-3 md:grid-cols-3">
+                <div className="grid gap-3 md:grid-cols-[1.2fr_0.8fr_0.8fr]">
                   <div className={SOFT_PANEL_CLASS}>
-                    <span className={KICKER_CLASS}>Primary Contact</span>
-                    <strong className="mt-3 block text-base font-black text-[#060710]">{customer.name || "Primary contact"}</strong>
+                    <span className={KICKER_CLASS}>Contact Rail</span>
+                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <strong className="block text-sm font-black text-[#060710]">{customer.name || "Primary contact"}</strong>
+                        <span className="mt-1 block break-words text-sm text-[#6f614c]">{customer.email || "No email"}</span>
+                      </div>
+                      <div>
+                        <strong className="block text-sm font-black text-[#060710]">Phone</strong>
+                        <span className="mt-1 block text-sm text-[#6f614c]">{customer.phone || "No phone"}</span>
+                      </div>
+                    </div>
                   </div>
                   <div className={SOFT_PANEL_CLASS}>
-                    <span className={KICKER_CLASS}>Email</span>
-                    <strong className="mt-3 block break-words text-base font-black text-[#060710]">{customer.email || "No email"}</strong>
+                    <span className={KICKER_CLASS}>Owner</span>
+                    <strong className="mt-3 block text-base font-black text-[#060710]">{customer.assigned_to_name || "Unassigned"}</strong>
                   </div>
                   <div className={SOFT_PANEL_CLASS}>
-                    <span className={KICKER_CLASS}>Phone</span>
-                    <strong className="mt-3 block text-base font-black text-[#060710]">{customer.phone || "No phone"}</strong>
+                    <span className={KICKER_CLASS}>Team</span>
+                    <strong className="mt-3 block text-base font-black text-[#060710]">{teamBadgeLabel(customer) || "Auto team"}</strong>
                   </div>
                 </div>
               </div>
@@ -242,7 +262,7 @@ export default function CustomerDetailPage() {
                     {[
                       { label: "Status", value: customer.status || "active" },
                       { label: "Value", value: money(customer.total_value) },
-                      { label: "Owner", value: customer.assigned_to_name || "Unassigned" },
+                      { label: "Team", value: teamBadgeLabel(customer) || "Auto team" },
                       { label: "Next Follow-up", value: when(customer.next_follow_up, true) },
                     ].map((item) => (
                       <div key={item.label} className="rounded-[24px] border border-white/10 bg-white/6 p-4">
@@ -270,6 +290,7 @@ export default function CustomerDetailPage() {
                   <DetailCell label="Industry" value={profile.industry || "Not set"} />
                   <DetailCell label="Website" value={profile.website || "Not set"} />
                   <DetailCell label="Owner" value={customer.assigned_to_name || "Unassigned"} />
+                  <DetailCell label="Team" value={teamBadgeLabel(customer) || "Auto team"} />
                   <DetailCell label="Address" value={[profile.address_street, profile.address_city, profile.address_state, profile.address_zip, profile.country].filter(Boolean).join(", ") || "Not set"} className="md:col-span-2 xl:col-span-3" />
                 </div>
                 {profile.business_summary ? (

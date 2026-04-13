@@ -12,6 +12,16 @@ const { buildPaginatedResult, parsePagination } = require("../utils/pagination")
 const { createPrefixedId } = require("../utils/ids");
 const AppError = require("../utils/appError");
 const { assertCompanyAccess, getAccessibleCompanyIds, isManagerRole, isPlatformOperatorRole } = require("../utils/tenant");
+const {
+  assertRecordTeamAccess,
+  assertTeamAccess,
+  ensureTeamIdWhenTeamsConfigured,
+  ensureUserBelongsToTeam,
+  parseRequestedTeamIds,
+  resolveDefaultTeamId,
+  resolvePreferredTeamId,
+  resolveTeamScope,
+} = require("./accessScopeService");
 
 const INVALID_LEAD_DATE = Symbol("invalid_lead_date");
 
@@ -113,6 +123,7 @@ function buildBulkImportLeadPayload(row, defaultCompanyId = null) {
 
   return {
     company_id: getImportValue(row, ["company_id", "company_code"]) || defaultCompanyId || null,
+    team_id: getImportValue(row, ["team_id", "team_code"]),
     product_id: productCode,
     assigned_to: assignedCode || null,
     contact_person: getImportValue(row, ["contact_person", "contact_person_name"]) || "",
@@ -232,7 +243,10 @@ async function assertLeadAccess(auth, lead) {
     throw new AppError("Lead not found.", 404);
   }
 
-  assertCompanyAccess(auth, lead.company_id);
+  await assertRecordTeamAccess(auth, lead, {
+    includeManaged: true,
+    includeMembership: true,
+  });
 
   if (auth.role === ROLES.SALES && lead.assigned_to !== auth.userId) {
     throw new AppError("Sales users can only access leads assigned to them.", 403);
@@ -248,6 +262,10 @@ async function assertLeadAccess(auth, lead) {
 
   if (auth.role === ROLES.FINANCE_TEAM && lead.workflow_stage !== "finance") {
     throw new AppError("Finance team can only access finance stage leads.", 403);
+  }
+
+  if ([ROLES.SUPPORT, ROLES.VIEWER].includes(auth.role) && lead.assigned_to !== auth.userId) {
+    throw new AppError("This role can only access leads assigned to them.", 403);
   }
 }
 
@@ -265,7 +283,58 @@ async function ensureLeadContext(companyId, productId) {
   }
 }
 
-function buildLeadFilters(auth, query) {
+async function resolveLeadTeamId(auth, companyId, payload, existingLead = null) {
+  const requestedTeamIds = parseRequestedTeamIds(payload);
+  let resolvedTeamId = null;
+
+  if (requestedTeamIds.length) {
+    [resolvedTeamId] = requestedTeamIds;
+    await assertTeamAccess(auth, companyId, resolvedTeamId, {
+      includeManaged: true,
+      includeMembership: true,
+    });
+  }
+
+  let product = null;
+  if (payload.product_id) {
+    product = await productRepository.getProductById(payload.product_id);
+    if (product && product.company_id !== companyId) {
+      throw new AppError("Selected product is not available for this company.", 400);
+    }
+  }
+
+  if (resolvedTeamId && product?.team_id && product.team_id !== resolvedTeamId) {
+    throw new AppError("Lead team must match the selected product team.", 400);
+  }
+
+  if (!resolvedTeamId && product?.team_id) {
+    return product.team_id;
+  }
+
+  if (existingLead?.team_id) {
+    return existingLead.team_id;
+  }
+
+  if (resolvedTeamId) {
+    return resolvedTeamId;
+  }
+
+  if (payload.assigned_to) {
+    const preferredAssigneeTeam = await resolvePreferredTeamId(companyId, payload.assigned_to);
+    if (preferredAssigneeTeam) {
+      return preferredAssigneeTeam;
+    }
+  }
+
+  const creatorTeamId = await resolvePreferredTeamId(companyId, auth.userId);
+  if (creatorTeamId) {
+    return creatorTeamId;
+  }
+
+  return resolveDefaultTeamId(companyId);
+}
+
+async function buildLeadFilters(auth, query) {
   const filters = {
     companyId: null,
     companyIds: null,
@@ -275,20 +344,30 @@ function buildLeadFilters(auth, query) {
     search: query.search || "",
     workflowStage: query.workflow_stage || null,
     productId: query.product_id || null,
+    teamIds: null,
   };
 
   if (auth.role === ROLES.SUPER_ADMIN) {
+    const requestedTeamIds = parseRequestedTeamIds(query);
     filters.companyId = query.company_id || null;
     filters.assignedTo = query.assigned_to || null;
     filters.createdBy = query.created_by || null;
+    filters.teamIds = requestedTeamIds.length ? requestedTeamIds : null;
     return filters;
   }
 
   if (isPlatformOperatorRole(auth.role)) {
+    const requestedTeamIds = parseRequestedTeamIds(query);
     filters.companyId = query.company_id || null;
     filters.companyIds = filters.companyId ? null : getAccessibleCompanyIds(auth);
     filters.assignedTo = query.assigned_to || null;
     filters.createdBy = query.created_by || null;
+    filters.teamIds = (
+      await resolveTeamScope(auth, filters.companyId, requestedTeamIds, {
+        includeManaged: true,
+        includeMembership: true,
+      })
+    ).teamIds;
     return filters;
   }
 
@@ -304,17 +383,26 @@ function buildLeadFilters(auth, query) {
   } else if (auth.role === ROLES.FINANCE_TEAM) {
     filters.workflowStage = "finance";
     filters.assignedTo = auth.userId;
+  } else if ([ROLES.SUPPORT, ROLES.VIEWER].includes(auth.role)) {
+    filters.assignedTo = auth.userId;
   } else {
     filters.assignedTo = query.assigned_to || null;
     filters.createdBy = query.created_by || null;
   }
+
+  filters.teamIds = (
+    await resolveTeamScope(auth, filters.companyId, parseRequestedTeamIds(query), {
+      includeManaged: true,
+      includeMembership: true,
+    })
+  ).teamIds;
 
   return filters;
 }
 
 async function listLeads(auth, query) {
   const pagination = parsePagination(query);
-  const filters = buildLeadFilters(auth, query);
+  const filters = await buildLeadFilters(auth, query);
 
   if (filters.companyId) {
     assertCompanyAccess(auth, filters.companyId);
@@ -380,6 +468,16 @@ async function createLead(auth, payload) {
     assignedTo = (await ensureSameCompanyUser(assignedTo, companyId)).user_id;
   }
 
+  const teamId = await ensureTeamIdWhenTeamsConfigured(
+    companyId,
+    await resolveLeadTeamId(auth, companyId, {
+      ...payload,
+      product_id: lead.product_id,
+      assigned_to: assignedTo,
+    })
+  );
+  await ensureUserBelongsToTeam(companyId, assignedTo, teamId, "Lead owner");
+
   return db.withTransaction(async (transaction) => {
     const createdLead = await leadRepository.createLead(
       {
@@ -400,6 +498,7 @@ async function createLead(auth, payload) {
         status: lead.status,
         priority: lead.priority,
         estimated_value: lead.estimated_value,
+        team_id: teamId,
         assigned_to: assignedTo,
         assigned_by: auth.userId,
         created_by: auth.userId,
@@ -487,6 +586,26 @@ async function updateLead(auth, leadId, payload) {
     updates.assigned_by = auth.userId;
     updates.assigned_at = new Date();
   }
+
+  updates.team_id = await ensureTeamIdWhenTeamsConfigured(
+    lead.company_id,
+    await resolveLeadTeamId(
+      auth,
+      lead.company_id,
+      {
+        ...payload,
+        product_id: normalized.product_id,
+        assigned_to: assignedToOverride !== undefined ? assignedToOverride : lead.assigned_to,
+      },
+      lead
+    )
+  );
+  await ensureUserBelongsToTeam(
+    lead.company_id,
+    assignedToOverride !== undefined ? assignedToOverride : lead.assigned_to,
+    updates.team_id,
+    "Lead owner"
+  );
 
   const changes = buildLeadChangeSummary(lead, updates, assignedToOverride);
   if (!changes.length) {
@@ -645,7 +764,10 @@ async function listReminders(auth, query) {
   const filters = {
     companyId: null,
     companyIds: null,
-    userId: auth.role === ROLES.SALES ? auth.userId : query.user_id || null,
+    userId: [ROLES.SALES, ROLES.MARKETING, ROLES.LEGAL_TEAM, ROLES.FINANCE_TEAM, ROLES.SUPPORT, ROLES.VIEWER].includes(auth.role)
+      ? auth.userId
+      : query.user_id || null,
+    teamIds: null,
   };
 
   if (auth.role === ROLES.SUPER_ADMIN) {
@@ -659,6 +781,12 @@ async function listReminders(auth, query) {
 
   if (filters.companyId) {
     assertCompanyAccess(auth, filters.companyId);
+    filters.teamIds = (
+      await resolveTeamScope(auth, filters.companyId, parseRequestedTeamIds(query), {
+        includeManaged: true,
+        includeMembership: true,
+      })
+    ).teamIds;
   }
 
   const { rows, total, pageInfo } = await leadRepository.listReminders(filters, pagination);
@@ -683,7 +811,17 @@ async function getProductStats(auth, query = {}) {
   }
 
   assertCompanyAccess(auth, companyId);
-  return leadRepository.getProductStats(companyId);
+  const { teamIds } = await resolveTeamScope(auth, companyId, parseRequestedTeamIds(query), {
+    includeManaged: true,
+    includeMembership: true,
+  });
+  return leadRepository.getProductStats({
+    companyId,
+    teamIds,
+    assignedTo: [ROLES.SALES, ROLES.MARKETING, ROLES.LEGAL_TEAM, ROLES.FINANCE_TEAM, ROLES.SUPPORT, ROLES.VIEWER].includes(auth.role)
+      ? auth.userId
+      : query.assigned_to || null,
+  });
 }
 
 async function getUserProductHistory(auth, query = {}) {
@@ -697,7 +835,14 @@ async function getUserProductHistory(auth, query = {}) {
   }
 
   assertCompanyAccess(auth, companyId);
-  return leadRepository.getUserProductHistory(query.user_id || auth.userId, companyId);
+  const { teamIds } = await resolveTeamScope(auth, companyId, parseRequestedTeamIds(query), {
+    includeManaged: true,
+    includeMembership: true,
+  });
+  const targetUserId = [ROLES.SALES, ROLES.MARKETING, ROLES.LEGAL_TEAM, ROLES.FINANCE_TEAM, ROLES.SUPPORT, ROLES.VIEWER].includes(auth.role)
+    ? auth.userId
+    : query.user_id || auth.userId;
+  return leadRepository.getUserProductHistory(targetUserId, companyId, teamIds);
 }
 
 async function bulkUpload(auth, payload) {

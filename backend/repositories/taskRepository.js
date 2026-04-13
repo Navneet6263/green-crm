@@ -25,6 +25,15 @@ function buildWhere(filters) {
     params.push(filters.assignedTo);
   }
 
+  if (filters.teamIds) {
+    if (!filters.teamIds.length) {
+      conditions.push("1 = 0");
+    } else {
+      conditions.push(`t.team_id IN (${filters.teamIds.map(() => "?").join(", ")})`);
+      params.push(...filters.teamIds);
+    }
+  }
+
   if (filters.status) {
     conditions.push("t.status = ?");
     params.push(filters.status);
@@ -58,10 +67,13 @@ async function listTasks(filters, pagination, executor) {
       SELECT
         t.*,
         u.name AS assigned_to_name,
-        creator.name AS created_by_name
+        creator.name AS created_by_name,
+        team.name AS team_name,
+        team.code AS team_code
       FROM tasks t
       LEFT JOIN users u ON u.user_id = t.assigned_to
       LEFT JOIN users creator ON creator.user_id = t.created_by
+      LEFT JOIN teams team ON team.team_id = t.team_id
       ${whereClause}
       ORDER BY t.due_date ASC, t.created_at DESC
       OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
@@ -90,10 +102,13 @@ async function getTaskById(taskId, companyId = null, executor) {
       SELECT TOP 1
         t.*,
         u.name AS assigned_to_name,
-        creator.name AS created_by_name
+        creator.name AS created_by_name,
+        team.name AS team_name,
+        team.code AS team_code
       FROM tasks t
       LEFT JOIN users u ON u.user_id = t.assigned_to
       LEFT JOIN users creator ON creator.user_id = t.created_by
+      LEFT JOIN teams team ON team.team_id = t.team_id
       WHERE ${conditions.join(" AND ")}
     `,
     params
@@ -106,8 +121,8 @@ async function createTask(task, executor) {
   await active.query(
     `
       INSERT INTO tasks
-        (task_id, company_id, title, type, status, priority, due_date, assigned_to, related_to, related_id, created_by, notes)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (task_id, company_id, title, type, status, priority, due_date, team_id, assigned_to, related_to, related_id, created_by, notes)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
     [
       task.task_id,
@@ -117,6 +132,7 @@ async function createTask(task, executor) {
       task.status || "pending",
       task.priority || "medium",
       task.due_date,
+      task.team_id || null,
       task.assigned_to || null,
       task.related_to || null,
       task.related_id || null,
@@ -133,7 +149,7 @@ async function updateTask(taskId, companyId, updates, executor) {
   const fields = [];
   const params = [];
 
-  ["title", "type", "status", "priority", "due_date", "assigned_to", "related_to", "related_id", "notes"].forEach((column) => {
+  ["title", "type", "status", "priority", "due_date", "team_id", "assigned_to", "related_to", "related_id", "notes"].forEach((column) => {
     if (!Object.prototype.hasOwnProperty.call(updates, column)) {
       return;
     }

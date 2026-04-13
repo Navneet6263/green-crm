@@ -243,7 +243,7 @@ export default function AdminDashboard() {
                         <div className="grid gap-3 md:grid-cols-2">
                           <ActionRailLink href="/leads/new" icon="leads" title="Create Lead" copy="Start a fresh pipeline record." tone="bg-[#fff0c8] text-[#8d6e27]" />
                           <ActionRailLink href="/leads" icon="dashboard" title="Lead Workspace" copy="Review stage movement and ownership." tone="bg-[#fff7e8] text-[#8d6e27]" />
-                          <ActionRailLink href="/settings/users" icon="users" title="Team Control" copy="Manage roles, activation, and seats." tone="bg-[#f6efe2] text-[#5d503c]" />
+                          <ActionRailLink href="/settings/teams" icon="users" title="Team Control" copy="Define teams, members, and managers." tone="bg-[#f6efe2] text-[#5d503c]" />
                           <ActionRailLink href="/settings/products" icon="products" title="Product Palette" copy="Adjust products and active catalog." tone="bg-[#ebf8ee] text-[#217346]" />
                         </div>
                       </div>
@@ -347,7 +347,7 @@ export default function AdminDashboard() {
                       eyebrow="Team Surface"
                       title="Role and roster coverage"
                       copy="Who is active inside the tenant, and how the current role mix looks."
-                      action={<Link prefetch={false} href="/settings/users" className="rounded-[16px] border border-[#eadfcd] bg-white px-4 py-2 text-xs font-semibold text-[#5d503c] transition hover:border-[#d7b258] hover:text-[#060710]">Manage team</Link>}
+                      action={<Link prefetch={false} href="/settings/teams" className="rounded-[16px] border border-[#eadfcd] bg-white px-4 py-2 text-xs font-semibold text-[#5d503c] transition hover:border-[#d7b258] hover:text-[#060710]">Manage teams</Link>}
                     />
                     <div className="space-y-5">
                       <div className="space-y-3">

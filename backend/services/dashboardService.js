@@ -1,6 +1,7 @@
 const dashboardRepository = require("../repositories/dashboardRepository");
 const { ROLES } = require("../constants/roles");
 const { getAccessibleCompanyIds, isPlatformOperatorRole } = require("../utils/tenant");
+const { parseRequestedTeamIds, resolveTeamScope } = require("./accessScopeService");
 
 const dashboardCache = new Map();
 
@@ -35,7 +36,19 @@ function writeCache(key, value, ttlMs) {
   });
 }
 
-function buildCacheKey(auth) {
+function buildScopeKey(teamIds) {
+  if (!Array.isArray(teamIds)) {
+    return "all";
+  }
+
+  if (!teamIds.length) {
+    return "none";
+  }
+
+  return teamIds.slice().sort().join(",");
+}
+
+function buildCacheKey(auth, scopeKey = "all") {
   if (auth.role === ROLES.SUPER_ADMIN) {
     return "dashboard:platform";
   }
@@ -46,21 +59,35 @@ function buildCacheKey(auth) {
   }
 
   if ([ROLES.ADMIN, ROLES.MANAGER].includes(auth.role)) {
-    return `dashboard:company:${auth.companyId}:${auth.role}`;
+    const identityKey = auth.role === ROLES.MANAGER ? `:${auth.userId}` : "";
+    return `dashboard:company:${auth.companyId}:${auth.role}${identityKey}:${scopeKey}`;
   }
 
   if (auth.role === ROLES.SALES) {
-    return `dashboard:user:${auth.companyId}:${auth.role}:${auth.userId}:assigned`;
+    return `dashboard:user:${auth.companyId}:${auth.role}:${auth.userId}:assigned:${scopeKey}`;
   }
 
   if (auth.role === ROLES.MARKETING) {
-    return `dashboard:user:${auth.companyId}:${auth.role}:${auth.userId}:assigned`;
+    return `dashboard:user:${auth.companyId}:${auth.role}:${auth.userId}:assigned:${scopeKey}`;
   }
 
-  return `dashboard:user:${auth.companyId}:${auth.role}:${auth.userId}:company`;
+  return `dashboard:user:${auth.companyId}:${auth.role}:${auth.userId}:company:${scopeKey}`;
 }
 
-async function loadSummary(auth) {
+async function resolveDashboardTeamScope(auth, query = {}) {
+  if (!auth.companyId) {
+    return null;
+  }
+
+  const { teamIds } = await resolveTeamScope(auth, auth.companyId, parseRequestedTeamIds(query), {
+    includeManaged: true,
+    includeMembership: true,
+  });
+
+  return teamIds;
+}
+
+async function loadSummary(auth, query = {}) {
   if (auth.role === ROLES.SUPER_ADMIN) {
     return dashboardRepository.getPlatformSummary();
   }
@@ -70,47 +97,47 @@ async function loadSummary(auth) {
   }
 
   if ([ROLES.ADMIN, ROLES.MANAGER].includes(auth.role)) {
-    return dashboardRepository.getCompanySummary(auth.companyId);
+    const teamIds = await resolveDashboardTeamScope(auth, query);
+    return dashboardRepository.getCompanySummary(auth.companyId, teamIds);
   }
 
-  if (auth.role === ROLES.SALES) {
+  if ([ROLES.SALES, ROLES.MARKETING, ROLES.LEGAL_TEAM, ROLES.FINANCE_TEAM, ROLES.SUPPORT, ROLES.VIEWER].includes(auth.role)) {
+    const teamIds = await resolveDashboardTeamScope(auth, query);
     return dashboardRepository.getUserSummary({
       companyId: auth.companyId,
       userId: auth.userId,
       scope: "assigned",
+      teamIds,
     });
   }
 
-  if (auth.role === ROLES.MARKETING) {
-    return dashboardRepository.getUserSummary({
-      companyId: auth.companyId,
-      userId: auth.userId,
-      scope: "assigned",
-    });
-  }
-
+  const teamIds = await resolveDashboardTeamScope(auth, query);
   return dashboardRepository.getUserSummary({
     companyId: auth.companyId,
     userId: auth.userId,
     scope: "company",
+    teamIds,
   });
 }
 
 async function getSummary(auth, query = {}) {
   const ttlMs = getCacheTtlMs();
+  const scopeKey = buildScopeKey(
+    auth.companyId ? await resolveDashboardTeamScope(auth, query) : null
+  );
 
   if (ttlMs === 0 || parseCacheControl(query.refresh) || parseCacheControl(query.fresh) || parseCacheControl(query.no_cache)) {
-    return loadSummary(auth);
+    return loadSummary(auth, query);
   }
 
-  const cacheKey = buildCacheKey(auth);
+  const cacheKey = buildCacheKey(auth, scopeKey);
   const cached = readCache(cacheKey);
 
   if (cached) {
     return cached;
   }
 
-  const summary = await loadSummary(auth);
+  const summary = await loadSummary(auth, query);
   writeCache(cacheKey, summary, ttlMs);
   return summary;
 }

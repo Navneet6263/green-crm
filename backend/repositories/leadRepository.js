@@ -59,6 +59,15 @@ function buildWhere(filters) {
     params.push(filters.assignedTo);
   }
 
+  if (filters.teamIds) {
+    if (!filters.teamIds.length) {
+      conditions.push("1 = 0");
+    } else {
+      conditions.push(`l.team_id IN (${filters.teamIds.map(() => "?").join(", ")})`);
+      params.push(...filters.teamIds);
+    }
+  }
+
   if (filters.createdBy) {
     conditions.push("l.created_by = ?");
     params.push(filters.createdBy);
@@ -132,6 +141,8 @@ async function getLeadById(leadId, companyId, executor) {
         p.name AS product_name,
         assignee.name AS assigned_to_name,
         creator.name AS created_by_name,
+        team.name AS team_name,
+        team.code AS team_code,
         legal_user.name AS legal_owner_name,
         finance_user.name AS finance_owner_name,
         (
@@ -149,6 +160,7 @@ async function getLeadById(leadId, companyId, executor) {
       LEFT JOIN products p ON p.product_id = l.product_id
       LEFT JOIN users assignee ON assignee.user_id = l.assigned_to
       LEFT JOIN users creator ON creator.user_id = l.created_by
+      LEFT JOIN teams team ON team.team_id = l.team_id
       LEFT JOIN users legal_user ON legal_user.user_id = l.assigned_to_legal
       LEFT JOIN users finance_user ON finance_user.user_id = l.assigned_to_finance
       WHERE ${conditions.join(" AND ")}
@@ -179,6 +191,8 @@ async function listLeads(filters, pagination, executor) {
           p.name AS product_name,
           assignee.name AS assigned_to_name,
           creator.name AS created_by_name,
+          team.name AS team_name,
+          team.code AS team_code,
           (
             SELECT COUNT(*)
             FROM lead_notes ln
@@ -194,6 +208,7 @@ async function listLeads(filters, pagination, executor) {
         LEFT JOIN products p ON p.product_id = l.product_id
         LEFT JOIN users assignee ON assignee.user_id = l.assigned_to
         LEFT JOIN users creator ON creator.user_id = l.created_by
+        LEFT JOIN teams team ON team.team_id = l.team_id
         ${whereClause}${cursorClause}
         ORDER BY l.created_at DESC, l.id DESC
       `,
@@ -213,6 +228,8 @@ async function listLeads(filters, pagination, executor) {
         p.name AS product_name,
         assignee.name AS assigned_to_name,
         creator.name AS created_by_name,
+        team.name AS team_name,
+        team.code AS team_code,
         COUNT(*) OVER() AS total_count,
         (
           SELECT COUNT(*)
@@ -229,6 +246,7 @@ async function listLeads(filters, pagination, executor) {
       LEFT JOIN products p ON p.product_id = l.product_id
       LEFT JOIN users assignee ON assignee.user_id = l.assigned_to
       LEFT JOIN users creator ON creator.user_id = l.created_by
+      LEFT JOIN teams team ON team.team_id = l.team_id
       ${whereClause}
       ORDER BY l.created_at DESC, l.id DESC
       OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
@@ -290,6 +308,7 @@ async function createLead(lead, executor) {
         status,
         priority,
         estimated_value,
+        team_id,
         assigned_to,
         assigned_at,
         assigned_by,
@@ -299,7 +318,7 @@ async function createLead(lead, executor) {
         workflow_stage,
         is_active,
         last_contacted_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
     `,
     [
       lead.lead_id,
@@ -319,6 +338,7 @@ async function createLead(lead, executor) {
       lead.status || "new",
       lead.priority || "medium",
       lead.estimated_value || 0,
+      lead.team_id || null,
       lead.assigned_to || null,
       lead.assigned_to ? new Date() : null,
       lead.assigned_by || null,
@@ -530,6 +550,15 @@ async function listReminders(filters, pagination, executor) {
     params.push(filters.userId);
   }
 
+  if (filters.teamIds) {
+    if (!filters.teamIds.length) {
+      conditions.push("1 = 0");
+    } else {
+      conditions.push(`team_id IN (${filters.teamIds.map(() => "?").join(", ")})`);
+      params.push(...filters.teamIds);
+    }
+  }
+
   const whereClause = `WHERE ${conditions.join(" AND ")}`;
 
   if (pagination.cursor) {
@@ -605,8 +634,20 @@ async function listReminders(filters, pagination, executor) {
   };
 }
 
-async function getProductStats(companyId, executor) {
+async function getProductStats({ companyId, teamIds = null, assignedTo = null }, executor) {
   const active = getExecutor(executor);
+  const normalizedTeamIds = Array.isArray(teamIds) ? teamIds.filter(Boolean) : null;
+  const assignmentClause = assignedTo ? " AND l.assigned_to = ?" : "";
+  const productTeamClause = normalizedTeamIds
+    ? normalizedTeamIds.length
+      ? ` AND p.team_id IN (${normalizedTeamIds.map(() => "?").join(", ")})`
+      : " AND 1 = 0"
+    : "";
+  const leadTeamJoinClause = normalizedTeamIds
+    ? normalizedTeamIds.length
+      ? ` AND l.team_id IN (${normalizedTeamIds.map(() => "?").join(", ")})`
+      : " AND 1 = 0"
+    : "";
   const [rows] = await active.query(
     `
       SELECT
@@ -614,18 +655,24 @@ async function getProductStats(companyId, executor) {
         p.name,
         COUNT(l.lead_id) AS total_leads
       FROM products p
-      LEFT JOIN leads l ON l.product_id = p.product_id AND l.is_active = 1
-      WHERE p.company_id = ? AND p.is_active = 1
+      LEFT JOIN leads l ON l.product_id = p.product_id AND l.is_active = 1${leadTeamJoinClause}${assignmentClause}
+      WHERE p.company_id = ? AND p.is_active = 1${productTeamClause}
       GROUP BY p.product_id, p.name
       ORDER BY total_leads DESC, p.name ASC
     `,
-    [companyId]
+    [...(normalizedTeamIds || []), ...(assignedTo ? [assignedTo] : []), companyId, ...(normalizedTeamIds || [])]
   );
   return rows;
 }
 
-async function getUserProductHistory(userId, companyId, executor) {
+async function getUserProductHistory(userId, companyId, teamIds = null, executor) {
   const active = getExecutor(executor);
+  const normalizedTeamIds = Array.isArray(teamIds) ? teamIds.filter(Boolean) : null;
+  const teamClause = normalizedTeamIds
+    ? normalizedTeamIds.length
+      ? ` AND l.team_id IN (${normalizedTeamIds.map(() => "?").join(", ")})`
+      : " AND 1 = 0"
+    : "";
   const [rows] = await active.query(
     `
       SELECT
@@ -635,11 +682,11 @@ async function getUserProductHistory(userId, companyId, executor) {
         MAX(l.created_at) AS last_used_at
       FROM leads l
       INNER JOIN products p ON p.product_id = l.product_id
-      WHERE l.company_id = ? AND l.created_by = ? AND l.is_active = 1
+      WHERE l.company_id = ? AND l.created_by = ? AND l.is_active = 1${teamClause}
       GROUP BY p.product_id, p.name
       ORDER BY last_used_at DESC
     `,
-    [companyId, userId]
+    [companyId, userId, ...(normalizedTeamIds || [])]
   );
   return rows;
 }

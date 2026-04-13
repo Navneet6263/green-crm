@@ -16,7 +16,7 @@ async function myHistory(req, res) {
 }
 
 async function usersByRole(req, res) {
-  const data = await workflowService.listUsersByRole(req.auth, req.params.role);
+  const data = await workflowService.listUsersByRole(req.auth, req.params.role, req.query);
   res.json({ data });
 }
 

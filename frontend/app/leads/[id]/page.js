@@ -6,8 +6,20 @@ import { useParams, useRouter } from "next/navigation";
 
 import DashboardShell from "../../../components/dashboard/DashboardShell";
 import DashboardIcon from "../../../components/dashboard/icons";
+import LeadQuickStatusControl from "../../../components/leads/LeadQuickStatusControl";
 import { API_BASE, apiRequest } from "../../../lib/api";
 import { loadSession } from "../../../lib/session";
+import {
+  formatScopedError,
+  loadUsersForScope,
+  scopedUsersEmptyMessage,
+  teamBadgeLabel,
+} from "../../../lib/teamScope";
+import {
+  formatWorkflowOwnerIdentity,
+  withAssignedWorkflowUser,
+  workflowUsersEmptyMessage,
+} from "../../../lib/workflowOwners";
 
 const STATUS_ACCENT = { new: ["rgba(79,140,255,.12)", "#2f6fdd"], contacted: ["rgba(56,189,248,.14)", "#0077b8"], qualified: ["rgba(167,139,250,.14)", "#6d46d6"], proposal: ["rgba(245,164,45,.14)", "#b96a00"], negotiation: ["rgba(251,146,60,.14)", "#c96200"], "closed-won": ["rgba(31,199,120,.16)", "#0f8c53"], "closed-lost": ["rgba(224,82,82,.14)", "#b63b3b"] };
 const PRIORITY_ACCENT = { low: ["rgba(56,189,248,.12)", "#0077b8"], medium: ["rgba(245,164,45,.14)", "#b96a00"], high: ["rgba(255,108,156,.14)", "#c4356b"], urgent: ["rgba(224,82,82,.14)", "#b63b3b"] };
@@ -102,9 +114,15 @@ export default function LeadDetailPage() {
   const role = session?.user?.role || "";
   const canSeeDocs = DOC_VIEW_ROLES.includes(role);
   const canTransferToLegal = Boolean(lead?.can_transfer_to_legal) && LEGAL_TRANSFER_ROLES.includes(role);
-  const legalUsers = useMemo(() => users.filter((user) => user.role === "legal-team"), [users]);
+  const scopedLegalUsers = useMemo(() => users.filter((user) => user.role === "legal-team"), [users]);
+  const legalUsers = useMemo(
+    () => withAssignedWorkflowUser(scopedLegalUsers, lead?.assigned_to_legal, lead?.legal_owner_name, "legal-team"),
+    [lead?.assigned_to_legal, lead?.legal_owner_name, scopedLegalUsers]
+  );
   const leadName = lead?.contact_person || lead?.company_name || "Lead";
   const hideWorkspaceTitle = ["sales", "marketing", "admin", "manager"].includes(role);
+  const scopedUsersMessage = scopedUsersEmptyMessage(lead);
+  const legalUsersMessage = workflowUsersEmptyMessage(lead?.team_name, "legal");
 
   async function loadLead(activeSession) {
     const [leadResponse, notesResponse, activityResponse] = await Promise.all([
@@ -112,25 +130,25 @@ export default function LeadDetailPage() {
       apiRequest(`/leads/${params.id}/notes?page_size=12`, { token: activeSession.token }),
       apiRequest(`/leads/${params.id}/activity?page_size=12`, { token: activeSession.token }),
     ]);
-    const usersResponse = await apiRequest(
-      ["super-admin", "platform-admin", "platform-manager"].includes(activeSession.user?.role)
-        ? `/auth/users?page_size=100&company_id=${leadResponse.company_id}`
-        : "/auth/users?page_size=100",
-      { token: activeSession.token }
-    );
+    const usersResponse = await loadUsersForScope(activeSession.token, {
+      companyId: leadResponse.company_id,
+      teamId: leadResponse.team_id,
+      pageSize: 100,
+      path: "/users",
+    });
     setLead(leadResponse);
     setNotes(notesResponse.items || []);
     setActivity(activityResponse.items || []);
-    setUsers((usersResponse.items || []).filter((user) => user.is_active));
+    setUsers(usersResponse);
     setTransferOwner(leadResponse.assigned_to_legal || "");
-    setTask((current) => ({ ...current, assigned_to: current.assigned_to || activeSession.user?.user_id || "" }));
+    setTask((current) => ({ ...current, assigned_to: current.assigned_to || leadResponse.assigned_to || activeSession.user?.user_id || "" }));
   }
 
   useEffect(() => {
     const activeSession = loadSession();
     if (!activeSession) return router.replace("/login");
     setSession(activeSession);
-    loadLead(activeSession).catch((requestError) => setError(requestError.message)).finally(() => setLoading(false));
+    loadLead(activeSession).catch((requestError) => setError(formatScopedError(requestError, "Could not load this lead."))).finally(() => setLoading(false));
   }, [params.id, router]);
 
   const intelligence = useMemo(() => {
@@ -155,7 +173,7 @@ export default function LeadDetailPage() {
     if (!noteText.trim()) return;
     setSavingNote(true); setError(""); setNotice("");
     try { await apiRequest(`/leads/${params.id}/notes`, { method: "POST", token: session.token, body: { content: noteText.trim() } }); setNoteText(""); setNotice("Note added successfully."); await refreshLead(); }
-    catch (requestError) { setError(requestError.message); }
+    catch (requestError) { setError(formatScopedError(requestError, "Could not save this note.")); }
     finally { setSavingNote(false); }
   }
 
@@ -164,7 +182,7 @@ export default function LeadDetailPage() {
     if (!activityText.trim()) return;
     setSavingActivity(true); setError(""); setNotice("");
     try { await apiRequest(`/leads/${params.id}/activity`, { method: "POST", token: session.token, body: { type: activityType, description: activityText.trim() } }); setActivityText(""); setNotice("Timeline updated."); await refreshLead(); }
-    catch (requestError) { setError(requestError.message); }
+    catch (requestError) { setError(formatScopedError(requestError, "Could not update the timeline.")); }
     finally { setSavingActivity(false); }
   }
 
@@ -179,12 +197,12 @@ export default function LeadDetailPage() {
     setSavingTask(true); setError(""); setNotice("");
     try {
       const due = `${task.due_date} ${task.due_time}:00`;
-      await apiRequest("/tasks", { method: "POST", token: session.token, body: { title: task.title.trim(), type: task.type, priority: task.priority, due_date: due, assigned_to: task.assigned_to || session.user?.user_id, related_to: "lead", related_id: lead.lead_id, notes: task.notes || null } });
+      await apiRequest("/tasks", { method: "POST", token: session.token, body: { title: task.title.trim(), type: task.type, priority: task.priority, due_date: due, assigned_to: task.assigned_to || session.user?.user_id, related_to: "lead", related_id: lead.lead_id, team_id: lead.team_id || undefined, notes: task.notes || null } });
       await apiRequest(`/leads/${params.id}/activity`, { method: "POST", token: session.token, body: { type: "task", description: `Task scheduled: ${task.title.trim()} on ${when(due, true)}` } });
       setTask({ title: "", type: "call", priority: "medium", due_date: "", due_time: "", assigned_to: session.user?.user_id || "", notes: "" });
       setNotice("Task scheduled successfully.");
       await refreshLead();
-    } catch (requestError) { setError(requestError.message); }
+    } catch (requestError) { setError(formatScopedError(requestError, "Could not schedule this task.")); }
     finally { setSavingTask(false); }
   }
 
@@ -197,7 +215,7 @@ export default function LeadDetailPage() {
       setTransferNote("");
       setNotice("Lead transferred to legal successfully.");
       await refreshLead();
-    } catch (requestError) { setError(requestError.message); }
+    } catch (requestError) { setError(formatScopedError(requestError, "Could not transfer this lead to legal.")); }
     finally { setTransferring(false); }
   }
 
@@ -228,7 +246,7 @@ export default function LeadDetailPage() {
                         {leadName}
                       </h2>
                       <p className="mt-3 max-w-3xl text-sm leading-7 text-[#6f614c] md:text-base">
-                        A cleaner lead workspace for commercial context, handoff readiness, and next actions that stay visible.
+                        Keep the CRM context tight: contact, status, follow-up, and handoff readiness in one place.
                       </p>
                     </div>
                   </div>
@@ -238,8 +256,10 @@ export default function LeadDetailPage() {
                   <span className={PILL_CLASS} style={{ background: (STATUS_ACCENT[lead.status] || STATUS_ACCENT.new)[0], color: (STATUS_ACCENT[lead.status] || STATUS_ACCENT.new)[1] }}>{nice(lead.status)}</span>
                   <span className={PILL_CLASS} style={{ background: (PRIORITY_ACCENT[lead.priority] || PRIORITY_ACCENT.medium)[0], color: (PRIORITY_ACCENT[lead.priority] || PRIORITY_ACCENT.medium)[1] }}>{nice(lead.priority || "medium")}</span>
                   {lead.product_name ? <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">{lead.product_name}</span> : null}
+                  {teamBadgeLabel(lead) ? <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">{teamBadgeLabel(lead)}</span> : null}
                   <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">Workflow {nice(lead.workflow_stage || "sales")}</span>
                   <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">Notes {notes.length}</span>
+                  <LeadQuickStatusControl lead={lead} token={session?.token} onUpdated={refreshLead} hideLabel className="min-w-[180px]" selectClassName="min-h-[34px] bg-white pr-8 text-[11px] shadow-none" />
                 </div>
 
                 <div className="grid gap-3 md:grid-cols-3">
@@ -344,6 +364,7 @@ export default function LeadDetailPage() {
                       <DetailCell label="Company" value={lead.company_name} />
                       <DetailCell label="Phone" value={lead.phone || "--"} />
                       <DetailCell label="Email" value={lead.email || "--"} />
+                      <DetailCell label="Team" value={teamBadgeLabel(lead) || "Auto team"} />
                       <DetailCell label="Owner" value={lead.assigned_to_name || "Unassigned"} />
                       <DetailCell label="Created By" value={lead.created_by_name || "Unknown"} />
                     </div>
@@ -407,8 +428,8 @@ export default function LeadDetailPage() {
                 </div>
                 {canSeeDocs ? (
                   <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                    <DetailCell label="Legal Owner" value={lead.legal_owner_name || "Not assigned"} />
-                    <DetailCell label="Finance Owner" value={lead.finance_owner_name || "Not assigned"} />
+                    <DetailCell label="Legal Owner" value={formatWorkflowOwnerIdentity(lead.legal_owner_name, lead.assigned_to_legal)} />
+                    <DetailCell label="Finance Owner" value={formatWorkflowOwnerIdentity(lead.finance_owner_name, lead.assigned_to_finance)} />
                     <DetailCell label="Legal Docs" value={(lead.legal_documents || []).length} />
                     <DetailCell label="Finance Docs" value={(lead.finance_documents || []).length} />
                   </div>
@@ -496,7 +517,7 @@ export default function LeadDetailPage() {
             </div>
 
             <div className="space-y-5">
-              {canTransferToLegal ? <article className={`${PANEL_CLASS} bg-[#f5fbf0]`}><div className="mb-5"><div><span className={KICKER_CLASS}>Closed Won</span><h2 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Transfer to legal</h2></div></div><form className="grid gap-4" onSubmit={transferToLegal}><label className="space-y-2"><span className={KICKER_CLASS}>Legal Owner</span><select className={INPUT_CLASS} value={transferOwner} onChange={(event) => setTransferOwner(event.target.value)}><option value="">Assign later</option>{legalUsers.map((user) => <option key={user.user_id} value={user.user_id}>{user.name} | {user.email}</option>)}</select></label><label className="space-y-2"><span className={KICKER_CLASS}>Transfer Note *</span><textarea className={`${INPUT_CLASS} min-h-[150px] resize-y`} rows="4" value={transferNote} onChange={(event) => setTransferNote(event.target.value)} placeholder="What is ready for legal and what should be checked next?" /></label><button className={PRIMARY_BUTTON_CLASS} type="submit" disabled={transferring || !transferNote.trim()}>{transferring ? "Transferring..." : "Transfer to Legal"}</button></form></article> : null}
+              {canTransferToLegal ? <article className={`${PANEL_CLASS} bg-[#f5fbf0]`}><div className="mb-5"><div><span className={KICKER_CLASS}>Closed Won</span><h2 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Transfer to legal</h2></div></div><form className="grid gap-4" onSubmit={transferToLegal}><label className="space-y-2"><span className={KICKER_CLASS}>Legal Owner</span><select className={INPUT_CLASS} value={transferOwner} onChange={(event) => setTransferOwner(event.target.value)}><option value="">Assign later</option>{legalUsers.map((user) => <option key={user.user_id} value={user.user_id}>{formatWorkflowOwnerIdentity(user.name, user.user_id, "Legal user")}</option>)}</select>{!scopedLegalUsers.length ? <p className="text-xs font-medium text-[#8d6e27]">{legalUsersMessage}</p> : null}</label><label className="space-y-2"><span className={KICKER_CLASS}>Transfer Note *</span><textarea className={`${INPUT_CLASS} min-h-[150px] resize-y`} rows="4" value={transferNote} onChange={(event) => setTransferNote(event.target.value)} placeholder="What is ready for legal and what should be checked next?" /></label><button className={PRIMARY_BUTTON_CLASS} type="submit" disabled={transferring || !transferNote.trim()}>{transferring ? "Transferring..." : "Transfer to Legal"}</button></form></article> : null}
 
               <article className={PANEL_CLASS}>
                 <div className="mb-5"><div><span className={KICKER_CLASS}>Notes</span><h2 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Lead notes</h2></div></div>
@@ -520,7 +541,7 @@ export default function LeadDetailPage() {
                   <label className="space-y-2"><span className={KICKER_CLASS}>Title</span><input className={INPUT_CLASS} value={task.title} onChange={(event) => setTask((current) => ({ ...current, title: event.target.value }))} placeholder="Follow-up call, proposal review, demo" /></label>
                   <div className="grid gap-4 sm:grid-cols-2"><label className="space-y-2"><span className={KICKER_CLASS}>Type</span><select className={INPUT_CLASS} value={task.type} onChange={(event) => setTask((current) => ({ ...current, type: event.target.value }))}><option value="call">call</option><option value="email">email</option><option value="meeting">meeting</option><option value="follow-up">follow-up</option></select></label><label className="space-y-2"><span className={KICKER_CLASS}>Priority</span><select className={INPUT_CLASS} value={task.priority} onChange={(event) => setTask((current) => ({ ...current, priority: event.target.value }))}><option value="low">low</option><option value="medium">medium</option><option value="high">high</option><option value="urgent">urgent</option></select></label></div>
                   <div className="grid gap-4 sm:grid-cols-2"><label className="space-y-2"><span className={KICKER_CLASS}>Date</span><input className={INPUT_CLASS} type="date" value={task.due_date} onChange={(event) => setTask((current) => ({ ...current, due_date: event.target.value }))} /></label><label className="space-y-2"><span className={KICKER_CLASS}>Time</span><input className={INPUT_CLASS} type="time" value={task.due_time} onChange={(event) => setTask((current) => ({ ...current, due_time: event.target.value }))} /></label></div>
-                  <label className="space-y-2"><span className={KICKER_CLASS}>Assignee</span><select className={INPUT_CLASS} value={task.assigned_to} onChange={(event) => setTask((current) => ({ ...current, assigned_to: event.target.value }))}><option value="">Select assignee</option>{users.map((user) => <option key={user.user_id} value={user.user_id}>{user.name} | {user.role}</option>)}</select></label>
+                  <label className="space-y-2"><span className={KICKER_CLASS}>Assignee</span><select className={INPUT_CLASS} value={task.assigned_to} onChange={(event) => setTask((current) => ({ ...current, assigned_to: event.target.value }))}><option value="">Select assignee</option>{users.map((user) => <option key={user.user_id} value={user.user_id}>{user.name} | {user.role}</option>)}</select>{!users.length ? <p className="text-xs font-medium text-[#8d6e27]">{scopedUsersMessage}</p> : null}</label>
                   <label className="space-y-2"><span className={KICKER_CLASS}>Task Notes</span><textarea className={`${INPUT_CLASS} min-h-[120px] resize-y`} rows="3" value={task.notes} onChange={(event) => setTask((current) => ({ ...current, notes: event.target.value }))} placeholder="Optional preparation notes" /></label>
                   <button className={PRIMARY_BUTTON_CLASS} type="submit" disabled={savingTask}>{savingTask ? "Scheduling..." : "Schedule Task"}</button>
                 </form>

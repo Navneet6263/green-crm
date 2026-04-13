@@ -8,6 +8,12 @@ const { createPrefixedId } = require("../utils/ids");
 const { buildPaginatedResult, parsePagination } = require("../utils/pagination");
 const AppError = require("../utils/appError");
 const { assertCompanyAccess, getAccessibleCompanyIds, isPlatformOperatorRole } = require("../utils/tenant");
+const {
+  assertRecordTeamAccess,
+  ensureUserBelongsToTeam,
+  parseRequestedTeamIds,
+  resolveTeamScope,
+} = require("./accessScopeService");
 
 async function getWorkflowLead(auth, leadId) {
   const lead = await leadRepository.getLeadById(
@@ -19,29 +25,43 @@ async function getWorkflowLead(auth, leadId) {
   }
 
   assertCompanyAccess(auth, lead.company_id);
+  await assertRecordTeamAccess(auth, lead, {
+    includeManaged: true,
+    includeMembership: true,
+  });
   return lead;
 }
 
 async function listMyAssigned(auth, query) {
   const pagination = parsePagination(query);
+  const requestedTeamIds = parseRequestedTeamIds(query);
   const stage =
     auth.role === ROLES.LEGAL_TEAM
       ? "legal"
       : auth.role === ROLES.FINANCE_TEAM
         ? "finance"
         : query.stage || query.workflow_stage || null;
+  const companyId =
+    auth.role === ROLES.SUPER_ADMIN || isPlatformOperatorRole(auth.role)
+      ? query.company_id || null
+      : auth.companyId;
+  const companyIds =
+    isPlatformOperatorRole(auth.role) && !companyId
+      ? getAccessibleCompanyIds(auth)
+      : null;
+  const teamIds = (
+    await resolveTeamScope(auth, companyId, requestedTeamIds, {
+      includeManaged: true,
+      includeMembership: true,
+    })
+  ).teamIds;
 
   const { rows, total } = await workflowRepository.listWorkflowLeads(
     {
-      companyId:
-        auth.role === ROLES.SUPER_ADMIN || isPlatformOperatorRole(auth.role)
-          ? query.company_id || null
-          : auth.companyId,
-      companyIds:
-        isPlatformOperatorRole(auth.role) && !(query.company_id || null)
-          ? getAccessibleCompanyIds(auth)
-          : null,
+      companyId,
+      companyIds,
       stage,
+      teamIds,
       assignedUserId:
         [ROLES.LEGAL_TEAM, ROLES.FINANCE_TEAM, ROLES.SALES].includes(auth.role) ? auth.userId : query.assigned_to || null,
       pagination,
@@ -57,17 +77,28 @@ async function getTracker(auth, query) {
   }
 
   const pagination = parsePagination(query);
+  const requestedTeamIds = parseRequestedTeamIds(query);
+  const companyId =
+    auth.role === ROLES.SUPER_ADMIN || isPlatformOperatorRole(auth.role)
+      ? query.company_id || null
+      : auth.companyId;
+  const companyIds =
+    isPlatformOperatorRole(auth.role) && !companyId
+      ? getAccessibleCompanyIds(auth)
+      : null;
+  const teamIds = (
+    await resolveTeamScope(auth, companyId, requestedTeamIds, {
+      includeManaged: true,
+      includeMembership: true,
+    })
+  ).teamIds;
+
   const { rows, total } = await workflowRepository.listWorkflowLeads(
     {
-      companyId:
-        auth.role === ROLES.SUPER_ADMIN || isPlatformOperatorRole(auth.role)
-          ? query.company_id || null
-          : auth.companyId,
-      companyIds:
-        isPlatformOperatorRole(auth.role) && !(query.company_id || null)
-          ? getAccessibleCompanyIds(auth)
-          : null,
+      companyId,
+      companyIds,
       stage: query.stage || query.workflow_stage || null,
+      teamIds,
       assignedUserId: query.assigned_to || null,
       pagination,
     }
@@ -78,20 +109,48 @@ async function getTracker(auth, query) {
 
 async function getMyHistory(auth, query) {
   const pagination = parsePagination(query);
+  const companyId =
+    auth.role === ROLES.SUPER_ADMIN || isPlatformOperatorRole(auth.role)
+      ? query.company_id || null
+      : auth.companyId;
+
+  if (!companyId) {
+    throw new AppError("Select a company before viewing workflow history.", 400);
+  }
+
+  const { teamIds } = await resolveTeamScope(auth, companyId, parseRequestedTeamIds(query), {
+    includeManaged: true,
+    includeMembership: true,
+  });
   const { rows, total } = await workflowRepository.listTransferHistory({
-    companyId: auth.companyId,
+    companyId,
     userId: auth.userId,
+    teamIds,
     pagination,
   });
   return buildPaginatedResult(rows, total, pagination);
 }
 
-async function listUsersByRole(auth, role) {
+async function listUsersByRole(auth, role, query = {}) {
   if (![ROLES.SUPER_ADMIN, ROLES.PLATFORM_ADMIN, ROLES.PLATFORM_MANAGER, ROLES.ADMIN, ROLES.MANAGER, ROLES.LEGAL_TEAM, ROLES.FINANCE_TEAM].includes(auth.role)) {
     throw new AppError("You cannot access workflow user lists.", 403);
   }
 
-  const users = await userRepository.listUsersByRole(auth.companyId, role);
+  const companyId =
+    auth.role === ROLES.SUPER_ADMIN || isPlatformOperatorRole(auth.role)
+      ? query.company_id || null
+      : auth.companyId;
+
+  if (!companyId) {
+    throw new AppError("A company is required to list workflow users.", 400);
+  }
+
+  assertCompanyAccess(auth, companyId);
+  const { teamIds } = await resolveTeamScope(auth, companyId, parseRequestedTeamIds(query), {
+    includeManaged: true,
+    includeMembership: true,
+  });
+  const users = await userRepository.listUsersByRole(companyId, role, { teamIds });
   return users;
 }
 
@@ -106,6 +165,8 @@ async function moveLead(auth, leadId, toStage, assignedUserId, extraUpdates = {}
     if (!assignee) {
       throw new AppError("Assigned workflow owner must belong to the same company.", 400);
     }
+
+    await ensureUserBelongsToTeam(lead.company_id, assignedUserId, lead.team_id, "Workflow owner");
   }
 
   return db.withTransaction(async (transaction) => {

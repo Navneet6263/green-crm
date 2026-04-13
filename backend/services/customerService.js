@@ -6,14 +6,63 @@ const { createPrefixedId } = require("../utils/ids");
 const { buildPaginatedResult, parsePagination } = require("../utils/pagination");
 const AppError = require("../utils/appError");
 const { assertCompanyAccess, getAccessibleCompanyIds, isPlatformOperatorRole } = require("../utils/tenant");
+const leadRepository = require("../repositories/leadRepository");
+const {
+  assertRecordTeamAccess,
+  assertTeamAccess,
+  ensureTeamIdWhenTeamsConfigured,
+  ensureUserBelongsToTeam,
+  parseRequestedTeamIds,
+  resolveDefaultTeamId,
+  resolvePreferredTeamId,
+  resolveTeamScope,
+} = require("./accessScopeService");
 
-function buildCustomerFilters(auth, query) {
+async function resolveCustomerTeamId(auth, companyId, payload, existingCustomer = null) {
+  const requestedTeamIds = parseRequestedTeamIds(payload);
+  if (requestedTeamIds.length) {
+    const [teamId] = requestedTeamIds;
+    await assertTeamAccess(auth, companyId, teamId, {
+      includeManaged: true,
+      includeMembership: true,
+    });
+    return teamId;
+  }
+
+  if (payload.converted_from_lead_id) {
+    const sourceLead = await leadRepository.getLeadById(payload.converted_from_lead_id, companyId);
+    if (sourceLead?.team_id) {
+      return sourceLead.team_id;
+    }
+  }
+
+  if (existingCustomer?.team_id) {
+    return existingCustomer.team_id;
+  }
+
+  if (payload.assigned_to) {
+    const preferredAssigneeTeam = await resolvePreferredTeamId(companyId, payload.assigned_to);
+    if (preferredAssigneeTeam) {
+      return preferredAssigneeTeam;
+    }
+  }
+
+  const creatorTeamId = await resolvePreferredTeamId(companyId, auth.userId);
+  if (creatorTeamId) {
+    return creatorTeamId;
+  }
+
+  return resolveDefaultTeamId(companyId);
+}
+
+async function buildCustomerFilters(auth, query) {
   const filters = {
     companyId: null,
     companyIds: null,
     status: query.status || null,
     search: query.search || "",
     assignedTo: null,
+    teamIds: null,
   };
 
   if (auth.role === ROLES.SUPER_ADMIN) {
@@ -27,8 +76,18 @@ function buildCustomerFilters(auth, query) {
 
   if ([ROLES.SALES, ROLES.MARKETING].includes(auth.role)) {
     filters.assignedTo = auth.userId;
+  } else if ([ROLES.LEGAL_TEAM, ROLES.FINANCE_TEAM, ROLES.SUPPORT, ROLES.VIEWER].includes(auth.role)) {
+    filters.assignedTo = auth.userId;
   } else if ([ROLES.ADMIN, ROLES.MANAGER, ROLES.SUPER_ADMIN, ROLES.PLATFORM_ADMIN, ROLES.PLATFORM_MANAGER].includes(auth.role)) {
     filters.assignedTo = query.assigned_to || null;
+  }
+
+  if (filters.companyId) {
+    const teamScope = await resolveTeamScope(auth, filters.companyId, parseRequestedTeamIds(query), {
+      includeManaged: true,
+      includeMembership: true,
+    });
+    filters.teamIds = teamScope.teamIds;
   }
 
   return filters;
@@ -36,7 +95,7 @@ function buildCustomerFilters(auth, query) {
 
 async function listCustomers(auth, query) {
   const pagination = parsePagination(query);
-  const filters = buildCustomerFilters(auth, query);
+  const filters = await buildCustomerFilters(auth, query);
 
   if (filters.companyId) {
     assertCompanyAccess(auth, filters.companyId);
@@ -56,6 +115,14 @@ async function getCustomer(auth, customerId) {
   }
 
   assertCompanyAccess(auth, customer.company_id);
+  await assertRecordTeamAccess(auth, customer, {
+    includeManaged: true,
+    includeMembership: true,
+  });
+
+  if (![ROLES.ADMIN, ROLES.MANAGER, ROLES.SUPER_ADMIN, ROLES.PLATFORM_ADMIN, ROLES.PLATFORM_MANAGER].includes(auth.role) && customer.assigned_to !== auth.userId) {
+    throw new AppError("You can only access customers assigned to you.", 403);
+  }
   return customer;
 }
 
@@ -88,6 +155,15 @@ async function createCustomer(auth, payload) {
     assignee = user.user_id;
   }
 
+  const teamId = await ensureTeamIdWhenTeamsConfigured(
+    companyId,
+    await resolveCustomerTeamId(auth, companyId, {
+      ...payload,
+      assigned_to: assignee,
+    })
+  );
+  await ensureUserBelongsToTeam(companyId, assignee, teamId, "Customer owner");
+
   const customer = await customerRepository.createCustomer({
     customer_id: await createPrefixedId("cst"),
     company_id: companyId,
@@ -98,6 +174,7 @@ async function createCustomer(auth, payload) {
     converted_from_lead_id: payload.converted_from_lead_id || null,
     total_value: Number(payload.total_value || 0),
     status: payload.status || "active",
+    team_id: teamId,
     assigned_to: assignee,
     last_interaction: payload.last_interaction || null,
     next_follow_up: payload.next_follow_up || null,
@@ -132,6 +209,25 @@ async function updateCustomer(auth, customerId, payload) {
     assignee = user.user_id;
   }
 
+  const nextTeamId = await ensureTeamIdWhenTeamsConfigured(
+    customer.company_id,
+    await resolveCustomerTeamId(
+      auth,
+      customer.company_id,
+      {
+        ...payload,
+        assigned_to: assignee !== undefined ? assignee : customer.assigned_to,
+      },
+      customer
+    )
+  );
+  await ensureUserBelongsToTeam(
+    customer.company_id,
+    assignee !== undefined ? assignee : customer.assigned_to,
+    nextTeamId,
+    "Customer owner"
+  );
+
   const updated = await customerRepository.updateCustomer(customer.customer_id, customer.company_id, {
     name: payload.name !== undefined ? String(payload.name || "").trim() : customer.name,
     company_name: payload.company_name !== undefined ? String(payload.company_name || "").trim() : customer.company_name,
@@ -140,6 +236,7 @@ async function updateCustomer(auth, customerId, payload) {
     converted_from_lead_id: payload.converted_from_lead_id !== undefined ? payload.converted_from_lead_id : customer.converted_from_lead_id,
     total_value: payload.total_value !== undefined ? Number(payload.total_value || 0) : customer.total_value,
     status: payload.status !== undefined ? payload.status : customer.status,
+    team_id: nextTeamId,
     assigned_to: assignee !== undefined ? assignee : customer.assigned_to,
     last_interaction: payload.last_interaction !== undefined ? payload.last_interaction : customer.last_interaction,
     next_follow_up: payload.next_follow_up !== undefined ? payload.next_follow_up : customer.next_follow_up,

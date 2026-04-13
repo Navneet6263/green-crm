@@ -5,7 +5,8 @@
     "dev": "nodemon server.js",
     "start": "node server.js",
     "schema:sql": "node db/generateSqlServerBootstrap.js",
-    "setup:sqlserver": "node setup-sqlserver.js"
+    "setup:sqlserver": "node setup-sqlserver.js",
+    "backfill:team": "node scripts/backfillTeamOwnership.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

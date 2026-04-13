@@ -1,0 +1,304 @@
+{
+  "generated_at": "2026-04-13T04:48:07.888Z",
+  "company_id": "CI0002",
+  "team_id": "TEM0001",
+  "team_name": "Core Team",
+  "dry_run": true,
+  "unresolved_tables": [
+    {
+      "table": "leads",
+      "assigned_count": 1,
+      "created_by_count": 644,
+      "unresolved_count": 30,
+      "unresolved_sample": [
+        {
+          "record_id": "LI0646",
+          "assigned_to": "UI0007",
+          "created_by": "UI0007",
+          "company_name": "TEST",
+          "contact_person": "TEST",
+          "created_at": "2026-04-09T12:47:17.476Z"
+        },
+        {
+          "record_id": "LI0645",
+          "assigned_to": "UI0011",
+          "created_by": "UI0010",
+          "company_name": "Newtech Steels",
+          "contact_person": "Abhishek Duclan",
+          "created_at": "2026-04-09T12:25:52.076Z"
+        },
+        {
+          "record_id": "LI0644",
+          "assigned_to": "UI0011",
+          "created_by": "UI0010",
+          "company_name": "Vikram tea",
+          "contact_person": "Khan Bilal Ahmed",
+          "created_at": "2026-04-09T12:25:48.763Z"
+        },
+        {
+          "record_id": "LI0643",
+          "assigned_to": "UI0011",
+          "created_by": "UI0010",
+          "company_name": "Adonis Group",
+          "contact_person": "Durai",
+          "created_at": "2026-04-09T12:25:45.280Z"
+        },
+        {
+          "record_id": "LI0642",
+          "assigned_to": "UI0011",
+          "created_by": "UI0010",
+          "company_name": "Dyad Tech",
+          "contact_person": "Chaitalee Meghani",
+          "created_at": "2026-04-09T12:25:42.106Z"
+        },
+        {
+          "record_id": "LI0641",
+          "assigned_to": "UI0011",
+          "created_by": "UI0010",
+          "company_name": "Nada Market",
+          "contact_person": "Salim Khan",
+          "created_at": "2026-04-09T12:25:39.033Z"
+        },
+        {
+          "record_id": "LI0640",
+          "assigned_to": "UI0011",
+          "created_by": "UI0010",
+          "company_name": "Skp Group",
+          "contact_person": "Amit Halder",
+          "created_at": "2026-04-09T12:25:35.383Z"
+        },
+        {
+          "record_id": "LI0639",
+          "assigned_to": "UI0011",
+          "created_by": "UI0010",
+          "company_name": "Galaxy Global Solutions",
+          "contact_person": "Sharan Tej MR",
+          "created_at": "2026-04-09T12:25:32.200Z"
+        },
+        {
+          "record_id": "LI0638",
+          "assigned_to": "UI0011",
+          "created_by": "UI0010",
+          "company_name": "Medexam Expert",
+          "contact_person": "Marryum Arsal",
+          "created_at": "2026-04-09T12:25:28.816Z"
+        },
+        {
+          "record_id": "LI0637",
+          "assigned_to": "UI0011",
+          "created_by": "UI0010",
+          "company_name": "Expedite World",
+          "contact_person": "Nisha Sharma",
+          "created_at": "2026-04-09T12:25:24.740Z"
+        },
+        {
+          "record_id": "LI0636",
+          "assigned_to": "UI0011",
+          "created_by": "UI0010",
+          "company_name": "Digi vive",
+          "contact_person": "Monika Sharma",
+          "created_at": "2026-04-09T12:25:21.216Z"
+        },
+        {
+          "record_id": "LI0635",
+          "assigned_to": "UI0011",
+          "created_by": "UI0010",
+          "company_name": "Vimtra",
+          "contact_person": "Jothi Sai",
+          "created_at": "2026-04-09T12:25:17.606Z"
+        },
+        {
+          "record_id": "LI0634",
+          "assigned_to": "UI0011",
+          "created_by": "UI0010",
+          "company_name": "Mypcot infotech",
+          "contact_person": "Pooja Singh",
+          "created_at": "2026-04-09T12:25:14.330Z"
+        },
+        {
+          "record_id": "LI0633",
+          "assigned_to": "UI0011",
+          "created_by": "UI0010",
+          "company_name": "Newtech Steels",
+          "contact_person": "Abhishek Duclan",
+          "created_at": "2026-04-09T12:25:11.083Z"
+        },
+        {
+          "record_id": "LI0632",
+          "assigned_to": "UI0011",
+          "created_by": "UI0010",
+          "company_name": "Vikram tea",
+          "contact_person": "Khan Bilal Ahmed",
+          "created_at": "2026-04-09T12:25:07.780Z"
+        },
+        {
+          "record_id": "LI0631",
+          "assigned_to": "UI0011",
+          "created_by": "UI0010",
+          "company_name": "Adonis Group",
+          "contact_person": "Durai",
+          "created_at": "2026-04-09T12:25:04.320Z"
+        },
+        {
+          "record_id": "LI0630",
+          "assigned_to": "UI0011",
+          "created_by": "UI0010",
+          "company_name": "Dyad Tech",
+          "contact_person": "Chaitalee Meghani",
+          "created_at": "2026-04-09T12:25:01.070Z"
+        },
+        {
+          "record_id": "LI0629",
+          "assigned_to": "UI0011",
+          "created_by": "UI0010",
+          "company_name": "Nada Market",
+          "contact_person": "Salim Khan",
+          "created_at": "2026-04-09T12:24:57.670Z"
+        },
+        {
+          "record_id": "LI0628",
+          "assigned_to": "UI0011",
+          "created_by": "UI0010",
+          "company_name": "Skp Group",
+          "contact_person": "Amit Halder",
+          "created_at": "2026-04-09T12:24:53.880Z"
+        },
+        {
+          "record_id": "LI0627",
+          "assigned_to": "UI0011",
+          "created_by": "UI0010",
+          "company_name": "Galaxy Global Solutions",
+          "contact_person": "Sharan Tej MR",
+          "created_at": "2026-04-09T12:24:50.523Z"
+        },
+        {
+          "record_id": "LI0626",
+          "assigned_to": "UI0011",
+          "created_by": "UI0010",
+          "company_name": "Medexam Expert",
+          "contact_person": "Marryum Arsal",
+          "created_at": "2026-04-09T12:24:47.223Z"
+        },
+        {
+          "record_id": "LI0625",
+          "assigned_to": "UI0011",
+          "created_by": "UI0010",
+          "company_name": "Expedite World",
+          "contact_person": "Nisha Sharma",
+          "created_at": "2026-04-09T12:24:43.963Z"
+        },
+        {
+          "record_id": "LI0624",
+          "assigned_to": "UI0011",
+          "created_by": "UI0010",
+          "company_name": "Digi vive",
+          "contact_person": "Monika Sharma",
+          "created_at": "2026-04-09T12:24:40.646Z"
+        },
+        {
+          "record_id": "LI0623",
+          "assigned_to": "UI0011",
+          "created_by": "UI0010",
+          "company_name": "Vimtra",
+          "contact_person": "Jothi Sai",
+          "created_at": "2026-04-09T12:24:37.380Z"
+        },
+        {
+          "record_id": "LI0622",
+          "assigned_to": "UI0011",
+          "created_by": "UI0010",
+          "company_name": "Mypcot infotech",
+          "contact_person": "Pooja Singh",
+          "created_at": "2026-04-09T12:24:34.053Z"
+        },
+        {
+          "record_id": "LI0621",
+          "assigned_to": "UI0008",
+          "created_by": "UI0010",
+          "company_name": "Anand Rathi",
+          "contact_person": "Amrita Kar",
+          "created_at": "2026-04-09T12:23:56.576Z"
+        },
+        {
+          "record_id": "LI0620",
+          "assigned_to": "UI0008",
+          "created_by": "UI0010",
+          "company_name": "Glam",
+          "contact_person": "Kalsah",
+          "created_at": "2026-04-09T12:23:52.530Z"
+        },
+        {
+          "record_id": "LI0619",
+          "assigned_to": "UI0008",
+          "created_by": "UI0010",
+          "company_name": "HoseXperts",
+          "contact_person": "Ragini K",
+          "created_at": "2026-04-09T12:23:49.256Z"
+        },
+        {
+          "record_id": "LI0618",
+          "assigned_to": "UI0008",
+          "created_by": "UI0010",
+          "company_name": "Newtech Steels Pvt. Ltd.",
+          "contact_person": "Abhishek",
+          "created_at": "2026-04-09T12:23:45.830Z"
+        },
+        {
+          "record_id": "LI0617",
+          "assigned_to": "UI0008",
+          "created_by": "UI0010",
+          "company_name": "Kainspire Software and Service Pvt Ltd",
+          "contact_person": "Jayendra Kumar",
+          "created_at": "2026-04-09T12:23:42.523Z"
+        }
+      ]
+    },
+    {
+      "table": "customers",
+      "assigned_count": 0,
+      "inherited_from_lead_count": 0,
+      "unresolved_count": 1,
+      "unresolved_sample": [
+        {
+          "record_id": "CSI0001",
+          "assigned_to": "UI0007",
+          "converted_from_lead_id": null,
+          "company_name": "noo",
+          "name": "no",
+          "created_at": "2026-04-09T15:27:16.050Z"
+        }
+      ]
+    },
+    {
+      "table": "products",
+      "created_by_count": 0,
+      "unresolved_count": 4,
+      "unresolved_sample": [
+        {
+          "record_id": "PI0005",
+          "created_by": "UI0012",
+          "name": "test",
+          "created_at": "2026-04-10T17:35:38.866Z"
+        },
+        {
+          "record_id": "PI0004",
+          "created_by": "UI0005",
+          "name": "Staffing",
+          "created_at": "2026-04-09T12:13:21.763Z"
+        },
+        {
+          "record_id": "PI0003",
+          "created_by": "UI0005",
+          "name": "Just Job",
+          "created_at": "2026-04-09T12:12:48.726Z"
+        },
+        {
+          "record_id": "PI0002",
+          "created_by": "UI0005",
+          "name": "GreenHR",
+          "created_at": "2026-04-08T18:01:30.240Z"
+        }
+      ]
+    }
+  ]
+}

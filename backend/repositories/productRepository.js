@@ -6,7 +6,18 @@ function getExecutor(executor) {
 
 async function getProductById(productId, executor) {
   const active = getExecutor(executor);
-  const [rows] = await active.query("SELECT TOP 1 * FROM products WHERE product_id = ?", [productId]);
+  const [rows] = await active.query(
+    `
+      SELECT TOP 1
+        p.*,
+        t.name AS team_name,
+        t.code AS team_code
+      FROM products p
+      LEFT JOIN teams t ON t.team_id = p.team_id
+      WHERE p.product_id = ?
+    `,
+    [productId]
+  );
   return rows[0] || null;
 }
 
@@ -27,15 +38,17 @@ async function createProduct(product, executor) {
       INSERT INTO products (
         product_id,
         company_id,
+        team_id,
         name,
         color,
         is_active,
         created_by
-      ) VALUES (?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)
     `,
     [
       product.product_id,
       product.company_id,
+      product.team_id || null,
       product.name,
       product.color || "#22c55e",
       product.is_active ? 1 : 0,
@@ -51,7 +64,7 @@ async function updateProduct(productId, companyId, updates, executor) {
   const fields = [];
   const params = [];
 
-  ["name", "color", "is_active"].forEach((column) => {
+  ["name", "color", "is_active", "team_id"].forEach((column) => {
     if (!Object.prototype.hasOwnProperty.call(updates, column)) {
       return;
     }
@@ -74,32 +87,58 @@ async function deactivateProduct(productId, companyId, executor) {
   return updateProduct(productId, companyId, { is_active: 0 }, executor);
 }
 
-async function listProducts({ companyId, search, pagination }, executor) {
+async function listProducts({ companyId, companyIds = null, search, teamIds = null, pagination }, executor) {
   const active = getExecutor(executor);
-  const conditions = [];
+  const countConditions = [];
+  const selectConditions = [];
   const params = [];
 
   if (companyId) {
-    conditions.push("company_id = ?");
+    countConditions.push("company_id = ?");
+    selectConditions.push("p.company_id = ?");
     params.push(companyId);
+  } else if (Array.isArray(companyIds)) {
+    if (!companyIds.length) {
+      return { rows: [], total: 0 };
+    }
+
+    countConditions.push(`company_id IN (${companyIds.map(() => "?").join(", ")})`);
+    selectConditions.push(`p.company_id IN (${companyIds.map(() => "?").join(", ")})`);
+    params.push(...companyIds);
   }
 
   if (search) {
-    conditions.push("name LIKE ?");
+    countConditions.push("name LIKE ?");
+    selectConditions.push("p.name LIKE ?");
     params.push(`%${search}%`);
   }
 
-  const whereClause = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+  if (teamIds) {
+    if (!teamIds.length) {
+      return { rows: [], total: 0 };
+    }
+
+    countConditions.push(`team_id IN (${teamIds.map(() => "?").join(", ")})`);
+    selectConditions.push(`p.team_id IN (${teamIds.map(() => "?").join(", ")})`);
+    params.push(...teamIds);
+  }
+
+  const countWhereClause = countConditions.length ? `WHERE ${countConditions.join(" AND ")}` : "";
+  const selectWhereClause = selectConditions.length ? `WHERE ${selectConditions.join(" AND ")}` : "";
   const [countRows] = await active.query(
-    `SELECT COUNT(*) AS total FROM products ${whereClause}`,
+    `SELECT COUNT(*) AS total FROM products ${countWhereClause}`,
     params
   );
   const [rows] = await active.query(
     `
-      SELECT *
-      FROM products
-      ${whereClause}
-      ORDER BY created_at DESC
+      SELECT
+        p.*,
+        t.name AS team_name,
+        t.code AS team_code
+      FROM products p
+      LEFT JOIN teams t ON t.team_id = p.team_id
+      ${selectWhereClause}
+      ORDER BY p.created_at DESC
       OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
     `,
     [...params, pagination.offset, pagination.limit]

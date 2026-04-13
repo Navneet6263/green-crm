@@ -186,10 +186,69 @@ const schemaStatements = [
     PRIMARY KEY (id),
     UNIQUE KEY uq_users_user_id (user_id),
     UNIQUE KEY uq_users_email (email),
+    UNIQUE KEY uq_users_company_user_id (company_id, user_id),
     KEY idx_users_company_role_active (company_id, is_active, role),
     KEY idx_users_role_active (role, is_active),
     KEY idx_users_is_super_admin (is_super_admin),
     KEY idx_users_created_at (created_at)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
+  `CREATE TABLE IF NOT EXISTS teams (
+    id          BIGINT        NOT NULL AUTO_INCREMENT,
+    team_id     VARCHAR(20)   NOT NULL,
+    company_id  VARCHAR(20)   NOT NULL,
+    name        VARCHAR(191)  NOT NULL,
+    code        VARCHAR(40)   NOT NULL,
+    description VARCHAR(255)  NULL,
+    created_by  VARCHAR(20)   NULL,
+    is_active   TINYINT(1)    NOT NULL DEFAULT 1,
+    created_at  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_teams_team_id (team_id),
+    UNIQUE KEY uq_teams_company_code (company_id, code),
+    UNIQUE KEY uq_teams_company_name (company_id, name),
+    UNIQUE KEY uq_teams_company_team_id (company_id, team_id),
+    KEY idx_teams_company_active (company_id, is_active, created_at),
+    KEY idx_teams_created_by (created_by),
+    CONSTRAINT fk_teams_company FOREIGN KEY (company_id) REFERENCES companies (company_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
+  `CREATE TABLE IF NOT EXISTS team_members (
+    id               BIGINT        NOT NULL AUTO_INCREMENT,
+    company_id       VARCHAR(20)   NOT NULL,
+    team_id          VARCHAR(20)   NOT NULL,
+    user_id          VARCHAR(20)   NOT NULL,
+    membership_role  VARCHAR(40)   NOT NULL DEFAULT 'member',
+    is_primary       TINYINT(1)    NOT NULL DEFAULT 0,
+    is_active        TINYINT(1)    NOT NULL DEFAULT 1,
+    added_by         VARCHAR(20)   NULL,
+    created_at       DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at       DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_team_members_team_user (team_id, user_id),
+    KEY idx_team_members_company_user (company_id, user_id, is_active),
+    KEY idx_team_members_company_team (company_id, team_id, is_active),
+    KEY idx_team_members_user_primary (user_id, is_primary, is_active),
+    CONSTRAINT fk_team_members_team FOREIGN KEY (company_id, team_id) REFERENCES teams (company_id, team_id),
+    CONSTRAINT fk_team_members_user FOREIGN KEY (company_id, user_id) REFERENCES users (company_id, user_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
+  `CREATE TABLE IF NOT EXISTS team_managers (
+    id          BIGINT        NOT NULL AUTO_INCREMENT,
+    company_id  VARCHAR(20)   NOT NULL,
+    team_id     VARCHAR(20)   NOT NULL,
+    user_id     VARCHAR(20)   NOT NULL,
+    is_active   TINYINT(1)    NOT NULL DEFAULT 1,
+    added_by    VARCHAR(20)   NULL,
+    created_at  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_team_managers_team_user (team_id, user_id),
+    KEY idx_team_managers_company_user (company_id, user_id, is_active),
+    KEY idx_team_managers_company_team (company_id, team_id, is_active),
+    CONSTRAINT fk_team_managers_team FOREIGN KEY (company_id, team_id) REFERENCES teams (company_id, team_id),
+    CONSTRAINT fk_team_managers_user FOREIGN KEY (company_id, user_id) REFERENCES users (company_id, user_id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
 
   `CREATE TABLE IF NOT EXISTS platform_user_company_access (
@@ -225,6 +284,7 @@ const schemaStatements = [
     id          BIGINT        NOT NULL AUTO_INCREMENT,
     product_id  VARCHAR(20)   NOT NULL,
     company_id  VARCHAR(20)   NOT NULL,
+    team_id     VARCHAR(20)   NULL,
     name        VARCHAR(191)  NOT NULL,
     color       VARCHAR(32)   NOT NULL DEFAULT '#22c55e',
     is_active   TINYINT(1)    NOT NULL DEFAULT 1,
@@ -234,7 +294,9 @@ const schemaStatements = [
     PRIMARY KEY (id),
     UNIQUE KEY uq_products_product_id (product_id),
     UNIQUE KEY uq_products_company_name (company_id, name),
-    KEY idx_products_company_active (company_id, is_active)
+    KEY idx_products_company_active (company_id, is_active),
+    KEY idx_products_company_team (company_id, team_id, is_active),
+    CONSTRAINT fk_products_team FOREIGN KEY (company_id, team_id) REFERENCES teams (company_id, team_id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
 
   // ── leads ──────────────────────────────────────────────────
@@ -257,6 +319,7 @@ const schemaStatements = [
     status                VARCHAR(60)   NOT NULL DEFAULT 'new',
     priority              VARCHAR(20)   NOT NULL DEFAULT 'medium',
     estimated_value       DECIMAL(15,2) NOT NULL DEFAULT 0,
+    team_id               VARCHAR(20)   NULL,
     assigned_to           VARCHAR(20)   NULL,
     assigned_at           DATETIME      NULL,
     assigned_by           VARCHAR(20)   NULL,
@@ -293,10 +356,13 @@ const schemaStatements = [
     KEY idx_leads_company_assigned_active (company_id, assigned_to, is_active),
     KEY idx_leads_company_status_priority (company_id, status, priority),
     KEY idx_leads_company_workflow (company_id, workflow_stage, is_active),
+    KEY idx_leads_company_team_active (company_id, team_id, is_active, created_at),
+    KEY idx_leads_team_status (team_id, status, is_active),
     KEY idx_leads_legal (assigned_to_legal, agreement_status),
     KEY idx_leads_finance (assigned_to_finance, workflow_stage),
     KEY idx_leads_followup (company_id, follow_up_date),
-    KEY idx_leads_created_by (created_by)
+    KEY idx_leads_created_by (created_by),
+    CONSTRAINT fk_leads_team FOREIGN KEY (company_id, team_id) REFERENCES teams (company_id, team_id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
 
   // ── lead_notes ─────────────────────────────────────────────
@@ -404,6 +470,7 @@ const schemaStatements = [
     converted_from_lead_id  VARCHAR(20)   NULL,
     total_value             DECIMAL(15,2) NOT NULL DEFAULT 0,
     status                  VARCHAR(30)   NOT NULL DEFAULT 'active',
+    team_id                 VARCHAR(20)   NULL,
     assigned_to             VARCHAR(20)   NULL,
     last_interaction        DATETIME      NULL,
     next_follow_up          DATETIME      NULL,
@@ -415,8 +482,10 @@ const schemaStatements = [
     UNIQUE KEY uq_customers_customer_id (customer_id),
     FULLTEXT KEY ft_customers_search (name, company_name, email, phone),
     KEY idx_cust_company_active (company_id, is_active),
+    KEY idx_cust_company_team (company_id, team_id, is_active, created_at),
     KEY idx_cust_assigned (company_id, assigned_to),
-    KEY idx_cust_status (company_id, status)
+    KEY idx_cust_status (company_id, status),
+    CONSTRAINT fk_customers_team FOREIGN KEY (company_id, team_id) REFERENCES teams (company_id, team_id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
 
   // ── tasks ──────────────────────────────────────────────────
@@ -429,6 +498,7 @@ const schemaStatements = [
     status      VARCHAR(30)   NOT NULL DEFAULT 'pending',
     priority    VARCHAR(20)   NOT NULL DEFAULT 'medium',
     due_date    DATETIME      NOT NULL,
+    team_id     VARCHAR(20)   NULL,
     assigned_to VARCHAR(20)   NULL,
     related_to  VARCHAR(30)   NULL,
     related_id  VARCHAR(20)   NULL,
@@ -439,8 +509,10 @@ const schemaStatements = [
     PRIMARY KEY (id),
     UNIQUE KEY uq_tasks_task_id (task_id),
     KEY idx_tasks_company_assigned_status (company_id, assigned_to, status, due_date),
+    KEY idx_tasks_company_team (company_id, team_id, status, due_date),
     KEY idx_tasks_due_date (company_id, due_date),
-    KEY idx_tasks_related (related_to, related_id)
+    KEY idx_tasks_related (related_to, related_id),
+    CONSTRAINT fk_tasks_team FOREIGN KEY (company_id, team_id) REFERENCES teams (company_id, team_id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
 
   // ── notifications ──────────────────────────────────────────
@@ -513,7 +585,14 @@ const schemaStatements = [
 ];
 
 const performanceIndexDefinitions = [
+  { table: "teams", name: "idx_teams_company_code_perf", columns: "company_id, code, is_active" },
+  { table: "team_members", name: "idx_team_members_company_user_team_perf", columns: "company_id, user_id, team_id, is_active" },
+  { table: "team_members", name: "idx_team_members_company_team_user_perf", columns: "company_id, team_id, user_id, is_active" },
+  { table: "team_managers", name: "idx_team_managers_company_user_team_perf", columns: "company_id, user_id, team_id, is_active" },
+  { table: "team_managers", name: "idx_team_managers_company_team_user_perf", columns: "company_id, team_id, user_id, is_active" },
   { table: "leads", name: "idx_leads_company_lead_lookup", columns: "company_id, lead_id" },
+  { table: "leads", name: "idx_leads_company_team_active_created_perf", columns: "company_id, team_id, is_active, created_at" },
+  { table: "leads", name: "idx_leads_team_status_created_perf", columns: "team_id, status, created_at" },
   { table: "leads", name: "idx_leads_company_assigned_active_created_perf", columns: "company_id, assigned_to, is_active, created_at" },
   { table: "leads", name: "idx_leads_company_created_by_active_created_perf", columns: "company_id, created_by, is_active, created_at" },
   { table: "leads", name: "idx_leads_company_product_active_created_perf", columns: "company_id, product_id, is_active, created_at" },
@@ -537,10 +616,13 @@ const performanceIndexDefinitions = [
   { table: "lead_finance_documents", name: "idx_lfd_company_lead_uploaded_perf", columns: "company_id, lead_id, uploaded_at" },
   { table: "customers", name: "idx_customers_company_assigned_active_created_perf", columns: "company_id, assigned_to, is_active, created_at" },
   { table: "customers", name: "idx_customers_company_status_active_created_perf", columns: "company_id, status, is_active, created_at" },
+  { table: "customers", name: "idx_customers_company_team_active_created_perf", columns: "company_id, team_id, is_active, created_at" },
   { table: "users", name: "idx_users_company_active_created_perf", columns: "company_id, is_active, created_at" },
   { table: "platform_user_company_access", name: "idx_platform_access_user_company_perf", columns: "user_id, company_id, created_at" },
   { table: "products", name: "idx_products_company_active_created_perf", columns: "company_id, is_active, created_at" },
+  { table: "products", name: "idx_products_company_team_active_perf", columns: "company_id, team_id, is_active, created_at" },
   { table: "tasks", name: "idx_tasks_company_assigned_status_due_created_perf", columns: "company_id, assigned_to, status, due_date, created_at" },
+  { table: "tasks", name: "idx_tasks_company_team_status_due_perf", columns: "company_id, team_id, status, due_date" },
   { table: "tasks", name: "idx_tasks_company_status_priority_due_perf", columns: "company_id, status, priority, due_date" },
   { table: "notifications", name: "idx_notifications_company_user_read_created_perf", columns: "company_id, user_id, is_read, created_at" },
 ];

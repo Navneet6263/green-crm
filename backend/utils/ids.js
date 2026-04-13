@@ -14,6 +14,7 @@ function slugify(value) {
 const ID_CONFIG = {
   usr: { table: "users",               column: "user_id",    code: "UI" },
   cmp: { table: "companies",           column: "company_id", code: "CI" },
+  tem: { table: "teams",               column: "team_id",    code: "TMI" },
   led: { table: "leads",               column: "lead_id",    code: "LI" },
   prd: { table: "products",            column: "product_id", code: "PI" },
   act: { table: "lead_activities",     column: "activity_id",code: "AI" },

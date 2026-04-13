@@ -8,6 +8,19 @@ import DashboardShell from "../../../components/dashboard/DashboardShell";
 import DashboardIcon from "../../../components/dashboard/icons";
 import { apiRequest } from "../../../lib/api";
 import { loadSession } from "../../../lib/session";
+import {
+  formatScopedError,
+  isPlatformConsoleRole,
+  loadProductsForScope,
+  loadTeamScopeResources,
+  resolveInitialTeamId,
+  resolveScopedCompanyId,
+  scopedProductsEmptyMessage,
+  shouldShowTeamSelector,
+  teamBadgeLabel,
+  teamSelectLabel,
+  teamSelectionRequiredMessage,
+} from "../../../lib/teamScope";
 
 const PANEL = "rounded-[30px] border border-[#eadfcd] bg-white/82 p-5 shadow-[0_14px_36px_rgba(79,58,22,0.06)] md:p-6";
 const HERO = "rounded-[36px] border border-[#eadfcd] bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.98),_rgba(250,241,221,0.98)_44%,_rgba(245,231,193,0.98)_100%)] p-6 shadow-[0_24px_70px_rgba(79,58,22,0.08)] md:p-8";
@@ -18,7 +31,7 @@ const GHOST = "inline-flex min-h-[46px] items-center justify-center gap-2 rounde
 const KICKER = "text-[10px] font-black uppercase tracking-[0.28em] text-[#9a886d]";
 const SWATCHES = ["#cba952", "#8d6e27", "#e59044", "#df6b57", "#5d503c", "#10111d", "#5e7ce2", "#1dbf73", "#6d5bd0"];
 
-const draft = (v = {}) => ({ name: "", color: "#cba952", is_active: true, ...v });
+const draft = (v = {}) => ({ name: "", color: "#cba952", is_active: true, team_id: "", ...v });
 const hex = (v, f = "#cba952") => (/^#[0-9a-f]{6}$/i.test(String(v || "").trim()) ? String(v).toLowerCase() : f);
 const date = (v) => {
   if (!v) return "--";
@@ -26,13 +39,12 @@ const date = (v) => {
   return Number.isNaN(d.getTime()) ? "--" : d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 };
 const active = (v) => v === true || v === 1 || v === "1";
-const path = (companyId) => `/products?page_size=120${companyId ? `&company_id=${companyId}` : ""}`;
-
 export default function ProductSettingsPage() {
   const router = useRouter();
   const [session, setSession] = useState(null);
   const [companies, setCompanies] = useState([]);
   const [companyId, setCompanyId] = useState("");
+  const [teams, setTeams] = useState([]);
   const [products, setProducts] = useState([]);
   const [selectedId, setSelectedId] = useState("");
   const [createForm, setCreateForm] = useState(draft());
@@ -46,9 +58,15 @@ export default function ProductSettingsPage() {
   const [notice, setNotice] = useState("");
 
   const role = session?.user?.role || "";
+  const isPlatformConsole = isPlatformConsoleRole(role);
   const isSuperAdmin = role === "super-admin";
-  const scopedCompanyId = isSuperAdmin ? companyId : session?.user?.company_id || session?.company?.company_id || "";
+  const scopedCompanyId = resolveScopedCompanyId(session, companyId);
   const selectedProduct = useMemo(() => products.find((item) => item.product_id === selectedId) || null, [products, selectedId]);
+  const createTeam = useMemo(() => teams.find((team) => team.team_id === createForm.team_id) || null, [createForm.team_id, teams]);
+  const selectedTeam = useMemo(() => teams.find((team) => team.team_id === editForm.team_id) || null, [editForm.team_id, teams]);
+  const teamSelectorVisible = shouldShowTeamSelector(role, teams);
+  const createTeamSelectionPending = teamSelectorVisible && !createForm.team_id;
+  const editTeamSelectionPending = teamSelectorVisible && Boolean(selectedProduct) && !editForm.team_id;
   const filteredProducts = useMemo(() => {
     const q = search.trim().toLowerCase();
     return q ? products.filter((item) => [item.name, item.product_id, item.color].filter(Boolean).some((v) => String(v).toLowerCase().includes(q))) : products;
@@ -59,20 +77,40 @@ export default function ProductSettingsPage() {
     archived: products.filter((item) => !active(item.is_active)).length,
     colors: new Set(products.map((item) => hex(item.color)).filter(Boolean)).size,
   }), [products]);
+  const listEmptyMessage = useMemo(() => {
+    if (isPlatformConsole && !scopedCompanyId) {
+      return "Choose a company first to open the product desk.";
+    }
+
+    if (loading) {
+      return "Loading products...";
+    }
+
+    if (!products.length) {
+      return teamSelectorVisible && createTeam
+        ? scopedProductsEmptyMessage(createTeam)
+        : "No products are available in this workspace yet.";
+    }
+
+    return "No products matched the current search.";
+  }, [createTeam, isPlatformConsole, loading, products.length, scopedCompanyId, teamSelectorVisible]);
 
   async function loadProducts(activeSession, nextCompanyId) {
-    if (isSuperAdmin && !nextCompanyId) {
+    if (isPlatformConsole && !nextCompanyId) {
       setProducts([]);
       setLoading(false);
       return;
     }
     setLoading(true);
     try {
-      const response = await apiRequest(path(nextCompanyId), { token: activeSession.token });
-      setProducts(response.items || []);
+      const items = await loadProductsForScope(activeSession.token, {
+        companyId: nextCompanyId,
+        pageSize: 120,
+      });
+      setProducts(items);
     } catch (requestError) {
       setProducts([]);
-      setError(requestError.message);
+      setError(formatScopedError(requestError, "Could not load products."));
     } finally {
       setLoading(false);
     }
@@ -81,22 +119,59 @@ export default function ProductSettingsPage() {
   useEffect(() => {
     const activeSession = loadSession();
     if (!activeSession) return router.replace("/login");
-    if (!["super-admin", "admin"].includes(activeSession.user?.role)) return router.replace("/dashboard");
+    if (!["super-admin", "platform-admin", "platform-manager", "admin", "manager"].includes(activeSession.user?.role)) return router.replace("/dashboard");
     setSession(activeSession);
-    if (activeSession.user?.role === "super-admin") {
+    if (isPlatformConsoleRole(activeSession.user?.role)) {
       apiRequest("/companies?page_size=120", { token: activeSession.token })
         .then((response) => {
           const items = response.items || [];
           setCompanies(items);
           setCompanyId(activeSession.company?.company_id || activeSession.user?.company_id || items[0]?.company_id || "");
         })
-        .catch((requestError) => setError(requestError.message));
+        .catch((requestError) => setError(formatScopedError(requestError, "Could not load companies.")));
     }
   }, [router]);
 
   useEffect(() => {
     if (session) loadProducts(session, scopedCompanyId);
-  }, [isSuperAdmin, scopedCompanyId, session]);
+  }, [isPlatformConsole, scopedCompanyId, session]);
+
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadTeams() {
+      if (!session?.token || !scopedCompanyId) {
+        setTeams([]);
+        setCreateForm((current) => ({ ...current, team_id: "" }));
+        return;
+      }
+
+      try {
+        const { teams: teamItems, teamId } = await loadTeamScopeResources(session.token, {
+          companyId: scopedCompanyId,
+        });
+        if (ignore) {
+          return;
+        }
+        setTeams(teamItems);
+        setCreateForm((current) => ({
+          ...current,
+          team_id: resolveInitialTeamId(teamItems, current.team_id || teamId),
+        }));
+      } catch (_error) {
+        if (!ignore) {
+          setTeams([]);
+          setCreateForm((current) => ({ ...current, team_id: "" }));
+        }
+      }
+    }
+
+    loadTeams();
+
+    return () => {
+      ignore = true;
+    };
+  }, [scopedCompanyId, session]);
 
   useEffect(() => {
     if (!products.length) {
@@ -108,22 +183,32 @@ export default function ProductSettingsPage() {
   }, [products, selectedId]);
 
   useEffect(() => {
-    if (selectedProduct) setEditForm(draft({ name: selectedProduct.name || "", color: hex(selectedProduct.color), is_active: active(selectedProduct.is_active) }));
-  }, [selectedProduct]);
+    if (selectedProduct) {
+      setEditForm(
+        draft({
+          name: selectedProduct.name || "",
+          color: hex(selectedProduct.color),
+          is_active: active(selectedProduct.is_active),
+          team_id: resolveInitialTeamId(teams, selectedProduct.team_id),
+        })
+      );
+    }
+  }, [selectedProduct, teams]);
 
   async function createProduct(event) {
     event.preventDefault();
     if (!session?.token) return;
-    if (isSuperAdmin && !scopedCompanyId) return setError("Choose a company before creating a product.");
+    if (isPlatformConsole && !scopedCompanyId) return setError("Choose a company before creating a product.");
+    if (createTeamSelectionPending) return setError(teamSelectionRequiredMessage("product"));
     setCreating(true); setError(""); setNotice("");
     try {
-      const response = await apiRequest("/products", { method: "POST", token: session.token, body: { name: createForm.name.trim(), color: hex(createForm.color), company_id: isSuperAdmin ? scopedCompanyId : undefined } });
-      setCreateForm(draft());
+      const response = await apiRequest("/products", { method: "POST", token: session.token, body: { name: createForm.name.trim(), color: hex(createForm.color), company_id: isPlatformConsole ? scopedCompanyId : undefined, team_id: createForm.team_id || undefined } });
+      setCreateForm(draft({ team_id: resolveInitialTeamId(teams, createForm.team_id) }));
       setNotice("Product created.");
       await loadProducts(session, scopedCompanyId);
       setSelectedId(response.product_id);
     } catch (requestError) {
-      setError(requestError.message);
+      setError(formatScopedError(requestError, "Could not create product."));
     } finally {
       setCreating(false);
     }
@@ -132,13 +217,14 @@ export default function ProductSettingsPage() {
   async function saveProduct(event) {
     event.preventDefault();
     if (!session?.token || !selectedProduct) return;
+    if (editTeamSelectionPending) return setError(teamSelectionRequiredMessage("product"));
     setSaving(true); setError(""); setNotice("");
     try {
-      await apiRequest(`/products/${selectedProduct.product_id}`, { method: "PATCH", token: session.token, body: { name: editForm.name.trim(), color: hex(editForm.color), is_active: editForm.is_active } });
+      await apiRequest(`/products/${selectedProduct.product_id}`, { method: "PATCH", token: session.token, body: { name: editForm.name.trim(), color: hex(editForm.color), is_active: editForm.is_active, team_id: editForm.team_id || undefined } });
       setNotice("Product updated.");
       await loadProducts(session, scopedCompanyId);
     } catch (requestError) {
-      setError(requestError.message);
+      setError(formatScopedError(requestError, "Could not update product."));
     } finally {
       setSaving(false);
     }
@@ -152,7 +238,7 @@ export default function ProductSettingsPage() {
       setNotice(active(product.is_active) ? "Product archived." : "Product restored.");
       await loadProducts(session, scopedCompanyId);
     } catch (requestError) {
-      setError(requestError.message);
+      setError(formatScopedError(requestError, "Could not update product status."));
     } finally {
       setTogglingId("");
     }
@@ -199,10 +285,11 @@ export default function ProductSettingsPage() {
                 <h3 className="text-2xl font-semibold tracking-tight text-[#060710]">Add a new branded tile</h3>
               </div>
               <form className="mt-5 grid gap-4" onSubmit={createProduct}>
-                {isSuperAdmin ? <label className="space-y-2"><span className={KICKER}>Company</span><select className={INPUT} value={companyId} onChange={(event) => setCompanyId(event.target.value)}><option value="">Choose company</option>{companies.map((item) => <option key={item.company_id} value={item.company_id}>{item.name}</option>)}</select></label> : null}
+                {isPlatformConsole ? <label className="space-y-2"><span className={KICKER}>Company</span><select className={INPUT} value={companyId} onChange={(event) => setCompanyId(event.target.value)}><option value="">Choose company</option>{companies.map((item) => <option key={item.company_id} value={item.company_id}>{item.name}</option>)}</select></label> : null}
                 <label className="space-y-2"><span className={KICKER}>Product Name</span><input className={INPUT} value={createForm.name} onChange={(event) => setCreateForm((current) => ({ ...current, name: event.target.value }))} placeholder="GreenCall Premium" required /></label>
+                {teamSelectorVisible ? <label className="space-y-2"><span className={KICKER}>Owning Team</span><select className={INPUT} value={createForm.team_id} onChange={(event) => setCreateForm((current) => ({ ...current, team_id: event.target.value }))}><option value="">Select team</option>{teams.map((team) => <option key={team.team_id} value={team.team_id}>{teamSelectLabel(team)}</option>)}</select>{createTeamSelectionPending ? <p className="text-xs font-medium text-[#8d6e27]">{teamSelectionRequiredMessage("product")}</p> : null}</label> : null}
                 {colorField(createForm.color, (value) => setCreateForm((current) => ({ ...current, color: value })), "Color")}
-                <button className={PRIMARY} type="submit" disabled={creating || (isSuperAdmin && !scopedCompanyId)}><DashboardIcon name="products" className="h-4 w-4" />{creating ? "Creating..." : "Create Product"}</button>
+                <button className={PRIMARY} type="submit" disabled={creating || (isPlatformConsole && !scopedCompanyId) || createTeamSelectionPending}><DashboardIcon name="products" className="h-4 w-4" />{creating ? "Creating..." : "Create Product"}</button>
               </form>
             </article>
           </div>
@@ -216,7 +303,7 @@ export default function ProductSettingsPage() {
             </div>
             <div className="mt-5 flex flex-wrap gap-2">{selectedProduct ? <span className="inline-flex rounded-full border border-[#eadfcd] bg-[#fffaf1] px-3 py-1 text-[11px] font-bold text-[#7c6d55]">{selectedProduct.product_id}</span> : null}{scopedCompanyId ? <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">{selectedId ? filteredProducts.length : products.length} visible</span> : null}</div>
             <div className="mt-5 space-y-3">
-              {!loading && filteredProducts.length ? filteredProducts.map((product) => <button key={product.product_id} type="button" onClick={() => setSelectedId(product.product_id)} className={`w-full rounded-[28px] border p-4 text-left transition ${selectedId === product.product_id ? "border-[#d7b258] bg-[#fff8e9] shadow-[0_16px_32px_rgba(203,169,82,0.14)]" : "border-[#eadfcd] bg-white/88 shadow-[0_10px_24px_rgba(79,58,22,0.05)] hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(79,58,22,0.08)]"}`}><div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between"><div className="flex min-w-0 items-start gap-4"><div className="grid h-14 w-14 shrink-0 place-items-center rounded-[20px] bg-[#10111d] text-base font-black text-white shadow-[0_18px_30px_rgba(6,7,16,0.16)]">{String(product.name || "P").slice(0, 2).toUpperCase()}</div><div className="min-w-0"><div className="flex flex-wrap gap-2"><span className="inline-flex rounded-full border border-[#eadfcd] bg-[#fff6e4] px-3 py-1 text-[11px] font-bold text-[#7a6230]">{product.product_id}</span><span className="inline-flex rounded-full border px-3 py-1 text-[11px] font-bold" style={{ backgroundColor: `${hex(product.color)}18`, color: hex(product.color), borderColor: `${hex(product.color)}55` }}>{hex(product.color)}</span></div><h4 className="mt-3 truncate text-lg font-semibold text-[#060710]">{product.name || "Unnamed product"}</h4><p className="mt-1 text-sm text-[#746853]">Created {date(product.created_at)}</p></div></div><div className="flex flex-wrap items-center gap-2"><span className={`inline-flex rounded-full border px-3 py-1 text-[11px] font-bold ${active(product.is_active) ? "border-[#e7d7ab] bg-[#fff4d9] text-[#8d6e27]" : "border-[#eadfcd] bg-white text-[#7c6d55]"}`}>{active(product.is_active) ? "Active" : "Archived"}</span><span className="h-9 w-9 rounded-2xl border border-white shadow-sm" style={{ backgroundColor: hex(product.color) }} /></div></div></button>) : <div className="grid min-h-[220px] place-items-center rounded-[28px] border border-dashed border-[#ddd0bb] bg-[#fffaf1] px-6 text-center text-sm text-[#7a6b57]">{isSuperAdmin && !scopedCompanyId ? "Choose a company first to open the product desk." : loading ? "Loading products..." : "No products matched the current search."}</div>}
+              {!loading && filteredProducts.length ? filteredProducts.map((product) => <button key={product.product_id} type="button" onClick={() => setSelectedId(product.product_id)} className={`w-full rounded-[28px] border p-4 text-left transition ${selectedId === product.product_id ? "border-[#d7b258] bg-[#fff8e9] shadow-[0_16px_32px_rgba(203,169,82,0.14)]" : "border-[#eadfcd] bg-white/88 shadow-[0_10px_24px_rgba(79,58,22,0.05)] hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(79,58,22,0.08)]"}`}><div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between"><div className="flex min-w-0 items-start gap-4"><div className="grid h-14 w-14 shrink-0 place-items-center rounded-[20px] bg-[#10111d] text-base font-black text-white shadow-[0_18px_30px_rgba(6,7,16,0.16)]">{String(product.name || "P").slice(0, 2).toUpperCase()}</div><div className="min-w-0"><div className="flex flex-wrap gap-2"><span className="inline-flex rounded-full border border-[#eadfcd] bg-[#fff6e4] px-3 py-1 text-[11px] font-bold text-[#7a6230]">{product.product_id}</span><span className="inline-flex rounded-full border px-3 py-1 text-[11px] font-bold" style={{ backgroundColor: `${hex(product.color)}18`, color: hex(product.color), borderColor: `${hex(product.color)}55` }}>{hex(product.color)}</span>{teamBadgeLabel(product) ? <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">{teamBadgeLabel(product)}</span> : null}</div><h4 className="mt-3 truncate text-lg font-semibold text-[#060710]">{product.name || "Unnamed product"}</h4><p className="mt-1 text-sm text-[#746853]">Created {date(product.created_at)}</p></div></div><div className="flex flex-wrap items-center gap-2"><span className={`inline-flex rounded-full border px-3 py-1 text-[11px] font-bold ${active(product.is_active) ? "border-[#e7d7ab] bg-[#fff4d9] text-[#8d6e27]" : "border-[#eadfcd] bg-white text-[#7c6d55]"}`}>{active(product.is_active) ? "Active" : "Archived"}</span><span className="h-9 w-9 rounded-2xl border border-white shadow-sm" style={{ backgroundColor: hex(product.color) }} /></div></div></button>) : <div className="grid min-h-[220px] place-items-center rounded-[28px] border border-dashed border-[#ddd0bb] bg-[#fffaf1] px-6 text-center text-sm text-[#7a6b57]">{listEmptyMessage}</div>}
             </div>
           </article>
 
@@ -224,12 +311,13 @@ export default function ProductSettingsPage() {
             {selectedProduct ? (
               <div className="space-y-5">
                 <div><p className={KICKER}>Editor</p><h3 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Update selected product</h3></div>
-                <div className="overflow-hidden rounded-[26px] border border-[#eadfcd] bg-white/84 shadow-[0_12px_30px_rgba(79,58,22,0.08)]"><div className="h-2.5 w-full" style={{ backgroundColor: hex(editForm.color) }} /><div className="space-y-4 p-4"><div className="flex items-start justify-between gap-3"><div className="flex items-center gap-3"><div className="grid h-12 w-12 place-items-center rounded-[18px] bg-[#10111d] text-sm font-black text-white shadow-[0_16px_28px_rgba(6,7,16,0.16)]">{String(editForm.name || "P").slice(0, 2).toUpperCase()}</div><div><strong className="block text-base font-black text-[#060710]">{editForm.name || "Product name"}</strong><span className="block text-xs font-semibold text-[#8f816a]">{selectedProduct.product_id}</span></div></div><span className={`inline-flex rounded-full border px-3 py-1 text-[11px] font-bold ${editForm.is_active ? "border-[#e7d7ab] bg-[#fff4d9] text-[#8d6e27]" : "border-[#eadfcd] bg-white text-[#7c6d55]"}`}>{editForm.is_active ? "Active" : "Archived"}</span></div><div className="grid gap-3 sm:grid-cols-2"><div className="rounded-[24px] border border-[#eadfcd] bg-[#fffaf1] p-4"><span className={KICKER}>Color</span><strong className="mt-3 block text-sm text-[#060710]">{hex(editForm.color)}</strong></div><div className="rounded-[24px] border border-[#eadfcd] bg-[#fffaf1] p-4"><span className={KICKER}>Status</span><strong className="mt-3 block text-sm text-[#060710]">{editForm.is_active ? "Visible in lead forms" : "Archived from selection"}</strong></div></div></div></div>
+                <div className="overflow-hidden rounded-[26px] border border-[#eadfcd] bg-white/84 shadow-[0_12px_30px_rgba(79,58,22,0.08)]"><div className="h-2.5 w-full" style={{ backgroundColor: hex(editForm.color) }} /><div className="space-y-4 p-4"><div className="flex items-start justify-between gap-3"><div className="flex items-center gap-3"><div className="grid h-12 w-12 place-items-center rounded-[18px] bg-[#10111d] text-sm font-black text-white shadow-[0_16px_28px_rgba(6,7,16,0.16)]">{String(editForm.name || "P").slice(0, 2).toUpperCase()}</div><div><strong className="block text-base font-black text-[#060710]">{editForm.name || "Product name"}</strong><span className="block text-xs font-semibold text-[#8f816a]">{selectedProduct.product_id}</span></div></div><span className={`inline-flex rounded-full border px-3 py-1 text-[11px] font-bold ${editForm.is_active ? "border-[#e7d7ab] bg-[#fff4d9] text-[#8d6e27]" : "border-[#eadfcd] bg-white text-[#7c6d55]"}`}>{editForm.is_active ? "Active" : "Archived"}</span></div><div className="grid gap-3 sm:grid-cols-2"><div className="rounded-[24px] border border-[#eadfcd] bg-[#fffaf1] p-4"><span className={KICKER}>Color</span><strong className="mt-3 block text-sm text-[#060710]">{hex(editForm.color)}</strong></div><div className="rounded-[24px] border border-[#eadfcd] bg-[#fffaf1] p-4"><span className={KICKER}>Status</span><strong className="mt-3 block text-sm text-[#060710]">{editForm.is_active ? "Visible in lead forms" : "Archived from selection"}</strong></div><div className="rounded-[24px] border border-[#eadfcd] bg-[#fffaf1] p-4 sm:col-span-2"><span className={KICKER}>Team</span><strong className="mt-3 block text-sm text-[#060710]">{selectedTeam?.name || selectedProduct.team_name || "Auto team"}</strong></div></div></div></div>
                 <form className="grid gap-4" onSubmit={saveProduct}>
                   <label className="space-y-2"><span className={KICKER}>Product Name</span><input className={INPUT} value={editForm.name} onChange={(event) => setEditForm((current) => ({ ...current, name: event.target.value }))} required /></label>
+                  {teamSelectorVisible ? <label className="space-y-2"><span className={KICKER}>Owning Team</span><select className={INPUT} value={editForm.team_id} onChange={(event) => setEditForm((current) => ({ ...current, team_id: event.target.value }))}><option value="">Select team</option>{teams.map((team) => <option key={team.team_id} value={team.team_id}>{teamSelectLabel(team)}</option>)}</select>{editTeamSelectionPending ? <p className="text-xs font-medium text-[#8d6e27]">{teamSelectionRequiredMessage("product")}</p> : null}</label> : null}
                   {colorField(editForm.color, (value) => setEditForm((current) => ({ ...current, color: value })), "Product Color")}
                   <label className="flex items-center gap-3 rounded-[22px] border border-[#eadfcd] bg-[#fffaf1] px-4 py-3"><input type="checkbox" checked={editForm.is_active} onChange={(event) => setEditForm((current) => ({ ...current, is_active: event.target.checked }))} className="h-4 w-4 rounded border-[#d9ccb8] text-[#cba952] focus:ring-[#f3dfab]" /><span className="text-sm font-semibold text-[#5d503c]">Keep this product active in the catalog</span></label>
-                  <div className="flex flex-wrap gap-3"><button className={PRIMARY} type="submit" disabled={saving}><DashboardIcon name="settings" className="h-4 w-4" />{saving ? "Saving..." : "Save Changes"}</button><button className={GHOST} type="button" disabled={Boolean(togglingId)} onClick={() => toggleProduct(selectedProduct)}><DashboardIcon name="documents" className="h-4 w-4" />{togglingId === selectedProduct.product_id ? "Updating..." : active(selectedProduct.is_active) ? "Archive Product" : "Restore Product"}</button></div>
+                  <div className="flex flex-wrap gap-3"><button className={PRIMARY} type="submit" disabled={saving || editTeamSelectionPending}><DashboardIcon name="settings" className="h-4 w-4" />{saving ? "Saving..." : "Save Changes"}</button><button className={GHOST} type="button" disabled={Boolean(togglingId)} onClick={() => toggleProduct(selectedProduct)}><DashboardIcon name="documents" className="h-4 w-4" />{togglingId === selectedProduct.product_id ? "Updating..." : active(selectedProduct.is_active) ? "Archive Product" : "Restore Product"}</button></div>
                 </form>
               </div>
             ) : <div className="space-y-4"><span className="inline-flex rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.24em] text-white/70">Product Editor</span><h3 className="text-[2rem] font-semibold leading-[1.08] tracking-tight text-white">Select a product card to edit color, name, and status</h3><p className="text-sm leading-7 text-white/68">Your selected product opens here with a live preview and editable color controls.</p></div>}

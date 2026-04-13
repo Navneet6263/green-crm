@@ -17,6 +17,7 @@ const { buildPaginatedResult, parsePagination } = require("../utils/pagination")
 const AppError = require("../utils/appError");
 const { getRoleLimit } = require("../utils/companySettings");
 const { assertCompanyAccess, getAccessibleCompanyIds, isPlatformOperatorRole } = require("../utils/tenant");
+const { parseRequestedTeamIds, resolveTeamScope } = require("./accessScopeService");
 
 function sanitizeUser(user) {
   if (!user) {
@@ -187,10 +188,17 @@ async function listUsers(auth, query) {
     assertCompanyAccess(auth, companyId);
   }
 
+  const requestedTeamIds = parseRequestedTeamIds(query);
+  const resolvedTeamScope = await resolveTeamScope(auth, companyId, requestedTeamIds, {
+    includeManaged: true,
+    includeMembership: true,
+  });
+
   const { rows, total } = await userRepository.listUsers(
     {
       companyId,
       companyIds,
+      teamIds: resolvedTeamScope.teamIds,
       role: normalizeRole(query.role) || null,
       search: query.search || "",
       pagination,

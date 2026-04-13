@@ -298,8 +298,8 @@ export default function ManagerDashboard() {
                         <p className={KICKER}>Team Load</p>
                         <h3 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Who needs manager attention</h3>
                       </div>
-                      <Link prefetch={false} href="/settings/users" className="inline-flex rounded-[16px] border border-[#eadfcd] bg-white px-3 py-2 text-xs font-semibold text-[#5d503c] transition hover:border-[#d7b258] hover:text-[#060710]">
-                        Open Team
+                      <Link prefetch={false} href="/settings/teams" className="inline-flex rounded-[16px] border border-[#eadfcd] bg-white px-3 py-2 text-xs font-semibold text-[#5d503c] transition hover:border-[#d7b258] hover:text-[#060710]">
+                        Open Teams
                       </Link>
                     </div>
                     <div className="space-y-3">

@@ -8,6 +8,19 @@ import DashboardShell from "../../../../components/dashboard/DashboardShell";
 import DashboardIcon from "../../../../components/dashboard/icons";
 import { apiRequest } from "../../../../lib/api";
 import { loadSession } from "../../../../lib/session";
+import {
+  canManageScopedAssignments,
+  formatScopedError,
+  filterRecordsByTeam,
+  loadProductsForScope,
+  loadTeamScopeResources,
+  shouldShowTeamSelector,
+  scopedProductsEmptyMessage,
+  scopedUsersEmptyMessage,
+  teamBadgeLabel,
+  teamSelectLabel,
+  teamSelectionRequiredMessage,
+} from "../../../../lib/teamScope";
 
 const PANEL_CLASS = "rounded-[30px] border border-[#eadfcd] bg-white/82 p-5 shadow-[0_14px_36px_rgba(79,58,22,0.06)] md:p-6";
 const SOFT_PANEL_CLASS = "rounded-[24px] border border-[#eadfcd] bg-[#fffaf1] p-4";
@@ -95,6 +108,8 @@ export default function EditLeadPage() {
   const params = useParams();
   const router = useRouter();
   const [session, setSession] = useState(null);
+  const [teams, setTeams] = useState([]);
+  const [users, setUsers] = useState([]);
   const [products, setProducts] = useState([]);
   const [form, setForm] = useState(null);
   const [originalLead, setOriginalLead] = useState(null);
@@ -102,6 +117,48 @@ export default function EditLeadPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [resourceLoading, setResourceLoading] = useState(false);
+
+  const role = session?.user?.role || "";
+  const canManageAssignment = canManageScopedAssignments(role);
+  const teamSelectorVisible = shouldShowTeamSelector(role, teams);
+  const teamSelectionPending = teamSelectorVisible && !form?.team_id;
+  const selectedTeam = useMemo(() => teams.find((team) => team.team_id === form?.team_id) || null, [form?.team_id, teams]);
+  const filteredProducts = useMemo(
+    () => (teamSelectionPending ? [] : filterRecordsByTeam(products, form?.team_id)),
+    [form?.team_id, products, teamSelectionPending]
+  );
+  const selectedOwner = useMemo(() => users.find((user) => user.user_id === form?.assigned_to) || null, [form?.assigned_to, users]);
+  const ownerEmptyMessage = useMemo(() => {
+    if (!canManageAssignment || resourceLoading) {
+      return "";
+    }
+
+    if (teamSelectionPending) {
+      return "Choose a team to load available owners.";
+    }
+
+    if (!users.length) {
+      return scopedUsersEmptyMessage(selectedTeam);
+    }
+
+    return "";
+  }, [canManageAssignment, resourceLoading, selectedTeam, teamSelectionPending, users.length]);
+  const productEmptyMessage = useMemo(() => {
+    if (resourceLoading) {
+      return "";
+    }
+
+    if (teamSelectionPending) {
+      return "Choose a team to load products for this lead.";
+    }
+
+    if (!filteredProducts.length) {
+      return scopedProductsEmptyMessage(selectedTeam);
+    }
+
+    return "";
+  }, [filteredProducts.length, resourceLoading, selectedTeam, teamSelectionPending]);
 
   useEffect(() => {
     const activeSession = loadSession();
@@ -111,12 +168,28 @@ export default function EditLeadPage() {
     }
 
     setSession(activeSession);
-    Promise.all([
-      apiRequest(`/leads/${params.id}`, { token: activeSession.token }),
-      apiRequest("/products?page_size=200", { token: activeSession.token }),
-    ])
-      .then(([leadResponse, productsResponse]) => {
-        setProducts(productsResponse.items || []);
+    const allowAssignments = canManageScopedAssignments(activeSession.user?.role);
+    apiRequest(`/leads/${params.id}`, { token: activeSession.token })
+      .then(async (leadResponse) => {
+        const [productsResponse, scopeResponse] = await Promise.all([
+          loadProductsForScope(activeSession.token, {
+            companyId: leadResponse.company_id,
+            pageSize: 200,
+          }),
+          loadTeamScopeResources(activeSession.token, {
+            companyId: leadResponse.company_id,
+            teamId: leadResponse.team_id || "",
+            includeUsers: allowAssignments,
+          }),
+        ]);
+        const teamItems = scopeResponse.teams || [];
+        const userItems = scopeResponse.users || [];
+        const nextTeamId = scopeResponse.teamId || "";
+        const scopedProducts = filterRecordsByTeam(productsResponse || [], nextTeamId);
+
+        setProducts(productsResponse || []);
+        setTeams(teamItems);
+        setUsers(userItems);
         setOriginalLead(leadResponse);
         setForm({
           contact_person: leadResponse.contact_person || "",
@@ -127,17 +200,79 @@ export default function EditLeadPage() {
           status: leadResponse.status || "new",
           workflow_stage: leadResponse.workflow_stage || "sales",
           estimated_value: leadResponse.estimated_value || "",
+          team_id: nextTeamId,
+          assigned_to: userItems.some((user) => user.user_id === leadResponse.assigned_to) ? leadResponse.assigned_to || "" : "",
           product_id: leadResponse.product_id || "",
           requirements: leadResponse.requirements || "",
           follow_up_date: leadResponse.follow_up_date ? String(leadResponse.follow_up_date).slice(0, 16) : "",
         });
+        if (leadResponse.product_id && !scopedProducts.some((product) => product.product_id === leadResponse.product_id)) {
+          setForm((current) => current ? { ...current, product_id: "" } : current);
+        }
       })
-      .catch((requestError) => setError(requestError.message))
+      .catch((requestError) => setError(formatScopedError(requestError, "Failed to load lead.")))
       .finally(() => setLoading(false));
   }, [params.id, router]);
 
+  useEffect(() => {
+    let ignore = false;
+
+    async function reloadScopedUsers() {
+      if (!session?.token || !originalLead?.company_id || !canManageAssignment || !form) {
+        return;
+      }
+
+      setResourceLoading(true);
+
+      try {
+        if (teamSelectionPending) {
+          if (!ignore) {
+            setUsers([]);
+            setForm((current) => (current ? { ...current, assigned_to: "" } : current));
+          }
+          return;
+        }
+
+        const scopedResponse = await loadTeamScopeResources(session.token, {
+          companyId: originalLead.company_id,
+          teamId: form.team_id,
+          includeUsers: true,
+        });
+        const scopedUsers = scopedResponse.users || [];
+
+        if (ignore) {
+          return;
+        }
+
+        setUsers(scopedUsers);
+        setForm((current) =>
+          current
+            ? {
+                ...current,
+                assigned_to: scopedUsers.some((user) => user.user_id === current.assigned_to) ? current.assigned_to : "",
+              }
+            : current
+        );
+      } catch (_error) {
+        if (!ignore) {
+          setUsers([]);
+        }
+      } finally {
+        if (!ignore) {
+          setResourceLoading(false);
+        }
+      }
+    }
+
+    reloadScopedUsers();
+
+    return () => {
+      ignore = true;
+    };
+  }, [canManageAssignment, form?.team_id, originalLead?.company_id, session, teamSelectionPending]);
+
   const productChoices = useMemo(() => {
-    const list = [...products];
+    const list = [...filteredProducts];
     if (originalLead?.product_id && !list.some((product) => product.product_id === originalLead.product_id)) {
       list.unshift({
         product_id: originalLead.product_id,
@@ -145,7 +280,7 @@ export default function EditLeadPage() {
       });
     }
     return list;
-  }, [originalLead, products]);
+  }, [filteredProducts, originalLead]);
 
   const productLookup = useMemo(
     () => new Map(productChoices.map((product) => [product.product_id, product.name])),
@@ -172,6 +307,8 @@ export default function EditLeadPage() {
       ["priority", "Priority", originalLead.priority, nextPayload.priority],
       ["workflow_stage", "Workflow Stage", originalLead.workflow_stage, nextPayload.workflow_stage],
       ["estimated_value", "Estimated Value", originalLead.estimated_value, nextPayload.estimated_value],
+      ["team_id", "Team", originalLead.team_name || originalLead.team_id, selectedTeam?.name || selectedTeam?.team_id || nextPayload.team_id],
+      ["assigned_to", "Lead Owner", originalLead.assigned_to_name || originalLead.assigned_to, selectedOwner?.name || nextPayload.assigned_to],
       ["requirements", "Requirements", originalLead.requirements, nextPayload.requirements],
       ["follow_up_date", "Follow-up Date", originalLead.follow_up_date ? String(originalLead.follow_up_date).slice(0, 16) : "", nextPayload.follow_up_date],
       ["product_id", "Product", productLookup.get(originalLead.product_id) || originalLead.product_name || originalLead.product_id, productLookup.get(nextPayload.product_id) || nextPayload.product_id],
@@ -185,10 +322,9 @@ export default function EditLeadPage() {
         previous: printable(previous),
         next: printable(next),
       }));
-  }, [form, originalLead, productLookup]);
+  }, [form, originalLead, productLookup, selectedOwner?.name, selectedTeam?.name, selectedTeam?.team_id]);
 
   const requiresChangeNote = changeItems.length > 0;
-  const role = session?.user?.role || "";
   const hideTitle = ["sales", "marketing", "admin", "manager"].includes(role);
 
   async function handleSubmit(event) {
@@ -200,6 +336,15 @@ export default function EditLeadPage() {
 
     if (!form.product_id) {
       setError("Select a product before saving the lead.");
+      return;
+    }
+
+    if (teamSelectorVisible && !form.team_id) {
+      setError(teamSelectionRequiredMessage("lead"));
+      return;
+    }
+    if (canManageAssignment && originalLead?.team_id !== form.team_id && !form.assigned_to) {
+      setError("Choose a lead owner from the selected team before saving.");
       return;
     }
 
@@ -217,6 +362,8 @@ export default function EditLeadPage() {
         ...form,
         estimated_value: estimatedValue,
         follow_up_date: toApiDateTime(form.follow_up_date),
+        team_id: form.team_id || undefined,
+        assigned_to: canManageAssignment ? form.assigned_to || undefined : undefined,
         change_note: changeNote.trim(),
       };
 
@@ -228,7 +375,7 @@ export default function EditLeadPage() {
 
       router.push(`/leads/${params.id}`);
     } catch (requestError) {
-      setError(requestError.message);
+      setError(formatScopedError(requestError, "Failed to save lead changes."));
     } finally {
       setSaving(false);
     }
@@ -271,15 +418,19 @@ export default function EditLeadPage() {
                   <strong className="mt-3 block text-2xl font-black tracking-tight text-[#060710]">{originalLead?.lead_id || "--"}</strong>
                 </div>
                 <div className={SOFT_PANEL_CLASS}>
-                  <p className={KICKER_CLASS}>Company</p>
-                  <strong className="mt-3 block text-2xl font-black tracking-tight text-[#060710]">{originalLead?.company_name || "--"}</strong>
+                    <p className={KICKER_CLASS}>Company</p>
+                    <strong className="mt-3 block text-2xl font-black tracking-tight text-[#060710]">{originalLead?.company_name || "--"}</strong>
+                  </div>
+                  <div className="rounded-[24px] border border-[#eadfcd] bg-[#fff7e8] p-4">
+                    <p className={KICKER_CLASS}>Pending Changes</p>
+                    <strong className="mt-3 block text-2xl font-black tracking-tight text-[#060710]">{changeItems.length}</strong>
+                  </div>
+                  <div className={SOFT_PANEL_CLASS}>
+                    <p className={KICKER_CLASS}>Team</p>
+                    <strong className="mt-3 block text-2xl font-black tracking-tight text-[#060710]">{selectedTeam?.name || originalLead?.team_name || "Auto team"}</strong>
+                  </div>
                 </div>
-                <div className="rounded-[24px] border border-[#eadfcd] bg-[#fff7e8] p-4">
-                  <p className={KICKER_CLASS}>Pending Changes</p>
-                  <strong className="mt-3 block text-2xl font-black tracking-tight text-[#060710]">{changeItems.length}</strong>
-                </div>
-              </div>
-            </article>
+              </article>
 
             <article className={DARK_PANEL_CLASS}>
               <div className="space-y-4">
@@ -296,6 +447,7 @@ export default function EditLeadPage() {
                   { label: "Current Status", value: originalLead?.status || "--" },
                   { label: "Priority", value: originalLead?.priority || "--" },
                   { label: "Workflow", value: originalLead?.workflow_stage || "--" },
+                  { label: "Team", value: selectedTeam?.name || originalLead?.team_name || "Auto team" },
                   { label: "Product", value: productLookup.get(form.product_id) || originalLead?.product_name || "--" },
                 ].map((item) => (
                   <div key={item.label} className="rounded-[24px] border border-white/10 bg-white/6 p-4">
@@ -349,7 +501,39 @@ export default function EditLeadPage() {
                     <span className={KICKER_CLASS}>Phone</span>
                     <input className={INPUT_CLASS} value={form.phone} onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))} required />
                   </label>
+                  {teamSelectorVisible ? (
+                    <label className="space-y-2">
+                      <span className={KICKER_CLASS}>Team</span>
+                      <select className={INPUT_CLASS} value={form.team_id} onChange={(event) => setForm((current) => ({ ...current, team_id: event.target.value }))}>
+                        <option value="">Select team</option>
+                        {teams.map((team) => (
+                          <option key={team.team_id} value={team.team_id}>
+                            {teamSelectLabel(team)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ) : null}
+                  {canManageAssignment ? (
+                    <label className="space-y-2">
+                      <span className={KICKER_CLASS}>Lead Owner</span>
+                      <select className={INPUT_CLASS} value={form.assigned_to} onChange={(event) => setForm((current) => ({ ...current, assigned_to: event.target.value }))} disabled={resourceLoading || teamSelectionPending}>
+                        <option value="">Keep current owner</option>
+                        {users.map((user) => (
+                          <option key={user.user_id} value={user.user_id}>
+                            {user.name} | {user.role}
+                          </option>
+                        ))}
+                      </select>
+                      {ownerEmptyMessage ? <small className="text-xs font-semibold text-[#8f816a]">{ownerEmptyMessage}</small> : null}
+                    </label>
+                  ) : null}
                 </div>
+                {selectedTeam ? (
+                  <div className="mt-4 rounded-[22px] border border-[#eadfcd] bg-[#fffaf1] px-4 py-4 text-sm leading-7 text-[#6f614c]">
+                    <strong className="text-[#060710]">Team scope:</strong> {teamBadgeLabel(selectedTeam)}
+                  </div>
+                ) : null}
               </article>
 
               <article className={PANEL_CLASS}>
@@ -393,7 +577,7 @@ export default function EditLeadPage() {
                   </label>
                   <label className="space-y-2">
                     <span className={KICKER_CLASS}>Product</span>
-                    <select className={INPUT_CLASS} value={form.product_id} onChange={(event) => setForm((current) => ({ ...current, product_id: event.target.value }))} required>
+                    <select className={INPUT_CLASS} value={form.product_id} onChange={(event) => setForm((current) => ({ ...current, product_id: event.target.value }))} disabled={teamSelectionPending} required>
                       <option value="">Select product</option>
                       {productChoices.map((product) => (
                         <option key={product.product_id} value={product.product_id}>
@@ -401,6 +585,7 @@ export default function EditLeadPage() {
                         </option>
                       ))}
                     </select>
+                    {productEmptyMessage ? <small className="text-xs font-semibold text-[#8f816a]">{productEmptyMessage}</small> : null}
                   </label>
                   <label className="space-y-2">
                     <span className={KICKER_CLASS}>Follow-up</span>

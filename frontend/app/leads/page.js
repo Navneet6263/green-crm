@@ -8,17 +8,32 @@ import DashboardIcon from "../../components/dashboard/icons";
 import LeadQuickStatusControl from "../../components/leads/LeadQuickStatusControl";
 import { apiRequest } from "../../lib/api";
 import {
-  buildLeadBulkImportSheet,
   BULK_IMPORT_COLUMNS,
   BULK_IMPORT_FIELDS,
   BULK_IMPORT_MAX_ROWS,
+  buildLeadBulkImportSheet,
   parseLeadBulkImportText,
 } from "../../lib/leadBulkImport";
 import { loadSession } from "../../lib/session";
+import {
+  formatScopedError,
+  isPlatformConsoleRole,
+  loadTeamScopeResources,
+  loadUsersForScope,
+  scopedUsersEmptyMessage,
+  teamBadgeLabel,
+  teamSelectLabel,
+} from "../../lib/teamScope";
+import {
+  formatWorkflowOwnerIdentity,
+  withAssignedWorkflowUser,
+  workflowUsersEmptyMessage,
+} from "../../lib/workflowOwners";
 
 const OK_ROLES = ["super-admin", "platform-admin", "platform-manager", "admin", "manager", "sales", "marketing", "viewer"];
 const MANAGER_ROLES = ["super-admin", "platform-admin", "platform-manager", "admin", "manager"];
 const CREATE_ROLES = ["super-admin", "platform-admin", "platform-manager", "admin", "manager", "sales", "marketing"];
+const LEGAL_TRANSFER_ROLES = ["super-admin", "platform-admin", "platform-manager", "admin", "manager", "sales"];
 const LEADS_PAGE_SIZE = 12;
 const LEAD_BACKGROUND_BATCH_SIZE = 120;
 const LEAD_BACKGROUND_BATCH_DELAY_MS = 80;
@@ -63,25 +78,30 @@ const leadSecondaryName = (lead = {}) => {
 
 export default function LeadsPage() {
   const router = useRouter();
-  const [session, setSession] = useState(null), [companies, setCompanies] = useState([]), [team, setTeam] = useState([]), [leads, setLeads] = useState([]), [productOptions, setProductOptions] = useState([]), [leadMeta, setLeadMeta] = useState({ page: 1, page_size: LEADS_PAGE_SIZE, total: 0, total_pages: 1 });
-  const [selectedId, setSelectedId] = useState(""), [selected, setSelected] = useState(null), [search, setSearch] = useState(""), [status, setStatus] = useState("all"), [product, setProduct] = useState("all"), [company, setCompany] = useState("all"), [page, setPage] = useState(1), [picked, setPicked] = useState([]), [bulkOwner, setBulkOwner] = useState(""), [bulkNote, setBulkNote] = useState(""), [owner, setOwner] = useState("");
+  const [session, setSession] = useState(null), [companies, setCompanies] = useState([]), [teams, setTeams] = useState([]), [team, setTeam] = useState([]), [leads, setLeads] = useState([]), [productOptions, setProductOptions] = useState([]), [leadMeta, setLeadMeta] = useState({ page: 1, page_size: LEADS_PAGE_SIZE, total: 0, total_pages: 1 });
+  const [selectedId, setSelectedId] = useState(""), [selected, setSelected] = useState(null), [search, setSearch] = useState(""), [status, setStatus] = useState("all"), [product, setProduct] = useState("all"), [company, setCompany] = useState("all"), [teamFilter, setTeamFilter] = useState("all"), [page, setPage] = useState(1), [picked, setPicked] = useState([]), [bulkOwner, setBulkOwner] = useState(""), [bulkNote, setBulkNote] = useState(""), [owner, setOwner] = useState("");
+  const [bulkUsers, setBulkUsers] = useState([]);
   const [booting, setBooting] = useState(true), [loading, setLoading] = useState(false), [pageRefreshing, setPageRefreshing] = useState(false), [backgroundSync, setBackgroundSync] = useState(false), [detailLoading, setDetailLoading] = useState(false), [assigning, setAssigning] = useState(false), [bulkAssigning, setBulkAssigning] = useState(false), [bulkImporting, setBulkImporting] = useState(false), [transferring, setTransferring] = useState(false), [deleting, setDeleting] = useState(""), [error, setError] = useState(""), [notice, setNotice] = useState(""), [ownerNote, setOwnerNote] = useState(""), [legalTransferOwner, setLegalTransferOwner] = useState(""), [legalTransferNote, setLegalTransferNote] = useState("");
   const [showBulkUpload, setShowBulkUpload] = useState(false), [bulkUploadText, setBulkUploadText] = useState(""), [bulkUploadFile, setBulkUploadFile] = useState(""), [bulkUploadReport, setBulkUploadReport] = useState(null), [refreshSeed, setRefreshSeed] = useState(0);
   const leadPageCacheRef = useRef(new Map());
   const leadFullCacheRef = useRef(new Map());
   const leadPrefetchRef = useRef({ key: "", running: false, token: 0 });
-  const role = session?.user?.role || "", isPlatformConsole = ["super-admin", "platform-admin", "platform-manager"].includes(role), isSuper = role === "super-admin", canManage = MANAGER_ROLES.includes(role), canCreate = CREATE_ROLES.includes(role), canEdit = role !== "viewer";
+  const role = session?.user?.role || "", isPlatformConsole = isPlatformConsoleRole(role), isSuper = role === "super-admin", canManage = MANAGER_ROLES.includes(role), canCreate = CREATE_ROLES.includes(role), canEdit = role !== "viewer";
   const scopedCompanyId = isPlatformConsole && company !== "all" ? company : undefined;
+  const teamCompanyId = isPlatformConsole ? scopedCompanyId : session?.user?.company_id || session?.company?.company_id || "";
+  const scopedTeamId = teamFilter !== "all" ? teamFilter : (selected?.team_id || "");
+  const canLoadScopedUsers = canManage || LEGAL_TRANSFER_ROLES.includes(role);
   const blankBulkSheet = useMemo(() => buildLeadBulkImportSheet({ includeSample: false }), []);
   const sampleBulkSheet = useMemo(() => buildLeadBulkImportSheet({ includeSample: true }), []);
   const quickFilter = useMemo(() => (["active", "pending", "assigned", "unassigned", "transferred"].includes(status) ? status : undefined), [status]);
   const leadQueryBase = useMemo(() => ({
     company_id: scopedCompanyId,
+    team_ids: teamFilter !== "all" ? teamFilter : undefined,
     search: search.trim() || undefined,
     product_id: product !== "all" ? product : undefined,
     status: quickFilter ? undefined : status,
     quick_filter: quickFilter,
-  }), [scopedCompanyId, search, product, status, quickFilter]);
+  }), [scopedCompanyId, search, product, status, quickFilter, teamFilter]);
   const leadCacheKey = useMemo(() => JSON.stringify(leadQueryBase), [leadQueryBase]);
   const bulkUploadPreview = useMemo(() => {
     try {
@@ -258,12 +278,12 @@ export default function LeadsPage() {
       if (!s) return router.replace("/login");
       if (!OK_ROLES.includes(s.user?.role)) return router.replace("/dashboard");
       try {
-        if (["super-admin", "platform-admin", "platform-manager"].includes(s.user?.role)) {
+        if (isPlatformConsoleRole(s.user?.role)) {
           const res = await apiRequest("/companies?page_size=50", { token: s.token });
           if (!ignore) setCompanies(res.items || []);
         }
         if (!ignore) setSession(s);
-      } catch (e) { if (!ignore) setError(e.message); } finally { if (!ignore) setBooting(false); }
+      } catch (e) { if (!ignore) setError(formatScopedError(e, "Could not load the leads workspace.")); } finally { if (!ignore) setBooting(false); }
     })();
     return () => { ignore = true; };
   }, [router]);
@@ -305,12 +325,12 @@ export default function LeadsPage() {
         applyLeadPage(items, nextMeta);
         prefetchLeadPage(session.token, leadCacheKey, page + 1, nextMeta.total_pages);
         startBackgroundLeadSync(session.token, leadCacheKey, nextMeta.total);
-      } catch (e) { if (!ignore) { setError(e.message); if (!leads.length) { setLeads([]); setLeadMeta({ page: 1, page_size: LEADS_PAGE_SIZE, total: 0, total_pages: 1 }); } } } finally { if (!ignore) { setLoading(false); setPageRefreshing(false); } }
+      } catch (e) { if (!ignore) { setError(formatScopedError(e, "Could not load leads.")); if (!leads.length) { setLeads([]); setLeadMeta({ page: 1, page_size: LEADS_PAGE_SIZE, total: 0, total_pages: 1 }); } } } finally { if (!ignore) { setLoading(false); setPageRefreshing(false); } }
     })();
     return () => { ignore = true; };
   }, [session, leadCacheKey, leadQueryBase, page, refreshSeed]);
 
-  useEffect(() => { setPage(1); }, [search, status, product, company]);
+  useEffect(() => { setPage(1); }, [search, status, product, company, teamFilter]);
 
   useEffect(() => {
     leadPrefetchRef.current = {
@@ -338,16 +358,25 @@ export default function LeadsPage() {
     (async () => {
       try {
         const reqs = [
-          canManage && (!isPlatformConsole || scopedCompanyId)
-            ? apiRequest(qp("/auth/users", { page_size: 60, company_id: scopedCompanyId }), { token: session.token })
-            : Promise.resolve({ items: [] }),
+          teamCompanyId
+            ? loadTeamScopeResources(session.token, {
+                companyId: teamCompanyId,
+                teamId: scopedTeamId,
+                includeUsers: canLoadScopedUsers,
+                userPageSize: 80,
+              })
+            : Promise.resolve({ teams: [], users: [] }),
           !isPlatformConsole || scopedCompanyId
-            ? apiRequest(qp("/leads/stats/products", { company_id: scopedCompanyId }), { token: session.token })
+            ? apiRequest(qp("/leads/stats/products", { company_id: scopedCompanyId, team_ids: teamFilter !== "all" ? teamFilter : undefined }), { token: session.token })
             : Promise.resolve([]),
         ];
-        const [userRes, productStats] = await Promise.all(reqs);
+        const [scopeRes, productStats] = await Promise.all(reqs);
         if (ignore) return;
-        setTeam((userRes.items || []).filter((u) => u.is_active));
+        setTeams(scopeRes.teams || []);
+        setTeam(scopeRes.users || []);
+        if (teamFilter !== "all" && !(scopeRes.teams || []).some((entry) => entry.team_id === teamFilter)) {
+          setTeamFilter("all");
+        }
         setProductOptions(
           (Array.isArray(productStats) ? productStats : [])
             .map((item) => ({
@@ -359,13 +388,51 @@ export default function LeadsPage() {
         );
       } catch (_error) {
         if (!ignore) {
+          setTeams([]);
           setTeam([]);
           setProductOptions([]);
         }
       }
     })();
     return () => { ignore = true; };
-  }, [session, scopedCompanyId, canManage, isPlatformConsole, refreshSeed]);
+  }, [session, scopedCompanyId, canLoadScopedUsers, isPlatformConsole, refreshSeed, scopedTeamId, teamCompanyId, teamFilter]);
+
+  const pickedTeamIds = useMemo(
+    () => [...new Set(leads.filter((lead) => picked.includes(lead.lead_id)).map((lead) => lead.team_id).filter(Boolean))],
+    [leads, picked]
+  );
+
+  useEffect(() => {
+    if (!session?.token || !canManage || !teamCompanyId || !picked.length || pickedTeamIds.length !== 1) {
+      setBulkUsers([]);
+      return;
+    }
+
+    let ignore = false;
+
+    (async () => {
+      try {
+        const users = await loadUsersForScope(session.token, {
+          companyId: teamCompanyId,
+          teamId: pickedTeamIds[0],
+          pageSize: 80,
+          path: "/users",
+        });
+
+        if (!ignore) {
+          setBulkUsers(users);
+        }
+      } catch (_error) {
+        if (!ignore) {
+          setBulkUsers([]);
+        }
+      }
+    })();
+
+    return () => {
+      ignore = true;
+    };
+  }, [canManage, picked.length, pickedTeamIds, session, teamCompanyId]);
 
   useEffect(() => {
     if (!session?.token || !selectedId) { setSelected(null); setOwner(""); return; }
@@ -381,7 +448,7 @@ export default function LeadsPage() {
       try {
         const lead = await apiRequest(`/leads/${selectedId}`, { token: session.token });
         if (!ignore) { setSelected(lead); setOwner(lead.assigned_to || ""); setLegalTransferOwner(lead.assigned_to_legal || ""); }
-      } catch (e) { if (!ignore) setError(e.message); } finally { if (!ignore) setDetailLoading(false); }
+      } catch (e) { if (!ignore) setError(formatScopedError(e, "Could not load lead details.")); } finally { if (!ignore) setDetailLoading(false); }
     })();
     return () => { ignore = true; };
   }, [selectedId, session, leads]);
@@ -400,20 +467,46 @@ export default function LeadsPage() {
   const pages = Math.max(Number(leadMeta.total_pages || 1), 1);
   const allPicked = !!rows.length && rows.every((lead) => picked.includes(lead.lead_id));
   const activeLead = selected || leads.find((lead) => lead.lead_id === selectedId) || null;
+  const selectedScopeTeam = teams.find((entry) => entry.team_id === scopedTeamId) || null;
+  const bulkScopeTeam = teams.find((entry) => entry.team_id === pickedTeamIds[0]) || null;
   const ownershipLabel = ["sales", "marketing"].includes(role) ? "Assigned to you" : isPlatformConsole ? company === "all" ? isSuper ? "Cross-tenant" : "Assigned companies" : "Single tenant" : "Tenant-wide";
   const closedWonCount = status === "closed-won" ? totalMatched : leads.filter((lead) => lead.status === "closed-won").length;
   const transferredCount = status === "transferred" ? totalMatched : leads.filter((lead) => ["legal", "finance", "completed"].includes(lead.workflow_stage || "sales")).length;
-  const legalTeam = team.filter((user) => user.role === "legal-team");
-  const canTransferActiveLead = Boolean(activeLead?.can_transfer_to_legal) && ["super-admin", "platform-admin", "platform-manager", "admin", "manager", "sales"].includes(role);
+  const scopedLegalUsers = useMemo(() => team.filter((user) => user.role === "legal-team"), [team]);
+  const legalTeam = useMemo(
+    () => withAssignedWorkflowUser(scopedLegalUsers, activeLead?.assigned_to_legal, activeLead?.legal_owner_name, "legal-team"),
+    [activeLead?.assigned_to_legal, activeLead?.legal_owner_name, scopedLegalUsers]
+  );
+  const canTransferActiveLead = Boolean(activeLead?.can_transfer_to_legal) && LEGAL_TRANSFER_ROLES.includes(role);
   const heroStats = useMemo(() => [{ label: "Matched Leads", value: totalMatched }, { label: "Page Value", value: money(leads.reduce((s, lead) => s + Number(lead.estimated_value || 0), 0)), color: "#0f8c53" }, { label: "Loaded", value: leads.length, color: "#2f6fdd" }, { label: "Closed Won", value: closedWonCount, color: "#0f8c53" }], [closedWonCount, leads, totalMatched]);
   const showBlockingLoader = booting || (loading && !leads.length && !totalMatched);
   const personalScope = ["sales", "marketing"].includes(role);
+  const ownerUsersMessage = scopedUsersEmptyMessage(selectedScopeTeam);
+  const bulkUsersMessage = pickedTeamIds.length > 1
+    ? "Select leads from one team at a time before bulk assignment."
+    : scopedUsersEmptyMessage(bulkScopeTeam);
+  const legalUsersMessage = workflowUsersEmptyMessage(selectedScopeTeam?.name, "legal");
+  const emptyLeadsMessage = teamFilter !== "all" && selectedScopeTeam
+    ? `No leads matched ${teamSelectLabel(selectedScopeTeam)}.`
+    : "Adjust the search or filters to widen the result set.";
   useEffect(() => {
     if (product === "all") return;
     if (!products.some((item) => item.value === product)) {
       setProduct("all");
     }
   }, [product, products]);
+
+  useEffect(() => {
+    if (owner && owner !== activeLead?.assigned_to && !team.some((item) => item.user_id === owner)) {
+      setOwner("");
+    }
+  }, [activeLead?.assigned_to, owner, team]);
+
+  useEffect(() => {
+    if (bulkOwner && !bulkUsers.some((item) => item.user_id === bulkOwner)) {
+      setBulkOwner("");
+    }
+  }, [bulkOwner, bulkUsers]);
 
   const applyOwner = (leadIds, nextOwner, label) => {
     setLeads((cur) => cur.map((lead) => leadIds.includes(lead.lead_id) ? { ...lead, assigned_to: nextOwner, assigned_to_name: label } : lead));
@@ -433,7 +526,7 @@ export default function LeadsPage() {
       applyOwner([activeLead.lead_id], owner, person?.name || activeLead.assigned_to_name);
       setOwnerNote("");
       setNotice(`Lead owner updated to ${person?.name || "selected user"}.`);
-    } catch (e) { setError(e.message); } finally { setAssigning(false); }
+    } catch (e) { setError(formatScopedError(e, "Could not update the lead owner.")); } finally { setAssigning(false); }
   }
 
   async function bulkAssign() {
@@ -442,13 +535,18 @@ export default function LeadsPage() {
       setError("Bulk assignment note is required.");
       return;
     }
+    const pickedTeamIds = [...new Set(leads.filter((lead) => picked.includes(lead.lead_id)).map((lead) => lead.team_id).filter(Boolean))];
+    if (pickedTeamIds.length > 1) {
+      setError("Select leads from one team at a time before bulk assignment.");
+      return;
+    }
     setBulkAssigning(true); setError(""); setNotice("");
     try {
       await Promise.all(picked.map((id) => apiRequest(`/leads/${id}/assign`, { method: "POST", token: session.token, body: { assigned_to: bulkOwner, change_note: bulkNote.trim() } })));
-      const person = team.find((u) => u.user_id === bulkOwner);
+      const person = bulkUsers.find((u) => u.user_id === bulkOwner) || team.find((u) => u.user_id === bulkOwner);
       applyOwner(picked, bulkOwner, person?.name || "");
       setNotice(`${picked.length} leads assigned to ${person?.name || "selected user"}.`); setPicked([]); setBulkOwner(""); setBulkNote("");
-    } catch (e) { setError(e.message); } finally { setBulkAssigning(false); }
+    } catch (e) { setError(formatScopedError(e, "Could not update the selected lead owners.")); } finally { setBulkAssigning(false); }
   }
 
   function resetBulkUploadPanel() {
@@ -536,7 +634,7 @@ export default function LeadsPage() {
         setShowBulkUpload(false);
       }
     } catch (e) {
-      setError(e.message);
+      setError(formatScopedError(e, "Could not upload the selected leads."));
     } finally {
       setBulkImporting(false);
     }
@@ -557,7 +655,7 @@ export default function LeadsPage() {
       if (selectedId === id) setSelectedId("");
       setRefreshSeed((current) => current + 1);
       setNotice(`Lead "${lead?.company_name || ""}" archived successfully.`);
-    } catch (e) { setError(e.message); } finally { setDeleting(""); }
+    } catch (e) { setError(formatScopedError(e, "Could not archive this lead.")); } finally { setDeleting(""); }
   }
 
   async function transferLeadToLegal() {
@@ -579,7 +677,7 @@ export default function LeadsPage() {
       setSelectedId(latestLead.lead_id);
       setLegalTransferNote("");
       setNotice("Lead transferred to legal successfully.");
-    } catch (e) { setError(e.message); } finally { setTransferring(false); }
+    } catch (e) { setError(formatScopedError(e, "Could not transfer this lead to legal.")); } finally { setTransferring(false); }
   }
 
   return (
@@ -659,6 +757,15 @@ export default function LeadsPage() {
                       {products.map((item) => <option key={item.value} value={item.value}>{item.label} ({item.count})</option>)}
                     </select>
                   </label>
+                  {teams.length > 1 ? (
+                    <label className="space-y-2">
+                      <span className={LEAD_KICKER_CLASS}>Team</span>
+                      <select className={LEAD_INPUT_CLASS} value={teamFilter} onChange={(event) => setTeamFilter(event.target.value)}>
+                        <option value="all">All Teams</option>
+                        {teams.map((item) => <option key={item.team_id} value={item.team_id}>{teamSelectLabel(item)}</option>)}
+                      </select>
+                    </label>
+                  ) : null}
                 </div>
 
                 <div className="flex flex-wrap gap-3">
@@ -875,7 +982,7 @@ export default function LeadsPage() {
               </div>
 
               <div className="flex justify-end">
-                <button className={LEAD_GHOST_BUTTON_CLASS} type="button" onClick={() => { setSearch(""); setStatus("all"); setProduct("all"); if (isPlatformConsole) setCompany("all"); setPage(1); }}>
+                <button className={LEAD_GHOST_BUTTON_CLASS} type="button" onClick={() => { setSearch(""); setStatus("all"); setProduct("all"); setTeamFilter("all"); if (isPlatformConsole) setCompany("all"); setPage(1); }}>
                   Reset Filters
                 </button>
               </div>
@@ -898,43 +1005,59 @@ export default function LeadsPage() {
                 </div>
 
                 <div className="grid gap-4">
-                  <div className="grid gap-4 md:grid-cols-[0.9fr_1.1fr]">
-                    <label className="space-y-2">
-                      <span className={LEAD_KICKER_CLASS}>New Owner</span>
-                      <select className={LEAD_INPUT_CLASS} value={bulkOwner} onChange={(event) => setBulkOwner(event.target.value)}>
-                        <option value="">{isSuper && company === "all" ? "Choose a company first" : "Assign selected leads to..."}</option>
-                        {team.map((item) => <option key={item.user_id} value={item.user_id}>{item.name} | {item.role}</option>)}
-                      </select>
-                    </label>
-                    <label className="space-y-2">
-                      <span className={LEAD_KICKER_CLASS}>Assignment Note *</span>
-                      <textarea
-                        rows="3"
-                        value={bulkNote}
-                        onChange={(event) => setBulkNote(event.target.value)}
-                        placeholder="Why are these selected leads being reassigned?"
-                        className={`${LEAD_INPUT_CLASS} min-h-[120px] resize-y`}
-                      />
-                    </label>
-                  </div>
+                  {isPlatformConsole && company === "all" ? (
+                    <p className="rounded-[20px] border border-[#eadfcd] bg-white px-4 py-3 text-sm text-[#7a6b57]">
+                      Select a company before bulk assignment.
+                    </p>
+                  ) : pickedTeamIds.length > 1 ? (
+                    <p className="rounded-[20px] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+                      {bulkUsersMessage}
+                    </p>
+                  ) : bulkUsers.length ? (
+                    <>
+                      <div className="grid gap-4 md:grid-cols-[0.9fr_1.1fr]">
+                        <label className="space-y-2">
+                          <span className={LEAD_KICKER_CLASS}>New Owner</span>
+                          <select className={LEAD_INPUT_CLASS} value={bulkOwner} onChange={(event) => setBulkOwner(event.target.value)}>
+                            <option value="">Assign selected leads to...</option>
+                            {bulkUsers.map((item) => <option key={item.user_id} value={item.user_id}>{item.name} | {item.role}</option>)}
+                          </select>
+                        </label>
+                        <label className="space-y-2">
+                          <span className={LEAD_KICKER_CLASS}>Assignment Note *</span>
+                          <textarea
+                            rows="3"
+                            value={bulkNote}
+                            onChange={(event) => setBulkNote(event.target.value)}
+                            placeholder="Why are these selected leads being reassigned?"
+                            className={`${LEAD_INPUT_CLASS} min-h-[120px] resize-y`}
+                          />
+                        </label>
+                      </div>
 
-                  <div className="flex flex-wrap justify-end gap-3">
-                    <button
-                      className={LEAD_GHOST_BUTTON_CLASS}
-                      type="button"
-                      onClick={() => { setPicked([]); setBulkOwner(""); setBulkNote(""); }}
-                    >
-                      Clear
-                    </button>
-                    <button
-                      className={LEAD_PRIMARY_BUTTON_CLASS}
-                      type="button"
-                      onClick={bulkAssign}
-                      disabled={bulkAssigning || !bulkOwner || !bulkNote.trim() || (isPlatformConsole && company === "all")}
-                    >
-                      {bulkAssigning ? "Assigning..." : "Assign Selected"}
-                    </button>
-                  </div>
+                      <div className="flex flex-wrap justify-end gap-3">
+                        <button
+                          className={LEAD_GHOST_BUTTON_CLASS}
+                          type="button"
+                          onClick={() => { setPicked([]); setBulkOwner(""); setBulkNote(""); }}
+                        >
+                          Clear
+                        </button>
+                        <button
+                          className={LEAD_PRIMARY_BUTTON_CLASS}
+                          type="button"
+                          onClick={bulkAssign}
+                          disabled={bulkAssigning || !bulkOwner || !bulkNote.trim()}
+                        >
+                          {bulkAssigning ? "Assigning..." : "Assign Selected"}
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="rounded-[20px] border border-[#eadfcd] bg-white px-4 py-3 text-sm text-[#7a6b57]">
+                      {bulkUsersMessage}
+                    </p>
+                  )}
                 </div>
               </div>
             </article>
@@ -977,6 +1100,7 @@ export default function LeadsPage() {
                   const primaryName = leadPrimaryName(lead);
                   const secondaryName = leadSecondaryName(lead);
                   const noteCount = Number(lead.note_count || 0);
+                  const locationLabel = [lead.address_city, lead.address_state, lead.address_country].filter(Boolean).join(", ");
                   const selectedRow = selectedId === lead.lead_id;
                   const selectedLead = selectedRow && activeLead?.lead_id === lead.lead_id ? activeLead : lead;
                   const canTransferRow = selectedRow && canTransferActiveLead && activeLead?.lead_id === lead.lead_id;
@@ -989,7 +1113,7 @@ export default function LeadsPage() {
                           : "border-[#eadfcd] bg-white/88 shadow-[0_10px_24px_rgba(79,58,22,0.05)] hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(79,58,22,0.08)]"
                       }`}
                     >
-                      <div className="flex flex-col gap-4 xl:flex-row xl:items-start">
+                      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                         <div className="flex flex-1 gap-3">
                           {canManage ? (
                             <label className="pt-1">
@@ -1007,50 +1131,41 @@ export default function LeadsPage() {
                               {initials(lead.contact_person, lead.company_name, lead.email)}
                             </div>
                             <div className="min-w-0 flex-1 space-y-3">
-                              <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
-                                <div className="min-w-0 space-y-2">
-                                  <div className="flex flex-wrap gap-2">
-                                    {lead.product_name ? (
-                                      <span className="inline-flex rounded-full border border-[#eadfcd] bg-[#fff6e4] px-3 py-1 text-[11px] font-bold text-[#7a6230]">
-                                        {lead.product_name}
-                                      </span>
-                                    ) : null}
-                                    {noteCount ? (
-                                      <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">
-                                        {noteCount} {noteCount === 1 ? "note" : "notes"}
-                                      </span>
-                                    ) : null}
-                                  </div>
-                                  <div className="min-w-0">
-                                    <h4 className="truncate text-lg font-semibold text-[#060710]">{primaryName}</h4>
-                                    {secondaryName ? <p className="mt-1 text-sm text-[#746853]">{secondaryName}</p> : null}
-                                  </div>
+                              <div className="min-w-0 space-y-3">
+                                <div className="flex flex-wrap gap-2">
+                                  {lead.product_name ? (
+                                    <span className="inline-flex rounded-full border border-[#eadfcd] bg-[#fff6e4] px-3 py-1 text-[11px] font-bold text-[#7a6230]">
+                                      {lead.product_name}
+                                    </span>
+                                  ) : null}
+                                  {teamBadgeLabel(lead) ? (
+                                    <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">
+                                      {teamBadgeLabel(lead)}
+                                    </span>
+                                  ) : null}
+                                  {noteCount ? (
+                                    <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">
+                                      {noteCount} {noteCount === 1 ? "note" : "notes"}
+                                    </span>
+                                  ) : null}
+                                </div>
+                                <div className="min-w-0">
+                                  <h4 className="truncate text-lg font-semibold text-[#060710]">{primaryName}</h4>
+                                  {secondaryName ? <p className="mt-1 text-sm text-[#746853]">{secondaryName}</p> : null}
+                                </div>
+                                <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-[#7a6b57]">
+                                  <span>{lead.contact_person || "No contact name"}</span>
+                                  <span>{lead.email || "No email"}</span>
+                                  <span>{lead.phone || "No phone"}</span>
+                                  {locationLabel ? <span>{locationLabel}</span> : null}
+                                </div>
+                                <div className="flex flex-wrap gap-x-8 gap-y-2 text-sm text-[#8f816a]">
+                                  <span>Source: {nice(lead.lead_source || "website")}</span>
+                                  <span>Value: {money(lead.estimated_value)}</span>
+                                  <span>Created: {when(lead.created_at)}</span>
+                                  <span>By: {lead.created_by_name || "Unknown"}</span>
                                 </div>
                               </div>
-
-                              <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-[#7a6b57]">
-                                <span>{lead.contact_person || "--"}</span>
-                                <span>{lead.email || "No email"}</span>
-                                <span>{lead.phone || "No phone"}</span>
-                                {lead.address_city ? <span>{lead.address_city}</span> : null}
-                              </div>
-
-                              <div className="grid gap-2 text-xs text-[#8f816a] sm:grid-cols-2 xl:grid-cols-4">
-                                <span>Source: {nice(lead.lead_source || "website")}</span>
-                                <span>Value: {money(lead.estimated_value)}</span>
-                                <span>Created: {when(lead.created_at)}</span>
-                                <span>By: {lead.created_by_name || "Unknown"}</span>
-                              </div>
-
-                              {lead.latest_note ? (
-                                <div className="rounded-[20px] border border-[#efe2c8] bg-[#fffaf1] px-4 py-3 text-sm text-[#6f614c]">
-                                  <strong className="font-semibold text-[#060710]">Latest note:</strong> {lead.latest_note}
-                                </div>
-                              ) : lead.requirements ? (
-                                <div className="rounded-[20px] border border-[#efe2c8] bg-[#fffaf1] px-4 py-3 text-sm text-[#6f614c]">
-                                  <strong className="font-semibold text-[#060710]">Brief:</strong> {lead.requirements}
-                                </div>
-                              ) : null}
                             </div>
                           </button>
                         </div>
@@ -1078,9 +1193,15 @@ export default function LeadsPage() {
                               />
                             ) : null}
                           </div>
-                          <div className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold ${lead.assigned_to ? "border-[#dce8cf] bg-[#eff9e9] text-[#2a7f43]" : "border-[#eadfcd] bg-white text-[#7c6d55]"}`}>
-                            <DashboardIcon name="user" className="h-4 w-4" />
-                            <span>{lead.assigned_to_name || "Unassigned"}</span>
+                          <div className="grid gap-2">
+                            <div className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold ${lead.assigned_to ? "border-[#dce8cf] bg-[#eff9e9] text-[#2a7f43]" : "border-[#eadfcd] bg-white text-[#7c6d55]"}`}>
+                              <DashboardIcon name="user" className="h-4 w-4" />
+                              <span>{lead.assigned_to_name || "Unassigned"}</span>
+                            </div>
+                            <div className="inline-flex items-center gap-2 rounded-full border border-[#eadfcd] bg-white px-3 py-2 text-xs font-semibold text-[#7c6d55]">
+                              <DashboardIcon name="calendar" className="h-4 w-4" />
+                              <span>Follow-up {when(lead.follow_up_date, true)}</span>
+                            </div>
                           </div>
                           {selectedRow && detailLoading ? (
                             <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">
@@ -1095,13 +1216,15 @@ export default function LeadsPage() {
                           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                             {[
                               { label: "Owner", value: selectedLead.assigned_to_name || "Unassigned" },
+                              { label: "Team", value: teamBadgeLabel(selectedLead) || "Auto team" },
                               { label: "Source", value: nice(selectedLead.lead_source || "website") },
                               { label: "Follow Up", value: when(selectedLead.follow_up_date, true) },
                               { label: "Estimated Value", value: money(selectedLead.estimated_value) },
                               { label: "Created", value: when(selectedLead.created_at, true) },
                               { label: "Workflow", value: nice(selectedLead.workflow_stage || "sales") },
+                              { label: "Legal Owner", value: formatWorkflowOwnerIdentity(selectedLead.legal_owner_name, selectedLead.assigned_to_legal) },
+                              { label: "Finance Owner", value: formatWorkflowOwnerIdentity(selectedLead.finance_owner_name, selectedLead.assigned_to_finance) },
                               { label: "Created By", value: selectedLead.created_by_name || "Unknown" },
-                              { label: "Location", value: [selectedLead.address_city, selectedLead.address_state, selectedLead.address_country].filter(Boolean).join(", ") || "Not added" },
                             ].map((item) => (
                               <div key={item.label} className="rounded-[22px] border border-[#eadfcd] bg-[#fffaf1] px-4 py-4">
                                 <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#8f816a]">{item.label}</p>
@@ -1141,8 +1264,13 @@ export default function LeadsPage() {
                                     <span className={LEAD_KICKER_CLASS}>Legal Owner</span>
                                     <select className={LEAD_INPUT_CLASS} value={legalTransferOwner} onChange={(event) => setLegalTransferOwner(event.target.value)}>
                                       <option value="">Assign later</option>
-                                      {legalTeam.map((item) => <option key={item.user_id} value={item.user_id}>{item.name} | {item.role}</option>)}
+                                      {legalTeam.map((item) => (
+                                        <option key={item.user_id} value={item.user_id}>
+                                          {formatWorkflowOwnerIdentity(item.name, item.user_id, "Legal user")}
+                                        </option>
+                                      ))}
                                     </select>
+                                    {!scopedLegalUsers.length ? <p className="text-xs font-medium text-[#8d6e27]">{legalUsersMessage}</p> : null}
                                   </label>
                                   <label className="space-y-2">
                                     <span className={LEAD_KICKER_CLASS}>Transfer Note *</span>
@@ -1202,7 +1330,7 @@ export default function LeadsPage() {
                                     </div>
                                   </div>
                                 ) : (
-                                  <p className="mt-4 text-sm text-[#7a6b57]">No active users available for assignment.</p>
+                                  <p className="mt-4 text-sm text-[#7a6b57]">{ownerUsersMessage}</p>
                                 )}
                               </div>
 
@@ -1235,7 +1363,7 @@ export default function LeadsPage() {
                       <DashboardIcon name="leads" className="h-6 w-6" />
                     </div>
                     <h3 className="mt-5 text-xl font-semibold text-[#060710]">No leads matched</h3>
-                    <p className="mt-2 text-sm text-[#7a6b57]">Adjust the search or filters to widen the result set.</p>
+                    <p className="mt-2 text-sm text-[#7a6b57]">{emptyLeadsMessage}</p>
                   </div>
                 )}
               </div>
