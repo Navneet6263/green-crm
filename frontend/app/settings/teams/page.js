@@ -33,9 +33,9 @@ const HERO = "rounded-[36px] border border-[#eadfcd] bg-[radial-gradient(circle_
 const PANEL = "rounded-[30px] border border-[#eadfcd] bg-white/82 p-5 shadow-[0_14px_36px_rgba(79,58,22,0.06)] md:p-6";
 const SOFT = "rounded-[24px] border border-[#eadfcd] bg-[#fffaf1] p-4";
 const INPUT = "w-full rounded-[18px] border border-[#eadfcd] bg-white px-4 py-3 text-sm text-[#060710] outline-none transition placeholder:text-[#9c8e76] focus:border-[#d7b258] focus:ring-4 focus:ring-[#f6ead0]";
-const PRIMARY = "inline-flex min-h-[46px] items-center justify-center gap-2 rounded-[18px] border border-[#d7b258] bg-[#f3dfab] px-4 py-2.5 text-sm font-semibold text-[#060710] shadow-[0_16px_30px_rgba(203,169,82,0.18)] transition hover:-translate-y-0.5 hover:bg-[#efd48f] disabled:cursor-not-allowed disabled:opacity-60";
-const GHOST = "inline-flex min-h-[46px] items-center justify-center gap-2 rounded-[18px] border border-[#eadfcd] bg-white px-4 py-2.5 text-sm font-semibold text-[#5d503c] transition hover:-translate-y-0.5 hover:text-[#060710] disabled:cursor-not-allowed disabled:opacity-60";
-const DANGER = "inline-flex min-h-[40px] items-center justify-center gap-2 rounded-[14px] border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:-translate-y-0.5 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60";
+const PRIMARY = "inline-flex min-h-[46px] cursor-pointer items-center justify-center gap-2 rounded-[18px] border border-[#d7b258] bg-[#f3dfab] px-4 py-2.5 text-sm font-semibold text-[#060710] shadow-[0_16px_30px_rgba(203,169,82,0.18)] transition hover:-translate-y-0.5 hover:bg-[#efd48f] disabled:cursor-not-allowed disabled:opacity-60";
+const GHOST = "inline-flex min-h-[46px] cursor-pointer items-center justify-center gap-2 rounded-[18px] border border-[#eadfcd] bg-white px-4 py-2.5 text-sm font-semibold text-[#5d503c] transition hover:-translate-y-0.5 hover:text-[#060710] disabled:cursor-not-allowed disabled:opacity-60";
+const DANGER = "inline-flex min-h-[40px] cursor-pointer items-center justify-center gap-2 rounded-[14px] border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:-translate-y-0.5 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60";
 const KICKER = "text-[10px] font-black uppercase tracking-[0.28em] text-[#9a886d]";
 
 function createTeamDraft(companyId = "") {
@@ -189,23 +189,40 @@ export default function TeamSettingsPage() {
   const filteredAssignmentUsers = useMemo(() => {
     const query = assignmentQuery.trim().toLowerCase();
 
-    return assignableUsers.filter((user) => {
-      const matchesRole = assignmentRoleFilter === "all" || user.role === assignmentRoleFilter;
-      if (!matchesRole) {
-        return false;
-      }
+    return assignableUsers
+      .filter((user) => {
+        const matchesRole = assignmentRoleFilter === "all" || user.role === assignmentRoleFilter;
+        if (!matchesRole) {
+          return false;
+        }
 
-      if (!query) {
-        return true;
-      }
+        if (!query) {
+          return true;
+        }
 
-      return [user.name, user.email, user.role, user.department, user.user_id]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase()
-        .includes(query);
-    });
-  }, [assignableUsers, assignmentQuery, assignmentRoleFilter]);
+        return [user.name, user.email, user.role, user.department, user.user_id]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase()
+          .includes(query);
+      })
+      .sort((left, right) => {
+        const leftIsMember = teamMembers.some((member) => member.user_id === left.user_id);
+        const rightIsMember = teamMembers.some((member) => member.user_id === right.user_id);
+        const leftIsManager = teamManagers.some((manager) => manager.user_id === left.user_id);
+        const rightIsManager = teamManagers.some((manager) => manager.user_id === right.user_id);
+
+        if (leftIsMember !== rightIsMember) {
+          return leftIsMember ? -1 : 1;
+        }
+
+        if (leftIsManager !== rightIsManager) {
+          return leftIsManager ? -1 : 1;
+        }
+
+        return String(left.name || "").localeCompare(String(right.name || ""));
+      });
+  }, [assignableUsers, assignmentQuery, assignmentRoleFilter, teamManagers, teamMembers]);
   const assignmentHelperCopy = role === "manager"
     ? "Managers cannot create new IDs. Ask admin to create the account first, then add that user here to a team you manage."
     : "Create the user ID in Workspace Users, then add that person here as a member or manager for the selected team.";
@@ -764,7 +781,7 @@ export default function TeamSettingsPage() {
                         key={team.team_id}
                         type="button"
                         onClick={() => setSelectedTeamId(team.team_id)}
-                        className={`w-full rounded-[26px] border p-4 text-left transition ${
+                        className={`w-full cursor-pointer rounded-[26px] border p-4 text-left transition ${
                           active
                             ? "border-[#d7b258] bg-[#fff8e9] shadow-[0_16px_32px_rgba(203,169,82,0.14)]"
                             : "border-[#eadfcd] bg-white/90 shadow-[0_10px_24px_rgba(79,58,22,0.05)] hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(79,58,22,0.08)]"
@@ -858,7 +875,7 @@ export default function TeamSettingsPage() {
             <article className={PANEL}>
               {selectedTeam ? (
                 <div className="space-y-7">
-                  <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px] xl:items-start">
+                  <div className="grid gap-5 xl:grid-cols-[minmax(0,1.08fr)_minmax(300px,0.92fr)] xl:items-stretch">
                     <div className="max-w-3xl space-y-3">
                       <p className={KICKER}>Selected Team</p>
                       <h3 className="text-[2rem] font-semibold tracking-tight text-[#060710]">{selectedTeam.name}</h3>
@@ -870,19 +887,21 @@ export default function TeamSettingsPage() {
                         the oversight layer.
                       </p>
                     </div>
-                    <div className="rounded-[24px] border border-[#eadfcd] bg-[#fffaf1] p-4 shadow-[0_12px_28px_rgba(79,58,22,0.05)]">
-                      <div className="flex flex-wrap gap-2">
-                        <span className="inline-flex rounded-full border border-[#eadfcd] bg-[#fff6e4] px-3 py-1 text-[11px] font-bold text-[#7a6230]">
-                          {selectedTeam.code || "No code"}
-                        </span>
-                        <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">
-                          {selectedTeam.is_active === false ? "Inactive" : "Active"}
-                        </span>
+                    <div className="flex h-full flex-col justify-between rounded-[24px] border border-[#eadfcd] bg-[#fffaf1] p-4 shadow-[0_12px_28px_rgba(79,58,22,0.05)]">
+                      <div>
+                        <div className="flex flex-wrap gap-2">
+                          <span className="inline-flex rounded-full border border-[#eadfcd] bg-[#fff6e4] px-3 py-1 text-[11px] font-bold text-[#7a6230]">
+                            {selectedTeam.code || "No code"}
+                          </span>
+                          <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">
+                            {selectedTeam.is_active === false ? "Inactive" : "Active"}
+                          </span>
+                        </div>
+                        <p className="mt-4 text-sm leading-6 text-[#746853]">
+                          Update the team identity here, then manage managers and members in the sections below.
+                        </p>
                       </div>
-                      <p className="mt-4 text-sm leading-6 text-[#746853]">
-                        Update the team identity here, then manage managers and members in the sections below.
-                      </p>
-                      <button className={`${GHOST} mt-4 w-full`} type="button" onClick={openEditEditor}>
+                      <button className={`${GHOST} mt-5 w-full`} type="button" onClick={openEditEditor}>
                         <DashboardIcon name="settings" className="h-4 w-4" />
                         Edit Team
                       </button>
@@ -959,135 +978,31 @@ export default function TeamSettingsPage() {
 
             {selectedTeam ? (
               <>
-                <article className={PANEL}>
-                  <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(340px,0.92fr)] xl:items-end">
-                    <div>
-                      <p className={KICKER}>Team Assignment</p>
-                      <h3 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Push users into this team</h3>
-                      <p className="mt-2 text-sm leading-6 text-[#746853]">
-                        {assignmentHelperCopy}
-                      </p>
-                    </div>
-                    <div className="grid gap-3 md:grid-cols-2">
-                      <label className="space-y-2">
-                        <span className={KICKER}>Search User</span>
-                        <input
-                          className={INPUT}
-                          value={assignmentQuery}
-                          onChange={(event) => setAssignmentQuery(event.target.value)}
-                          placeholder="Search name, email, role, or user ID"
-                        />
-                      </label>
-                      <label className="space-y-2">
-                        <span className={KICKER}>Role Filter</span>
-                        <select className={INPUT} value={assignmentRoleFilter} onChange={(event) => setAssignmentRoleFilter(event.target.value)}>
-                          {ASSIGNABLE_ROLE_FILTERS.map(([value, label]) => (
-                            <option key={value} value={value}>
-                              {label}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                    </div>
-                  </div>
-
-                  <div className="mt-5 grid gap-3 md:grid-cols-3">
-                    <div className={SOFT}>
-                      <span className={KICKER}>Available Users</span>
-                      <strong className="mt-3 block text-base text-[#060710]">{filteredAssignmentUsers.length}</strong>
-                    </div>
-                    <div className={SOFT}>
-                      <span className={KICKER}>Can Join As Member</span>
-                      <strong className="mt-3 block text-base text-[#060710]">{availableMembers.length}</strong>
-                    </div>
-                    <div className={SOFT}>
-                      <span className={KICKER}>Can Join As Manager</span>
-                      <strong className="mt-3 block text-base text-[#060710]">{availableManagers.length}</strong>
-                    </div>
-                  </div>
-
-                  <div className="mt-5 space-y-3">
-                    {assignableLoading ? (
-                      <div className="grid min-h-[220px] place-items-center rounded-[24px] border border-[#eadfcd] bg-[#fffaf1] px-4 py-4 text-sm text-[#7a6b57]">
-                        Loading assignable users...
+                <article className={`${PANEL} overflow-hidden`}>
+                  <div className="space-y-6">
+                    <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_300px] xl:items-end">
+                      <div>
+                        <p className={KICKER}>Team People</p>
+                        <h3 className="mt-2 text-[2rem] font-semibold tracking-tight text-[#060710]">Manage members and managers in one workspace</h3>
+                        <p className="mt-3 max-w-3xl text-sm leading-7 text-[#746853]">
+                          This layout keeps the team roster stable even when the page zoom changes. Add, remove, search, and promote people from one clean rectangle instead of scattered panels.
+                        </p>
                       </div>
-                    ) : filteredAssignmentUsers.length ? (
-                      filteredAssignmentUsers.map((user) => {
-                        const isMember = teamMembers.some((member) => member.user_id === user.user_id);
-                        const isManager = teamManagers.some((manager) => manager.user_id === user.user_id);
-                        const canPromoteToManager = MANAGER_CAPABLE_ROLES.has(user.role) && !isManager;
-
-                        return (
-                          <div key={user.user_id} className="rounded-[24px] border border-[#eadfcd] bg-[#fffaf1] p-4">
-                            <div className="flex flex-col gap-4 xl:grid xl:grid-cols-[minmax(0,1fr)_auto] xl:items-start">
-                              <div className="min-w-0">
-                                <div className="flex flex-wrap gap-2">
-                                  <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">
-                                    {prettyRole(user.role)}
-                                  </span>
-                                  <span className="inline-flex rounded-full border border-[#eadfcd] bg-[#fff6e4] px-3 py-1 text-[11px] font-bold text-[#7a6230]">
-                                    {user.user_id}
-                                  </span>
-                                  {isMember ? (
-                                    <span className="inline-flex rounded-full border border-[#dce8cf] bg-[#eff9e9] px-3 py-1 text-[11px] font-bold text-[#2a7f43]">
-                                      Already a member
-                                    </span>
-                                  ) : null}
-                                  {isManager ? (
-                                    <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">
-                                      Already a manager
-                                    </span>
-                                  ) : null}
-                                </div>
-                                <strong className="mt-3 block text-base text-[#060710]">{user.name}</strong>
-                                <span className="mt-1 block text-sm text-[#746853]">{user.email}</span>
-                                <div className="mt-3 grid gap-3 sm:grid-cols-2 text-sm text-[#7a6b57]">
-                                  <div>
-                                    <p className={KICKER}>Department</p>
-                                    <p className="mt-2 font-semibold text-[#060710]">{user.department || "Not set"}</p>
-                                  </div>
-                                  <div>
-                                    <p className={KICKER}>Phone</p>
-                                    <p className="mt-2 font-semibold text-[#060710]">{user.phone || "Not set"}</p>
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className="flex flex-wrap gap-3 xl:justify-end">
-                                <button
-                                  className={GHOST}
-                                  type="button"
-                                  onClick={() => addMember(user.user_id)}
-                                  disabled={isMember || workingKey === "member:add"}
-                                >
-                                  <DashboardIcon name="users" className="h-4 w-4" />
-                                  {isMember ? "In Team" : workingKey === "member:add" ? "Adding..." : "Add To Team"}
-                                </button>
-                                <button
-                                  className={PRIMARY}
-                                  type="button"
-                                  onClick={() => addManager(user.user_id)}
-                                  disabled={!canPromoteToManager || workingKey === "manager:add"}
-                                >
-                                  <DashboardIcon name="analytics" className="h-4 w-4" />
-                                  {isManager ? "Manager" : workingKey === "manager:add" ? "Assigning..." : canPromoteToManager ? "Make Manager" : "Manager Role Needed"}
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <div className="grid min-h-[220px] place-items-center rounded-[24px] border border-dashed border-[#ddd0bb] bg-[#fffaf1] px-4 py-6 text-center text-sm leading-6 text-[#746853]">
-                        No assignable users matched the current filters. Create the user first, then return here to place them in this team.
+                      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+                        <div className={SOFT}>
+                          <span className={KICKER}>Current Members</span>
+                          <strong className="mt-3 block text-base text-[#060710]">{teamMembers.length}</strong>
+                        </div>
+                        <div className={SOFT}>
+                          <span className={KICKER}>Current Managers</span>
+                          <strong className="mt-3 block text-base text-[#060710]">{teamManagers.length}</strong>
+                        </div>
                       </div>
-                    )}
-                  </div>
-                </article>
+                    </div>
 
-                <div className="grid gap-5 2xl:grid-cols-2">
-                <article className={`${PANEL} flex h-full flex-col`}>
-                  <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(260px,0.82fr)] xl:items-end">
+                    <div className="space-y-5">
+                <section className="rounded-[28px] border border-[#eadfcd] bg-[#fffaf1] p-5 shadow-[0_10px_24px_rgba(79,58,22,0.04)]">
+                  <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(280px,0.92fr)] xl:items-end">
                     <div>
                       <p className={KICKER}>Managers</p>
                       <h3 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Who manages this team</h3>
@@ -1095,8 +1010,8 @@ export default function TeamSettingsPage() {
                         Managers can oversee the team. Adding one also adds them to the member roster automatically.
                       </p>
                     </div>
-                    <div className="rounded-[22px] border border-[#eadfcd] bg-[#fffaf1] p-3">
-                      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+                    <div className="rounded-[24px] border border-[#eadfcd] bg-[#fffaf1] p-4">
+                      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_132px]">
                         <select className={INPUT} value={managerCandidateId} onChange={(event) => setManagerCandidateId(event.target.value)} disabled={!availableManagers.length || detailLoading}>
                           <option value="">{availableManagers.length ? "Choose manager" : "No manager-capable users available"}</option>
                           {availableManagers.map((user) => (
@@ -1105,7 +1020,7 @@ export default function TeamSettingsPage() {
                             </option>
                           ))}
                         </select>
-                        <button className={`${PRIMARY} sm:min-w-[120px]`} type="button" onClick={addManager} disabled={!managerCandidateId || workingKey === "manager:add"}>
+                        <button className={`${PRIMARY} w-full`} type="button" onClick={addManager} disabled={!managerCandidateId || workingKey === "manager:add"}>
                           <DashboardIcon name="users" className="h-4 w-4" />
                           {workingKey === "manager:add" ? "Assigning..." : "Assign"}
                         </button>
@@ -1120,8 +1035,8 @@ export default function TeamSettingsPage() {
                       </div>
                     ) : teamManagers.length ? (
                       teamManagers.map((manager) => (
-                        <div key={manager.user_id} className="rounded-[24px] border border-[#eadfcd] bg-[#fffaf1] p-4">
-                          <div className="flex flex-col gap-4 sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+                        <div key={manager.user_id} className="rounded-[24px] border border-[#eadfcd] bg-[#fffaf1] p-4 shadow-[0_10px_24px_rgba(79,58,22,0.04)]">
+                          <div className="flex flex-col gap-4 sm:grid sm:grid-cols-[minmax(0,1fr)_156px] sm:items-start">
                             <div className="flex min-w-0 items-start gap-4">
                               <div className="grid h-12 w-12 shrink-0 place-items-center rounded-[18px] bg-[#10111d] text-sm font-black text-white">
                                 {initials(manager.name)}
@@ -1149,7 +1064,7 @@ export default function TeamSettingsPage() {
                                 </div>
                               </div>
                             </div>
-                            <button className={DANGER} type="button" disabled={workingKey === `manager:${manager.user_id}`} onClick={() => removeManager(manager.user_id)}>
+                            <button className={`${DANGER} w-full`} type="button" disabled={workingKey === `manager:${manager.user_id}`} onClick={() => removeManager(manager.user_id)}>
                               {workingKey === `manager:${manager.user_id}` ? "Removing..." : "Remove Manager"}
                             </button>
                           </div>
@@ -1161,85 +1076,178 @@ export default function TeamSettingsPage() {
                       </div>
                     )}
                   </div>
-                </article>
+                </section>
 
-                <article className={`${PANEL} flex h-full flex-col`}>
-                  <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(260px,0.82fr)] xl:items-end">
+                <section className="rounded-[28px] border border-[#eadfcd] bg-[#fffaf1] p-5 shadow-[0_10px_24px_rgba(79,58,22,0.04)]">
+                  <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.96fr)] xl:items-start">
                     <div>
                       <p className={KICKER}>Members</p>
                       <h3 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Who belongs to this team</h3>
                       <p className="mt-2 text-sm leading-6 text-[#746853]">
-                        Members appear in owner dropdowns when leads, customers, and tasks are scoped to this team.
+                        Current team members appear first in the roster below. Add, remove, or search people from the same panel instead of managing two separate sections.
                       </p>
+                      <p className="mt-2 text-sm leading-6 text-[#8b7a62]">{assignmentHelperCopy}</p>
                     </div>
-                    <div className="rounded-[22px] border border-[#eadfcd] bg-[#fffaf1] p-3">
-                      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
-                        <select className={INPUT} value={memberCandidateId} onChange={(event) => setMemberCandidateId(event.target.value)} disabled={!availableMembers.length || detailLoading}>
-                          <option value="">{availableMembers.length ? "Choose member" : "No additional active users available"}</option>
-                          {availableMembers.map((user) => (
-                            <option key={user.user_id} value={user.user_id}>
-                              {user.name} | {prettyRole(user.role)}
-                            </option>
-                          ))}
-                        </select>
-                        <button className={`${PRIMARY} sm:min-w-[120px]`} type="button" onClick={addMember} disabled={!memberCandidateId || workingKey === "member:add"}>
-                          <DashboardIcon name="users" className="h-4 w-4" />
-                          {workingKey === "member:add" ? "Adding..." : "Add"}
-                        </button>
+                    <div className="rounded-[24px] border border-[#eadfcd] bg-[#fffaf1] p-4">
+                      <div className="grid gap-3">
+                        <label className="space-y-2">
+                          <span className={KICKER}>Quick Add Member</span>
+                          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_132px]">
+                            <select className={INPUT} value={memberCandidateId} onChange={(event) => setMemberCandidateId(event.target.value)} disabled={!availableMembers.length || detailLoading}>
+                              <option value="">{availableMembers.length ? "Choose member" : "No additional active users available"}</option>
+                              {availableMembers.map((user) => (
+                                <option key={user.user_id} value={user.user_id}>
+                                  {user.name} | {prettyRole(user.role)}
+                                </option>
+                              ))}
+                            </select>
+                            <button className={`${PRIMARY} w-full`} type="button" onClick={addMember} disabled={!memberCandidateId || workingKey === "member:add"}>
+                              <DashboardIcon name="users" className="h-4 w-4" />
+                              {workingKey === "member:add" ? "Adding..." : "Add"}
+                            </button>
+                          </div>
+                        </label>
                       </div>
                     </div>
                   </div>
 
+                  <div className="mt-5 grid gap-3 md:grid-cols-4">
+                    <div className={SOFT}>
+                      <span className={KICKER}>Current Members</span>
+                      <strong className="mt-3 block text-base text-[#060710]">{teamMembers.length}</strong>
+                    </div>
+                    <div className={SOFT}>
+                      <span className={KICKER}>Roster Results</span>
+                      <strong className="mt-3 block text-base text-[#060710]">{filteredAssignmentUsers.length}</strong>
+                    </div>
+                    <div className={SOFT}>
+                      <span className={KICKER}>Ready To Add</span>
+                      <strong className="mt-3 block text-base text-[#060710]">{availableMembers.length}</strong>
+                    </div>
+                    <div className={SOFT}>
+                      <span className={KICKER}>Can Lead Team</span>
+                      <strong className="mt-3 block text-base text-[#060710]">{availableManagers.length}</strong>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 rounded-[24px] border border-[#eadfcd] bg-[#fffaf1] p-4">
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <label className="space-y-2">
+                        <span className={KICKER}>Search User</span>
+                        <input
+                          className={INPUT}
+                          value={assignmentQuery}
+                          onChange={(event) => setAssignmentQuery(event.target.value)}
+                          placeholder="Search name, email, role, or user ID"
+                        />
+                      </label>
+                      <label className="space-y-2">
+                        <span className={KICKER}>Role Filter</span>
+                        <select className={INPUT} value={assignmentRoleFilter} onChange={(event) => setAssignmentRoleFilter(event.target.value)}>
+                          {ASSIGNABLE_ROLE_FILTERS.map(([value, label]) => (
+                            <option key={value} value={value}>
+                              {label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+                  </div>
+
                   <div className="mt-5 flex-1 space-y-3">
-                    {detailLoading && !teamMembers.length ? (
-                      <div className="grid min-h-[180px] place-items-center rounded-[24px] border border-[#eadfcd] bg-[#fffaf1] px-4 py-4 text-sm text-[#7a6b57]">
-                        Loading team members...
+                    {assignableLoading ? (
+                      <div className="grid min-h-[220px] place-items-center rounded-[24px] border border-[#eadfcd] bg-[#fffaf1] px-4 py-4 text-sm text-[#7a6b57]">
+                        Loading team roster...
                       </div>
-                    ) : teamMembers.length ? (
-                      teamMembers.map((member) => (
-                        <div key={member.user_id} className="rounded-[24px] border border-[#eadfcd] bg-[#fffaf1] p-4">
-                          <div className="flex flex-col gap-4 sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
-                            <div className="flex min-w-0 items-start gap-4">
-                              <div className="grid h-12 w-12 shrink-0 place-items-center rounded-[18px] bg-[#10111d] text-sm font-black text-white">
-                                {initials(member.name)}
-                              </div>
+                    ) : filteredAssignmentUsers.length ? (
+                      filteredAssignmentUsers.map((user) => {
+                        const isMember = teamMembers.some((member) => member.user_id === user.user_id);
+                        const isManager = teamManagers.some((manager) => manager.user_id === user.user_id);
+                        const teamMember = teamMembers.find((member) => member.user_id === user.user_id) || null;
+                        const canPromoteToManager = MANAGER_CAPABLE_ROLES.has(user.role) && !isManager;
+
+                        return (
+                          <div key={user.user_id} className="rounded-[26px] border border-[#eadfcd] bg-[#fffaf1] p-5 shadow-[0_12px_28px_rgba(79,58,22,0.04)] transition hover:border-[#e3cfab]">
+                            <div className="flex flex-col gap-5 xl:grid xl:grid-cols-[minmax(0,1fr)_360px] xl:items-center xl:gap-6">
                               <div className="min-w-0">
                                 <div className="flex flex-wrap gap-2">
                                   <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">
-                                    {prettyRole(member.role)}
+                                    {prettyRole(user.role)}
                                   </span>
                                   <span className="inline-flex rounded-full border border-[#eadfcd] bg-[#fff6e4] px-3 py-1 text-[11px] font-bold text-[#7a6230]">
-                                    {member.is_primary ? "Primary" : member.membership_role || "Member"}
+                                    {user.user_id}
                                   </span>
+                                  {isMember ? (
+                                    <span className="inline-flex rounded-full border border-[#dce8cf] bg-[#eff9e9] px-3 py-1 text-[11px] font-bold text-[#2a7f43]">
+                                      {teamMember?.is_primary ? "Primary member" : "Team member"}
+                                    </span>
+                                  ) : null}
+                                  {isManager ? (
+                                    <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">
+                                      Manager
+                                    </span>
+                                  ) : null}
                                 </div>
-                                <strong className="mt-3 block text-base text-[#060710]">{member.name}</strong>
-                                <span className="mt-1 block text-sm text-[#746853]">{member.email}</span>
+                                <strong className="mt-3 block text-base text-[#060710]">{user.name}</strong>
+                                <span className="mt-1 block text-sm text-[#746853]">{user.email}</span>
                                 <div className="mt-3 grid gap-3 sm:grid-cols-2 text-sm text-[#7a6b57]">
                                   <div>
                                     <p className={KICKER}>Department</p>
-                                    <p className="mt-2 font-semibold text-[#060710]">{member.department || "Not set"}</p>
+                                    <p className="mt-2 font-semibold text-[#060710]">{user.department || "Not set"}</p>
                                   </div>
                                   <div>
                                     <p className={KICKER}>Phone</p>
-                                    <p className="mt-2 font-semibold text-[#060710]">{member.phone || "Not set"}</p>
+                                    <p className="mt-2 font-semibold text-[#060710]">{user.phone || "Not set"}</p>
                                   </div>
                                 </div>
                               </div>
+
+                              <div className="grid w-full gap-3 sm:grid-cols-2 xl:w-[360px] xl:justify-self-end">
+                                {isMember ? (
+                                  <button
+                                    className={`${DANGER} w-full`}
+                                    type="button"
+                                    onClick={() => removeMember(user.user_id)}
+                                    disabled={workingKey === `member:${user.user_id}`}
+                                  >
+                                    <DashboardIcon name="users" className="h-4 w-4" />
+                                    {workingKey === `member:${user.user_id}` ? "Removing..." : "Remove Member"}
+                                  </button>
+                                ) : (
+                                  <button
+                                    className={`${GHOST} w-full`}
+                                    type="button"
+                                    onClick={() => addMember(user.user_id)}
+                                    disabled={workingKey === "member:add"}
+                                  >
+                                    <DashboardIcon name="users" className="h-4 w-4" />
+                                    {workingKey === "member:add" ? "Adding..." : "Add To Team"}
+                                  </button>
+                                )}
+                                <button
+                                  className={`${PRIMARY} w-full`}
+                                  type="button"
+                                  onClick={() => addManager(user.user_id)}
+                                  disabled={!canPromoteToManager || workingKey === "manager:add"}
+                                >
+                                  <DashboardIcon name="analytics" className="h-4 w-4" />
+                                  {isManager ? "Manager" : workingKey === "manager:add" ? "Assigning..." : canPromoteToManager ? "Make Manager" : "Manager Role Needed"}
+                                </button>
+                              </div>
                             </div>
-                            <button className={DANGER} type="button" disabled={workingKey === `member:${member.user_id}`} onClick={() => removeMember(member.user_id)}>
-                              {workingKey === `member:${member.user_id}` ? "Removing..." : "Remove Member"}
-                            </button>
                           </div>
-                        </div>
-                      ))
+                        );
+                      })
                     ) : (
                       <div className="grid min-h-[220px] place-items-center rounded-[24px] border border-dashed border-[#ddd0bb] bg-[#fffaf1] px-4 py-6 text-center text-sm leading-6 text-[#746853]">
-                        No members are linked yet. Add the people who should own records inside this team.
+                        No users matched the current filter. Create the user first, then return here to place them in this team.
                       </div>
                     )}
                   </div>
-                </article>
+                </section>
                 </div>
+                  </div>
+                </article>
               </>
             ) : null}
           </div>
@@ -1263,7 +1271,7 @@ export default function TeamSettingsPage() {
                     : "Update the team name, code, description, and active status without leaving the workspace."}
                 </p>
               </div>
-              <button className="grid h-11 w-11 place-items-center rounded-2xl border border-[#eadfcd] bg-white text-[#6d604b]" type="button" onClick={closeEditor}>
+              <button className="grid h-11 w-11 cursor-pointer place-items-center rounded-2xl border border-[#eadfcd] bg-white text-[#6d604b]" type="button" onClick={closeEditor}>
                 <span className="relative block h-4 w-4">
                   <span className="absolute left-0 top-1/2 block h-0.5 w-4 -translate-y-1/2 rotate-45 rounded-full bg-current" />
                   <span className="absolute left-0 top-1/2 block h-0.5 w-4 -translate-y-1/2 -rotate-45 rounded-full bg-current" />
