@@ -793,7 +793,6 @@ export default function LeadsPage() {
                     <div>
                       <h3 className="text-xl font-semibold tracking-tight text-[#060710]">Simple Add Lead sheet</h3>
                       <p className="mt-2 text-sm leading-7 text-[#746853]">
-                        Ye plain sheet sirf wahi fields rakhti hai jo Add Lead form me dikhte hain. Extra transfer aur note columns hata diye gaye hain.
                       </p>
                     </div>
                   </div>
