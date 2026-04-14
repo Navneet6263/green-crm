@@ -25,6 +25,61 @@ const parseJson = (v) => { try { return !v ? {} : typeof v === "string" ? JSON.p
 const pretty = (v = "") => String(v).replaceAll("_", "-").split("-").filter(Boolean).map((x) => x[0].toUpperCase() + x.slice(1)).join(" ");
 const when = (v, full = false) => !v ? "--" : (() => { const d = new Date(v); return Number.isNaN(d.getTime()) ? "--" : d.toLocaleString("en-IN", full ? { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" } : { day: "numeric", month: "short", year: "numeric" }); })();
 const initials = (v = "TM") => String(v).split(" ").filter(Boolean).slice(0, 2).map((x) => x[0]?.toUpperCase() || "").join("") || "TM";
+const getCredentialState = (user) => {
+  if (user?.last_login_at) {
+    return {
+      label: "Signed in",
+      tone: "border-emerald-200 bg-emerald-50 text-emerald-700",
+      copy: "User has already signed in with this account.",
+    };
+  }
+
+  if (user?.is_temporary_password) {
+    return {
+      label: "Pending first login",
+      tone: "border-amber-200 bg-amber-50 text-amber-700",
+      copy: "Temporary password is still active. Share credentials manually if the inbox mail did not arrive.",
+    };
+  }
+
+  return {
+    label: "Access created",
+    tone: "border-[#eadfcd] bg-white text-[#7c6d55]",
+    copy: "No login activity yet. Historical mail delivery is not stored for older accounts.",
+  };
+};
+const buildCreateFeedback = (response) => {
+  const delivery = response?.credential_delivery?.delivery || "preview";
+  const email = response?.email || "this inbox";
+  const previewLogin = response?.credential_delivery?.preview_login_url
+    ? ` Login: ${response.credential_delivery.preview_login_url}.`
+    : "";
+  const tempPassword = response?.temporary_password
+    ? ` Temporary password: ${response.temporary_password}.`
+    : "";
+  const deliveryError = response?.credential_delivery?.error
+    ? ` Mail error: ${response.credential_delivery.error}.`
+    : "";
+
+  if (delivery === "email") {
+    return {
+      tone: "success",
+      text: `User created and credentials email sent to ${email}.${previewLogin}`,
+    };
+  }
+
+  if (delivery === "queued") {
+    return {
+      tone: "warning",
+      text: `User created for ${email}. Credentials email is sending in background.${tempPassword}${previewLogin}`,
+    };
+  }
+
+  return {
+    tone: "warning",
+    text: `User created for ${email}, but credentials email was not confirmed.${tempPassword}${previewLogin}${deliveryError} Share the password manually if needed.`,
+  };
+};
 const formDraft = (company_id = "", role = "sales") => ({ company_id, name: "", email: "", role, password: "", phone: "", department: "" });
 const editDraft = (u) => ({ name: u?.name || "", email: u?.email || "", role: u?.role || "sales", password: "", phone: u?.phone || "", department: u?.department || "" });
 const roleOptions = (isSuperAdmin) => isSuperAdmin ? [["admin","Admin"], ...BASE_ROLES] : BASE_ROLES;
@@ -44,6 +99,7 @@ export default function UserSettingsPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [messageTone, setMessageTone] = useState("success");
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -121,10 +177,12 @@ export default function UserSettingsPage() {
     event.preventDefault();
     if (!session?.token) return;
     if (isSuperAdmin && !scopedCompanyId) return setError("Choose a company before creating a team member.");
-    setCreating(true); setError(""); setMessage("");
+    setCreating(true); setError(""); setMessage(""); setMessageTone("success");
     try {
       const response = await apiRequest("/auth/create-employee", { method: "POST", token: session.token, body: { ...createForm, company_id: isSuperAdmin ? scopedCompanyId : undefined } });
-      setMessage(response.temporary_password ? `User created. Temporary password: ${response.temporary_password}. Add this user to a team from the Teams page.` : "User created successfully. Add this user to a team from the Teams page.");
+      const feedback = buildCreateFeedback(response);
+      setMessage(feedback.text);
+      setMessageTone(feedback.tone);
       setCreateForm(formDraft(scopedCompanyId)); await loadWorkspace(session, scopedCompanyId); if (response.user_id) setSelectedUserId(response.user_id);
     } catch (requestError) { setError(requestError.message); } finally { setCreating(false); }
   }
@@ -132,7 +190,7 @@ export default function UserSettingsPage() {
   async function saveUser(event) {
     event.preventDefault();
     if (!session?.token || !selectedUser) return;
-    setSaving(true); setError(""); setMessage("");
+    setSaving(true); setError(""); setMessage(""); setMessageTone("success");
     try {
       await apiRequest(`/auth/users/${selectedUser.user_id}`, { method: "PUT", token: session.token, body: { name: memberForm.name, email: memberForm.email, role: memberForm.role, phone: memberForm.phone, department: memberForm.department, ...(memberForm.password.trim() ? { password: memberForm.password } : {}) } });
       setMessage("Team member updated."); await loadWorkspace(session, scopedCompanyId);
@@ -141,7 +199,7 @@ export default function UserSettingsPage() {
 
   async function toggleUser(user) {
     if (!session?.token || !user) return;
-    setWorkingId(user.user_id); setError(""); setMessage("");
+    setWorkingId(user.user_id); setError(""); setMessage(""); setMessageTone("success");
     try {
       await apiRequest(`/auth/users/${user.user_id}/toggle`, { method: "PUT", token: session.token, body: { is_active: !user.is_active } });
       setMessage(user.is_active ? "Team member deactivated." : "Team member activated."); await loadWorkspace(session, scopedCompanyId);
@@ -150,7 +208,7 @@ export default function UserSettingsPage() {
 
   async function removeUser(user) {
     if (!session?.token || !user || !window.confirm(`Deactivate ${user.name || user.email}?`)) return;
-    setWorkingId(user.user_id); setError(""); setMessage("");
+    setWorkingId(user.user_id); setError(""); setMessage(""); setMessageTone("success");
     try {
       await apiRequest(`/auth/users/${user.user_id}`, { method: "DELETE", token: session.token });
       setMessage("Team member removed from the active roster."); await loadWorkspace(session, scopedCompanyId);
@@ -161,7 +219,7 @@ export default function UserSettingsPage() {
     <DashboardShell session={session} title="Team Members" hideTitle heroStats={[]}>
       <div className="mx-auto grid max-w-[1320px] gap-5">
         {error ? <div className="rounded-[20px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div> : null}
-        {message ? <div className="rounded-[20px] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">{message}</div> : null}
+        {message ? <div className={`rounded-[20px] px-4 py-3 text-sm font-medium ${messageTone === "warning" ? "border border-amber-200 bg-amber-50 text-amber-800" : "border border-emerald-200 bg-emerald-50 text-emerald-700"}`}>{message}</div> : null}
 
         <section className={HERO}>
           <div className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
@@ -211,7 +269,7 @@ export default function UserSettingsPage() {
               </div>
             </div>
             <div className="mt-5 space-y-3">
-              {loading ? <div className="grid min-h-[240px] place-items-center rounded-[28px] border border-[#eadfcd] bg-[#fffaf1] px-6 text-sm text-[#7a6b57]">Loading team roster...</div> : filteredUsers.length ? filteredUsers.map((user) => <button key={user.user_id} type="button" onClick={() => setSelectedUserId(user.user_id)} className={`w-full rounded-[28px] border p-4 text-left transition ${selectedUserId === user.user_id ? "border-[#d7b258] bg-[#fff8e9] shadow-[0_16px_32px_rgba(203,169,82,0.14)]" : "border-[#eadfcd] bg-white/88 shadow-[0_10px_24px_rgba(79,58,22,0.05)] hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(79,58,22,0.08)]"}`}><div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between"><div className="flex min-w-0 items-start gap-4"><div className="grid h-14 w-14 shrink-0 place-items-center rounded-[20px] bg-[#10111d] text-base font-black text-white shadow-[0_18px_30px_rgba(6,7,16,0.16)]">{initials(user.name)}</div><div className="min-w-0"><div className="flex flex-wrap gap-2"><span className="inline-flex rounded-full border border-[#eadfcd] bg-[#fff6e4] px-3 py-1 text-[11px] font-bold text-[#7a6230]">{pretty(user.role)}</span>{user.talent_id ? <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">{user.talent_id}</span> : null}</div><h4 className="mt-3 truncate text-lg font-semibold text-[#060710]">{user.name}</h4><p className="truncate text-sm text-[#746853]">{user.email}</p></div></div><span className={`inline-flex rounded-full border px-3 py-1 text-[11px] font-bold ${user.is_active ? "border-[#e7d7ab] bg-[#fff4d9] text-[#8d6e27]" : "border-[#eadfcd] bg-white text-[#7c6d55]"}`}>{user.is_active ? "Active" : "Inactive"}</span></div><div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4 text-sm text-[#7a6b57]"><div><p className={KICKER}>Department</p><p className="mt-2 font-semibold text-[#060710]">{user.department || "Not set"}</p></div><div><p className={KICKER}>Phone</p><p className="mt-2 font-semibold text-[#060710]">{user.phone || "Not set"}</p></div><div><p className={KICKER}>Last Login</p><p className="mt-2 font-semibold text-[#060710]">{when(user.last_login_at, true)}</p></div><div><p className={KICKER}>Joined</p><p className="mt-2 font-semibold text-[#060710]">{when(user.created_at)}</p></div></div></button>) : <div className="grid min-h-[240px] place-items-center rounded-[28px] border border-dashed border-[#ddd0bb] bg-[#fffaf1] px-6 text-center text-sm text-[#7a6b57]">No team members matched the current filters.</div>}
+              {loading ? <div className="grid min-h-[240px] place-items-center rounded-[28px] border border-[#eadfcd] bg-[#fffaf1] px-6 text-sm text-[#7a6b57]">Loading team roster...</div> : filteredUsers.length ? filteredUsers.map((user) => { const credentialState = getCredentialState(user); return <button key={user.user_id} type="button" onClick={() => setSelectedUserId(user.user_id)} className={`w-full rounded-[28px] border p-4 text-left transition ${selectedUserId === user.user_id ? "border-[#d7b258] bg-[#fff8e9] shadow-[0_16px_32px_rgba(203,169,82,0.14)]" : "border-[#eadfcd] bg-white/88 shadow-[0_10px_24px_rgba(79,58,22,0.05)] hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(79,58,22,0.08)]"}`}><div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between"><div className="flex min-w-0 items-start gap-4"><div className="grid h-14 w-14 shrink-0 place-items-center rounded-[20px] bg-[#10111d] text-base font-black text-white shadow-[0_18px_30px_rgba(6,7,16,0.16)]">{initials(user.name)}</div><div className="min-w-0"><div className="flex flex-wrap gap-2"><span className="inline-flex rounded-full border border-[#eadfcd] bg-[#fff6e4] px-3 py-1 text-[11px] font-bold text-[#7a6230]">{pretty(user.role)}</span>{user.talent_id ? <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">{user.talent_id}</span> : null}<span className={`inline-flex rounded-full border px-3 py-1 text-[11px] font-bold ${credentialState.tone}`}>{credentialState.label}</span></div><h4 className="mt-3 truncate text-lg font-semibold text-[#060710]">{user.name}</h4><p className="truncate text-sm text-[#746853]">{user.email}</p></div></div><span className={`inline-flex rounded-full border px-3 py-1 text-[11px] font-bold ${user.is_active ? "border-[#e7d7ab] bg-[#fff4d9] text-[#8d6e27]" : "border-[#eadfcd] bg-white text-[#7c6d55]"}`}>{user.is_active ? "Active" : "Inactive"}</span></div><div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4 text-sm text-[#7a6b57]"><div><p className={KICKER}>Department</p><p className="mt-2 font-semibold text-[#060710]">{user.department || "Not set"}</p></div><div><p className={KICKER}>Phone</p><p className="mt-2 font-semibold text-[#060710]">{user.phone || "Not set"}</p></div><div><p className={KICKER}>Last Login</p><p className="mt-2 font-semibold text-[#060710]">{when(user.last_login_at, true)}</p></div><div><p className={KICKER}>Joined</p><p className="mt-2 font-semibold text-[#060710]">{when(user.created_at)}</p></div></div></button>; }) : <div className="grid min-h-[240px] place-items-center rounded-[28px] border border-dashed border-[#ddd0bb] bg-[#fffaf1] px-6 text-center text-sm text-[#7a6b57]">No team members matched the current filters.</div>}
             </div>
           </article>
 
@@ -220,7 +278,7 @@ export default function UserSettingsPage() {
               {selectedUser ? (
                 <div className="space-y-5">
                   <div><p className={KICKER}>Member Editor</p><h3 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Update selected team member</h3></div>
-                  <div className="overflow-hidden rounded-[26px] border border-[#eadfcd] bg-white/84 shadow-[0_12px_30px_rgba(79,58,22,0.08)]"><div className="space-y-4 p-4"><div className="flex items-start justify-between gap-3"><div className="flex items-center gap-3"><div className="grid h-12 w-12 place-items-center rounded-[18px] bg-[#10111d] text-sm font-black text-white shadow-[0_16px_28px_rgba(6,7,16,0.16)]">{initials(selectedUser.name)}</div><div><strong className="block text-base font-black text-[#060710]">{selectedUser.name}</strong><span className="block text-xs font-semibold text-[#8f816a]">{selectedUser.talent_id || selectedUser.user_id}</span></div></div><span className={`inline-flex rounded-full border px-3 py-1 text-[11px] font-bold ${selectedUser.is_active ? "border-[#e7d7ab] bg-[#fff4d9] text-[#8d6e27]" : "border-[#eadfcd] bg-white text-[#7c6d55]"}`}>{selectedUser.is_active ? "Active" : "Inactive"}</span></div><div className="grid gap-3 sm:grid-cols-2"><div className={SOFT}><span className={KICKER}>Company</span><strong className="mt-3 block text-sm text-[#060710]">{selectedUser.company_name || company?.name || "Workspace"}</strong></div><div className={SOFT}><span className={KICKER}>Last Login</span><strong className="mt-3 block text-sm text-[#060710]">{when(selectedUser.last_login_at, true)}</strong></div></div></div></div>
+                  <div className="overflow-hidden rounded-[26px] border border-[#eadfcd] bg-white/84 shadow-[0_12px_30px_rgba(79,58,22,0.08)]"><div className="space-y-4 p-4"><div className="flex items-start justify-between gap-3"><div className="flex items-center gap-3"><div className="grid h-12 w-12 place-items-center rounded-[18px] bg-[#10111d] text-sm font-black text-white shadow-[0_16px_28px_rgba(6,7,16,0.16)]">{initials(selectedUser.name)}</div><div><strong className="block text-base font-black text-[#060710]">{selectedUser.name}</strong><span className="block text-xs font-semibold text-[#8f816a]">{selectedUser.talent_id || selectedUser.user_id}</span></div></div><span className={`inline-flex rounded-full border px-3 py-1 text-[11px] font-bold ${selectedUser.is_active ? "border-[#e7d7ab] bg-[#fff4d9] text-[#8d6e27]" : "border-[#eadfcd] bg-white text-[#7c6d55]"}`}>{selectedUser.is_active ? "Active" : "Inactive"}</span></div><div className="grid gap-3 md:grid-cols-3"><div className={SOFT}><span className={KICKER}>Company</span><strong className="mt-3 block text-sm text-[#060710]">{selectedUser.company_name || company?.name || "Workspace"}</strong></div><div className={SOFT}><span className={KICKER}>Last Login</span><strong className="mt-3 block text-sm text-[#060710]">{when(selectedUser.last_login_at, true)}</strong></div><div className={SOFT}><span className={KICKER}>Access Status</span><strong className="mt-3 block text-sm text-[#060710]">{getCredentialState(selectedUser).label}</strong><span className="mt-2 block text-xs leading-5 text-[#8f816a]">{getCredentialState(selectedUser).copy}</span></div></div></div></div>
                   <form className="grid gap-4" onSubmit={saveUser}>
                     <div className="grid gap-4 md:grid-cols-2">
                       <label className="space-y-2"><span className={KICKER}>Full Name</span><input className={INPUT} value={memberForm.name} onChange={(e) => setMemberForm((c) => ({ ...c, name: e.target.value }))} required /></label>

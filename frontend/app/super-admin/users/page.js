@@ -52,6 +52,30 @@ function formatCompanyNames(companyIds, companiesById) {
   return items.length ? items.join(", ") : "No company assignment";
 }
 
+function buildCreateFeedback(response) {
+  const delivery = response?.credential_delivery?.delivery || "preview";
+  const email = response?.email || "this inbox";
+  const previewLogin = response?.credential_delivery?.preview_login_url
+    ? ` Preview login: ${response.credential_delivery.preview_login_url}.`
+    : "";
+  const tempPassword = response?.temporary_password
+    ? ` Temporary password: ${response.temporary_password}.`
+    : "";
+  const deliveryError = response?.credential_delivery?.error
+    ? ` Mail error: ${response.credential_delivery.error}.`
+    : "";
+
+  if (delivery === "email") {
+    return `User created and credentials email sent to ${email}.${previewLogin}`;
+  }
+
+  if (delivery === "queued") {
+    return `User created for ${email}. Credentials email is sending in background.${tempPassword}${previewLogin}`;
+  }
+
+  return `User created for ${email}, but credentials email was not confirmed.${tempPassword}${previewLogin}${deliveryError}`;
+}
+
 function RoleCard({ title, description, value, color }) {
   return (
     <div className="table-row">
@@ -132,15 +156,7 @@ function AccessControlContent({ session, data, error, loading, refresh }) {
         },
       });
 
-      setMessage(
-        response.temporary_password
-          ? `User created. Temporary password: ${response.temporary_password}${response.credential_delivery?.delivery === "queued" ? " | Credentials email is sending in background." : ""}${response.credential_delivery?.preview_login_url ? ` | Preview login: ${response.credential_delivery.preview_login_url}` : ""}`
-          : response.credential_delivery?.delivery === "email"
-            ? "User created and credentials email sent."
-            : response.credential_delivery?.delivery === "queued"
-              ? "User created. Credentials email is sending in background."
-            : "User created successfully."
-      );
+      setMessage(buildCreateFeedback(response));
 
       setForm(createDefaultForm(canCreatePlatformRoles));
       await refresh();

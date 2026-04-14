@@ -129,6 +129,7 @@ export const SIDEBAR_SECTIONS = {
     ]),
     SECTION("Team", [
       ITEM("Customers", "/customers", "customers", "customers"),
+      ITEM("Products", "/settings/products", "products", "products"),
       ITEM("Teams", "/settings/teams", "users", "team_management"),
       ITEM("Performance", "/performance", "performance", "performance"),
       ITEM("Analytics", "/analytics", "analytics", "analytics"),
@@ -216,6 +217,7 @@ export const ROLE_SHORTCUTS = {
   ],
   manager: [
     ITEM("Leads", "/leads", "leads"),
+    ITEM("Products", "/settings/products", "products"),
     ITEM("Teams", "/settings/teams", "users"),
     ITEM("Tasks", "/tasks", "tasks"),
   ],
