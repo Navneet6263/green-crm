@@ -154,7 +154,7 @@ export default function TeamSettingsPage() {
   const isPlatformConsole = isPlatformConsoleRole(role);
   const scopedCompanyId = resolveScopedCompanyId(session, selectedCompanyId);
   const canCreateTeams = !isPlatformConsole;
-  const canOpenUserRoster = ["super-admin", "admin"].includes(role);
+  const canOpenUserRoster = ["super-admin", "admin", "manager"].includes(role);
   const selectedCompany = useMemo(
     () =>
       companies.find((company) => company.company_id === scopedCompanyId) ||
@@ -247,7 +247,7 @@ export default function TeamSettingsPage() {
       });
   }, [assignableUsers, assignmentQuery, assignmentRoleFilter, teamManagers, teamMembers]);
   const assignmentHelperCopy = role === "manager"
-    ? "Managers cannot create new IDs. Ask admin to create the account first, then add that user here to a team you manage."
+    ? "Create the employee ID in Workspace Users, then add that person here as a member or promote them as a manager for your team."
     : "Create the user ID in Workspace Users, then add that person here as a member or manager for the selected team.";
   const stats = useMemo(
     () => ({

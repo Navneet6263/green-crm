@@ -146,7 +146,7 @@ export default function UserSettingsPage() {
   useEffect(() => {
     const activeSession = loadSession();
     if (!activeSession) return router.replace("/login");
-    if (!["super-admin", "admin"].includes(activeSession.user?.role)) return router.replace("/dashboard");
+    if (!["super-admin", "admin", "manager"].includes(activeSession.user?.role)) return router.replace("/dashboard");
     setSession(activeSession);
     if (activeSession.user?.role === "super-admin") {
       apiRequest("/companies?page_size=120", { token: activeSession.token }).then((response) => {

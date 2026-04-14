@@ -53,6 +53,18 @@ function isTenantRole(role) {
   return !isPlatformRootRole(role);
 }
 
+function canManagerManageRole(role) {
+  return [
+    ROLES.MANAGER,
+    ROLES.SALES,
+    ROLES.MARKETING,
+    ROLES.SUPPORT,
+    ROLES.LEGAL_TEAM,
+    ROLES.FINANCE_TEAM,
+    ROLES.VIEWER,
+  ].includes(role);
+}
+
 function getManagedCompanyId(auth, payload) {
   if ([ROLES.SUPER_ADMIN, ROLES.PLATFORM_ADMIN].includes(auth.role) && payload.company_id) {
     return payload.company_id;
@@ -164,6 +176,19 @@ function assertManagementAccess(auth, targetUser, nextRole) {
       throw new AppError("Company admins can manage employees only.", 403);
     }
   }
+
+  if (auth.role === ROLES.MANAGER) {
+    if (
+      !canManagerManageRole(targetUser.role) ||
+      !canManagerManageRole(nextRole) ||
+      isPlatformOperatorRole(targetUser.role) ||
+      isPlatformOperatorRole(nextRole) ||
+      [ROLES.ADMIN, ROLES.SUPER_ADMIN].includes(targetUser.role) ||
+      [ROLES.ADMIN, ROLES.SUPER_ADMIN].includes(nextRole)
+    ) {
+      throw new AppError("Managers can manage manager and below tenant roles only.", 403);
+    }
+  }
 }
 
 async function listUsers(auth, query) {
@@ -210,8 +235,8 @@ async function listUsers(auth, query) {
 }
 
 async function createUser(auth, payload) {
-  if (![ROLES.SUPER_ADMIN, ROLES.PLATFORM_ADMIN, ROLES.ADMIN].includes(auth.role)) {
-    throw new AppError("Only super admins, platform admins, and company admins can create users.", 403);
+  if (![ROLES.SUPER_ADMIN, ROLES.PLATFORM_ADMIN, ROLES.ADMIN, ROLES.MANAGER].includes(auth.role)) {
+    throw new AppError("Only super admins, platform admins, company admins, and managers can create users.", 403);
   }
 
   const role = normalizeRole(payload.role);
@@ -240,6 +265,12 @@ async function createUser(auth, payload) {
 
   if (auth.role === ROLES.ADMIN && role === ROLES.ADMIN) {
     throw new AppError("Company admins can only create employees.", 403);
+  }
+
+  if (auth.role === ROLES.MANAGER) {
+    if (!isTenantRole(role) || !canManagerManageRole(role)) {
+      throw new AppError("Managers can create manager and below tenant roles only.", 403);
+    }
   }
 
   if (role === ROLES.SUPER_ADMIN) {

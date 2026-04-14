@@ -221,6 +221,10 @@ async function listTeams(filters, pagination, executor) {
     }
   }
 
+  if (Array.isArray(filters.teamIds) && !filters.teamIds.length) {
+    conditions.push("1 = 0");
+  }
+
   if (filters.search) {
     conditions.push("(t.name LIKE ? OR t.code LIKE ? OR t.description LIKE ?)");
     params.push(`%${filters.search}%`, `%${filters.search}%`, `%${filters.search}%`);
