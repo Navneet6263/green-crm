@@ -18,6 +18,7 @@ import {
   teamSelectLabel,
   teamSelectionRequiredMessage,
 } from "../../../../lib/teamScope";
+import { AlertError } from "../../../../components/ui/Alert";
 
 const PANEL_CLASS = "rounded-[30px] border border-[#eadfcd] bg-white/82 p-5 shadow-[0_14px_36px_rgba(79,58,22,0.06)] md:p-6";
 const SOFT_PANEL_CLASS = "rounded-[24px] border border-[#eadfcd] bg-[#fffaf1] p-4";
@@ -259,7 +260,7 @@ export default function EditCustomerPage() {
 
   return (
     <DashboardShell session={session} title="Edit Customer" hideTitle={hideTitle} heroStats={[]}>
-      {error ? <div className="rounded-[20px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div> : null}
+      <AlertError message={error} onDismiss={() => setError("")} />
       {loading ? <div className="rounded-[20px] border border-[#eadfcd] bg-white px-4 py-3 text-sm font-medium text-[#6f614c]">Loading customer...</div> : null}
 
       {!loading && customer ? (
@@ -275,10 +276,10 @@ export default function EditCustomerPage() {
                     Customer Edit
                   </span>
                   <div>
-                    <h2 className="text-4xl font-semibold tracking-tight text-[#060710] md:text-[3.2rem] md:leading-[1.02]">
-                      Edit customer
+                    <h2 className="text-3xl font-semibold tracking-tight text-[#060710] md:text-[2.2rem] md:leading-[1.08]">
+                      Edit: {customer.company_name || customer.name}
                     </h2>
-                    <p className="mt-4 max-w-3xl text-sm leading-7 text-[#746853] md:text-base">
+                    <p className="mt-3 max-w-3xl text-sm leading-7 text-[#746853]">
                       Update profile, address, owner, and follow-up.
                     </p>
                   </div>

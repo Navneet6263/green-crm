@@ -26,6 +26,7 @@ import {
   teamSelectionRequiredMessage,
   resolveScopedCompanyId,
 } from "../../../lib/teamScope";
+import { AlertError } from "../../../components/ui/Alert";
 
 const ALLOWED_ROLES = ["super-admin", "platform-admin", "platform-manager", "admin", "manager", "sales", "marketing"];
 
@@ -516,7 +517,7 @@ export default function NewLeadPage() {
 
   return (
     <DashboardShell session={session} title="Create Lead" hideTitle={hideTitle} heroStats={[]}>
-      {error ? <div className="rounded-[20px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div> : null}
+      <AlertError message={error} onDismiss={() => setError("")} />
       {loading ? <div className="rounded-[20px] border border-[#eadfcd] bg-white px-4 py-3 text-sm font-medium text-[#6f614c]">Loading lead composer...</div> : null}
       {!loading ? (
         <section className="space-y-5">
@@ -526,11 +527,11 @@ export default function NewLeadPage() {
                 <span className="inline-flex rounded-full border border-[#ddd3c2] bg-white/85 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.24em] text-[#7c6d55]">
                   Lead Intake
                 </span>
-                <h2 className="text-4xl font-semibold tracking-tight text-[#060710] md:text-[3rem] md:leading-[1.04]">
-                  Create a lead with stronger context, ownership, and address detail.
+                <h2 className="text-3xl font-semibold tracking-tight text-[#060710] md:text-[2.2rem] md:leading-[1.08]">
+                  New Lead
                 </h2>
-                <p className="max-w-3xl text-sm leading-7 text-[#746853] md:text-base">
-                  Capture the decision maker, map the product, assign the first owner, and push the opportunity into the CRM from one cleaner intake surface.
+                <p className="max-w-3xl text-sm leading-7 text-[#746853]">
+                  Capture the decision maker, map the product, assign the first owner, and push the opportunity into the CRM.
                 </p>
               </div>
                 <div className="grid gap-3 xl:min-w-[420px] xl:max-w-[460px] xl:w-full sm:grid-cols-2">
@@ -618,20 +619,20 @@ export default function NewLeadPage() {
                   { label: "Team", name: "team_id", type: "select", options: teams.map((team) => ({ value: team.team_id, label: teamSelectLabel(team) })), hidden: !teamSelectorVisible, error: errors.team_id },
                   { label: "Product or Service", name: "product_id", type: "select", options: filteredProducts.map((product) => ({ value: product.product_id, label: product.name })), error: errors.product_id },
                   { label: canAssign ? (isSuperAdmin ? "Assign Lead Owner" : "Assign To") : null, name: "assigned_to", type: "select", options: assignableUsers.map((user) => ({ value: user.user_id, label: `${user.name} | ${user.role}` })), hidden: !canAssign, error: errors.assigned_to },
-                  { label: "Contact Person Name", name: "contact_person", type: "input", error: errors.contact_person },
-                  { label: "Company Name", name: "company_name", type: "input", error: errors.company_name },
-                  { label: "Email Address", name: "email", type: "input", inputType: "email", error: errors.email },
-                  { label: "Phone Number", name: "phone", type: "input", error: errors.phone },
+                  { label: "Contact Person Name", name: "contact_person", type: "input", error: errors.contact_person, placeholder: "John Doe" },
+                  { label: "Company Name", name: "company_name", type: "input", error: errors.company_name, placeholder: "Acme Corp" },
+                  { label: "Email Address", name: "email", type: "input", inputType: "email", error: errors.email, placeholder: "john@acme.com" },
+                  { label: "Phone Number", name: "phone", type: "input", error: errors.phone, placeholder: "+91 98765 43210" },
                   { label: "Industry", name: "industry", type: "select", options: INDUSTRY_OPTIONS },
                   { label: "Lead Source", name: "lead_source", type: "select", options: LEAD_SOURCE_OPTIONS },
                   { label: "Follow-up Date", name: "follow_up_date", type: "input", inputType: "datetime-local" },
-                  { label: "Estimated Deal Value (INR)", name: "estimated_value", type: "input", inputType: "number" },
+                  { label: "Estimated Deal Value (INR)", name: "estimated_value", type: "input", inputType: "number", placeholder: "50000" },
                   { label: "Priority Level", name: "priority", type: "select", options: PRIORITY_OPTIONS },
-                  { label: "Street Address", name: "address_street", type: "input", className: "md:col-span-2" },
-                  { label: "City", name: "address_city", type: "input" },
-                  { label: "State", name: "address_state", type: "input" },
-                  { label: "Postal Code", name: "address_zip", type: "input" },
-                  { label: "Country", name: "address_country", type: "input" },
+                  { label: "Street Address", name: "address_street", type: "input", className: "md:col-span-2", placeholder: "123 Business Park" },
+                  { label: "City", name: "address_city", type: "input", placeholder: "Mumbai" },
+                  { label: "State", name: "address_state", type: "input", placeholder: "Maharashtra" },
+                  { label: "Postal Code", name: "address_zip", type: "input", placeholder: "400001" },
+                  { label: "Country", name: "address_country", type: "input", placeholder: "India" },
                 ].filter((field) => !field.hidden).map((field) => (
                   <label key={field.name} className={`space-y-2 ${field.className || ""}`}>
                     <span className={KICKER_CLASS}>{field.label}</span>
@@ -657,6 +658,7 @@ export default function NewLeadPage() {
                         className={INPUT_CLASS}
                         type={field.inputType || "text"}
                         min={field.name === "follow_up_date" ? minimumDateTime : undefined}
+                        placeholder={field.placeholder || ""}
                         value={form[field.name]}
                         onChange={(event) => handleFieldChange(field.name, event.target.value)}
                       />

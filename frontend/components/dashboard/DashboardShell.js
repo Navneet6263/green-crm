@@ -117,26 +117,26 @@ function SidebarNavItem({ item, active }) {
       scroll={false}
       onClick={active ? (event) => event.preventDefault() : undefined}
       className={cn(
-        "group flex items-center gap-3 rounded-[22px] px-3 py-3 text-sm font-semibold transition",
+        "group flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-sm font-medium transition",
         active
-          ? "bg-[#f3e1ae] text-[#060710] shadow-[0_14px_28px_rgba(203,169,82,0.22)]"
+          ? "bg-[#f3e1ae] text-[#060710] shadow-[0_8px_20px_rgba(203,169,82,0.18)]"
           : "text-[#3d3529] hover:bg-white/80 hover:text-[#060710]"
       )}
     >
       <span
         className={cn(
-          "grid h-11 w-11 place-items-center rounded-2xl transition",
+          "grid h-9 w-9 place-items-center rounded-xl transition",
           active
             ? "bg-white text-[#060710]"
             : "bg-[#f6efe2] text-[#927f5e] group-hover:bg-white"
         )}
       >
-        <DashboardIcon name={item.icon} className="h-4 w-4" />
+        <DashboardIcon name={item.icon} className="h-3.5 w-3.5" />
       </span>
       <span className="min-w-0 flex-1">
-        <span className={active ? "font-semibold" : "font-medium"}>{item.label}</span>
+        <span className={active ? "font-semibold text-[13px]" : "font-medium text-[13px]"}>{item.label}</span>
       </span>
-      {active ? <span className="h-2.5 w-2.5 rounded-full bg-[#cba952]" /> : null}
+      {active ? <span className="h-2 w-2 rounded-full bg-[#cba952]" /> : null}
     </Link>
   );
 }
@@ -398,7 +398,7 @@ export default function DashboardShell({ session, children, title, heroStats = [
       <aside
         ref={sidebarRef}
         className={cn(
-          "fixed inset-y-0 left-0 z-40 flex w-[312px] flex-col overflow-y-auto border-r border-[#eadfcd] bg-[linear-gradient(180deg,_rgba(255,255,255,0.98),_rgba(249,242,229,0.98))] px-5 py-6 shadow-[0_20px_70px_rgba(79,58,22,0.1)] transition-transform duration-300 lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-40 flex w-[280px] flex-col overflow-y-auto border-r border-[#eadfcd] bg-[linear-gradient(180deg,_rgba(255,255,255,0.98),_rgba(249,242,229,0.98))] px-4 py-5 shadow-[0_12px_40px_rgba(79,58,22,0.08)] transition-transform duration-300 lg:translate-x-0",
           navOpen ? "translate-x-0" : "-translate-x-[112%]"
         )}
       >
@@ -424,13 +424,13 @@ export default function DashboardShell({ session, children, title, heroStats = [
           </button>
         </div>
 
-        <nav className="mt-8 flex-1 space-y-6">
+        <nav className="mt-6 flex-1 space-y-5">
           {visibleSections.map((section) => (
             <div key={section.title}>
-              <span className="px-2 text-[11px] font-black uppercase tracking-[0.24em] text-[#9b8b71]">
+              <span className="px-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[#9b8b71]">
                 {section.title}
               </span>
-              <div className="mt-3 space-y-1.5">
+              <div className="mt-2 space-y-0.5">
                 {section.items.map((item) => (
                   <SidebarNavItem
                     key={item.href}
@@ -487,7 +487,7 @@ export default function DashboardShell({ session, children, title, heroStats = [
         ) : null}
       </aside>
 
-      <div className="min-h-screen py-0 lg:pl-[312px]">
+      <div className="min-h-screen py-0 lg:pl-[280px]">
         <div className="space-y-0">
           <header
             className={cn(
@@ -497,11 +497,11 @@ export default function DashboardShell({ session, children, title, heroStats = [
                 : "mx-4 mt-4 rounded-[30px] border border-[#eadfcd] bg-white/78 px-4 py-4 shadow-[0_18px_45px_rgba(79,58,22,0.08)] md:px-6"
             )}
           >
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div className="min-w-0">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
                   <button
-                    className="grid h-11 w-11 place-items-center rounded-2xl border border-[#eadfcd] bg-white/90 text-[#6f604a] lg:hidden"
+                    className="grid h-9 w-9 place-items-center rounded-xl border border-[#eadfcd] bg-white/90 text-[#6f604a] lg:hidden"
                     onClick={() => setNavOpen(true)}
                     aria-label="Open navigation"
                   >
@@ -513,7 +513,7 @@ export default function DashboardShell({ session, children, title, heroStats = [
                   </button>
                   {!hideTitle && title ? (
                     <div className="min-w-0">
-                      <h1 className="truncate text-[2rem] font-bold tracking-tight text-slate-900 md:text-[2.2rem]">{title}</h1>
+                      <h1 className="truncate text-xl font-bold tracking-tight text-slate-900 md:text-2xl">{title}</h1>
                     </div>
                   ) : null}
                 </div>
@@ -597,13 +597,12 @@ export default function DashboardShell({ session, children, title, heroStats = [
                   ) : null}
                 </div>
 
-                {!hideTitle ? (
                   <div className="relative" ref={accountRef}>
                   <button
                     className={cn(
                       "flex items-center gap-3",
                       hideTitle
-                        ? "rounded-[22px] px-0 py-0"
+                        ? "rounded-[22px] border border-[#eadfcd] bg-white/72 px-3 py-2 shadow-[0_10px_24px_rgba(79,58,22,0.06)]"
                         : "rounded-[24px] border border-[#eadfcd] bg-white px-4 py-3 shadow-sm"
                     )}
                     onClick={() => setShowAccountMenu((current) => !current)}
@@ -643,18 +642,17 @@ export default function DashboardShell({ session, children, title, heroStats = [
                     </div>
                   ) : null}
                   </div>
-                ) : null}
               </div>
             </div>
           </header>
 
-          <div className={cn("space-y-5 pb-6 pr-4 md:pr-6", hideTitle && "px-5 pt-5 md:px-7 md:pt-6")}>
+          <div className={cn("space-y-5 pb-6", hideTitle ? "px-5 pt-5 md:px-7 md:pt-6" : "px-4 pt-2 md:px-6")}>
             {heroStats.length ? (
-              <section className={cn("grid gap-3", heroStats.length >= 4 ? "md:grid-cols-2 xl:grid-cols-4" : "md:grid-cols-2")}>
+              <section className={cn("grid gap-2", heroStats.length >= 4 ? "md:grid-cols-2 xl:grid-cols-4" : "md:grid-cols-2")}>
                 {heroStats.map((stat) => (
-                  <article key={stat.label} className="rounded-[26px] border border-[#eadfcd] bg-white px-5 py-4 shadow-[0_12px_30px_rgba(79,58,22,0.06)]">
-                    <span className="text-[10px] font-black uppercase tracking-[0.24em] text-[#8f816a]">{stat.label}</span>
-                    <strong className="mt-3 block text-[1.8rem] font-bold leading-none" style={{ color: stat.color || "#173e73" }}>
+                  <article key={stat.label} className="rounded-xl border border-[#eadfcd] bg-white px-4 py-3">
+                    <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#8f816a]">{stat.label}</span>
+                    <strong className="mt-1 block text-xl font-bold leading-none" style={{ color: stat.color || "#173e73" }}>
                       {formatHeroValue(stat.value)}
                     </strong>
                   </article>

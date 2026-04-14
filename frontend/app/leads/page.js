@@ -29,6 +29,7 @@ import {
   withAssignedWorkflowUser,
   workflowUsersEmptyMessage,
 } from "../../lib/workflowOwners";
+import { AlertError, AlertSuccess } from "../../components/ui/Alert";
 
 const OK_ROLES = ["super-admin", "platform-admin", "platform-manager", "admin", "manager", "sales", "marketing", "viewer"];
 const MANAGER_ROLES = ["super-admin", "platform-admin", "platform-manager", "admin", "manager"];
@@ -682,8 +683,8 @@ export default function LeadsPage() {
 
   return (
     <DashboardShell session={session} title={["sales", "marketing"].includes(role) ? "My Leads" : "Lead Pipeline"} eyebrow={isPlatformConsole ? `Platform · ${isSuper ? "All Tenants" : "Assigned Companies"}` : "Sales Workspace"} hideTitle>
-      {error ? <div className="alert error">{error}</div> : null}
-      {!error && notice ? <div className="alert">{notice}</div> : null}
+      <AlertError message={error} onDismiss={() => setError("")} />
+      {!error ? <AlertSuccess message={notice} onDismiss={() => setNotice("")} /> : null}
       {showBlockingLoader ? <div className="alert">Loading leads workspace...</div> : null}
       {!booting && (!loading || leads.length || totalMatched) ? (
         <section className="lead-board-shell">
@@ -1126,12 +1127,12 @@ export default function LeadsPage() {
                             </label>
                           ) : null}
 
-                          <button className="flex flex-1 items-start gap-4 text-left" type="button" onClick={() => setSelectedId(lead.lead_id)}>
-                            <div className="grid h-14 w-14 shrink-0 place-items-center rounded-[20px] bg-[#10111d] text-lg font-bold text-white shadow-[0_18px_30px_rgba(6,7,16,0.16)]">
+                          <div className="flex flex-1 items-start gap-4">
+                            <div className="grid h-14 w-14 shrink-0 cursor-pointer place-items-center rounded-[20px] bg-[#10111d] text-lg font-bold text-white shadow-[0_18px_30px_rgba(6,7,16,0.16)]" role="button" tabIndex={0} onClick={() => setSelectedId(lead.lead_id)} onKeyDown={(e) => e.key === "Enter" && setSelectedId(lead.lead_id)}>
                               {initials(lead.contact_person, lead.company_name, lead.email)}
                             </div>
-                            <div className="min-w-0 flex-1 space-y-3">
-                              <div className="min-w-0 space-y-3">
+                            <div className="min-w-0 flex-1 space-y-2">
+                              <div className="min-w-0 cursor-pointer" role="button" tabIndex={0} onClick={() => setSelectedId(lead.lead_id)} onKeyDown={(e) => e.key === "Enter" && setSelectedId(lead.lead_id)}>
                                 <div className="flex flex-wrap gap-2">
                                   {lead.product_name ? (
                                     <span className="inline-flex rounded-full border border-[#eadfcd] bg-[#fff6e4] px-3 py-1 text-[11px] font-bold text-[#7a6230]">
@@ -1149,25 +1150,25 @@ export default function LeadsPage() {
                                     </span>
                                   ) : null}
                                 </div>
-                                <div className="min-w-0">
+                                <div className="mt-2 min-w-0">
                                   <h4 className="truncate text-lg font-semibold text-[#060710]">{primaryName}</h4>
                                   {secondaryName ? <p className="mt-1 text-sm text-[#746853]">{secondaryName}</p> : null}
                                 </div>
-                                <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-[#7a6b57]">
-                                  <span>{lead.contact_person || "No contact name"}</span>
-                                  <span>{lead.email || "No email"}</span>
-                                  <span>{lead.phone || "No phone"}</span>
-                                  {locationLabel ? <span>{locationLabel}</span> : null}
-                                </div>
-                                <div className="flex flex-wrap gap-x-8 gap-y-2 text-sm text-[#8f816a]">
-                                  <span>Source: {nice(lead.lead_source || "website")}</span>
-                                  <span>Value: {money(lead.estimated_value)}</span>
-                                  <span>Created: {when(lead.created_at)}</span>
-                                  <span>By: {lead.created_by_name || "Unknown"}</span>
-                                </div>
+                              </div>
+                              <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-[#7a6b57] select-text">
+                                <span>{lead.contact_person || "No contact name"}</span>
+                                <span className="cursor-text">{lead.email || "No email"}</span>
+                                <span className="cursor-text">{lead.phone || "No phone"}</span>
+                                {locationLabel ? <span>{locationLabel}</span> : null}
+                              </div>
+                              <div className="flex flex-wrap gap-x-8 gap-y-1 text-sm text-[#8f816a]">
+                                <span>Source: {nice(lead.lead_source || "website")}</span>
+                                <span>Value: {money(lead.estimated_value)}</span>
+                                <span>Created: {when(lead.created_at)}</span>
+                                <span>By: {lead.created_by_name || "Unknown"}</span>
                               </div>
                             </div>
-                          </button>
+                          </div>
                         </div>
 
                         <div className="space-y-3 xl:min-w-[220px] xl:max-w-[240px] xl:self-start">
@@ -1181,16 +1182,17 @@ export default function LeadsPage() {
                               {nice(lead.priority || "medium")}
                             </span>
                             {canEdit ? (
-                              <LeadQuickStatusControl
-                                lead={selectedLead}
-                                token={session?.token}
-                                onUpdated={handleInlineStatusUpdate}
-                                hideLabel
-                                className="xl:w-[176px]"
-                                selectClassName="min-h-[36px] w-full bg-white/95 pr-8 text-[11px] shadow-none"
-                                notePanelClassName="xl:min-w-[220px]"
-                                placeholder="Why is this lead moving to the new status?"
-                              />
+                              
+                                <LeadQuickStatusControl
+                                  lead={selectedLead}
+                                  token={session?.token}
+                                  onUpdated={handleInlineStatusUpdate}
+                                  hideLabel
+                                  className="xl:w-[220px]"
+                                  selectClassName="min-h-[36px] w-full bg-white/95 pr-8 text-[11px] shadow-none"
+                                  notePanelClassName="xl:w-[280px]"
+                                  placeholder="Why is this lead moving to the new status?"
+                                />
                             ) : null}
                           </div>
                           <div className="grid gap-2">

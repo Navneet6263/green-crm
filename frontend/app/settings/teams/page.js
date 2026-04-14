@@ -15,6 +15,7 @@ import {
   loadUsersForScope,
   resolveScopedCompanyId,
 } from "../../../lib/teamScope";
+import { AlertError, AlertSuccess } from "../../../components/ui/Alert";
 
 const ALLOWED_ROLES = ["super-admin", "platform-admin", "platform-manager", "admin", "manager"];
 const MANAGER_CAPABLE_ROLES = new Set(["super-admin", "platform-admin", "platform-manager", "admin", "manager"]);
@@ -99,6 +100,28 @@ function buildTeamPath(teamId, companyId) {
 
 function buildAssignableUsersPath(teamId, companyId) {
   return companyId ? `/teams/${teamId}/assignable-users?company_id=${companyId}` : `/teams/${teamId}/assignable-users`;
+}
+
+function normalizeActionUserId(value, fallback = "") {
+  if (!value) {
+    return String(fallback || "").trim();
+  }
+
+  if (typeof value === "string" || typeof value === "number") {
+    return String(value).trim();
+  }
+
+  if (typeof value === "object") {
+    if (typeof value.preventDefault === "function" || value.currentTarget || value.target) {
+      return String(fallback || "").trim();
+    }
+
+    if (value.user_id) {
+      return String(value.user_id).trim();
+    }
+  }
+
+  return String(fallback || "").trim();
 }
 
 export default function TeamSettingsPage() {
@@ -281,6 +304,26 @@ export default function TeamSettingsPage() {
       setError(formatScopedError(requestError, "Failed to load team workspace."));
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function refreshSelectedTeamWorkspace(activeSession = session, companyId = scopedCompanyId, teamId = selectedTeamId) {
+    if (!activeSession?.token || !companyId || !teamId) {
+      return;
+    }
+
+    try {
+      const [teamItems, detail, assignable] = await Promise.all([
+        loadTeamsForCompany(activeSession.token, companyId),
+        apiRequest(buildTeamPath(teamId, companyId), { token: activeSession.token }),
+        apiRequest(buildAssignableUsersPath(teamId, companyId), { token: activeSession.token }),
+      ]);
+
+      setTeams(teamItems);
+      setTeamDetail(detail);
+      setAssignableUsers(Array.isArray(assignable) ? assignable : []);
+    } catch (requestError) {
+      throw new Error(formatScopedError(requestError, "Failed to refresh the selected team."));
     }
   }
 
@@ -520,7 +563,9 @@ export default function TeamSettingsPage() {
   }
 
   async function addMember(userId = memberCandidateId) {
-    if (!session?.token || !selectedTeamId || !userId) {
+    const resolvedUserId = normalizeActionUserId(userId, memberCandidateId);
+
+    if (!session?.token || !selectedTeamId || !resolvedUserId) {
       return;
     }
 
@@ -534,12 +579,12 @@ export default function TeamSettingsPage() {
         token: session.token,
         body: {
           company_id: scopedCompanyId,
-          user_id: userId,
+          user_id: resolvedUserId,
         },
       });
 
       setMemberCandidateId("");
-      await refreshWorkspace(session, scopedCompanyId, selectedTeamId);
+      await refreshSelectedTeamWorkspace(session, scopedCompanyId, selectedTeamId);
       setMessage("Member added to the selected team.");
     } catch (requestError) {
       setError(formatScopedError(requestError, "Failed to add team member."));
@@ -563,7 +608,7 @@ export default function TeamSettingsPage() {
         token: session.token,
       });
 
-      await refreshWorkspace(session, scopedCompanyId, selectedTeamId);
+      await refreshSelectedTeamWorkspace(session, scopedCompanyId, selectedTeamId);
       setMessage("Member removed from the selected team.");
     } catch (requestError) {
       setError(formatScopedError(requestError, "Failed to remove team member."));
@@ -573,7 +618,9 @@ export default function TeamSettingsPage() {
   }
 
   async function addManager(userId = managerCandidateId) {
-    if (!session?.token || !selectedTeamId || !userId) {
+    const resolvedUserId = normalizeActionUserId(userId, managerCandidateId);
+
+    if (!session?.token || !selectedTeamId || !resolvedUserId) {
       return;
     }
 
@@ -587,12 +634,12 @@ export default function TeamSettingsPage() {
         token: session.token,
         body: {
           company_id: scopedCompanyId,
-          user_id: userId,
+          user_id: resolvedUserId,
         },
       });
 
       setManagerCandidateId("");
-      await refreshWorkspace(session, scopedCompanyId, selectedTeamId);
+      await refreshSelectedTeamWorkspace(session, scopedCompanyId, selectedTeamId);
       setMessage("Manager assigned. Managers are also added to the member roster automatically.");
     } catch (requestError) {
       setError(formatScopedError(requestError, "Failed to assign team manager."));
@@ -616,7 +663,7 @@ export default function TeamSettingsPage() {
         token: session.token,
       });
 
-      await refreshWorkspace(session, scopedCompanyId, selectedTeamId);
+      await refreshSelectedTeamWorkspace(session, scopedCompanyId, selectedTeamId);
       setMessage("Manager removed. Remove them from members too if they should leave the team entirely.");
     } catch (requestError) {
       setError(formatScopedError(requestError, "Failed to remove team manager."));
@@ -628,8 +675,8 @@ export default function TeamSettingsPage() {
   return (
     <DashboardShell session={session} title="Teams" hideTitle heroStats={[]}>
       <div className="mx-auto grid max-w-[1380px] gap-5">
-        {error ? <div className="rounded-[20px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div> : null}
-        {message ? <div className="rounded-[20px] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">{message}</div> : null}
+        <AlertError message={error} onDismiss={() => setError("")} />
+        <AlertSuccess message={message} onDismiss={() => setMessage("")} />
 
         <section className={HERO}>
           <div className="space-y-6">
@@ -639,12 +686,11 @@ export default function TeamSettingsPage() {
                   Team Workspace
                 </span>
                 <div>
-                  <h2 className="text-[2rem] font-semibold tracking-tight text-[#060710] md:text-[3rem] md:leading-[1.02]">
-                    Make team ownership explicit before records start moving.
+                  <h2 className="text-[2rem] font-semibold tracking-tight text-[#060710] md:text-[2.2rem] md:leading-[1.08]">
+                    Team Workspace
                   </h2>
-                  <p className="mt-3 max-w-3xl text-sm leading-7 text-[#746853] md:text-base">
-                    Create the team, add its members, and assign managers from one workspace so leads, customers, tasks,
-                    and team-scoped products stay understandable for real users.
+                  <p className="mt-2 max-w-3xl text-sm leading-7 text-[#746853]">
+                    Create teams, add members, and assign managers so leads, customers, and tasks stay scoped.
                   </p>
                 </div>
               </div>
@@ -1020,7 +1066,7 @@ export default function TeamSettingsPage() {
                             </option>
                           ))}
                         </select>
-                        <button className={`${PRIMARY} w-full`} type="button" onClick={addManager} disabled={!managerCandidateId || workingKey === "manager:add"}>
+                        <button className={`${PRIMARY} w-full`} type="button" onClick={() => addManager()} disabled={!managerCandidateId || workingKey === "manager:add"}>
                           <DashboardIcon name="users" className="h-4 w-4" />
                           {workingKey === "manager:add" ? "Assigning..." : "Assign"}
                         </button>
@@ -1101,7 +1147,7 @@ export default function TeamSettingsPage() {
                                 </option>
                               ))}
                             </select>
-                            <button className={`${PRIMARY} w-full`} type="button" onClick={addMember} disabled={!memberCandidateId || workingKey === "member:add"}>
+                            <button className={`${PRIMARY} w-full`} type="button" onClick={() => addMember()} disabled={!memberCandidateId || workingKey === "member:add"}>
                               <DashboardIcon name="users" className="h-4 w-4" />
                               {workingKey === "member:add" ? "Adding..." : "Add"}
                             </button>

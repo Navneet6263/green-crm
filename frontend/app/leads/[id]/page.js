@@ -15,6 +15,7 @@ import {
   scopedUsersEmptyMessage,
   teamBadgeLabel,
 } from "../../../lib/teamScope";
+import { AlertError, AlertSuccess } from "../../../components/ui/Alert";
 import {
   formatWorkflowOwnerIdentity,
   withAssignedWorkflowUser,
@@ -221,8 +222,8 @@ export default function LeadDetailPage() {
 
   return (
     <DashboardShell session={session} title={lead ? lead.company_name : "Lead Detail"} hideTitle={hideWorkspaceTitle} heroStats={[]}>
-      {error ? <div className="rounded-[20px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div> : null}
-      {!error && notice ? <div className="rounded-[20px] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">{notice}</div> : null}
+      <AlertError message={error} onDismiss={() => setError("")} />
+      {!error ? <AlertSuccess message={notice} onDismiss={() => setNotice("")} /> : null}
       {loading ? <div className="rounded-[20px] border border-[#eadfcd] bg-white px-4 py-3 text-sm font-medium text-[#6f614c]">Loading lead details...</div> : null}
       {!loading && lead ? (
         <section className="space-y-5">
@@ -242,11 +243,11 @@ export default function LeadDetailPage() {
                       Lead Profile
                     </span>
                     <div>
-                      <h2 className="text-4xl font-semibold tracking-tight text-[#060710] md:text-[3.15rem] md:leading-[1.02]">
+                      <h2 className="text-3xl font-semibold tracking-tight text-[#060710] md:text-[2.2rem] md:leading-[1.08]">
                         {leadName}
                       </h2>
-                      <p className="mt-3 max-w-3xl text-sm leading-7 text-[#6f614c] md:text-base">
-                        Keep the CRM context tight: contact, status, follow-up, and handoff readiness in one place.
+                      <p className="mt-2 max-w-3xl text-sm leading-7 text-[#6f614c]">
+                        {lead.company_name && lead.company_name !== leadName ? lead.company_name : "Lead profile and workflow context"}
                       </p>
                     </div>
                   </div>
@@ -270,12 +271,20 @@ export default function LeadDetailPage() {
                   </div>
                   <div className={SOFT_PANEL_CLASS}>
                     <span className={KICKER_CLASS}>Email</span>
-                    <strong className="mt-3 block break-words text-base font-black text-[#060710]">{lead.email || "No email"}</strong>
+                    {lead.email ? (
+                      <a href={`mailto:${lead.email}`} className="mt-3 block break-words text-base font-black text-[#060710] underline decoration-[#eadfcd] underline-offset-4 transition hover:decoration-[#d7b258]">{lead.email}</a>
+                    ) : (
+                      <strong className="mt-3 block text-base font-black text-[#060710]">No email</strong>
+                    )}
                     <p className="mt-2 text-sm leading-6 text-[#756752]">Primary inbox for outreach and handoffs.</p>
                   </div>
                   <div className={SOFT_PANEL_CLASS}>
                     <span className={KICKER_CLASS}>Phone</span>
-                    <strong className="mt-3 block text-base font-black text-[#060710]">{lead.phone || "No phone"}</strong>
+                    {lead.phone ? (
+                      <a href={`tel:${String(lead.phone).replace(/[^\d+]/g, "")}`} className="mt-3 block text-base font-black text-[#060710] underline decoration-[#eadfcd] underline-offset-4 transition hover:decoration-[#d7b258]">{lead.phone}</a>
+                    ) : (
+                      <strong className="mt-3 block text-base font-black text-[#060710]">No phone</strong>
+                    )}
                     <p className="mt-2 text-sm leading-6 text-[#756752]">Call-ready number for follow-up activity.</p>
                   </div>
                 </div>

@@ -21,6 +21,7 @@ import {
   teamSelectLabel,
   teamSelectionRequiredMessage,
 } from "../../../../lib/teamScope";
+import { AlertError } from "../../../../components/ui/Alert";
 
 const PANEL_CLASS = "rounded-[30px] border border-[#eadfcd] bg-white/82 p-5 shadow-[0_14px_36px_rgba(79,58,22,0.06)] md:p-6";
 const SOFT_PANEL_CLASS = "rounded-[24px] border border-[#eadfcd] bg-[#fffaf1] p-4";
@@ -383,7 +384,7 @@ export default function EditLeadPage() {
 
   return (
     <DashboardShell session={session} title="Edit Lead" hideTitle={hideTitle} heroStats={[]}>
-      {error ? <div className="rounded-[20px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div> : null}
+      <AlertError message={error} onDismiss={() => setError("")} />
       {loading ? <div className="rounded-[20px] border border-[#eadfcd] bg-white px-4 py-3 text-sm font-medium text-[#6f614c]">Loading lead...</div> : null}
       {!loading && form ? (
         <section className="space-y-5">
@@ -402,11 +403,11 @@ export default function EditLeadPage() {
                     Edit Workspace
                   </span>
                   <div>
-                    <h2 className="text-4xl font-semibold tracking-tight text-[#060710] md:text-[3.15rem] md:leading-[1.02]">
-                      Update this lead with clean structure and visible audit context.
+                    <h2 className="text-3xl font-semibold tracking-tight text-[#060710] md:text-[2.2rem] md:leading-[1.08]">
+                      Edit: {originalLead?.contact_person || originalLead?.company_name || "Lead"}
                     </h2>
-                    <p className="mt-4 max-w-3xl text-sm leading-7 text-[#746853]">
-                      Edit the commercial details, explain the change, and keep the workflow trail readable before you save.
+                    <p className="mt-3 max-w-3xl text-sm leading-7 text-[#746853]">
+                      Update commercial details and keep the workflow trail readable.
                     </p>
                   </div>
                 </div>

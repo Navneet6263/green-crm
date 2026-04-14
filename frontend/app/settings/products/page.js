@@ -21,6 +21,7 @@ import {
   teamSelectLabel,
   teamSelectionRequiredMessage,
 } from "../../../lib/teamScope";
+import { AlertError, AlertSuccess } from "../../../components/ui/Alert";
 
 const PANEL = "rounded-[30px] border border-[#eadfcd] bg-white/82 p-5 shadow-[0_14px_36px_rgba(79,58,22,0.06)] md:p-6";
 const HERO = "rounded-[36px] border border-[#eadfcd] bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.98),_rgba(250,241,221,0.98)_44%,_rgba(245,231,193,0.98)_100%)] p-6 shadow-[0_24px_70px_rgba(79,58,22,0.08)] md:p-8";
@@ -260,8 +261,8 @@ export default function ProductSettingsPage() {
   return (
     <DashboardShell session={session} title="Product Settings" hideTitle heroStats={[]}>
       <div className="mx-auto grid max-w-[1320px] gap-5">
-        {error ? <div className="rounded-[20px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div> : null}
-        {!error && notice ? <div className="rounded-[20px] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">{notice}</div> : null}
+        <AlertError message={error} onDismiss={() => setError("")} />
+        {!error ? <AlertSuccess message={notice} onDismiss={() => setNotice("")} /> : null}
 
         <section className={HERO}>
           <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
@@ -269,8 +270,8 @@ export default function ProductSettingsPage() {
               <div className="space-y-3">
                 <span className="inline-flex rounded-full border border-[#ddd3c2] bg-white/85 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.24em] text-[#7c6d55]">Product Desk</span>
                 <div>
-                  <h2 className="text-[2rem] font-semibold tracking-tight text-[#060710] md:text-[3rem] md:leading-[1.02]">Shape every product into one cleaner branded catalog.</h2>
-                  <p className="mt-3 max-w-3xl text-sm leading-7 text-[#746853] md:text-base">Create, recolor, activate, and refine your product list from one warmer control surface.</p>
+                  <h2 className="text-[2rem] font-semibold tracking-tight text-[#060710] md:text-[2.2rem] md:leading-[1.08]">Product Desk</h2>
+                  <p className="mt-2 max-w-3xl text-sm leading-7 text-[#746853]">Create, recolor, activate, and manage your product catalog.</p>
                 </div>
               </div>
 

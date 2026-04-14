@@ -10,6 +10,7 @@ import { apiRequest } from "../../../lib/api";
 import { buildCustomerNotes, parseCustomerProfile, stripCustomerProfile } from "../../../lib/customerProfile";
 import { loadSession } from "../../../lib/session";
 import { formatScopedError, teamBadgeLabel } from "../../../lib/teamScope";
+import { AlertError, AlertSuccess } from "../../../components/ui/Alert";
 
 const PANEL_CLASS = "rounded-[30px] border border-[#eadfcd] bg-white/82 p-5 shadow-[0_14px_36px_rgba(79,58,22,0.06)] md:p-6";
 const SOFT_PANEL_CLASS = "rounded-[24px] border border-[#eadfcd] bg-[#fffaf1] p-4";
@@ -181,8 +182,8 @@ export default function CustomerDetailPage() {
 
   return (
     <DashboardShell session={session} title={customer ? customer.company_name : "Customer Detail"} hideTitle={hideTitle} heroStats={[]}>
-      {error ? <div className="rounded-[20px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div> : null}
-      {!error && notice ? <div className="rounded-[20px] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">{notice}</div> : null}
+      <AlertError message={error} onDismiss={() => setError("")} />
+      {!error ? <AlertSuccess message={notice} onDismiss={() => setNotice("")} /> : null}
       {!customer ? <div className="rounded-[20px] border border-[#eadfcd] bg-white px-4 py-3 text-sm font-medium text-[#6f614c]">Loading customer...</div> : null}
       {customer ? (
         <section className="space-y-5">
@@ -211,11 +212,11 @@ export default function CustomerDetailPage() {
                       Customer Desk
                     </span>
                     <div>
-                      <h2 className="text-[2rem] font-semibold tracking-tight text-[#060710] md:text-[2.6rem] md:leading-[1.02]">
+                      <h2 className="text-[2rem] font-semibold tracking-tight text-[#060710] md:text-[2.2rem] md:leading-[1.08]">
                         {customer.company_name || customer.name}
                       </h2>
-                      <p className="mt-2 max-w-3xl text-sm leading-7 text-[#6f614c] md:text-base">
-                        {customer.name || "Primary contact"}{customer.email ? ` | ${customer.email}` : ""}{customer.phone ? ` | ${customer.phone}` : ""}
+                      <p className="mt-2 max-w-3xl text-sm leading-7 text-[#6f614c]">
+                        {customer.name || "Primary contact"}{customer.email ? <> | <a href={`mailto:${customer.email}`} className="underline decoration-[#eadfcd] underline-offset-4 hover:decoration-[#d7b258]">{customer.email}</a></> : ""}{customer.phone ? <> | <a href={`tel:${String(customer.phone).replace(/[^\d+]/g, "")}`} className="underline decoration-[#eadfcd] underline-offset-4 hover:decoration-[#d7b258]">{customer.phone}</a></> : ""}
                       </p>
                     </div>
                     <div className="flex flex-wrap gap-2">

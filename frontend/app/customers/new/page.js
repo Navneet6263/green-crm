@@ -20,6 +20,7 @@ import {
   teamSelectLabel,
   teamSelectionRequiredMessage,
 } from "../../../lib/teamScope";
+import { AlertError } from "../../../components/ui/Alert";
 
 const PANEL_CLASS = "rounded-[30px] border border-[#eadfcd] bg-white/82 p-5 shadow-[0_14px_36px_rgba(79,58,22,0.06)] md:p-6";
 const SOFT_PANEL_CLASS = "rounded-[24px] border border-[#eadfcd] bg-[#fffaf1] p-4";
@@ -250,7 +251,7 @@ export default function NewCustomerPage() {
 
   return (
     <DashboardShell session={session} title="Create Customer" hideTitle heroStats={[]}>
-      {error ? <div className="rounded-[20px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div> : null}
+      <AlertError message={error} onDismiss={() => setError("")} />
 
       <section className="space-y-5">
         <div className="grid gap-5 xl:grid-cols-[1.08fr_0.92fr]">
@@ -264,11 +265,11 @@ export default function NewCustomerPage() {
                   Customer Intake
                 </span>
                 <div>
-                  <h2 className="text-4xl font-semibold tracking-tight text-[#060710] md:text-[3.2rem] md:leading-[1.02]">
-                    Build a customer record with real account context, not just contact data.
+                  <h2 className="text-3xl font-semibold tracking-tight text-[#060710] md:text-[2.2rem] md:leading-[1.08]">
+                    New Customer
                   </h2>
-                  <p className="mt-4 max-w-3xl text-sm leading-7 text-[#746853] md:text-base">
-                    Capture the relationship owner, company basics, business summary, address, and opening note inside a sharper intake workspace.
+                  <p className="mt-3 max-w-3xl text-sm leading-7 text-[#746853]">
+                    Capture the relationship owner, company basics, and opening note.
                   </p>
                 </div>
               </div>

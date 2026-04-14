@@ -17,6 +17,7 @@ import {
   teamBadgeLabel,
   teamSelectLabel,
 } from "../../lib/teamScope";
+import { AlertError } from "../../components/ui/Alert";
 
 const ALLOWED_ROLES = ["super-admin", "platform-admin", "platform-manager", "admin", "manager", "sales", "marketing", "support", "viewer"];
 const STATUS_STYLES = {
@@ -24,16 +25,16 @@ const STATUS_STYLES = {
   inactive: { label: "Inactive", badge: "border-rose-200 bg-rose-50 text-rose-700" },
   suspended: { label: "Suspended", badge: "border-amber-200 bg-amber-50 text-amber-700" },
 };
-const PANEL_CLASS = "rounded-[30px] border border-[#eadfcd] bg-white/82 p-5 shadow-[0_14px_36px_rgba(79,58,22,0.06)] md:p-6";
-const SOFT_PANEL_CLASS = "rounded-[22px] border border-[#eadfcd] bg-[#fffaf1] p-4";
-const KICKER_CLASS = "text-[10px] font-black uppercase tracking-[0.28em] text-[#9a886d]";
-const INPUT_CLASS = "w-full rounded-[18px] border border-[#eadfcd] bg-white px-4 py-3 text-sm text-[#060710] outline-none transition placeholder:text-[#9c8e76] focus:border-[#d7b258] focus:ring-4 focus:ring-[#f6ead0]";
-const PRIMARY_BUTTON_CLASS = "inline-flex min-h-[46px] items-center justify-center gap-2 rounded-[18px] border border-[#d7b258] bg-[#f3dfab] px-4 py-2.5 text-sm font-semibold text-[#060710] shadow-[0_16px_30px_rgba(203,169,82,0.18)] transition hover:-translate-y-0.5 hover:bg-[#efd48f] disabled:cursor-not-allowed disabled:opacity-60";
-const SECONDARY_BUTTON_CLASS = "inline-flex min-h-[46px] items-center justify-center gap-2 rounded-[18px] border border-[#eadfcd] bg-white px-4 py-2.5 text-sm font-semibold text-[#5d503c] transition hover:-translate-y-0.5 hover:text-[#060710] disabled:cursor-not-allowed disabled:opacity-60";
-const SOFT_BUTTON_CLASS = "inline-flex min-h-[46px] items-center justify-center gap-2 rounded-[18px] border border-[#eadfcd] bg-[#fffaf1] px-4 py-2.5 text-sm font-semibold text-[#5d503c] transition hover:-translate-y-0.5 hover:bg-white hover:text-[#060710] disabled:cursor-not-allowed disabled:opacity-60";
-const DANGER_BUTTON_CLASS = "inline-flex min-h-[46px] items-center justify-center gap-2 rounded-[18px] border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:-translate-y-0.5 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60";
-const PILL_CLASS = "inline-flex rounded-full px-3 py-1 text-[11px] font-bold";
-const TINT_PANEL_CLASS = "rounded-[24px] border border-[#eadfcd] bg-[#fffaf1] p-4";
+const PANEL_CLASS = "rounded-2xl border border-[#eadfcd] bg-white/82 p-4 shadow-[0_8px_24px_rgba(79,58,22,0.05)] md:p-5";
+const SOFT_PANEL_CLASS = "rounded-xl border border-[#eadfcd] bg-[#fffaf1] p-3";
+const KICKER_CLASS = "text-[10px] font-bold uppercase tracking-[0.22em] text-[#9a886d]";
+const INPUT_CLASS = "w-full rounded-xl border border-[#eadfcd] bg-white px-3.5 py-2.5 text-sm text-[#060710] outline-none transition placeholder:text-[#9c8e76] focus:border-[#d7b258] focus:ring-2 focus:ring-[#f6ead0]";
+const PRIMARY_BUTTON_CLASS = "inline-flex min-h-[40px] items-center justify-center gap-2 rounded-xl border border-[#d7b258] bg-[#f3dfab] px-4 py-2 text-[13px] font-semibold text-[#060710] shadow-[0_6px_18px_rgba(203,169,82,0.14)] transition hover:-translate-y-0.5 hover:bg-[#efd48f] disabled:cursor-not-allowed disabled:opacity-60";
+const SECONDARY_BUTTON_CLASS = "inline-flex min-h-[40px] items-center justify-center gap-2 rounded-xl border border-[#eadfcd] bg-white px-4 py-2 text-[13px] font-semibold text-[#5d503c] transition hover:-translate-y-0.5 hover:text-[#060710] disabled:cursor-not-allowed disabled:opacity-60";
+const SOFT_BUTTON_CLASS = "inline-flex min-h-[40px] items-center justify-center gap-2 rounded-xl border border-[#eadfcd] bg-[#fffaf1] px-4 py-2 text-[13px] font-semibold text-[#5d503c] transition hover:-translate-y-0.5 hover:bg-white hover:text-[#060710] disabled:cursor-not-allowed disabled:opacity-60";
+const DANGER_BUTTON_CLASS = "inline-flex min-h-[40px] items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-[13px] font-semibold text-rose-700 transition hover:-translate-y-0.5 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60";
+const PILL_CLASS = "inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold";
+const TINT_PANEL_CLASS = "rounded-xl border border-[#eadfcd] bg-[#fffaf1] p-3";
 const buildPath = (path, params = {}) => {
   const query = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
@@ -81,13 +82,13 @@ function initials(name = "Customer") {
 function MetricCard({ label, value, icon, tint }) {
   return (
     <article className={PANEL_CLASS}>
-      <div className="flex items-start justify-between gap-4">
-        <div className="space-y-1">
-          <p className={KICKER_CLASS}>{label}</p>
-          <h3 className="text-[1.7rem] font-black leading-none text-slate-900">{value}</h3>
+      <div className="flex items-start justify-between gap-3">
+        <div className="space-y-0.5">
+          <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-[#9a886d]">{label}</p>
+          <h3 className="text-xl font-bold leading-none text-slate-900">{value}</h3>
         </div>
-        <div className={`grid h-12 w-12 place-items-center rounded-2xl ${tint}`}>
-          <DashboardIcon name={icon} className="h-5 w-5" />
+        <div className={`grid h-10 w-10 place-items-center rounded-xl ${tint}`}>
+          <DashboardIcon name={icon} className="h-4 w-4" />
         </div>
       </div>
     </article>
@@ -97,8 +98,8 @@ function MetricCard({ label, value, icon, tint }) {
 function StatCell({ label, value, danger = false }) {
   return (
     <div className={SOFT_PANEL_CLASS}>
-      <span className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">{label}</span>
-      <strong className={`mt-2 block text-[15px] font-bold ${danger ? "text-rose-600" : "text-slate-900"}`}>{value}</strong>
+      <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">{label}</span>
+      <strong className={`mt-1 block text-[13px] font-semibold ${danger ? "text-rose-600" : "text-slate-900"}`}>{value}</strong>
     </div>
   );
 }
@@ -273,7 +274,7 @@ export default function CustomersPage() {
   return (
     <DashboardShell session={session} title="Customers" hideTitle heroStats={[]}>
       <div className="mx-auto grid max-w-[1280px] gap-5">
-        {error ? <div className={`${PANEL_CLASS} border-rose-200 bg-rose-50 px-5 py-4 text-sm font-semibold text-rose-700`}>{error}</div> : null}
+        {error ? <AlertError message={error} onDismiss={() => setError("")} /> : null}
         {loading ? <div className={`${PANEL_CLASS} px-5 py-4 text-sm font-semibold text-slate-600`}>Loading customers...</div> : null}
         {!loading ? (
           <>
@@ -385,33 +386,25 @@ export default function CustomersPage() {
                 const summary = customerProfileSummary(parseCustomerProfile(customer.notes));
 
                 return (
-                  <article key={customer.customer_id} className={`${PANEL_CLASS} flex flex-col gap-5 overflow-hidden`}>
-                    <div className="flex flex-wrap items-start justify-between gap-4">
-                      <div className="flex min-w-0 items-start gap-4">
-                        <div className="grid h-14 w-14 shrink-0 place-items-center rounded-[20px] bg-[linear-gradient(145deg,#10111d_0%,#2a2431_100%)] text-base font-black text-white shadow-[0_18px_28px_rgba(6,7,16,0.18)]">
+                  <article key={customer.customer_id} className={`${PANEL_CLASS} flex flex-col gap-4 overflow-hidden`}>
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="flex min-w-0 items-start gap-3">
+                        <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[linear-gradient(145deg,#10111d_0%,#2a2431_100%)] text-sm font-bold text-white">
                           {initials(customer.name || customer.company_name || "Customer")}
                         </div>
-                        <div className="min-w-0 space-y-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className={KICKER_CLASS}>Account</span>
-                            {customer.customer_id ? (
-                              <span className="rounded-full border border-[#eadfcd] bg-[#fffaf1] px-2.5 py-1 text-[11px] font-bold text-[#7c6d55]">
-                                {customer.customer_id}
-                              </span>
-                            ) : null}
-                          </div>
-                          <h3 className="truncate text-[1.55rem] font-black leading-tight tracking-tight text-slate-900">
+                        <div className="min-w-0 space-y-0.5">
+                          <h3 className="truncate text-base font-bold leading-tight tracking-tight text-slate-900">
                             {customer.name || "Unnamed customer"}
                           </h3>
-                          <p className="text-sm font-medium text-[#736650]">
-                            {customer.company_name || "No company name"}
+                          <p className="text-xs text-[#736650]">
+                            {customer.company_name || "No company"}
                           </p>
                         </div>
                       </div>
                       <span className={`${PILL_CLASS} border ${tone.badge}`}>{tone.label}</span>
                     </div>
 
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-1.5">
                       <span className={`${PILL_CLASS} border border-[#eadfcd] bg-[#fff4d9] text-[#8d6e27]`}>Notes {notesCount}</span>
                       <span className={`${PILL_CLASS} border border-slate-200 bg-slate-100 text-slate-600`}>{customer.assigned_to_name || "Unassigned"}</span>
                       {teamBadgeLabel(customer) ? <span className={`${PILL_CLASS} border border-[#eadfcd] bg-white text-[#7c6d55]`}>{teamBadgeLabel(customer)}</span> : null}
@@ -420,18 +413,18 @@ export default function CustomersPage() {
                       </span>
                     </div>
 
-                    <div className="grid gap-4 xl:grid-cols-[1.08fr_0.92fr]">
-                      <div className="space-y-4">
-                        <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="grid gap-3 xl:grid-cols-[1.08fr_0.92fr]">
+                      <div className="space-y-3">
+                        <div className="grid gap-2 sm:grid-cols-2">
                           <div className={`${TINT_PANEL_CLASS} sm:col-span-2`}>
-                            <div className="grid gap-3 sm:grid-cols-2">
+                            <div className="grid gap-2 sm:grid-cols-2">
                               <div>
-                                <span className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">Email</span>
-                                <strong className="mt-2 block break-words text-[15px] font-bold text-slate-900">{customer.email || "No email"}</strong>
+                                <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">Email</span>
+                                <strong className="mt-1 block break-words text-[13px] font-semibold text-slate-900">{customer.email || "No email"}</strong>
                               </div>
                               <div>
-                                <span className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">Phone</span>
-                                <strong className="mt-2 block text-[15px] font-bold text-slate-900">{customer.phone || "No phone"}</strong>
+                                <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">Phone</span>
+                                <strong className="mt-1 block text-[13px] font-semibold text-slate-900">{customer.phone || "No phone"}</strong>
                               </div>
                             </div>
                           </div>
