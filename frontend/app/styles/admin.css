@@ -13,17 +13,11 @@
   box-shadow: 0 18px 40px rgba(28, 107, 255, 0.08);
 }
 
-.ops-kicker {
-  color: #2a67dc;
-}
-
-.ops-overview-copy h2,
 .ops-panel-header h3,
 .ops-lead-copy h4 {
   color: #173e73;
 }
 
-.ops-overview-copy p,
 .ops-panel-header p,
 .ops-company-copy p,
 .ops-user-copy p,
@@ -37,7 +31,6 @@
 .ops-company-card,
 .ops-user-card,
 .ops-lead-card,
-.ops-stage-card,
 .ops-mini-row,
 .ops-stat-line {
   background:

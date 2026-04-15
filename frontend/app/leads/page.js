@@ -6,6 +6,19 @@ import { useRouter } from "next/navigation";
 import DashboardShell from "../../components/dashboard/DashboardShell";
 import DashboardIcon from "../../components/dashboard/icons";
 import LeadQuickStatusControl from "../../components/leads/LeadQuickStatusControl";
+import LeadFiltersSection from "../../components/leads/filters/LeadFiltersSection";
+import {
+  LEAD_DATE_PRESET_OPTIONS,
+  LEAD_PRIORITY_OPTIONS,
+  LEAD_STATUS_OPTIONS,
+  LEAD_WORKFLOW_STAGE_OPTIONS,
+} from "../../components/leads/filters/leadFilterOptions";
+import {
+  buildLeadSourceOptions,
+  ensureCurrentOption,
+  getDatePresetRange,
+  titleize,
+} from "../../components/leads/filters/leadFilterUtils";
 import { apiRequest } from "../../lib/api";
 import {
   BULK_IMPORT_COLUMNS,
@@ -80,7 +93,8 @@ const leadSecondaryName = (lead = {}) => {
 export default function LeadsPage() {
   const router = useRouter();
   const [session, setSession] = useState(null), [companies, setCompanies] = useState([]), [teams, setTeams] = useState([]), [team, setTeam] = useState([]), [leads, setLeads] = useState([]), [productOptions, setProductOptions] = useState([]), [leadMeta, setLeadMeta] = useState({ page: 1, page_size: LEADS_PAGE_SIZE, total: 0, total_pages: 1 });
-  const [selectedId, setSelectedId] = useState(""), [selected, setSelected] = useState(null), [search, setSearch] = useState(""), [status, setStatus] = useState("all"), [product, setProduct] = useState("all"), [company, setCompany] = useState("all"), [teamFilter, setTeamFilter] = useState("all"), [page, setPage] = useState(1), [picked, setPicked] = useState([]), [bulkOwner, setBulkOwner] = useState(""), [bulkNote, setBulkNote] = useState(""), [owner, setOwner] = useState("");
+  const [selectedId, setSelectedId] = useState(""), [selected, setSelected] = useState(null), [search, setSearch] = useState(""), [status, setStatus] = useState("all"), [product, setProduct] = useState("all"), [priority, setPriority] = useState("all"), [source, setSource] = useState("all"), [assignedTo, setAssignedTo] = useState("all"), [workflowStage, setWorkflowStage] = useState("all"), [createdBy, setCreatedBy] = useState("all"), [datePreset, setDatePreset] = useState("all"), [fromDate, setFromDate] = useState(""), [toDate, setToDate] = useState(""), [company, setCompany] = useState("all"), [teamFilter, setTeamFilter] = useState("all"), [page, setPage] = useState(1), [picked, setPicked] = useState([]), [bulkOwner, setBulkOwner] = useState(""), [bulkNote, setBulkNote] = useState(""), [owner, setOwner] = useState("");
+  const [filterUsers, setFilterUsers] = useState([]);
   const [bulkUsers, setBulkUsers] = useState([]);
   const [booting, setBooting] = useState(true), [loading, setLoading] = useState(false), [pageRefreshing, setPageRefreshing] = useState(false), [backgroundSync, setBackgroundSync] = useState(false), [detailLoading, setDetailLoading] = useState(false), [assigning, setAssigning] = useState(false), [bulkAssigning, setBulkAssigning] = useState(false), [bulkImporting, setBulkImporting] = useState(false), [transferring, setTransferring] = useState(false), [deleting, setDeleting] = useState(""), [error, setError] = useState(""), [notice, setNotice] = useState(""), [ownerNote, setOwnerNote] = useState(""), [legalTransferOwner, setLegalTransferOwner] = useState(""), [legalTransferNote, setLegalTransferNote] = useState("");
   const [showBulkUpload, setShowBulkUpload] = useState(false), [bulkUploadText, setBulkUploadText] = useState(""), [bulkUploadFile, setBulkUploadFile] = useState(""), [bulkUploadReport, setBulkUploadReport] = useState(null), [refreshSeed, setRefreshSeed] = useState(0);
@@ -88,6 +102,7 @@ export default function LeadsPage() {
   const leadFullCacheRef = useRef(new Map());
   const leadPrefetchRef = useRef({ key: "", running: false, token: 0 });
   const role = session?.user?.role || "", isPlatformConsole = isPlatformConsoleRole(role), isSuper = role === "super-admin", canManage = MANAGER_ROLES.includes(role), canCreate = CREATE_ROLES.includes(role), canEdit = role !== "viewer";
+  const hasFixedAssigneeScope = ["sales", "marketing", "viewer"].includes(role);
   const scopedCompanyId = isPlatformConsole && company !== "all" ? company : undefined;
   const teamCompanyId = isPlatformConsole ? scopedCompanyId : session?.user?.company_id || session?.company?.company_id || "";
   const scopedTeamId = teamFilter !== "all" ? teamFilter : (selected?.team_id || "");
@@ -100,9 +115,16 @@ export default function LeadsPage() {
     team_ids: teamFilter !== "all" ? teamFilter : undefined,
     search: search.trim() || undefined,
     product_id: product !== "all" ? product : undefined,
+    priority: priority !== "all" ? priority : undefined,
+    lead_source: source !== "all" ? source : undefined,
+    assigned_to: assignedTo !== "all" ? assignedTo : undefined,
+    workflow_stage: workflowStage !== "all" ? workflowStage : undefined,
+    created_by: createdBy !== "all" ? createdBy : undefined,
+    from_date: fromDate || undefined,
+    to_date: toDate || undefined,
     status: quickFilter ? undefined : status,
     quick_filter: quickFilter,
-  }), [scopedCompanyId, search, product, status, quickFilter, teamFilter]);
+  }), [assignedTo, createdBy, fromDate, priority, product, quickFilter, scopedCompanyId, search, source, status, teamFilter, toDate, workflowStage]);
   const leadCacheKey = useMemo(() => JSON.stringify(leadQueryBase), [leadQueryBase]);
   const bulkUploadPreview = useMemo(() => {
     try {
@@ -331,7 +353,15 @@ export default function LeadsPage() {
     return () => { ignore = true; };
   }, [session, leadCacheKey, leadQueryBase, page, refreshSeed]);
 
-  useEffect(() => { setPage(1); }, [search, status, product, company, teamFilter]);
+  useEffect(() => { setPage(1); }, [assignedTo, company, createdBy, fromDate, priority, product, search, source, status, teamFilter, toDate, workflowStage]);
+
+  useEffect(() => {
+    if (!hasFixedAssigneeScope || !session?.user?.user_id) {
+      return;
+    }
+
+    setAssignedTo((current) => (current === session.user.user_id ? current : session.user.user_id));
+  }, [hasFixedAssigneeScope, session?.user?.user_id]);
 
   useEffect(() => {
     leadPrefetchRef.current = {
@@ -398,6 +428,38 @@ export default function LeadsPage() {
     return () => { ignore = true; };
   }, [session, scopedCompanyId, canLoadScopedUsers, isPlatformConsole, refreshSeed, scopedTeamId, teamCompanyId, teamFilter]);
 
+  useEffect(() => {
+    if (!session?.token || !canManage || !teamCompanyId) {
+      setFilterUsers([]);
+      return;
+    }
+
+    let ignore = false;
+
+    (async () => {
+      try {
+        const users = await loadUsersForScope(session.token, {
+          companyId: teamCompanyId,
+          teamId: teamFilter !== "all" ? teamFilter : "",
+          pageSize: 120,
+          path: "/users",
+        });
+
+        if (!ignore) {
+          setFilterUsers(users);
+        }
+      } catch (_error) {
+        if (!ignore) {
+          setFilterUsers([]);
+        }
+      }
+    })();
+
+    return () => {
+      ignore = true;
+    };
+  }, [canManage, session, teamCompanyId, teamFilter]);
+
   const pickedTeamIds = useMemo(
     () => [...new Set(leads.filter((lead) => picked.includes(lead.lead_id)).map((lead) => lead.team_id).filter(Boolean))],
     [leads, picked]
@@ -463,6 +525,59 @@ export default function LeadsPage() {
     leads.forEach((lead) => { const key = lead.product_id || lead.product_name; if (!key) return; const cur = map.get(key) || { value: key, label: lead.product_name || "Unnamed Product", count: 0 }; cur.count += 1; map.set(key, cur); });
     return [...map.values()].sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
   }, [leads, productOptions]);
+  const leadOptionPool = useMemo(() => {
+    const cached = leadFullCacheRef.current.get(leadCacheKey)?.items || [];
+    return cached.length ? cached : leads;
+  }, [backgroundSync, leadCacheKey, leads]);
+  const sourceOptions = useMemo(
+    () => [{ value: "all", label: "All sources" }, ...buildLeadSourceOptions(leadOptionPool, source)],
+    [leadOptionPool, source]
+  );
+  const resolveScopedUserLabel = (userId, field = "assigned", fallback = "Selected user") => {
+    if (!userId) {
+      return fallback;
+    }
+
+    const scopedUser = filterUsers.find((user) => user.user_id === userId) || team.find((user) => user.user_id === userId);
+    if (scopedUser) {
+      return `${scopedUser.name} | ${titleize(scopedUser.role || "user")}`;
+    }
+
+    const visibleLead = field === "created"
+      ? leadOptionPool.find((lead) => lead.created_by === userId)
+      : leadOptionPool.find((lead) => lead.assigned_to === userId);
+    return field === "created"
+      ? visibleLead?.created_by_name || fallback
+      : visibleLead?.assigned_to_name || fallback;
+  };
+  const assigneeOptions = useMemo(() => {
+    const selfOption = session?.user?.user_id
+      ? [{ value: session.user.user_id, label: `${session.user.name || "Assigned to you"} (You)` }]
+      : [];
+    const baseOptions = hasFixedAssigneeScope
+      ? selfOption
+      : filterUsers.map((user) => ({
+          value: user.user_id,
+          label: `${user.name} | ${titleize(user.role || "user")}`,
+        }));
+
+    return ensureCurrentOption(
+      [{ value: "all", label: hasFixedAssigneeScope ? "Assigned to you" : "All owners" }, ...baseOptions],
+      assignedTo,
+      resolveScopedUserLabel(assignedTo, "assigned")
+    );
+  }, [assignedTo, filterUsers, hasFixedAssigneeScope, leadOptionPool, session?.user?.name, session?.user?.user_id, team]);
+  const createdByOptions = useMemo(() => ensureCurrentOption(
+    [
+      { value: "all", label: "All creators" },
+      ...filterUsers.map((user) => ({
+        value: user.user_id,
+        label: `${user.name} | ${titleize(user.role || "user")}`,
+      })),
+    ],
+    createdBy,
+    resolveScopedUserLabel(createdBy, "created")
+  ), [createdBy, filterUsers, leadOptionPool, team]);
   const rows = leads;
   const totalMatched = Number(leadMeta.total || 0);
   const pages = Math.max(Number(leadMeta.total_pages || 1), 1);
@@ -482,6 +597,115 @@ export default function LeadsPage() {
   const heroStats = useMemo(() => [{ label: "Matched Leads", value: totalMatched }, { label: "Page Value", value: money(leads.reduce((s, lead) => s + Number(lead.estimated_value || 0), 0)), color: "#0f8c53" }, { label: "Loaded", value: leads.length, color: "#2f6fdd" }, { label: "Closed Won", value: closedWonCount, color: "#0f8c53" }], [closedWonCount, leads, totalMatched]);
   const showBlockingLoader = booting || (loading && !leads.length && !totalMatched);
   const personalScope = ["sales", "marketing"].includes(role);
+  const showCreatedByFilter = canManage;
+  const userFilterLocked = hasFixedAssigneeScope || (isPlatformConsole && company === "all" && canManage);
+  const assigneeHelperText = hasFixedAssigneeScope
+    ? "This role stays inside your assigned lead scope."
+    : isPlatformConsole && company === "all"
+      ? "Select a tenant before filtering by owner."
+      : "";
+  const createdByHelperText = isPlatformConsole && company === "all"
+    ? "Select a tenant before filtering by creator."
+    : "";
+  const leadFilterFields = useMemo(() => ([
+    isPlatformConsole ? {
+      key: "company",
+      label: "Tenant",
+      value: company,
+      onChange: setCompany,
+      options: [{ value: "all", label: "All companies" }, ...companies.map((item) => ({ value: item.company_id, label: item.name }))],
+    } : null,
+    teams.length > 1 ? {
+      key: "team",
+      label: "Team",
+      value: teamFilter,
+      onChange: setTeamFilter,
+      options: [{ value: "all", label: "All teams" }, ...teams.map((item) => ({ value: item.team_id, label: teamSelectLabel(item) }))],
+    } : null,
+    { key: "status", label: "Status", value: status, onChange: setStatus, options: LEAD_STATUS_OPTIONS },
+    {
+      key: "product",
+      label: "Product",
+      value: product,
+      onChange: setProduct,
+      options: [{ value: "all", label: "All products" }, ...products.map((item) => ({ value: item.value, label: `${item.label} (${item.count})` }))],
+    },
+    { key: "priority", label: "Priority", value: priority, onChange: setPriority, options: LEAD_PRIORITY_OPTIONS },
+    { key: "source", label: "Source", value: source, onChange: setSource, options: sourceOptions },
+    {
+      key: "assigned-to",
+      label: "Assigned to",
+      value: assignedTo,
+      onChange: setAssignedTo,
+      options: assigneeOptions,
+      disabled: userFilterLocked,
+      helperText: assigneeHelperText,
+    },
+    {
+      key: "workflow-stage",
+      label: "Workflow stage",
+      value: workflowStage,
+      onChange: setWorkflowStage,
+      options: LEAD_WORKFLOW_STAGE_OPTIONS,
+    },
+    showCreatedByFilter ? {
+      key: "created-by",
+      label: "Created by",
+      value: createdBy,
+      onChange: setCreatedBy,
+      options: createdByOptions,
+      disabled: isPlatformConsole && company === "all",
+      helperText: createdByHelperText,
+    } : null,
+  ].filter(Boolean)), [assigneeHelperText, assigneeOptions, companies, company, createdBy, createdByHelperText, createdByOptions, isPlatformConsole, priority, product, products, showCreatedByFilter, source, sourceOptions, status, teamFilter, teams, userFilterLocked, workflowStage, assignedTo]);
+  const activeFilterCount = useMemo(() => [
+    Boolean(search.trim()),
+    status !== "all",
+    product !== "all",
+    priority !== "all",
+    source !== "all",
+    workflowStage !== "all",
+    showCreatedByFilter && createdBy !== "all",
+    !hasFixedAssigneeScope && assignedTo !== "all",
+    Boolean(fromDate || toDate),
+    teamFilter !== "all",
+    isPlatformConsole && company !== "all",
+  ].filter(Boolean).length, [assignedTo, company, createdBy, fromDate, hasFixedAssigneeScope, isPlatformConsole, priority, product, search, showCreatedByFilter, source, status, teamFilter, toDate, workflowStage]);
+  const handleDatePresetChange = (nextPreset) => {
+    setDatePreset(nextPreset);
+    const range = getDatePresetRange(nextPreset);
+    if (!range) {
+      return;
+    }
+    setFromDate(range.from);
+    setToDate(range.to);
+  };
+  const handleFromDateChange = (value) => {
+    setFromDate(value);
+    setDatePreset(value || toDate ? "custom" : "all");
+  };
+  const handleToDateChange = (value) => {
+    setToDate(value);
+    setDatePreset(fromDate || value ? "custom" : "all");
+  };
+  const resetLeadFilters = () => {
+    setSearch("");
+    setStatus("all");
+    setProduct("all");
+    setPriority("all");
+    setSource("all");
+    setAssignedTo(hasFixedAssigneeScope ? session?.user?.user_id || "all" : "all");
+    setWorkflowStage("all");
+    setCreatedBy("all");
+    setDatePreset("all");
+    setFromDate("");
+    setToDate("");
+    setTeamFilter("all");
+    if (isPlatformConsole) {
+      setCompany("all");
+    }
+    setPage(1);
+  };
   const ownerUsersMessage = scopedUsersEmptyMessage(selectedScopeTeam);
   const bulkUsersMessage = pickedTeamIds.length > 1
     ? "Select leads from one team at a time before bulk assignment."
@@ -689,7 +913,7 @@ export default function LeadsPage() {
       {!booting && (!loading || leads.length || totalMatched) ? (
         <section className="lead-board-shell">
           <article className="rounded-[34px] border border-[#eadfcd] bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.92),_rgba(247,240,227,0.96)_42%,_rgba(241,232,215,1)_100%)] p-5 shadow-[0_22px_60px_rgba(79,58,22,0.08)] md:p-7">
-            <div className="grid gap-5 xl:grid-cols-[1.05fr_0.95fr] xl:items-start">
+            <div className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr] xl:items-start">
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
                   <span className="inline-flex rounded-full border border-[#ddd3c2] bg-white/85 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.24em] text-[#7c6d55]">
@@ -717,57 +941,28 @@ export default function LeadsPage() {
                 </div>
               </div>
 
-              <div className="space-y-4 xl:justify-self-end xl:w-full xl:max-w-[560px]">
-                <label className="flex items-center gap-2 rounded-[22px] border border-[#eadfcd] bg-white px-4 py-3 text-sm text-[#6f614c] shadow-[0_10px_22px_rgba(79,58,22,0.05)]">
-                  <DashboardIcon name="leads" className="h-4 w-4 text-[#8f816a]" />
-                  <input
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                    placeholder="Search company, contact, email, phone, source, owner"
-                    className="w-full border-0 bg-transparent p-0 text-sm text-[#060710] outline-none placeholder:text-[#9c8e76]"
-                  />
-                </label>
-
-                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                  {isPlatformConsole ? (
-                    <label className="space-y-2">
-                      <span className={LEAD_KICKER_CLASS}>Tenant</span>
-                      <select className={LEAD_INPUT_CLASS} value={company} onChange={(event) => setCompany(event.target.value)}>
-                        <option value="all">All Companies</option>
-                        {companies.map((item) => <option key={item.company_id} value={item.company_id}>{item.name}</option>)}
-                      </select>
-                    </label>
-                  ) : null}
-                  <label className="space-y-2">
-                    <span className={LEAD_KICKER_CLASS}>Status</span>
-                    <select className={LEAD_INPUT_CLASS} value={status} onChange={(event) => setStatus(event.target.value)}>
-                      <option value="all">All Status</option>
-                      <option value="active">Active</option>
-                      <option value="pending">Pending</option>
-                      <option value="closed-won">Closed Won</option>
-                      <option value="closed-lost">Closed Lost</option>
-                      <option value="transferred">Transferred</option>
-                      <option value="assigned">Assigned</option>
-                      <option value="unassigned">Unassigned</option>
-                    </select>
-                  </label>
-                  <label className="space-y-2">
-                    <span className={LEAD_KICKER_CLASS}>Product</span>
-                    <select className={LEAD_INPUT_CLASS} value={product} onChange={(event) => setProduct(event.target.value)}>
-                      <option value="all">All Products</option>
-                      {products.map((item) => <option key={item.value} value={item.value}>{item.label} ({item.count})</option>)}
-                    </select>
-                  </label>
-                  {teams.length > 1 ? (
-                    <label className="space-y-2">
-                      <span className={LEAD_KICKER_CLASS}>Team</span>
-                      <select className={LEAD_INPUT_CLASS} value={teamFilter} onChange={(event) => setTeamFilter(event.target.value)}>
-                        <option value="all">All Teams</option>
-                        {teams.map((item) => <option key={item.team_id} value={item.team_id}>{teamSelectLabel(item)}</option>)}
-                      </select>
-                    </label>
-                  ) : null}
-                </div>
+              <div className="space-y-4 xl:justify-self-end xl:w-full xl:max-w-[780px]">
+                <LeadFiltersSection
+                  search={search}
+                  onSearchChange={setSearch}
+                  searchPlaceholder="Search company, contact, email, phone"
+                  filters={leadFilterFields}
+                  dateFilters={{
+                    preset: datePreset,
+                    onPresetChange: handleDatePresetChange,
+                    presetOptions: LEAD_DATE_PRESET_OPTIONS,
+                    fromDate,
+                    onFromDateChange: handleFromDateChange,
+                    toDate,
+                    onToDateChange: handleToDateChange,
+                  }}
+                  activeCount={activeFilterCount}
+                  onReset={resetLeadFilters}
+                  resetDisabled={!activeFilterCount}
+                  kickerClassName={LEAD_KICKER_CLASS}
+                  inputClassName={LEAD_INPUT_CLASS}
+                  buttonClassName={LEAD_GHOST_BUTTON_CLASS}
+                />
 
                 <div className="flex flex-wrap gap-3">
                   {canCreate ? <Link prefetch={false} href="/leads/new" className={LEAD_PRIMARY_BUTTON_CLASS}><DashboardIcon name="leads" className="h-4 w-4" />Create Lead</Link> : null}
@@ -983,7 +1178,7 @@ export default function LeadsPage() {
               </div>
 
               <div className="flex justify-end">
-                <button className={LEAD_GHOST_BUTTON_CLASS} type="button" onClick={() => { setSearch(""); setStatus("all"); setProduct("all"); setTeamFilter("all"); if (isPlatformConsole) setCompany("all"); setPage(1); }}>
+                <button className={LEAD_GHOST_BUTTON_CLASS} type="button" onClick={resetLeadFilters} disabled={!activeFilterCount}>
                   Reset Filters
                 </button>
               </div>

@@ -78,6 +78,11 @@ function buildWhere(filters) {
     params.push(filters.workflowStage);
   }
 
+  if (filters.leadSource) {
+    conditions.push("l.lead_source = ?");
+    params.push(filters.leadSource);
+  }
+
   if (filters.productId) {
     conditions.push("l.product_id = ?");
     params.push(filters.productId);
@@ -106,6 +111,16 @@ function buildWhere(filters) {
   if (filters.priority) {
     conditions.push("l.priority = ?");
     params.push(filters.priority);
+  }
+
+  if (filters.createdFrom) {
+    conditions.push("l.created_at >= ?");
+    params.push(filters.createdFrom);
+  }
+
+  if (filters.createdTo) {
+    conditions.push("l.created_at <= ?");
+    params.push(filters.createdTo);
   }
 
   if (filters.search) {

@@ -57,6 +57,26 @@ function normalizeLeadDate(value) {
   return Number.isNaN(parsed.getTime()) ? INVALID_LEAD_DATE : parsed;
 }
 
+function normalizeLeadFilterDate(value, { endOfDay = false } = {}) {
+  if (value === undefined || value === null || value === "") {
+    return null;
+  }
+
+  const parsed = normalizeLeadDate(value);
+  if (parsed === INVALID_LEAD_DATE) {
+    throw new AppError("Lead filter date is invalid.", 400);
+  }
+
+  const date = new Date(parsed);
+  const source = String(value).trim();
+
+  if (!source.includes("T") && !source.includes(":")) {
+    date.setHours(endOfDay ? 23 : 0, endOfDay ? 59 : 0, endOfDay ? 59 : 0, endOfDay ? 999 : 0);
+  }
+
+  return date;
+}
+
 function normalizeLeadPayload(payload) {
   return {
     contact_person: String(payload.contact_person || payload.contact_person_name || "").trim(),
@@ -335,15 +355,25 @@ async function resolveLeadTeamId(auth, companyId, payload, existingLead = null) 
 }
 
 async function buildLeadFilters(auth, query) {
+  const createdFrom = normalizeLeadFilterDate(query.from_date || query.created_from || null);
+  const createdTo = normalizeLeadFilterDate(query.to_date || query.created_to || null, { endOfDay: true });
+
+  if (createdFrom && createdTo && createdFrom > createdTo) {
+    throw new AppError("From date must be before or equal to the end date.", 400);
+  }
+
   const filters = {
     companyId: null,
     companyIds: null,
     status: query.status || null,
     quickFilter: query.quick_filter || query.quickFilter || null,
     priority: query.priority || null,
+    leadSource: query.lead_source || query.source || null,
     search: query.search || "",
     workflowStage: query.workflow_stage || null,
     productId: query.product_id || null,
+    createdFrom,
+    createdTo,
     teamIds: null,
   };
 
