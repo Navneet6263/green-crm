@@ -1,14 +1,37 @@
 "use client";
 
-export default function LeadFilterActions({ activeCount, onReset, disabled, buttonClassName }) {
+export default function LeadFilterActions({
+  activeCount,
+  buttonClassName,
+  disabled,
+  exportDisabled,
+  exportingCsv,
+  exportingExcel,
+  onExportCsv,
+  onExportExcel,
+  onReset,
+}) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#efe6d8] pt-4">
-      <p className="text-xs font-semibold text-[#8f816a]">
-        {activeCount ? `${activeCount} filters active.` : "Showing your current lead scope."}
-      </p>
-      <button className={buttonClassName} type="button" onClick={onReset} disabled={disabled}>
-        Reset Filters
-      </button>
+    <div className="rounded-[24px] border border-[#efe6d8] bg-[#fffaf1] p-4">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-[0.24em] text-[#9a886d]">Filter Actions</p>
+          <p className="mt-2 text-sm font-semibold text-[#5d503c]">
+            {activeCount ? `${activeCount} filters active.` : "Showing your current lead scope."}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button className={buttonClassName} type="button" onClick={onExportCsv} disabled={exportDisabled || exportingCsv || exportingExcel}>
+            {exportingCsv ? "Exporting CSV..." : "Export CSV"}
+          </button>
+          <button className={buttonClassName} type="button" onClick={onExportExcel} disabled={exportDisabled || exportingCsv || exportingExcel}>
+            {exportingExcel ? "Exporting Excel..." : "Export Excel"}
+          </button>
+          <button className={buttonClassName} type="button" onClick={onReset} disabled={disabled}>
+            Reset Filters
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,0 +1,147 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+
+import { isPlatformConsoleRole } from "../../../lib/teamScope";
+import { LEAD_DATE_PRESET_OPTIONS } from "../filters/leadFilterOptions";
+import { getDatePresetRange } from "../filters/leadFilterUtils";
+import { MANAGER_ROLES } from "./leadPageConstants";
+
+export function useLeadFilterState({ role, session }) {
+  const [assignedTo, setAssignedTo] = useState("all");
+  const [company, setCompany] = useState("all");
+  const [createdBy, setCreatedBy] = useState("all");
+  const [datePreset, setDatePreset] = useState("all");
+  const [fromDate, setFromDate] = useState("");
+  const [priority, setPriority] = useState("all");
+  const [product, setProduct] = useState("all");
+  const [search, setSearch] = useState("");
+  const [source, setSource] = useState("all");
+  const [status, setStatus] = useState("all");
+  const [teamFilter, setTeamFilter] = useState("all");
+  const [toDate, setToDate] = useState("");
+  const [workflowStage, setWorkflowStage] = useState("all");
+  const isPlatformConsole = isPlatformConsoleRole(role);
+  const hasFixedAssigneeScope = ["sales", "marketing", "viewer"].includes(role);
+  const canManage = MANAGER_ROLES.includes(role);
+  const scopedCompanyId = isPlatformConsole && company !== "all" ? company : undefined;
+  const teamCompanyId = isPlatformConsole ? scopedCompanyId : session?.user?.company_id || session?.company?.company_id || "";
+  const quickFilter = useMemo(() => (["active", "pending", "assigned", "unassigned", "transferred"].includes(status) ? status : undefined), [status]);
+
+  useEffect(() => {
+    if (hasFixedAssigneeScope && session?.user?.user_id) {
+      setAssignedTo((current) => (current === session.user.user_id ? current : session.user.user_id));
+    }
+  }, [hasFixedAssigneeScope, session?.user?.user_id]);
+
+  const leadQueryBase = useMemo(
+    () => ({
+      company_id: scopedCompanyId,
+      team_ids: teamFilter !== "all" ? teamFilter : undefined,
+      search: search.trim() || undefined,
+      product_id: product !== "all" ? product : undefined,
+      priority: priority !== "all" ? priority : undefined,
+      lead_source: source !== "all" ? source : undefined,
+      assigned_to: assignedTo !== "all" ? assignedTo : undefined,
+      workflow_stage: workflowStage !== "all" ? workflowStage : undefined,
+      created_by: createdBy !== "all" ? createdBy : undefined,
+      from_date: fromDate || undefined,
+      to_date: toDate || undefined,
+      status: quickFilter ? undefined : status,
+      quick_filter: quickFilter,
+    }),
+    [assignedTo, createdBy, fromDate, priority, product, quickFilter, scopedCompanyId, search, source, status, teamFilter, toDate, workflowStage]
+  );
+
+  const activeFilterCount = useMemo(
+    () =>
+      [
+        Boolean(search.trim()),
+        status !== "all",
+        product !== "all",
+        priority !== "all",
+        source !== "all",
+        workflowStage !== "all",
+        canManage && createdBy !== "all",
+        !hasFixedAssigneeScope && assignedTo !== "all",
+        Boolean(fromDate || toDate),
+        teamFilter !== "all",
+        isPlatformConsole && company !== "all",
+      ].filter(Boolean).length,
+    [assignedTo, canManage, company, createdBy, fromDate, hasFixedAssigneeScope, isPlatformConsole, priority, product, search, source, status, teamFilter, toDate, workflowStage]
+  );
+
+  function resetLeadFilters() {
+    setSearch("");
+    setStatus("all");
+    setProduct("all");
+    setPriority("all");
+    setSource("all");
+    setAssignedTo(hasFixedAssigneeScope ? session?.user?.user_id || "all" : "all");
+    setWorkflowStage("all");
+    setCreatedBy("all");
+    setDatePreset("all");
+    setFromDate("");
+    setToDate("");
+    setTeamFilter("all");
+    if (isPlatformConsole) {
+      setCompany("all");
+    }
+  }
+
+  function handleDatePresetChange(nextPreset) {
+    setDatePreset(nextPreset);
+    const range = getDatePresetRange(nextPreset);
+    if (range) {
+      setFromDate(range.from);
+      setToDate(range.to);
+    }
+  }
+
+  function handleFromDateChange(value) {
+    setFromDate(value);
+    setDatePreset(value || toDate ? "custom" : "all");
+  }
+
+  function handleToDateChange(value) {
+    setToDate(value);
+    setDatePreset(fromDate || value ? "custom" : "all");
+  }
+
+  return {
+    activeFilterCount,
+    assignedTo,
+    company,
+    createdBy,
+    datePreset,
+    datePresetOptions: LEAD_DATE_PRESET_OPTIONS,
+    fromDate,
+    handleDatePresetChange,
+    handleFromDateChange,
+    handleToDateChange,
+    hasFixedAssigneeScope,
+    isPlatformConsole,
+    leadQueryBase,
+    priority,
+    product,
+    resetLeadFilters,
+    scopedCompanyId,
+    search,
+    setAssignedTo,
+    setCompany,
+    setCreatedBy,
+    setPriority,
+    setProduct,
+    setSearch,
+    setSource,
+    setStatus,
+    setTeamFilter,
+    setWorkflowStage,
+    source,
+    status,
+    teamCompanyId,
+    teamFilter,
+    toDate,
+    workflowStage,
+  };
+}
