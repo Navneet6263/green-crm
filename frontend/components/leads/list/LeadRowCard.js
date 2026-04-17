@@ -56,6 +56,16 @@ export default function LeadRowCard({
   const noteCount = Number(lead.note_count || 0);
   const locationLabel = formatLeadLocation(lead);
   const selectedLead = selected && activeLead?.lead_id === lead.lead_id ? activeLead : lead;
+  const handleSelectLead = () => {
+    onSelectToggle();
+  };
+
+  const handleSelectLeadKeyDown = (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      onSelectToggle();
+    }
+  };
 
   return (
     <article
@@ -74,12 +84,18 @@ export default function LeadRowCard({
           ) : null}
 
           <div className="flex flex-1 items-start gap-4">
-            <button type="button" className="grid h-14 w-14 shrink-0 place-items-center rounded-[20px] bg-[#10111d] text-lg font-bold text-white shadow-[0_18px_30px_rgba(6,7,16,0.16)]" onClick={onSelectToggle}>
+            <button type="button" className="grid h-14 w-14 shrink-0 cursor-pointer place-items-center rounded-[20px] bg-[#10111d] text-lg font-bold text-white shadow-[0_18px_30px_rgba(6,7,16,0.16)]" onClick={handleSelectLead}>
               {leadInitials(lead.contact_person, lead.company_name, lead.email)}
             </button>
 
-            <div className="min-w-0 flex-1 space-y-2">
-              <button type="button" className="min-w-0 text-left" onClick={onSelectToggle}>
+            <div
+              className="min-w-0 flex-1 cursor-pointer space-y-2"
+              onClick={handleSelectLead}
+              onKeyDown={handleSelectLeadKeyDown}
+              role="button"
+              tabIndex={0}
+            >
+              <div className="min-w-0 text-left">
                 <div className="flex flex-wrap gap-2">
                   {lead.product_name ? <span className="inline-flex rounded-full border border-[#eadfcd] bg-[#fff6e4] px-3 py-1 text-[11px] font-bold text-[#7a6230]">{lead.product_name}</span> : null}
                   {teamBadgeLabel(lead) ? <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">{teamBadgeLabel(lead)}</span> : null}
@@ -89,12 +105,12 @@ export default function LeadRowCard({
                   <h4 className="truncate text-lg font-semibold text-[#060710]">{primaryName}</h4>
                   {secondaryName ? <p className="mt-1 text-sm text-[#746853]">{secondaryName}</p> : null}
                 </div>
-              </button>
+              </div>
 
               <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-[#7a6b57] select-text">
                 <span>{lead.contact_person || "No contact name"}</span>
-                <span className="cursor-text">{lead.email || "No email"}</span>
-                <span className="cursor-text">{lead.phone || "No phone"}</span>
+                <span>{lead.email || "No email"}</span>
+                <span>{lead.phone || "No phone"}</span>
                 {locationLabel ? <span>{locationLabel}</span> : null}
               </div>
               <div className="flex flex-wrap gap-x-8 gap-y-1 text-sm text-[#8f816a]">

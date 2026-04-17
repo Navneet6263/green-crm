@@ -1,8 +1,30 @@
 "use client";
 
 export const ALLOWED_ROLES = ["super-admin", "platform-admin", "platform-manager", "admin", "manager"];
-export const WORKFLOW_PAGE_SIZE = 80;
+export const WORKFLOW_PAGE_SIZE = 25;
 export const WORKFLOW_BATCH = 4;
+export const WORKFLOW_STAGE_OPTIONS = [
+  { value: "sales", label: "Sales" },
+  { value: "legal", label: "Legal" },
+  { value: "finance", label: "Finance" },
+  { value: "completed", label: "Completed" },
+];
+export const WORKFLOW_STATUS_OPTIONS = [
+  { value: "new", label: "New" },
+  { value: "pending", label: "Pending" },
+  { value: "contacted", label: "Contacted" },
+  { value: "qualified", label: "Qualified" },
+  { value: "proposal", label: "Proposal" },
+  { value: "negotiation", label: "Negotiation" },
+  { value: "closed-won", label: "Closed Won" },
+  { value: "closed-lost", label: "Closed Lost" },
+];
+export const WORKFLOW_PRIORITY_OPTIONS = [
+  { value: "low", label: "Low" },
+  { value: "medium", label: "Medium" },
+  { value: "high", label: "High" },
+  { value: "urgent", label: "Urgent" },
+];
 
 export const STATUS_TONE = {
   new: "bg-sky-100 text-sky-700 ring-sky-200",
@@ -113,6 +135,14 @@ function buildMix(leads, key) {
     .sort((left, right) => right.value - left.value);
 }
 
+function ensureWorkflowOption(options = [], currentValue = "") {
+  if (!currentValue || currentValue === "all" || options.some((option) => option.value === currentValue)) {
+    return options;
+  }
+
+  return [{ value: currentValue, label: titleize(currentValue) }, ...options];
+}
+
 export function filterWorkflowQueue(leads, filters = {}) {
   const query = String(filters.query || "").trim().toLowerCase();
   return leads.filter((lead) => {
@@ -146,7 +176,7 @@ export function filterWorkflowQueue(leads, filters = {}) {
   });
 }
 
-export function buildWorkflowDeck(leads, filters = {}) {
+function buildClientWorkflowDeck(leads, filters = {}) {
   const filteredLeads = filterWorkflowQueue(leads, filters);
   const overdue = filteredLeads.filter((lead) => lead.follow_up_date && new Date(lead.follow_up_date).getTime() < Date.now()).length;
   const noOwner = filteredLeads.filter((lead) => !(lead.assigned_to_name || lead.legal_owner_name || lead.finance_owner_name)).length;
@@ -177,6 +207,48 @@ export function buildWorkflowDeck(leads, filters = {}) {
       { label: "No Owner", value: compact(noOwner), hint: "Needs accountable owner" },
       { label: "Legal Queue", value: compact(filteredLeads.filter((lead) => lead.workflow_stage === "legal").length), hint: "Agreement review stage" },
       { label: "Finance Queue", value: compact(filteredLeads.filter((lead) => lead.workflow_stage === "finance").length), hint: "Invoice and closure stage" },
+    ],
+  };
+}
+
+export function buildWorkflowDeck(input, filters = {}) {
+  if (Array.isArray(input)) {
+    return buildClientWorkflowDeck(input, filters);
+  }
+
+  const leads = input?.items || [];
+  const meta = input?.meta || {};
+  const summary = input?.summary || {};
+  const filterOptions = input?.filterOptions || input?.filter_options || {};
+  const filteredCount = Number(summary.filtered_count ?? meta.total ?? leads.length);
+
+  return {
+    filteredLeads: leads,
+    filteredCount,
+    statusOptions: ensureWorkflowOption(WORKFLOW_STATUS_OPTIONS, filters.status),
+    stageOptions: ensureWorkflowOption(WORKFLOW_STAGE_OPTIONS, filters.stage),
+    filterOptions: {
+      owners: ensureWorkflowOption(
+        (filterOptions.owners || []).map((value) => ({ value, label: titleize(value) })),
+        filters.owner
+      ),
+      priorities: ensureWorkflowOption(WORKFLOW_PRIORITY_OPTIONS, filters.priority),
+      sources: ensureWorkflowOption(
+        (filterOptions.sources || []).map((value) => ({ value, label: titleize(value) })),
+        filters.source
+      ),
+    },
+    kpis: [
+      { label: "Tracked Leads", value: compact(filteredCount), hint: "Visible workflow queue", icon: "workflow" },
+      { label: "Queue Value", value: money(summary.total_value || 0), hint: "Commercial weight inside tracker", icon: "finance" },
+      { label: "Overdue Follow-up", value: compact(summary.overdue || 0), hint: "Needs immediate movement", icon: "calendar" },
+      { label: "Doc Gaps", value: compact(summary.doc_gap || 0), hint: "Legal or finance without docs", icon: "documents" },
+    ],
+    topCards: [
+      { label: "Ready For Legal", value: compact(summary.ready_for_legal || 0), hint: "Closed-won still in sales stage" },
+      { label: "No Owner", value: compact(summary.no_owner || 0), hint: "Needs accountable owner" },
+      { label: "Legal Queue", value: compact(summary.legal_queue || 0), hint: "Agreement review stage" },
+      { label: "Finance Queue", value: compact(summary.finance_queue || 0), hint: "Invoice and closure stage" },
     ],
   };
 }

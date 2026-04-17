@@ -83,11 +83,13 @@ export function WorkflowWorkspaceView({
   pagedLeads,
   currentPage,
   totalPages,
+  pageSize,
   filters,
   selectedLead,
   selectedId,
   analysis,
   loading,
+  pageLoading,
   detailLoading,
   error,
   onSelectLead,
@@ -133,8 +135,8 @@ export function WorkflowWorkspaceView({
               <p className={KICKER}>Advanced Filters</p>
               <div className="mt-4 grid gap-3 md:grid-cols-2">
                 <input className={INPUT} value={filters.query} onChange={(event) => onFilterChange("query", event.target.value)} placeholder="Search lead, owner, source, company" />
-                <select className={INPUT} value={filters.stage} onChange={(event) => onFilterChange("stage", event.target.value)}><option value="all">All stages</option>{deck.stageMix.map((item) => <option key={item.key} value={item.key}>{item.label}</option>)}</select>
-                <select className={INPUT} value={filters.status} onChange={(event) => onFilterChange("status", event.target.value)}><option value="all">All status</option>{deck.statusMix.map((item) => <option key={item.key} value={item.key}>{item.label}</option>)}</select>
+                <select className={INPUT} value={filters.stage} onChange={(event) => onFilterChange("stage", event.target.value)}><option value="all">All stages</option>{deck.stageOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select>
+                <select className={INPUT} value={filters.status} onChange={(event) => onFilterChange("status", event.target.value)}><option value="all">All status</option>{deck.statusOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select>
                 <select className={INPUT} value={filters.owner} onChange={(event) => onFilterChange("owner", event.target.value)}><option value="all">All owners</option>{deck.filterOptions.owners.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select>
                 <select className={INPUT} value={filters.priority} onChange={(event) => onFilterChange("priority", event.target.value)}><option value="all">All priority</option>{deck.filterOptions.priorities.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select>
                 <select className={INPUT} value={filters.source} onChange={(event) => onFilterChange("source", event.target.value)}><option value="all">All sources</option>{deck.filterOptions.sources.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select>
@@ -156,22 +158,23 @@ export function WorkflowWorkspaceView({
               <div className="flex items-start justify-between gap-4">
                 <div><p className={KICKER}>Tracked Queue</p><h3 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Workflow leads</h3></div>
                 <div className="flex flex-wrap items-center justify-end gap-2">
-                  <span className="inline-flex rounded-full border border-[#eadfcd] bg-[#fffaf1] px-3 py-1 text-[11px] font-bold text-[#7c6d55]">{compact(deck.filteredLeads.length)} visible</span>
+                  <span className="inline-flex rounded-full border border-[#eadfcd] bg-[#fffaf1] px-3 py-1 text-[11px] font-bold text-[#7c6d55]">{compact(deck.filteredCount)} visible</span>
                   <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#8d6e27]">Page {currentPage} of {totalPages}</span>
+                  {pageLoading ? <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">Loading page</span> : null}
                 </div>
               </div>
               <div className="mt-5 space-y-4">
-                {deck.filteredLeads.length ? pagedLeads.map((lead) => <LeadQueueCard key={lead.lead_id} lead={lead} active={selectedId === lead.lead_id} onSelect={() => onSelectLead(lead.lead_id)} />) : <div className="rounded-[24px] border border-dashed border-[#ddd0bb] bg-[#fffaf1] px-5 py-12 text-center text-sm text-[#7a6b57]">No workflow leads matched the current filters.</div>}
+                {deck.filteredCount ? pagedLeads.map((lead) => <LeadQueueCard key={lead.lead_id} lead={lead} active={selectedId === lead.lead_id} onSelect={() => onSelectLead(lead.lead_id)} />) : <div className="rounded-[24px] border border-dashed border-[#ddd0bb] bg-[#fffaf1] px-5 py-12 text-center text-sm text-[#7a6b57]">No workflow leads matched the current filters.</div>}
               </div>
-              {deck.filteredLeads.length ? (
+              {deck.filteredCount ? (
                 <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-[24px] border border-[#eadfcd] bg-[#fffaf1] px-4 py-4">
                   <div>
                     <p className={KICKER}>Queue Paging</p>
-                    <p className="mt-2 text-sm font-semibold text-[#060710]">10 leads per page</p>
+                    <p className="mt-2 text-sm font-semibold text-[#060710]">{pageSize} leads per page</p>
                   </div>
                   <div className="flex flex-wrap gap-3">
-                    <button type="button" onClick={() => onPageChange(Math.max(1, currentPage - 1))} disabled={currentPage <= 1} className={`${BUTTON} disabled:cursor-not-allowed disabled:opacity-50`}>Previous</button>
-                    <button type="button" onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))} disabled={currentPage >= totalPages} className={`${BUTTON} disabled:cursor-not-allowed disabled:opacity-50`}>Next</button>
+                    <button type="button" onClick={() => onPageChange(Math.max(1, currentPage - 1))} disabled={pageLoading || currentPage <= 1} className={`${BUTTON} disabled:cursor-not-allowed disabled:opacity-50`}>Previous</button>
+                    <button type="button" onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))} disabled={pageLoading || currentPage >= totalPages} className={`${BUTTON} disabled:cursor-not-allowed disabled:opacity-50`}>Next</button>
                   </div>
                 </div>
               ) : null}

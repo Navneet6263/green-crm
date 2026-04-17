@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import DashboardShell from "../../components/dashboard/DashboardShell";
@@ -10,81 +10,192 @@ import { loadSession } from "../../lib/session";
 import { WorkflowWorkspaceView } from "./workflow-ui";
 import {
   ALLOWED_ROLES,
-  WORKFLOW_BATCH,
   WORKFLOW_PAGE_SIZE,
   buildLeadAnalysis,
   buildWorkflowDeck,
   qp,
 } from "./workflow-utils";
 
+const INITIAL_FILTERS = {
+  query: "",
+  stage: "all",
+  status: "all",
+  owner: "all",
+  priority: "all",
+  source: "all",
+};
+
+const INITIAL_TRACKER_META = {
+  page: 1,
+  page_size: WORKFLOW_PAGE_SIZE,
+  total: 0,
+  total_pages: 1,
+};
+
+const TRACKER_FILTER_DEBOUNCE_MS = 300;
+
+function normalizeTrackerMeta(meta = {}, pageNumber = 1) {
+  return {
+    page: Number(meta.page || pageNumber || 1),
+    page_size: Number(meta.page_size || WORKFLOW_PAGE_SIZE),
+    total: Number(meta.total || 0),
+    total_pages: Math.max(Number(meta.total_pages || 1), 1),
+  };
+}
+
 export default function WorkflowPage() {
-  const queuePageSize = 10;
   const router = useRouter();
   const [session, setSession] = useState(null);
   const [queue, setQueue] = useState([]);
   const [selectedId, setSelectedId] = useState("");
   const [selectedLead, setSelectedLead] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [filters, setFilters] = useState({
-    query: "",
-    stage: "all",
-    status: "all",
-    owner: "all",
-    priority: "all",
-    source: "all",
-  });
+  const [filters, setFilters] = useState(INITIAL_FILTERS);
+  const [trackerMeta, setTrackerMeta] = useState(INITIAL_TRACKER_META);
+  const [trackerSummary, setTrackerSummary] = useState(null);
+  const [trackerFilterOptions, setTrackerFilterOptions] = useState({ owners: [], sources: [] });
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [loading, setLoading] = useState(true);
+  const [pageLoading, setPageLoading] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [error, setError] = useState("");
+  const trackerCacheRef = useRef(new Map());
+  const trackerRequestRef = useRef({ inFlight: new Map(), token: 0 });
+  const detailRequestRef = useRef(0);
+  const hasLoadedRef = useRef(false);
 
-  async function loadAllTrackerPages(token) {
-    const firstResponse = await apiRequest(qp("/workflow/tracker", { page: 1, page_size: WORKFLOW_PAGE_SIZE }), { token });
-    const totalPages = Number(firstResponse.meta?.total_pages || 1);
-    const allItems = [...(firstResponse.items || [])];
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedQuery(filters.query.trim());
+    }, TRACKER_FILTER_DEBOUNCE_MS);
 
-    for (let page = 2; page <= totalPages; page += WORKFLOW_BATCH) {
-      const batch = [];
-      for (let currentPage = page; currentPage < page + WORKFLOW_BATCH && currentPage <= totalPages; currentPage += 1) {
-        batch.push(apiRequest(qp("/workflow/tracker", { page: currentPage, page_size: WORKFLOW_PAGE_SIZE }), { token }));
-      }
-      const responses = await Promise.all(batch);
-      responses.forEach((response) => allItems.push(...(response.items || [])));
-    }
+    return () => window.clearTimeout(timeoutId);
+  }, [filters.query]);
 
-    return allItems;
+  const trackerQuery = useMemo(
+    () => ({
+      query: debouncedQuery || undefined,
+      stage: filters.stage !== "all" ? filters.stage : undefined,
+      status: filters.status !== "all" ? filters.status : undefined,
+      owner: filters.owner !== "all" ? filters.owner : undefined,
+      priority: filters.priority !== "all" ? filters.priority : undefined,
+      source: filters.source !== "all" ? filters.source : undefined,
+    }),
+    [debouncedQuery, filters.owner, filters.priority, filters.source, filters.stage, filters.status]
+  );
+  const trackerQueryKey = useMemo(() => JSON.stringify(trackerQuery), [trackerQuery]);
+
+  function buildTrackerPath(pageNumber = 1) {
+    return qp("/workflow/tracker", {
+      page: pageNumber,
+      page_size: WORKFLOW_PAGE_SIZE,
+      ...trackerQuery,
+    });
+  }
+
+  function applyWorkflowResponse(response, pageNumber = 1) {
+    const nextItems = response.items || [];
+    const nextMeta = normalizeTrackerMeta(response.meta, pageNumber);
+    setQueue(nextItems);
+    setTrackerMeta(nextMeta);
+    setTrackerSummary(response.summary || null);
+    setTrackerFilterOptions(response.filter_options || { owners: [], sources: [] });
+    setCurrentPage(nextMeta.page);
+    setSelectedId((current) => (nextItems.some((lead) => lead.lead_id === current) ? current : nextItems[0]?.lead_id || ""));
   }
 
   async function loadSelectedLead(activeSession, leadId) {
     if (!leadId) {
+      detailRequestRef.current += 1;
       setSelectedLead(null);
+      setDetailLoading(false);
       return;
     }
+    const requestToken = detailRequestRef.current + 1;
+    detailRequestRef.current = requestToken;
     setDetailLoading(true);
     setSelectedLead(null);
     try {
       const response = await apiRequest(`/leads/${leadId}`, { token: activeSession.token });
-      setSelectedLead(response);
+      if (detailRequestRef.current === requestToken) {
+        setSelectedLead(response);
+      }
     } catch (requestError) {
-      setError(requestError.message);
+      if (detailRequestRef.current === requestToken) {
+        setError(requestError.message);
+      }
     } finally {
-      setDetailLoading(false);
+      if (detailRequestRef.current === requestToken) {
+        setDetailLoading(false);
+      }
     }
   }
 
-  async function loadWorkflow(activeSession) {
-    setLoading(true);
-    setError("");
-    try {
-      const items = await loadAllTrackerPages(activeSession.token);
-      setQueue(items);
-      setSelectedId((current) => (items.some((lead) => lead.lead_id === current) ? current : items[0]?.lead_id || ""));
-    } catch (requestError) {
-      setError(requestError.message);
-      setQueue([]);
-      setSelectedLead(null);
-    } finally {
-      setLoading(false);
+  async function loadWorkflowPage(activeSession, pageNumber = 1, { refresh = false } = {}) {
+    if (!activeSession?.token) {
+      return null;
     }
+
+    const path = buildTrackerPath(pageNumber);
+    const cachedResponse = !refresh ? trackerCacheRef.current.get(path) : null;
+    if (cachedResponse) {
+      applyWorkflowResponse(cachedResponse, pageNumber);
+      hasLoadedRef.current = true;
+      setLoading(false);
+      setPageLoading(false);
+      return cachedResponse;
+    }
+
+    const pendingRequest = !refresh ? trackerRequestRef.current.inFlight.get(path) : null;
+    if (pendingRequest) {
+      return pendingRequest;
+    }
+
+    const requestToken = trackerRequestRef.current.token + 1;
+    trackerRequestRef.current.token = requestToken;
+
+    if (!hasLoadedRef.current) {
+      setLoading(true);
+    } else {
+      setPageLoading(true);
+    }
+
+    setError("");
+
+    const requestPromise = apiRequest(path, { token: activeSession.token })
+      .then((response) => {
+        trackerCacheRef.current.set(path, response);
+        if (trackerRequestRef.current.token !== requestToken) {
+          return response;
+        }
+
+        applyWorkflowResponse(response, pageNumber);
+        hasLoadedRef.current = true;
+        return response;
+      })
+      .catch((requestError) => {
+        if (trackerRequestRef.current.token === requestToken) {
+          setError(requestError.message);
+          if (!hasLoadedRef.current) {
+            setQueue([]);
+            setTrackerMeta(INITIAL_TRACKER_META);
+            setTrackerSummary(null);
+            setSelectedId("");
+            setSelectedLead(null);
+          }
+        }
+        throw requestError;
+      })
+      .finally(() => {
+        trackerRequestRef.current.inFlight.delete(path);
+        if (trackerRequestRef.current.token === requestToken) {
+          setLoading(false);
+          setPageLoading(false);
+        }
+      });
+
+    trackerRequestRef.current.inFlight.set(path, requestPromise);
+    return requestPromise;
   }
 
   useEffect(() => {
@@ -98,69 +209,75 @@ export default function WorkflowPage() {
       return;
     }
     setSession(activeSession);
-    loadWorkflow(activeSession);
   }, [router]);
+
+  useEffect(() => {
+    if (!session?.token) {
+      return;
+    }
+
+    setCurrentPage(1);
+    loadWorkflowPage(session, 1).catch(() => {});
+  }, [session, trackerQueryKey]);
 
   useEffect(() => {
     if (!session?.token || !selectedId) {
       if (!selectedId) {
+        detailRequestRef.current += 1;
         setSelectedLead(null);
+        setDetailLoading(false);
       }
       return;
     }
     loadSelectedLead(session, selectedId);
   }, [selectedId, session]);
 
-  const deck = useMemo(() => buildWorkflowDeck(queue, filters), [filters, queue]);
+  const deck = useMemo(
+    () =>
+      buildWorkflowDeck({
+        filters,
+        filterOptions: trackerFilterOptions,
+        items: queue,
+        meta: trackerMeta,
+        summary: trackerSummary,
+      }, filters),
+    [filters, queue, trackerFilterOptions, trackerMeta, trackerSummary]
+  );
   const analysis = useMemo(() => buildLeadAnalysis(selectedLead), [selectedLead]);
-  const totalPages = Math.max(1, Math.ceil(deck.filteredLeads.length / queuePageSize));
-  const pagedLeads = useMemo(() => {
-    const start = (currentPage - 1) * queuePageSize;
-    return deck.filteredLeads.slice(start, start + queuePageSize);
-  }, [currentPage, deck.filteredLeads]);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [filters]);
-
-  useEffect(() => {
-    if (currentPage > totalPages) {
-      setCurrentPage(totalPages);
-    }
-  }, [currentPage, totalPages]);
+  const totalPages = Math.max(Number(trackerMeta.total_pages || 1), 1);
 
   function updateFilter(key, value) {
     setFilters((current) => ({ ...current, [key]: value }));
   }
 
   function resetFilters() {
-    setFilters({
-      query: "",
-      stage: "all",
-      status: "all",
-      owner: "all",
-      priority: "all",
-      source: "all",
-    });
+    setFilters(INITIAL_FILTERS);
   }
 
   return (
     <DashboardShell session={session} title="Workflow" hideTitle heroStats={[]}>
       <WorkflowWorkspaceView
         deck={deck}
-        pagedLeads={pagedLeads}
+        pagedLeads={queue}
         currentPage={currentPage}
         totalPages={totalPages}
+        pageSize={trackerMeta.page_size}
         filters={filters}
         selectedLead={selectedLead}
         selectedId={selectedId}
         analysis={analysis || { metrics: [], flags: [], customerSignal: "--" }}
         loading={loading}
+        pageLoading={pageLoading}
         detailLoading={detailLoading}
         error={error}
         onSelectLead={setSelectedId}
-        onPageChange={setCurrentPage}
-        onRefresh={() => session?.token && loadWorkflow(session)}
+        onPageChange={(nextPage) => {
+          if (!session?.token || pageLoading || nextPage === currentPage) {
+            return;
+          }
+          loadWorkflowPage(session, nextPage).catch(() => {});
+        }}
+        onRefresh={() => session?.token && loadWorkflowPage(session, currentPage, { refresh: true }).catch(() => {})}
         onFilterChange={updateFilter}
         onResetFilters={resetFilters}
       />

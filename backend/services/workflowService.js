@@ -93,18 +93,37 @@ async function getTracker(auth, query) {
     })
   ).teamIds;
 
-  const { rows, total } = await workflowRepository.listWorkflowLeads(
-    {
+  const trackerFilters = {
+    companyId,
+    companyIds,
+    stage: query.stage || query.workflow_stage || null,
+    teamIds,
+    assignedUserId: query.assigned_to || null,
+    status: query.status || null,
+    priority: query.priority || null,
+    leadSource: query.lead_source || query.source || null,
+    search: query.search || "",
+    ownerName: query.owner || query.owner_name || null,
+  };
+
+  const [{ rows, total }, summary, filterOptions] = await Promise.all([
+    workflowRepository.listWorkflowLeads({
+      ...trackerFilters,
+      pagination,
+    }),
+    workflowRepository.getWorkflowTrackerSummary(trackerFilters),
+    workflowRepository.listWorkflowTrackerFilterOptions({
       companyId,
       companyIds,
-      stage: query.stage || query.workflow_stage || null,
       teamIds,
-      assignedUserId: query.assigned_to || null,
-      pagination,
-    }
-  );
+    }),
+  ]);
 
-  return buildPaginatedResult(rows, total, pagination);
+  return {
+    ...buildPaginatedResult(rows, total, pagination),
+    filter_options: filterOptions,
+    summary,
+  };
 }
 
 async function getMyHistory(auth, query) {

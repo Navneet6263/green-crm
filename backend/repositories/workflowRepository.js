@@ -4,10 +4,50 @@ function getExecutor(executor) {
   return executor || db;
 }
 
-async function listWorkflowLeads({ companyId, companyIds = null, stage, assignedUserId, teamIds = null, pagination }, executor) {
-  const active = getExecutor(executor);
+const WORKFLOW_OWNER_SQL = `
+  COALESCE(
+    NULLIF(LTRIM(RTRIM(assignee.name)), ''),
+    NULLIF(LTRIM(RTRIM(legal_user.name)), ''),
+    NULLIF(LTRIM(RTRIM(finance_user.name)), ''),
+    'Unassigned'
+  )
+`;
+
+const WORKFLOW_SOURCE_SQL = "COALESCE(NULLIF(LTRIM(RTRIM(l.lead_source)), ''), 'unknown')";
+const WORKFLOW_DOC_COUNT_SQL = `
+  (
+    SELECT COUNT(*)
+    FROM lead_legal_documents d
+    WHERE d.company_id = l.company_id AND d.lead_id = l.lead_id
+  ) +
+  (
+    SELECT COUNT(*)
+    FROM lead_finance_documents d
+    WHERE d.company_id = l.company_id AND d.lead_id = l.lead_id
+  )
+`;
+
+function buildWorkflowTrackerQuery({
+  assignedUserId = null,
+  companyId = null,
+  companyIds = null,
+  leadSource = null,
+  ownerName = null,
+  priority = null,
+  search = "",
+  stage = null,
+  status = null,
+  teamIds = null,
+} = {}) {
   const conditions = ["l.is_active = 1"];
   const params = [];
+  const joinsClause = `
+    LEFT JOIN products p ON p.product_id = l.product_id
+    LEFT JOIN users creator ON creator.user_id = l.created_by
+    LEFT JOIN users assignee ON assignee.user_id = l.assigned_to
+    LEFT JOIN users legal_user ON legal_user.user_id = l.assigned_to_legal
+    LEFT JOIN users finance_user ON finance_user.user_id = l.assigned_to_finance
+  `;
 
   if (companyId) {
     conditions.push("l.company_id = ?");
@@ -48,15 +88,101 @@ async function listWorkflowLeads({ companyId, companyIds = null, stage, assigned
     }
   }
 
-  const whereClause = `WHERE ${conditions.join(" AND ")}`;
+  if (status) {
+    conditions.push("l.status = ?");
+    params.push(status);
+  }
+
+  if (priority) {
+    conditions.push("l.priority = ?");
+    params.push(priority);
+  }
+
+  if (leadSource) {
+    conditions.push(`${WORKFLOW_SOURCE_SQL} = ?`);
+    params.push(leadSource);
+  }
+
+  if (ownerName) {
+    conditions.push(`${WORKFLOW_OWNER_SQL} = ?`);
+    params.push(ownerName);
+  }
+
+  if (search) {
+    const searchValue = `%${String(search).trim()}%`;
+    conditions.push(`
+      (
+        l.company_name LIKE ?
+        OR l.contact_person LIKE ?
+        OR l.email LIKE ?
+        OR l.phone LIKE ?
+        OR ${WORKFLOW_OWNER_SQL} LIKE ?
+        OR ${WORKFLOW_SOURCE_SQL} LIKE ?
+        OR COALESCE(p.name, '') LIKE ?
+        OR COALESCE(l.priority, '') LIKE ?
+        OR COALESCE(l.status, '') LIKE ?
+        OR COALESCE(l.workflow_stage, '') LIKE ?
+      )
+    `);
+    params.push(
+      searchValue,
+      searchValue,
+      searchValue,
+      searchValue,
+      searchValue,
+      searchValue,
+      searchValue,
+      searchValue,
+      searchValue,
+      searchValue
+    );
+  }
+
+  return {
+    joinsClause,
+    params,
+    whereClause: `WHERE ${conditions.join(" AND ")}`,
+  };
+}
+
+async function listWorkflowLeads(
+  {
+    companyId,
+    companyIds = null,
+    stage,
+    assignedUserId,
+    teamIds = null,
+    status = null,
+    priority = null,
+    leadSource = null,
+    search = "",
+    ownerName = null,
+    pagination,
+  },
+  executor
+) {
+  const active = getExecutor(executor);
+  const { joinsClause, whereClause, params } = buildWorkflowTrackerQuery({
+    assignedUserId,
+    companyId,
+    companyIds,
+    leadSource,
+    ownerName,
+    priority,
+    search,
+    stage,
+    status,
+    teamIds,
+  });
   const [countRows] = await active.query(
-    `SELECT COUNT(*) AS total FROM leads l ${whereClause}`,
+    `SELECT COUNT(*) AS total FROM leads l ${joinsClause} ${whereClause}`,
     params
   );
   const [rows] = await active.query(
     `
       SELECT
         l.*,
+        p.name AS product_name,
         creator.name AS created_by_name,
         assignee.name AS assigned_to_name,
         legal_user.name AS legal_owner_name,
@@ -83,10 +209,7 @@ async function listWorkflowLeads({ companyId, companyIds = null, stage, assigned
           WHERE d.company_id = l.company_id AND d.lead_id = l.lead_id
         ) AS doc_count
       FROM leads l
-      LEFT JOIN users creator ON creator.user_id = l.created_by
-      LEFT JOIN users assignee ON assignee.user_id = l.assigned_to
-      LEFT JOIN users legal_user ON legal_user.user_id = l.assigned_to_legal
-      LEFT JOIN users finance_user ON finance_user.user_id = l.assigned_to_finance
+      ${joinsClause}
       ${whereClause}
       ORDER BY l.updated_at DESC
       OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
@@ -97,6 +220,117 @@ async function listWorkflowLeads({ companyId, companyIds = null, stage, assigned
   return {
     rows,
     total: countRows[0].total,
+  };
+}
+
+async function getWorkflowTrackerSummary(
+  {
+    companyId,
+    companyIds = null,
+    stage = null,
+    assignedUserId = null,
+    teamIds = null,
+    status = null,
+    priority = null,
+    leadSource = null,
+    search = "",
+    ownerName = null,
+  },
+  executor
+) {
+  const active = getExecutor(executor);
+  const { joinsClause, whereClause, params } = buildWorkflowTrackerQuery({
+    assignedUserId,
+    companyId,
+    companyIds,
+    leadSource,
+    ownerName,
+    priority,
+    search,
+    stage,
+    status,
+    teamIds,
+  });
+
+  const [rows] = await active.query(
+    `
+      SELECT
+        COUNT(*) AS filtered_count,
+        COALESCE(SUM(COALESCE(l.invoice_amount, l.estimated_value, 0)), 0) AS total_value,
+        SUM(CASE WHEN l.follow_up_date IS NOT NULL AND l.follow_up_date < GETDATE() THEN 1 ELSE 0 END) AS overdue,
+        SUM(CASE WHEN l.status = 'closed-won' AND COALESCE(l.workflow_stage, 'sales') = 'sales' THEN 1 ELSE 0 END) AS ready_for_legal,
+        SUM(CASE WHEN l.workflow_stage = 'legal' THEN 1 ELSE 0 END) AS legal_queue,
+        SUM(CASE WHEN l.workflow_stage = 'finance' THEN 1 ELSE 0 END) AS finance_queue,
+        SUM(CASE WHEN (l.assigned_to IS NULL AND l.assigned_to_legal IS NULL AND l.assigned_to_finance IS NULL) THEN 1 ELSE 0 END) AS no_owner,
+        SUM(
+          CASE
+            WHEN l.workflow_stage IN ('legal', 'finance') AND (${WORKFLOW_DOC_COUNT_SQL}) = 0
+              THEN 1
+            ELSE 0
+          END
+        ) AS doc_gap
+      FROM leads l
+      ${joinsClause}
+      ${whereClause}
+    `,
+    params
+  );
+
+  return rows[0] || {
+    filtered_count: 0,
+    total_value: 0,
+    overdue: 0,
+    ready_for_legal: 0,
+    legal_queue: 0,
+    finance_queue: 0,
+    no_owner: 0,
+    doc_gap: 0,
+  };
+}
+
+async function listWorkflowTrackerFilterOptions(
+  {
+    companyId = null,
+    companyIds = null,
+    teamIds = null,
+  },
+  executor
+) {
+  const active = getExecutor(executor);
+  const { joinsClause, whereClause, params } = buildWorkflowTrackerQuery({
+    companyId,
+    companyIds,
+    teamIds,
+  });
+
+  const [ownerRows, sourceRows] = await Promise.all([
+    active.query(
+      `
+        SELECT ${WORKFLOW_OWNER_SQL} AS value
+        FROM leads l
+        ${joinsClause}
+        ${whereClause}
+        GROUP BY ${WORKFLOW_OWNER_SQL}
+        ORDER BY value ASC
+      `,
+      params
+    ),
+    active.query(
+      `
+        SELECT ${WORKFLOW_SOURCE_SQL} AS value
+        FROM leads l
+        ${joinsClause}
+        ${whereClause}
+        GROUP BY ${WORKFLOW_SOURCE_SQL}
+        ORDER BY value ASC
+      `,
+      params
+    ),
+  ]);
+
+  return {
+    owners: (ownerRows[0] || []).map((row) => row.value).filter(Boolean),
+    sources: (sourceRows[0] || []).map((row) => row.value).filter(Boolean),
   };
 }
 
@@ -321,10 +555,12 @@ module.exports = {
   createTransferHistory,
   deleteFinanceDocument,
   deleteLegalDocument,
+  getWorkflowTrackerSummary,
   listFinanceDocumentsByLead,
   listLegalDocumentsByLead,
   listStageHistoryByLead,
   listTransferHistory,
   listTransferHistoryByLead,
   listWorkflowLeads,
+  listWorkflowTrackerFilterOptions,
 };
