@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 
 import { apiRequest } from "../../../lib/api";
 import {
-  loadTeamScopeResources,
+  loadTeamsForCompany,
   loadUsersForScope,
+  resolveInitialTeamId,
 } from "../../../lib/teamScope";
 import { buildQueryPath } from "./leadPageFormatters";
 import { mapProductOptions } from "./leadPageHelpers";
@@ -40,13 +41,8 @@ export function useLeadScopeResources({
       try {
         const requests = [
           teamCompanyId
-            ? loadTeamScopeResources(session.token, {
-                companyId: teamCompanyId,
-                teamId: scopedTeamId,
-                includeUsers: canLoadScopedUsers,
-                userPageSize: 80,
-              })
-            : Promise.resolve({ teams: [], users: [] }),
+            ? loadTeamsForCompany(session.token, teamCompanyId)
+            : Promise.resolve([]),
           !isPlatformConsole || scopedCompanyId
             ? apiRequest(
                 buildQueryPath("/leads/stats/products", {
@@ -63,9 +59,8 @@ export function useLeadScopeResources({
           return;
         }
 
-        const nextTeams = scopeResources.teams || [];
+        const nextTeams = scopeResources || [];
         setTeams(nextTeams);
-        setTeamUsers(scopeResources.users || []);
         setProductOptions(mapProductOptions(productStats));
 
         if (teamFilter !== "all" && !nextTeams.some((entry) => entry.team_id === teamFilter)) {
@@ -89,11 +84,46 @@ export function useLeadScopeResources({
     onInvalidTeamFilter,
     refreshSeed,
     scopedCompanyId,
-    scopedTeamId,
     session,
     teamCompanyId,
     teamFilter,
   ]);
+
+  useEffect(() => {
+    if (!session?.token || !canLoadScopedUsers || !teamCompanyId) {
+      setTeamUsers([]);
+      return undefined;
+    }
+
+    let ignore = false;
+
+    (async () => {
+      try {
+        const resolvedTeamId = resolveInitialTeamId(
+          teams,
+          teamFilter !== "all" ? teamFilter : scopedTeamId
+        );
+        const users = await loadUsersForScope(session.token, {
+          companyId: teamCompanyId,
+          teamId: resolvedTeamId,
+          pageSize: 80,
+          path: "/users",
+        });
+
+        if (!ignore) {
+          setTeamUsers(users);
+        }
+      } catch (_error) {
+        if (!ignore) {
+          setTeamUsers([]);
+        }
+      }
+    })();
+
+    return () => {
+      ignore = true;
+    };
+  }, [canLoadScopedUsers, scopedTeamId, session, teamCompanyId, teamFilter, teams]);
 
   useEffect(() => {
     if (!session?.token || !canManage || !teamCompanyId) {

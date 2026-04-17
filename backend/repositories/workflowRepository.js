@@ -306,22 +306,20 @@ async function listWorkflowTrackerFilterOptions(
   const [ownerRows, sourceRows] = await Promise.all([
     active.query(
       `
-        SELECT ${WORKFLOW_OWNER_SQL} AS value
+        SELECT DISTINCT ${WORKFLOW_OWNER_SQL} AS value
         FROM leads l
         ${joinsClause}
         ${whereClause}
-        GROUP BY ${WORKFLOW_OWNER_SQL}
         ORDER BY value ASC
       `,
       params
     ),
     active.query(
       `
-        SELECT ${WORKFLOW_SOURCE_SQL} AS value
+        SELECT DISTINCT ${WORKFLOW_SOURCE_SQL} AS value
         FROM leads l
         ${joinsClause}
         ${whereClause}
-        GROUP BY ${WORKFLOW_SOURCE_SQL}
         ORDER BY value ASC
       `,
       params

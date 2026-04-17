@@ -74,7 +74,7 @@ export default function WorkflowPage() {
 
   const trackerQuery = useMemo(
     () => ({
-      query: debouncedQuery || undefined,
+      search: debouncedQuery || undefined,
       stage: filters.stage !== "all" ? filters.stage : undefined,
       status: filters.status !== "all" ? filters.status : undefined,
       owner: filters.owner !== "all" ? filters.owner : undefined,

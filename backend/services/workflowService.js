@@ -102,21 +102,40 @@ async function getTracker(auth, query) {
     status: query.status || null,
     priority: query.priority || null,
     leadSource: query.lead_source || query.source || null,
-    search: query.search || "",
+    search: query.search || query.query || "",
     ownerName: query.owner || query.owner_name || null,
   };
 
-  const [{ rows, total }, summary, filterOptions] = await Promise.all([
-    workflowRepository.listWorkflowLeads({
-      ...trackerFilters,
-      pagination,
-    }),
-    workflowRepository.getWorkflowTrackerSummary(trackerFilters),
-    workflowRepository.listWorkflowTrackerFilterOptions({
-      companyId,
-      companyIds,
-      teamIds,
-    }),
+  const { rows, total } = await workflowRepository.listWorkflowLeads({
+    ...trackerFilters,
+    pagination,
+  });
+  const [summary, filterOptions] = await Promise.all([
+    workflowRepository
+      .getWorkflowTrackerSummary(trackerFilters)
+      .catch((error) => {
+        console.error("Workflow tracker summary failed:", error);
+        return {
+          filtered_count: total,
+          total_value: 0,
+          overdue: 0,
+          ready_for_legal: 0,
+          legal_queue: 0,
+          finance_queue: 0,
+          no_owner: 0,
+          doc_gap: 0,
+        };
+      }),
+    workflowRepository
+      .listWorkflowTrackerFilterOptions({
+        companyId,
+        companyIds,
+        teamIds,
+      })
+      .catch((error) => {
+        console.error("Workflow tracker filters failed:", error);
+        return { owners: [], sources: [] };
+      }),
   ]);
 
   return {

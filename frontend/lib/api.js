@@ -4,6 +4,30 @@ export const API_BASE =
 const IN_FLIGHT_GET_REQUESTS = new Map();
 const RECENT_GET_RESPONSES = new Map();
 const DEFAULT_DEDUPE_WINDOW_MS = 5000;
+let authRedirectTriggered = false;
+
+function handleUnauthorizedResponse(options = {}) {
+  if (!options.token || typeof window === "undefined" || authRedirectTriggered) {
+    return;
+  }
+
+  authRedirectTriggered = true;
+  RECENT_GET_RESPONSES.clear();
+  IN_FLIGHT_GET_REQUESTS.clear();
+
+  try {
+    window.localStorage.removeItem("greencrm-session");
+  } catch (_error) {
+    // Ignore localStorage failures during forced logout.
+  }
+
+  document.cookie = "authToken=; path=/; max-age=0; samesite=lax";
+  document.cookie = "authRole=; path=/; max-age=0; samesite=lax";
+
+  if (!window.location.pathname.startsWith("/login")) {
+    window.location.replace("/login");
+  }
+}
 
 function getDedupeWindowMs() {
   const parsed = Number(process.env.NEXT_PUBLIC_API_DEDUPE_WINDOW_MS);
@@ -79,6 +103,9 @@ export async function apiRequest(path, options = {}) {
     const payload = await response.json().catch(() => ({}));
 
     if (!response.ok) {
+      if (response.status === 401) {
+        handleUnauthorizedResponse(options);
+      }
       throw new Error(payload.error || "Request failed");
     }
 
