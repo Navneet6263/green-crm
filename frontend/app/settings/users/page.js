@@ -240,7 +240,7 @@ export default function UserSettingsPage() {
               <div className="space-y-4">
                 <span className="inline-flex rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.24em] text-white/70">Create Member</span>
                 <h3 className="text-[2rem] font-semibold leading-[1.08] tracking-tight text-white">Add a stronger team identity</h3>
-                <p className="text-sm leading-7 text-white/68">Role, phone, department, and temporary password sab ek hi intake flow me.</p>
+                <p className="text-sm leading-7 text-white/68"></p>
               </div>
               <form className="mt-6 grid gap-4" onSubmit={createUser}>
                 {isSuperAdmin ? <label className="space-y-2"><span className={KICKER}>Company</span><select className={DARK_INPUT} value={selectedCompanyId} onChange={(e) => setSelectedCompanyId(e.target.value)}><option value="">Choose company</option>{companies.map((item) => <option key={item.company_id} value={item.company_id} className="text-[#060710]">{item.name}</option>)}</select></label> : null}
