@@ -7,7 +7,10 @@ export default function SiteHeader({ compact = false, landing = false }) {
         { href: "/register", label: "Sign Up" },
       ]
     : landing
-      ? []
+      ? [
+          { href: "/login", label: "Login" },
+          { href: "/register", label: "Sign Up" },
+        ]
       : [
           { href: "/login", label: "Login" },
           { href: "/register", label: "Sign Up" },
@@ -15,7 +18,7 @@ export default function SiteHeader({ compact = false, landing = false }) {
 
   return (
     <header className={`site-header${landing ? " landing" : ""}`}>
-      <Link href="/login" className="brand-mark">
+      <Link href="/" className="brand-mark">
         GreenCRM
       </Link>
 
@@ -26,8 +29,8 @@ export default function SiteHeader({ compact = false, landing = false }) {
           </Link>
         ))}
         {!compact ? (
-          <Link href="/login" className="button primary">
-            Get Start
+          <Link href={landing ? "/book-demo" : "/login"} className="button primary">
+            {landing ? "Book Demo" : "Get Started"}
           </Link>
         ) : null}
       </div>
