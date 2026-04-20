@@ -138,5 +138,8 @@ export const DEFAULT_METADATA = {
     apple: "/icon.svg",
   },
   manifest: "/manifest.webmanifest",
+  verification: {
+    google: "1y_xR8m5EhD-GBaJSQmBmXFZCPoC0lcXUrKoJxIn-0Y",
+  },
 };
 
