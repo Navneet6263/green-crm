@@ -25,18 +25,18 @@ export function useLeadSelection({ leads, resetKey, session }) {
       return undefined;
     }
 
+    setDetailLoading(true);
+    setDetailError("");
+
     let ignore = false;
 
     (async () => {
-      const baseLead = leads.find((lead) => lead.lead_id === selectedId) || null;
-      setSelected(baseLead);
-      setDetailLoading(true);
-      setDetailError("");
-
       try {
         const lead = await apiRequest(`/leads/${selectedId}`, { token: session.token });
         if (!ignore) {
-          setSelected(lead);
+          setSelected((current) =>
+            current?.lead_id === lead.lead_id ? { ...current, ...lead } : lead
+          );
         }
       } catch (requestError) {
         if (!ignore) {
@@ -52,7 +52,22 @@ export function useLeadSelection({ leads, resetKey, session }) {
     return () => {
       ignore = true;
     };
-  }, [leads, selectedId, session]);
+  }, [selectedId, session?.token]);
+
+  useEffect(() => {
+    if (!selectedId) {
+      return;
+    }
+
+    const baseLead = leads.find((lead) => lead.lead_id === selectedId) || null;
+    setSelected((current) => {
+      if (!baseLead) {
+        return current;
+      }
+
+      return current?.lead_id === selectedId ? { ...baseLead, ...current } : baseLead;
+    });
+  }, [leads, selectedId]);
 
   const activeLead = useMemo(
     () => selected || leads.find((lead) => lead.lead_id === selectedId) || null,

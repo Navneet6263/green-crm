@@ -648,7 +648,7 @@ async function updateLead(auth, leadId, payload) {
   }
 
   return db.withTransaction(async (transaction) => {
-    const updatedLead = await leadRepository.updateLead(leadId, lead.company_id, updates, transaction);
+    await leadRepository.updateLead(leadId, lead.company_id, updates, transaction);
 
     await leadRepository.createNote(
       {
@@ -672,7 +672,7 @@ async function updateLead(auth, leadId, payload) {
       transaction
     );
 
-    return updatedLead;
+    return leadRepository.getLeadById(leadId, lead.company_id, transaction);
   });
 }
 

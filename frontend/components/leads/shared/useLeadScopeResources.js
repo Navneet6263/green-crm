@@ -29,9 +29,10 @@ export function useLeadScopeResources({
   const [productOptions, setProductOptions] = useState([]);
   const [teamUsers, setTeamUsers] = useState([]);
   const [teams, setTeams] = useState([]);
+  const sessionToken = session?.token || "";
 
   useEffect(() => {
-    if (!session?.token) {
+    if (!sessionToken) {
       return undefined;
     }
 
@@ -41,7 +42,7 @@ export function useLeadScopeResources({
       try {
         const requests = [
           teamCompanyId
-            ? loadTeamsForCompany(session.token, teamCompanyId)
+            ? loadTeamsForCompany(sessionToken, teamCompanyId)
             : Promise.resolve([]),
           !isPlatformConsole || scopedCompanyId
             ? apiRequest(
@@ -49,7 +50,7 @@ export function useLeadScopeResources({
                   company_id: scopedCompanyId,
                   team_ids: teamFilter !== "all" ? teamFilter : undefined,
                 }),
-                { token: session.token }
+                { token: sessionToken }
               )
             : Promise.resolve([]),
         ];
@@ -79,18 +80,17 @@ export function useLeadScopeResources({
       ignore = true;
     };
   }, [
-    canLoadScopedUsers,
     isPlatformConsole,
     onInvalidTeamFilter,
     refreshSeed,
     scopedCompanyId,
-    session,
+    sessionToken,
     teamCompanyId,
     teamFilter,
   ]);
 
   useEffect(() => {
-    if (!session?.token || !canLoadScopedUsers || !teamCompanyId) {
+    if (!sessionToken || !canLoadScopedUsers || !teamCompanyId) {
       setTeamUsers([]);
       return undefined;
     }
@@ -103,7 +103,7 @@ export function useLeadScopeResources({
           teams,
           teamFilter !== "all" ? teamFilter : scopedTeamId
         );
-        const users = await loadUsersForScope(session.token, {
+        const users = await loadUsersForScope(sessionToken, {
           companyId: teamCompanyId,
           teamId: resolvedTeamId,
           pageSize: 80,
@@ -123,10 +123,10 @@ export function useLeadScopeResources({
     return () => {
       ignore = true;
     };
-  }, [canLoadScopedUsers, scopedTeamId, session, teamCompanyId, teamFilter, teams]);
+  }, [canLoadScopedUsers, scopedTeamId, sessionToken, teamCompanyId, teamFilter, teams]);
 
   useEffect(() => {
-    if (!session?.token || !canManage || !teamCompanyId) {
+    if (!sessionToken || !canManage || !teamCompanyId) {
       setFilterUsers([]);
       return undefined;
     }
@@ -135,7 +135,7 @@ export function useLeadScopeResources({
 
     (async () => {
       try {
-        const users = await loadUsersForScope(session.token, {
+        const users = await loadUsersForScope(sessionToken, {
           companyId: teamCompanyId,
           teamId: teamFilter !== "all" ? teamFilter : "",
           pageSize: 120,
@@ -155,10 +155,10 @@ export function useLeadScopeResources({
     return () => {
       ignore = true;
     };
-  }, [canManage, session, teamCompanyId, teamFilter]);
+  }, [canManage, sessionToken, teamCompanyId, teamFilter]);
 
   useEffect(() => {
-    if (!session?.token || !canManage || !teamCompanyId || pickedTeamIds.length !== 1) {
+    if (!sessionToken || !canManage || !teamCompanyId || pickedTeamIds.length !== 1) {
       setBulkUsers([]);
       return undefined;
     }
@@ -167,7 +167,7 @@ export function useLeadScopeResources({
 
     (async () => {
       try {
-        const users = await loadUsersForScope(session.token, {
+        const users = await loadUsersForScope(sessionToken, {
           companyId: teamCompanyId,
           teamId: pickedTeamIds[0],
           pageSize: 80,
@@ -187,7 +187,7 @@ export function useLeadScopeResources({
     return () => {
       ignore = true;
     };
-  }, [canManage, pickedTeamIds, session, teamCompanyId]);
+  }, [canManage, pickedTeamIds, sessionToken, teamCompanyId]);
 
   return {
     bulkUsers,

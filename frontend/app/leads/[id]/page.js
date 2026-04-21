@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 
 import DashboardShell from "../../../components/dashboard/DashboardShell";
 import DashboardIcon from "../../../components/dashboard/icons";
+import LeadNotesPanel from "../../../components/leads/details/LeadNotesPanel";
 import LeadQuickStatusControl from "../../../components/leads/LeadQuickStatusControl";
 import { API_BASE, apiRequest } from "../../../lib/api";
 import { loadSession } from "../../../lib/session";
@@ -43,6 +44,25 @@ const nice = (v) => String(v || "").split("-").filter(Boolean).map((x) => x[0].t
 const money = (v) => `INR ${Number(v || 0).toLocaleString("en-IN")}`;
 const when = (v, full = false) => !v ? "--" : new Date(v).toLocaleString("en-IN", full ? { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" } : { day: "numeric", month: "short", year: "numeric" });
 const hrefForDoc = (fileUrl) => !fileUrl ? "#" : /^https?:\/\//i.test(fileUrl) ? fileUrl : `${API_BASE}${fileUrl}`;
+
+function buildLocalNote(content, createdByName) {
+  return {
+    id: `local-note-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    content,
+    created_at: new Date().toISOString(),
+    created_by_name: createdByName,
+  };
+}
+
+function buildLocalActivity(type, description, createdByName) {
+  return {
+    activity_id: `local-activity-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    type,
+    description,
+    created_at: new Date().toISOString(),
+    created_by_name: createdByName,
+  };
+}
 
 function DocGroup({ title, items }) {
   if (!items?.length) return null;
@@ -109,8 +129,8 @@ export default function LeadDetailPage() {
   const params = useParams();
   const router = useRouter();
   const [session, setSession] = useState(null), [lead, setLead] = useState(null), [notes, setNotes] = useState([]), [activity, setActivity] = useState([]), [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true), [savingNote, setSavingNote] = useState(false), [savingActivity, setSavingActivity] = useState(false), [savingTask, setSavingTask] = useState(false), [transferring, setTransferring] = useState(false);
-  const [error, setError] = useState(""), [notice, setNotice] = useState(""), [noteText, setNoteText] = useState(""), [activityType, setActivityType] = useState("call"), [activityText, setActivityText] = useState(""), [transferOwner, setTransferOwner] = useState(""), [transferNote, setTransferNote] = useState("");
+  const [loading, setLoading] = useState(true), [savingActivity, setSavingActivity] = useState(false), [savingTask, setSavingTask] = useState(false), [transferring, setTransferring] = useState(false);
+  const [error, setError] = useState(""), [notice, setNotice] = useState(""), [activityType, setActivityType] = useState("call"), [activityText, setActivityText] = useState(""), [transferOwner, setTransferOwner] = useState(""), [transferNote, setTransferNote] = useState("");
   const [task, setTask] = useState({ title: "", type: "call", priority: "medium", due_date: "", due_time: "", assigned_to: "", notes: "" });
   const role = session?.user?.role || "";
   const canSeeDocs = DOC_VIEW_ROLES.includes(role);
@@ -124,32 +144,78 @@ export default function LeadDetailPage() {
   const hideWorkspaceTitle = ["sales", "marketing", "admin", "manager"].includes(role);
   const scopedUsersMessage = scopedUsersEmptyMessage(lead);
   const legalUsersMessage = workflowUsersEmptyMessage(lead?.team_name, "legal");
+  const currentUserName = session?.user?.name || session?.user?.full_name || "You";
 
-  async function loadLead(activeSession) {
+  const mergeLeadState = useCallback((updatedLead) => {
+    if (!updatedLead?.lead_id) {
+      return;
+    }
+
+    setLead((current) => (current ? { ...current, ...updatedLead } : updatedLead));
+  }, []);
+
+  const prependNote = useCallback((content, { incrementLeadCount = true } = {}) => {
+    const trimmedContent = String(content || "").trim();
+    if (!trimmedContent) {
+      return;
+    }
+
+    setNotes((current) => [buildLocalNote(trimmedContent, currentUserName), ...current].slice(0, 12));
+    setLead((current) => (
+      current
+        ? {
+            ...current,
+            latest_note: trimmedContent,
+            note_count: incrementLeadCount ? Number(current.note_count || 0) + 1 : current.note_count,
+          }
+        : current
+    ));
+  }, [currentUserName]);
+
+  const prependActivity = useCallback((type, description) => {
+    const trimmedDescription = String(description || "").trim();
+    if (!trimmedDescription) {
+      return;
+    }
+
+    setActivity((current) => [buildLocalActivity(type, trimmedDescription, currentUserName), ...current].slice(0, 12));
+  }, [currentUserName]);
+
+  async function loadLead(activeSession, { includeUsers = false } = {}) {
     const [leadResponse, notesResponse, activityResponse] = await Promise.all([
       apiRequest(`/leads/${params.id}`, { token: activeSession.token }),
       apiRequest(`/leads/${params.id}/notes?page_size=12`, { token: activeSession.token }),
       apiRequest(`/leads/${params.id}/activity?page_size=12`, { token: activeSession.token }),
     ]);
-    const usersResponse = await loadUsersForScope(activeSession.token, {
-      companyId: leadResponse.company_id,
-      teamId: leadResponse.team_id,
-      pageSize: 100,
-      path: "/users",
-    });
+
     setLead(leadResponse);
     setNotes(notesResponse.items || []);
     setActivity(activityResponse.items || []);
-    setUsers(usersResponse);
     setTransferOwner(leadResponse.assigned_to_legal || "");
     setTask((current) => ({ ...current, assigned_to: current.assigned_to || leadResponse.assigned_to || activeSession.user?.user_id || "" }));
+
+    if (includeUsers) {
+      void loadUsersForScope(activeSession.token, {
+        companyId: leadResponse.company_id,
+        teamId: leadResponse.team_id,
+        pageSize: 100,
+        path: "/users",
+      })
+        .then((usersResponse) => {
+          setUsers(usersResponse);
+        })
+        .catch(() => {
+          setUsers([]);
+        });
+    }
   }
 
   useEffect(() => {
     const activeSession = loadSession();
     if (!activeSession) return router.replace("/login");
     setSession(activeSession);
-    loadLead(activeSession).catch((requestError) => setError(formatScopedError(requestError, "Could not load this lead."))).finally(() => setLoading(false));
+    setUsers([]);
+    loadLead(activeSession, { includeUsers: true }).catch((requestError) => setError(formatScopedError(requestError, "Could not load this lead."))).finally(() => setLoading(false));
   }, [params.id, router]);
 
   const intelligence = useMemo(() => {
@@ -169,20 +235,35 @@ export default function LeadDetailPage() {
 
   async function refreshLead() { if (session) await loadLead(session); }
 
-  async function addNote(event) {
-    event.preventDefault();
-    if (!noteText.trim()) return;
-    setSavingNote(true); setError(""); setNotice("");
-    try { await apiRequest(`/leads/${params.id}/notes`, { method: "POST", token: session.token, body: { content: noteText.trim() } }); setNoteText(""); setNotice("Note added successfully."); await refreshLead(); }
-    catch (requestError) { setError(formatScopedError(requestError, "Could not save this note.")); }
-    finally { setSavingNote(false); }
+  async function saveNote(content) {
+    setError("");
+    setNotice("");
+
+    try {
+      await apiRequest(`/leads/${params.id}/notes`, {
+        method: "POST",
+        token: session.token,
+        body: { content },
+      });
+      prependNote(content);
+      setNotice("Note added successfully.");
+    } catch (requestError) {
+      setError(formatScopedError(requestError, "Could not save this note."));
+      throw requestError;
+    }
   }
 
   async function addActivity(event) {
     event.preventDefault();
-    if (!activityText.trim()) return;
+    const description = activityText.trim();
+    if (!description) return;
     setSavingActivity(true); setError(""); setNotice("");
-    try { await apiRequest(`/leads/${params.id}/activity`, { method: "POST", token: session.token, body: { type: activityType, description: activityText.trim() } }); setActivityText(""); setNotice("Timeline updated."); await refreshLead(); }
+    try {
+      await apiRequest(`/leads/${params.id}/activity`, { method: "POST", token: session.token, body: { type: activityType, description } });
+      setActivityText("");
+      prependActivity(activityType, description);
+      setNotice("Timeline updated.");
+    }
     catch (requestError) { setError(formatScopedError(requestError, "Could not update the timeline.")); }
     finally { setSavingActivity(false); }
   }
@@ -199,10 +280,11 @@ export default function LeadDetailPage() {
     try {
       const due = `${task.due_date} ${task.due_time}:00`;
       await apiRequest("/tasks", { method: "POST", token: session.token, body: { title: task.title.trim(), type: task.type, priority: task.priority, due_date: due, assigned_to: task.assigned_to || session.user?.user_id, related_to: "lead", related_id: lead.lead_id, team_id: lead.team_id || undefined, notes: task.notes || null } });
-      await apiRequest(`/leads/${params.id}/activity`, { method: "POST", token: session.token, body: { type: "task", description: `Task scheduled: ${task.title.trim()} on ${when(due, true)}` } });
+      const taskActivity = `Task scheduled: ${task.title.trim()} on ${when(due, true)}`;
+      await apiRequest(`/leads/${params.id}/activity`, { method: "POST", token: session.token, body: { type: "task", description: taskActivity } });
       setTask({ title: "", type: "call", priority: "medium", due_date: "", due_time: "", assigned_to: session.user?.user_id || "", notes: "" });
+      prependActivity("task", taskActivity);
       setNotice("Task scheduled successfully.");
-      await refreshLead();
     } catch (requestError) { setError(formatScopedError(requestError, "Could not schedule this task.")); }
     finally { setSavingTask(false); }
   }
@@ -219,6 +301,14 @@ export default function LeadDetailPage() {
     } catch (requestError) { setError(formatScopedError(requestError, "Could not transfer this lead to legal.")); }
     finally { setTransferring(false); }
   }
+
+  const handleStatusUpdated = useCallback((updatedLead) => {
+    mergeLeadState(updatedLead);
+    if (updatedLead?.latest_note) {
+      prependNote(updatedLead.latest_note, { incrementLeadCount: false });
+    }
+    setNotice(`Lead status moved to ${nice(updatedLead?.status || "new")}.`);
+  }, [mergeLeadState, prependNote]);
 
   return (
     <DashboardShell session={session} title={lead ? lead.company_name : "Lead Detail"} hideTitle={hideWorkspaceTitle} heroStats={[]}>
@@ -260,7 +350,7 @@ export default function LeadDetailPage() {
                   {teamBadgeLabel(lead) ? <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">{teamBadgeLabel(lead)}</span> : null}
                   <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">Workflow {nice(lead.workflow_stage || "sales")}</span>
                   <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">Notes {notes.length}</span>
-                  <LeadQuickStatusControl lead={lead} token={session?.token} onUpdated={refreshLead} hideLabel className="min-w-[180px]" selectClassName="min-h-[34px] bg-white pr-8 text-[11px] shadow-none" />
+                  <LeadQuickStatusControl lead={lead} token={session?.token} onUpdated={handleStatusUpdated} hideLabel className="min-w-[180px]" selectClassName="min-h-[34px] bg-white pr-8 text-[11px] shadow-none" />
                 </div>
 
                 <div className="grid gap-3 md:grid-cols-3">
@@ -530,18 +620,7 @@ export default function LeadDetailPage() {
 
               <article className={PANEL_CLASS}>
                 <div className="mb-5"><div><span className={KICKER_CLASS}>Notes</span><h2 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Lead notes</h2></div></div>
-                <form className="grid gap-4" onSubmit={addNote}><label className="space-y-2"><span className={KICKER_CLASS}>Add Note</span><textarea className={`${INPUT_CLASS} min-h-[150px] resize-y`} rows="4" value={noteText} onChange={(event) => setNoteText(event.target.value)} placeholder="Capture context, objections, or next steps" /></label><button className={PRIMARY_BUTTON_CLASS} type="submit" disabled={savingNote}>{savingNote ? "Saving..." : "Save Note"}</button></form>
-                <div className="mt-4 space-y-3">
-                  {notes.length ? notes.map((note) => (
-                    <div className="rounded-[22px] border border-[#eadfcd] bg-[#fffaf1] px-4 py-4" key={note.id || `${note.created_at}-${note.content}`}>
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <strong className="text-sm text-[#060710]">{note.created_by_name || "User"}</strong>
-                        <span className="text-xs font-semibold text-[#8f816a]">{when(note.created_at, true)}</span>
-                      </div>
-                      <p className="mt-3 text-sm leading-7 text-[#5f533f]">{note.content}</p>
-                    </div>
-                  )) : <p className="rounded-[22px] border border-dashed border-[#ddd0bb] bg-[#fffaf1] px-4 py-10 text-center text-sm text-[#7a6b57]">No notes yet.</p>}
-                </div>
+                <LeadNotesPanel inputClassName={INPUT_CLASS} kickerClassName={KICKER_CLASS} notes={notes} onSave={saveNote} primaryButtonClassName={PRIMARY_BUTTON_CLASS} renderWhen={when} />
               </article>
 
               <article className={PANEL_CLASS}>

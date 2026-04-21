@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import DashboardShell from "../../components/dashboard/DashboardShell";
 import LeadsWorkspaceContent from "../../components/leads/layout/LeadsWorkspaceContent";
@@ -55,7 +55,10 @@ export default function LeadsPage() {
   const selection = useLeadSelection({ leads: records.leads, resetKey: `${records.leadCacheKey}:${records.page}`, session });
   const scopedTeamId = filters.teamFilter !== "all" ? filters.teamFilter : selection.activeLead?.team_id || "";
   const pickedTeamIds = useMemo(() => [...new Set(records.leads.filter((lead) => picked.includes(lead.lead_id)).map((lead) => lead.team_id).filter(Boolean))], [picked, records.leads]);
-  const resources = useLeadScopeResources({ canLoadScopedUsers, canManage, isPlatformConsole, onInvalidTeamFilter: () => filters.setTeamFilter("all"), pickedTeamIds, refreshSeed, scopedCompanyId: filters.scopedCompanyId, scopedTeamId, session, teamCompanyId: filters.teamCompanyId, teamFilter: filters.teamFilter });
+  const handleInvalidTeamFilter = useCallback(() => {
+    filters.setTeamFilter("all");
+  }, [filters.setTeamFilter]);
+  const resources = useLeadScopeResources({ canLoadScopedUsers, canManage, isPlatformConsole, onInvalidTeamFilter: handleInvalidTeamFilter, pickedTeamIds, refreshSeed, scopedCompanyId: filters.scopedCompanyId, scopedTeamId, session, teamCompanyId: filters.teamCompanyId, teamFilter: filters.teamFilter });
   const leadOptionPool = records.allMatchedLeads.length ? records.allMatchedLeads : records.leads;
   const leadFilterFields = useLeadFilterFields({ companies, filterUsers: resources.filterUsers, filters, leadOptionPool, productOptions: resources.productOptions, role, session, teams: resources.teams });
   const bulkUpload = useLeadBulkUpload({ onImported: () => setRefreshSeed((current) => current + 1), setError, setNotice, token: session?.token });
