@@ -6,28 +6,11 @@ const PLATFORM_CONSOLE_ROLES = ["super-admin", "platform-admin", "platform-manag
 const LEGACY_DASHBOARD_REDIRECTS = {
   "/dashboard/superadmin": "/super-admin",
 };
-const ROLE_HOME_ROUTE = {
-  "super-admin": "/super-admin",
-  "platform-admin": "/super-admin",
-  "platform-manager": "/super-admin",
-  admin: "/dashboard/admin",
-  manager: "/dashboard/manager",
-  sales: "/dashboard/sales",
-  marketing: "/dashboard/marketing",
-  "legal-team": "/dashboard/legal",
-  "finance-team": "/dashboard/finance",
-  support: "/dashboard/support",
-  viewer: "/dashboard/viewer",
-};
 
 export function middleware(request) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get("authToken")?.value;
   const role = request.cookies.get("authRole")?.value;
-
-  if (pathname === "/" && token) {
-    return NextResponse.redirect(new URL(ROLE_HOME_ROUTE[role] || "/dashboard", request.url));
-  }
 
   if (PUBLIC_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`))) {
     const response = NextResponse.next();

@@ -1,23 +1,14 @@
 import Link from "next/link";
 
-export default function SiteHeader({ compact = false, landing = false }) {
-  const navItems = compact
-    ? [
-        { href: "/login", label: "Login" },
-        { href: "/register", label: "Sign Up" },
-      ]
-    : landing
-      ? [
-          { href: "/login", label: "Login" },
-          { href: "/register", label: "Sign Up" },
-        ]
-      : [
-          { href: "/login", label: "Login" },
-          { href: "/register", label: "Sign Up" },
-        ];
+const navItems = [
+  { href: "/login", label: "Login" },
+  { href: "/register", label: "Sign Up" },
+];
+
+export default function SiteHeader({ compact = false }) {
 
   return (
-    <header className={`site-header${landing ? " landing" : ""}`}>
+    <header className="site-header">
       <Link href="/" className="brand-mark">
         GreenCRM
       </Link>
@@ -29,8 +20,8 @@ export default function SiteHeader({ compact = false, landing = false }) {
           </Link>
         ))}
         {!compact ? (
-          <Link href={landing ? "/book-demo" : "/login"} className="button primary">
-            {landing ? "Book Demo" : "Get Started"}
+          <Link href="/login" className="button primary">
+            Get Started
           </Link>
         ) : null}
       </div>

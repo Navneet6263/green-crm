@@ -104,10 +104,6 @@ svg {
   border-bottom: 1px solid rgba(209, 227, 244, 0.92);
 }
 
-.site-header.landing {
-  background: rgba(236, 247, 255, 0.72);
-}
-
 .brand-mark {
   display: inline-flex;
   align-items: center;
