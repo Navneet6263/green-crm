@@ -7,6 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { apiRequest } from "../../lib/api";
 import { PLATFORM_CONSOLE_ROLES, ROLE_HOME_ROUTE } from "../../lib/roles";
 import { clearSession } from "../../lib/session";
+import { useLiveSessionProfile } from "../../lib/useLiveSessionProfile";
 import DashboardIcon from "./icons";
 import { getRoleMeta } from "./shell-config";
 
@@ -71,6 +72,7 @@ const ACCESS_ROUTE_RULES = [
   { prefix: "/tasks", accessKey: "tasks", label: "Tasks" },
   { prefix: "/calendar", accessKey: "calendar", label: "Calendar" },
   { prefix: "/communications", accessKey: "communications", label: "Communications" },
+  { prefix: "/attendance", accessKey: "attendance", label: "Attendance" },
   { prefix: "/analytics", accessKey: "analytics", label: "Analytics" },
   { prefix: "/support", accessKey: "support", label: "Support" },
   { prefix: "/documents", accessKey: "documents", label: "Documents" },
@@ -141,7 +143,8 @@ function SidebarNavItem({ item, active }) {
   );
 }
 
-export default function DashboardShell({ session, children, title, heroStats = [], hideTitle = false }) {
+export default function DashboardShell({ session: initialSession, children, title, heroStats = [], hideTitle = false }) {
+  const session = useLiveSessionProfile(initialSession);
   const router = useRouter();
   const pathname = usePathname();
   const [navOpen, setNavOpen] = useState(false);

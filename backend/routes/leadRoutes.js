@@ -2,6 +2,7 @@ const express = require("express");
 
 const authenticate = require("../middlewares/authenticate");
 const asyncHandler = require("../utils/asyncHandler");
+const callLogController = require("../controllers/callLogController");
 const leadController = require("../controllers/leadController");
 
 const router = express.Router();
@@ -23,6 +24,7 @@ router.put("/:leadId", asyncHandler(leadController.update));
 router.patch("/:leadId", asyncHandler(leadController.update));
 router.delete("/:leadId", asyncHandler(leadController.remove));
 router.post("/:leadId/assign", asyncHandler(leadController.assign));
+router.get("/:leadId/calls", asyncHandler(callLogController.listLeadCalls));
 router.get("/:leadId/notes", asyncHandler(leadController.notes));
 router.post("/:leadId/notes", asyncHandler(leadController.addNote));
 router.get("/:leadId/activity", asyncHandler(leadController.activities));

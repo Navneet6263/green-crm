@@ -159,6 +159,18 @@ GO
 IF NOT EXISTS (
   SELECT 1
   FROM sys.indexes
+  WHERE name = N'uq_users_company_user_id' AND object_id = OBJECT_ID(N'dbo.users')
+)
+BEGIN
+  CREATE UNIQUE INDEX [uq_users_company_user_id]
+  ON [dbo].[users] ([company_id], [user_id]);
+END
+GO
+
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
   WHERE name = N'idx_users_company_role_active' AND object_id = OBJECT_ID(N'dbo.users')
 )
 BEGIN
@@ -200,6 +212,222 @@ IF NOT EXISTS (
 BEGIN
   CREATE INDEX [idx_users_created_at]
   ON [dbo].[users] ([created_at]);
+END
+GO
+
+
+IF OBJECT_ID(N'dbo.teams', N'U') IS NULL
+BEGIN
+  CREATE TABLE [dbo].[teams] (
+    [id] BIGINT        NOT NULL IDENTITY(1,1),
+    [team_id] NVARCHAR(20)   NOT NULL,
+    [company_id] NVARCHAR(20)   NOT NULL,
+    [name] NVARCHAR(191)  NOT NULL,
+    [code] NVARCHAR(40)   NOT NULL,
+    [description] NVARCHAR(255)  NULL,
+    [created_by] NVARCHAR(20)   NULL,
+    [is_active] BIT    NOT NULL DEFAULT 1,
+    [created_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    [updated_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY ([id]),
+    [CONSTRAINT] fk_teams_company FOREIGN KEY (company_id) REFERENCES companies (company_id)
+  );
+END
+GO
+
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
+  WHERE name = N'uq_teams_team_id' AND object_id = OBJECT_ID(N'dbo.teams')
+)
+BEGIN
+  CREATE UNIQUE INDEX [uq_teams_team_id]
+  ON [dbo].[teams] ([team_id]);
+END
+GO
+
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
+  WHERE name = N'uq_teams_company_code' AND object_id = OBJECT_ID(N'dbo.teams')
+)
+BEGIN
+  CREATE UNIQUE INDEX [uq_teams_company_code]
+  ON [dbo].[teams] ([company_id], [code]);
+END
+GO
+
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
+  WHERE name = N'uq_teams_company_name' AND object_id = OBJECT_ID(N'dbo.teams')
+)
+BEGIN
+  CREATE UNIQUE INDEX [uq_teams_company_name]
+  ON [dbo].[teams] ([company_id], [name]);
+END
+GO
+
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
+  WHERE name = N'uq_teams_company_team_id' AND object_id = OBJECT_ID(N'dbo.teams')
+)
+BEGIN
+  CREATE UNIQUE INDEX [uq_teams_company_team_id]
+  ON [dbo].[teams] ([company_id], [team_id]);
+END
+GO
+
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
+  WHERE name = N'idx_teams_company_active' AND object_id = OBJECT_ID(N'dbo.teams')
+)
+BEGIN
+  CREATE INDEX [idx_teams_company_active]
+  ON [dbo].[teams] ([company_id], [is_active], [created_at]);
+END
+GO
+
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
+  WHERE name = N'idx_teams_created_by' AND object_id = OBJECT_ID(N'dbo.teams')
+)
+BEGIN
+  CREATE INDEX [idx_teams_created_by]
+  ON [dbo].[teams] ([created_by]);
+END
+GO
+
+
+IF OBJECT_ID(N'dbo.team_members', N'U') IS NULL
+BEGIN
+  CREATE TABLE [dbo].[team_members] (
+    [id] BIGINT        NOT NULL IDENTITY(1,1),
+    [company_id] NVARCHAR(20)   NOT NULL,
+    [team_id] NVARCHAR(20)   NOT NULL,
+    [user_id] NVARCHAR(20)   NOT NULL,
+    [membership_role] NVARCHAR(40)   NOT NULL DEFAULT 'member',
+    [is_primary] BIT    NOT NULL DEFAULT 0,
+    [is_active] BIT    NOT NULL DEFAULT 1,
+    [added_by] NVARCHAR(20)   NULL,
+    [created_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    [updated_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY ([id]),
+    [CONSTRAINT] fk_team_members_team FOREIGN KEY (company_id, team_id) REFERENCES teams (company_id, team_id),
+    [CONSTRAINT] fk_team_members_user FOREIGN KEY (company_id, user_id) REFERENCES users (company_id, user_id)
+  );
+END
+GO
+
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
+  WHERE name = N'uq_team_members_team_user' AND object_id = OBJECT_ID(N'dbo.team_members')
+)
+BEGIN
+  CREATE UNIQUE INDEX [uq_team_members_team_user]
+  ON [dbo].[team_members] ([team_id], [user_id]);
+END
+GO
+
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
+  WHERE name = N'idx_team_members_company_user' AND object_id = OBJECT_ID(N'dbo.team_members')
+)
+BEGIN
+  CREATE INDEX [idx_team_members_company_user]
+  ON [dbo].[team_members] ([company_id], [user_id], [is_active]);
+END
+GO
+
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
+  WHERE name = N'idx_team_members_company_team' AND object_id = OBJECT_ID(N'dbo.team_members')
+)
+BEGIN
+  CREATE INDEX [idx_team_members_company_team]
+  ON [dbo].[team_members] ([company_id], [team_id], [is_active]);
+END
+GO
+
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
+  WHERE name = N'idx_team_members_user_primary' AND object_id = OBJECT_ID(N'dbo.team_members')
+)
+BEGIN
+  CREATE INDEX [idx_team_members_user_primary]
+  ON [dbo].[team_members] ([user_id], [is_primary], [is_active]);
+END
+GO
+
+
+IF OBJECT_ID(N'dbo.team_managers', N'U') IS NULL
+BEGIN
+  CREATE TABLE [dbo].[team_managers] (
+    [id] BIGINT        NOT NULL IDENTITY(1,1),
+    [company_id] NVARCHAR(20)   NOT NULL,
+    [team_id] NVARCHAR(20)   NOT NULL,
+    [user_id] NVARCHAR(20)   NOT NULL,
+    [is_active] BIT    NOT NULL DEFAULT 1,
+    [added_by] NVARCHAR(20)   NULL,
+    [created_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    [updated_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY ([id]),
+    [CONSTRAINT] fk_team_managers_team FOREIGN KEY (company_id, team_id) REFERENCES teams (company_id, team_id),
+    [CONSTRAINT] fk_team_managers_user FOREIGN KEY (company_id, user_id) REFERENCES users (company_id, user_id)
+  );
+END
+GO
+
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
+  WHERE name = N'uq_team_managers_team_user' AND object_id = OBJECT_ID(N'dbo.team_managers')
+)
+BEGIN
+  CREATE UNIQUE INDEX [uq_team_managers_team_user]
+  ON [dbo].[team_managers] ([team_id], [user_id]);
+END
+GO
+
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
+  WHERE name = N'idx_team_managers_company_user' AND object_id = OBJECT_ID(N'dbo.team_managers')
+)
+BEGIN
+  CREATE INDEX [idx_team_managers_company_user]
+  ON [dbo].[team_managers] ([company_id], [user_id], [is_active]);
+END
+GO
+
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
+  WHERE name = N'idx_team_managers_company_team' AND object_id = OBJECT_ID(N'dbo.team_managers')
+)
+BEGIN
+  CREATE INDEX [idx_team_managers_company_team]
+  ON [dbo].[team_managers] ([company_id], [team_id], [is_active]);
 END
 GO
 
@@ -313,13 +541,15 @@ BEGIN
     [id] BIGINT        NOT NULL IDENTITY(1,1),
     [product_id] NVARCHAR(20)   NOT NULL,
     [company_id] NVARCHAR(20)   NOT NULL,
+    [team_id] NVARCHAR(20)   NULL,
     [name] NVARCHAR(191)  NOT NULL,
     [color] NVARCHAR(32)   NOT NULL DEFAULT '#22c55e',
     [is_active] BIT    NOT NULL DEFAULT 1,
     [created_by] NVARCHAR(20)   NULL,
     [created_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
     [updated_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY ([id])
+    PRIMARY KEY ([id]),
+    [CONSTRAINT] fk_products_team FOREIGN KEY (company_id, team_id) REFERENCES teams (company_id, team_id)
   );
 END
 GO
@@ -361,6 +591,18 @@ END
 GO
 
 
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
+  WHERE name = N'idx_products_company_team' AND object_id = OBJECT_ID(N'dbo.products')
+)
+BEGIN
+  CREATE INDEX [idx_products_company_team]
+  ON [dbo].[products] ([company_id], [team_id], [is_active]);
+END
+GO
+
+
 IF OBJECT_ID(N'dbo.leads', N'U') IS NULL
 BEGIN
   CREATE TABLE [dbo].[leads] (
@@ -382,7 +624,8 @@ BEGIN
     [status] NVARCHAR(60)   NOT NULL DEFAULT 'new',
     [priority] NVARCHAR(20)   NOT NULL DEFAULT 'medium',
     [estimated_value] DECIMAL(15,2) NOT NULL DEFAULT 0,
-    [number_of_units] INT NULL,
+    [number_of_units] INT           NULL,
+    [team_id] NVARCHAR(20)   NULL,
     [assigned_to] NVARCHAR(20)   NULL,
     [assigned_at] DATETIME2      NULL,
     [assigned_by] NVARCHAR(20)   NULL,
@@ -412,7 +655,8 @@ BEGIN
     [last_contacted_at] DATETIME2      NULL,
     [created_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
     [updated_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY ([id])
+    PRIMARY KEY ([id]),
+    [CONSTRAINT] fk_leads_team FOREIGN KEY (company_id, team_id) REFERENCES teams (company_id, team_id)
   );
 END
 GO
@@ -474,6 +718,30 @@ IF NOT EXISTS (
 BEGIN
   CREATE INDEX [idx_leads_company_workflow]
   ON [dbo].[leads] ([company_id], [workflow_stage], [is_active]);
+END
+GO
+
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
+  WHERE name = N'idx_leads_company_team_active' AND object_id = OBJECT_ID(N'dbo.leads')
+)
+BEGIN
+  CREATE INDEX [idx_leads_company_team_active]
+  ON [dbo].[leads] ([company_id], [team_id], [is_active], [created_at]);
+END
+GO
+
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
+  WHERE name = N'idx_leads_team_status' AND object_id = OBJECT_ID(N'dbo.leads')
+)
+BEGIN
+  CREATE INDEX [idx_leads_team_status]
+  ON [dbo].[leads] ([team_id], [status], [is_active]);
 END
 GO
 
@@ -810,6 +1078,7 @@ BEGIN
     [converted_from_lead_id] NVARCHAR(20)   NULL,
     [total_value] DECIMAL(15,2) NOT NULL DEFAULT 0,
     [status] NVARCHAR(30)   NOT NULL DEFAULT 'active',
+    [team_id] NVARCHAR(20)   NULL,
     [assigned_to] NVARCHAR(20)   NULL,
     [last_interaction] DATETIME2      NULL,
     [next_follow_up] DATETIME2      NULL,
@@ -817,7 +1086,8 @@ BEGIN
     [is_active] BIT    NOT NULL DEFAULT 1,
     [created_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
     [updated_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY ([id])
+    PRIMARY KEY ([id]),
+    [CONSTRAINT] fk_customers_team FOREIGN KEY (company_id, team_id) REFERENCES teams (company_id, team_id)
   );
 END
 GO
@@ -843,6 +1113,18 @@ IF NOT EXISTS (
 BEGIN
   CREATE INDEX [idx_cust_company_active]
   ON [dbo].[customers] ([company_id], [is_active]);
+END
+GO
+
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
+  WHERE name = N'idx_cust_company_team' AND object_id = OBJECT_ID(N'dbo.customers')
+)
+BEGIN
+  CREATE INDEX [idx_cust_company_team]
+  ON [dbo].[customers] ([company_id], [team_id], [is_active], [created_at]);
 END
 GO
 
@@ -882,6 +1164,7 @@ BEGIN
     [status] NVARCHAR(30)   NOT NULL DEFAULT 'pending',
     [priority] NVARCHAR(20)   NOT NULL DEFAULT 'medium',
     [due_date] DATETIME2      NOT NULL,
+    [team_id] NVARCHAR(20)   NULL,
     [assigned_to] NVARCHAR(20)   NULL,
     [related_to] NVARCHAR(30)   NULL,
     [related_id] NVARCHAR(20)   NULL,
@@ -889,7 +1172,8 @@ BEGIN
     [notes] NVARCHAR(MAX)      NULL,
     [created_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
     [updated_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY ([id])
+    PRIMARY KEY ([id]),
+    [CONSTRAINT] fk_tasks_team FOREIGN KEY (company_id, team_id) REFERENCES teams (company_id, team_id)
   );
 END
 GO
@@ -915,6 +1199,18 @@ IF NOT EXISTS (
 BEGIN
   CREATE INDEX [idx_tasks_company_assigned_status]
   ON [dbo].[tasks] ([company_id], [assigned_to], [status], [due_date]);
+END
+GO
+
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
+  WHERE name = N'idx_tasks_company_team' AND object_id = OBJECT_ID(N'dbo.tasks')
+)
+BEGIN
+  CREATE INDEX [idx_tasks_company_team]
+  ON [dbo].[tasks] ([company_id], [team_id], [status], [due_date]);
 END
 GO
 
@@ -1096,6 +1392,207 @@ END
 GO
 
 
+IF OBJECT_ID(N'dbo.company_integrations', N'U') IS NULL
+BEGIN
+  CREATE TABLE [dbo].[company_integrations] (
+    [id] BIGINT        NOT NULL IDENTITY(1,1),
+    [company_id] NVARCHAR(20)   NOT NULL,
+    [channel] NVARCHAR(32)   NOT NULL,
+    [enabled] BIT    NOT NULL DEFAULT 0,
+    [provider] NVARCHAR(60)   NOT NULL,
+    [mode] NVARCHAR(40)   NOT NULL DEFAULT 'own_credentials',
+    [config_json] NVARCHAR(MAX)          NULL,
+    [created_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    [updated_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY ([id])
+  );
+END
+GO
+
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
+  WHERE name = N'uq_company_integrations_company_channel' AND object_id = OBJECT_ID(N'dbo.company_integrations')
+)
+BEGIN
+  CREATE UNIQUE INDEX [uq_company_integrations_company_channel]
+  ON [dbo].[company_integrations] ([company_id], [channel]);
+END
+GO
+
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
+  WHERE name = N'idx_company_integrations_company_enabled' AND object_id = OBJECT_ID(N'dbo.company_integrations')
+)
+BEGIN
+  CREATE INDEX [idx_company_integrations_company_enabled]
+  ON [dbo].[company_integrations] ([company_id], [enabled], [channel]);
+END
+GO
+
+
+IF OBJECT_ID(N'dbo.company_permissions', N'U') IS NULL
+BEGIN
+  CREATE TABLE [dbo].[company_permissions] (
+    [id] BIGINT        NOT NULL IDENTITY(1,1),
+    [company_id] NVARCHAR(20)   NOT NULL,
+    [can_use_platform_call] BIT    NOT NULL DEFAULT 0,
+    [can_use_platform_whatsapp] BIT    NOT NULL DEFAULT 0,
+    [can_use_platform_sms] BIT    NOT NULL DEFAULT 0,
+    [can_use_attendance] BIT    NOT NULL DEFAULT 0,
+    [created_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    [updated_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY ([id])
+  );
+END
+GO
+
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
+  WHERE name = N'uq_company_permissions_company' AND object_id = OBJECT_ID(N'dbo.company_permissions')
+)
+BEGIN
+  CREATE UNIQUE INDEX [uq_company_permissions_company]
+  ON [dbo].[company_permissions] ([company_id]);
+END
+GO
+
+
+IF OBJECT_ID(N'dbo.attendance_events', N'U') IS NULL
+BEGIN
+  CREATE TABLE [dbo].[attendance_events] (
+    [id] BIGINT        NOT NULL IDENTITY(1,1),
+    [attendance_event_id] NVARCHAR(20)   NOT NULL,
+    [company_id] NVARCHAR(20)   NOT NULL,
+    [user_id] NVARCHAR(20)   NOT NULL,
+    [event_type] NVARCHAR(20)   NOT NULL,
+    [ip_address] NVARCHAR(45)   NOT NULL,
+    [created_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY ([id])
+  );
+END
+GO
+
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
+  WHERE name = N'uq_attendance_events_event_id' AND object_id = OBJECT_ID(N'dbo.attendance_events')
+)
+BEGIN
+  CREATE UNIQUE INDEX [uq_attendance_events_event_id]
+  ON [dbo].[attendance_events] ([attendance_event_id]);
+END
+GO
+
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
+  WHERE name = N'idx_attendance_events_company_user_created' AND object_id = OBJECT_ID(N'dbo.attendance_events')
+)
+BEGIN
+  CREATE INDEX [idx_attendance_events_company_user_created]
+  ON [dbo].[attendance_events] ([company_id], [user_id], [created_at]);
+END
+GO
+
+
+IF OBJECT_ID(N'dbo.call_logs', N'U') IS NULL
+BEGIN
+  CREATE TABLE [dbo].[call_logs] (
+    [id] BIGINT        NOT NULL IDENTITY(1,1),
+    [call_log_id] NVARCHAR(20)   NOT NULL,
+    [company_id] NVARCHAR(20)   NOT NULL,
+    [entity_type] NVARCHAR(20)   NOT NULL,
+    [entity_id] NVARCHAR(20)   NOT NULL,
+    [lead_id] NVARCHAR(20)   NULL,
+    [customer_id] NVARCHAR(20)   NULL,
+    [provider] NVARCHAR(60)   NOT NULL,
+    [call_sid] NVARCHAR(191)  NULL,
+    [reference_id] NVARCHAR(191)  NULL,
+    [from_number] NVARCHAR(30)   NULL,
+    [to_number] NVARCHAR(30)   NOT NULL,
+    [duration_seconds] INT           NULL,
+    [status] NVARCHAR(40)   NOT NULL DEFAULT 'initiated',
+    [recording_url] NVARCHAR(1024) NULL,
+    [provider_payload] NVARCHAR(MAX)          NULL,
+    [started_at] DATETIME2      NULL,
+    [ended_at] DATETIME2      NULL,
+    [created_by] NVARCHAR(20)   NULL,
+    [created_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    [updated_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY ([id])
+  );
+END
+GO
+
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
+  WHERE name = N'uq_call_logs_call_log_id' AND object_id = OBJECT_ID(N'dbo.call_logs')
+)
+BEGIN
+  CREATE UNIQUE INDEX [uq_call_logs_call_log_id]
+  ON [dbo].[call_logs] ([call_log_id]);
+END
+GO
+
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
+  WHERE name = N'idx_call_logs_company_lead_created' AND object_id = OBJECT_ID(N'dbo.call_logs')
+)
+BEGIN
+  CREATE INDEX [idx_call_logs_company_lead_created]
+  ON [dbo].[call_logs] ([company_id], [lead_id], [created_at]);
+END
+GO
+
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
+  WHERE name = N'idx_call_logs_company_entity_created' AND object_id = OBJECT_ID(N'dbo.call_logs')
+)
+BEGIN
+  CREATE INDEX [idx_call_logs_company_entity_created]
+  ON [dbo].[call_logs] ([company_id], [entity_type], [entity_id], [created_at]);
+END
+GO
+
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
+  WHERE name = N'idx_call_logs_provider_call_sid' AND object_id = OBJECT_ID(N'dbo.call_logs')
+)
+BEGIN
+  CREATE INDEX [idx_call_logs_provider_call_sid]
+  ON [dbo].[call_logs] ([provider], [call_sid]);
+END
+GO
+
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
+  WHERE name = N'idx_call_logs_provider_reference_id' AND object_id = OBJECT_ID(N'dbo.call_logs')
+)
+BEGIN
+  CREATE INDEX [idx_call_logs_provider_reference_id]
+  ON [dbo].[call_logs] ([provider], [reference_id]);
+END
+GO
+
+
 IF OBJECT_ID(N'dbo.demo_requests', N'U') IS NULL
 BEGIN
   CREATE TABLE [dbo].[demo_requests] (
@@ -1134,11 +1631,95 @@ GO
 IF NOT EXISTS (
   SELECT 1
   FROM sys.indexes
+  WHERE name = N'idx_teams_company_code_perf' AND object_id = OBJECT_ID(N'dbo.teams')
+)
+BEGIN
+  CREATE INDEX [idx_teams_company_code_perf]
+  ON [dbo].[teams] ([company_id], [code], [is_active]);
+END
+GO
+
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
+  WHERE name = N'idx_team_members_company_user_team_perf' AND object_id = OBJECT_ID(N'dbo.team_members')
+)
+BEGIN
+  CREATE INDEX [idx_team_members_company_user_team_perf]
+  ON [dbo].[team_members] ([company_id], [user_id], [team_id], [is_active]);
+END
+GO
+
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
+  WHERE name = N'idx_team_members_company_team_user_perf' AND object_id = OBJECT_ID(N'dbo.team_members')
+)
+BEGIN
+  CREATE INDEX [idx_team_members_company_team_user_perf]
+  ON [dbo].[team_members] ([company_id], [team_id], [user_id], [is_active]);
+END
+GO
+
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
+  WHERE name = N'idx_team_managers_company_user_team_perf' AND object_id = OBJECT_ID(N'dbo.team_managers')
+)
+BEGIN
+  CREATE INDEX [idx_team_managers_company_user_team_perf]
+  ON [dbo].[team_managers] ([company_id], [user_id], [team_id], [is_active]);
+END
+GO
+
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
+  WHERE name = N'idx_team_managers_company_team_user_perf' AND object_id = OBJECT_ID(N'dbo.team_managers')
+)
+BEGIN
+  CREATE INDEX [idx_team_managers_company_team_user_perf]
+  ON [dbo].[team_managers] ([company_id], [team_id], [user_id], [is_active]);
+END
+GO
+
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
   WHERE name = N'idx_leads_company_lead_lookup' AND object_id = OBJECT_ID(N'dbo.leads')
 )
 BEGIN
   CREATE INDEX [idx_leads_company_lead_lookup]
   ON [dbo].[leads] ([company_id], [lead_id]);
+END
+GO
+
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
+  WHERE name = N'idx_leads_company_team_active_created_perf' AND object_id = OBJECT_ID(N'dbo.leads')
+)
+BEGIN
+  CREATE INDEX [idx_leads_company_team_active_created_perf]
+  ON [dbo].[leads] ([company_id], [team_id], [is_active], [created_at]);
+END
+GO
+
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
+  WHERE name = N'idx_leads_team_status_created_perf' AND object_id = OBJECT_ID(N'dbo.leads')
+)
+BEGIN
+  CREATE INDEX [idx_leads_team_status_created_perf]
+  ON [dbo].[leads] ([team_id], [status], [created_at]);
 END
 GO
 
@@ -1422,6 +2003,18 @@ GO
 IF NOT EXISTS (
   SELECT 1
   FROM sys.indexes
+  WHERE name = N'idx_customers_company_team_active_created_perf' AND object_id = OBJECT_ID(N'dbo.customers')
+)
+BEGIN
+  CREATE INDEX [idx_customers_company_team_active_created_perf]
+  ON [dbo].[customers] ([company_id], [team_id], [is_active], [created_at]);
+END
+GO
+
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
   WHERE name = N'idx_users_company_active_created_perf' AND object_id = OBJECT_ID(N'dbo.users')
 )
 BEGIN
@@ -1458,11 +2051,35 @@ GO
 IF NOT EXISTS (
   SELECT 1
   FROM sys.indexes
+  WHERE name = N'idx_products_company_team_active_perf' AND object_id = OBJECT_ID(N'dbo.products')
+)
+BEGIN
+  CREATE INDEX [idx_products_company_team_active_perf]
+  ON [dbo].[products] ([company_id], [team_id], [is_active], [created_at]);
+END
+GO
+
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
   WHERE name = N'idx_tasks_company_assigned_status_due_created_perf' AND object_id = OBJECT_ID(N'dbo.tasks')
 )
 BEGIN
   CREATE INDEX [idx_tasks_company_assigned_status_due_created_perf]
   ON [dbo].[tasks] ([company_id], [assigned_to], [status], [due_date], [created_at]);
+END
+GO
+
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
+  WHERE name = N'idx_tasks_company_team_status_due_perf' AND object_id = OBJECT_ID(N'dbo.tasks')
+)
+BEGIN
+  CREATE INDEX [idx_tasks_company_team_status_due_perf]
+  ON [dbo].[tasks] ([company_id], [team_id], [status], [due_date]);
 END
 GO
 
@@ -1489,3 +2106,5 @@ BEGIN
   ON [dbo].[notifications] ([company_id], [user_id], [is_read], [created_at]);
 END
 GO
+
+

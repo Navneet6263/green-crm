@@ -1,4 +1,5 @@
 const superAdminService = require("../services/superAdminService");
+const userRoleControlService = require("../services/superAdmin/userRoleControlService");
 
 async function listUsers(req, res) {
   const data = await superAdminService.listAdminUsers(req.auth, req.query);
@@ -30,6 +31,16 @@ async function safetyStatus(req, res) {
   res.json({ data });
 }
 
+async function updateTenantRole(req, res) {
+  const data = await userRoleControlService.updateTenantUserRole(
+    req.auth,
+    req.params.userId,
+    req.body
+  );
+
+  res.json({ data });
+}
+
 module.exports = {
   activate,
   createSuperAdmin,
@@ -37,4 +48,5 @@ module.exports = {
   listUsers,
   resetPassword,
   safetyStatus,
+  updateTenantRole,
 };

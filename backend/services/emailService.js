@@ -181,7 +181,7 @@ function getTransporter(config) {
   return transporterCache.get(cacheKey);
 }
 
-async function sendEmail({ company = null, platformCompany = null, to, subject, html, text, replyTo }) {
+async function sendEmail({ company = null, platformCompany = null, to, cc = [], subject, html, text, replyTo }) {
   const transportConfig = buildTransportConfig(company, platformCompany);
 
   if (!transportConfig) {
@@ -197,6 +197,7 @@ async function sendEmail({ company = null, platformCompany = null, to, subject, 
     const info = await transporter.sendMail({
       from: transportConfig.from,
       to,
+      cc,
       subject,
       html,
       text,
@@ -220,7 +221,7 @@ async function sendEmail({ company = null, platformCompany = null, to, subject, 
   }
 }
 
-async function sendCustomEmail({ company = null, platformCompany = null, to, subject, body, heading = "GreenCRM" }) {
+async function sendCustomEmail({ company = null, platformCompany = null, to, cc = [], subject, body, heading = "GreenCRM" }) {
   const safeHeading = escapeHtml(heading);
   const safeBody = convertTextToHtml(body);
 
@@ -228,6 +229,7 @@ async function sendCustomEmail({ company = null, platformCompany = null, to, sub
     company,
     platformCompany,
     to,
+    cc,
     subject,
     text: body,
     html: `

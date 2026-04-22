@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { apiRequest } from "../../lib/api";
+import CommunicationSettingsSection from "../integrations/CommunicationSettingsSection";
 import { formatNumber, parseJson } from "./format";
 import {
   Badge,
@@ -172,6 +173,15 @@ export default function SystemSettingsContent({ session, data, error, loading, r
               </Panel>
             </div>
           </div>
+
+          <CommunicationSettingsSection
+            companyId="platform-root"
+            token={session?.token}
+            title="Shared provider infrastructure"
+            description="This is the platform-level credential vault used when companies are approved for shared calling, WhatsApp, SMS, or attendance policies."
+            canEditIntegrations
+            platformRoot
+          />
         </div>
       ) : null}
     </>

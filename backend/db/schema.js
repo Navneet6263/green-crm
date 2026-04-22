@@ -569,6 +569,77 @@ const schemaStatements = [
     KEY idx_ac_cached_at (cached_at)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
 
+  `CREATE TABLE IF NOT EXISTS company_integrations (
+    id           BIGINT        NOT NULL AUTO_INCREMENT,
+    company_id   VARCHAR(20)   NOT NULL,
+    channel      VARCHAR(32)   NOT NULL,
+    enabled      TINYINT(1)    NOT NULL DEFAULT 0,
+    provider     VARCHAR(60)   NOT NULL,
+    mode         VARCHAR(40)   NOT NULL DEFAULT 'own_credentials',
+    config_json  JSON          NULL,
+    created_at   DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at   DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_company_integrations_company_channel (company_id, channel),
+    KEY idx_company_integrations_company_enabled (company_id, enabled, channel)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
+  `CREATE TABLE IF NOT EXISTS company_permissions (
+    id                         BIGINT        NOT NULL AUTO_INCREMENT,
+    company_id                 VARCHAR(20)   NOT NULL,
+    can_use_platform_call      TINYINT(1)    NOT NULL DEFAULT 0,
+    can_use_platform_whatsapp  TINYINT(1)    NOT NULL DEFAULT 0,
+    can_use_platform_sms       TINYINT(1)    NOT NULL DEFAULT 0,
+    can_use_attendance         TINYINT(1)    NOT NULL DEFAULT 0,
+    created_at                 DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at                 DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_company_permissions_company (company_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
+  `CREATE TABLE IF NOT EXISTS attendance_events (
+    id                   BIGINT        NOT NULL AUTO_INCREMENT,
+    attendance_event_id  VARCHAR(20)   NOT NULL,
+    company_id           VARCHAR(20)   NOT NULL,
+    user_id              VARCHAR(20)   NOT NULL,
+    event_type           VARCHAR(20)   NOT NULL,
+    ip_address           VARCHAR(45)   NOT NULL,
+    created_at           DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_attendance_events_event_id (attendance_event_id),
+    KEY idx_attendance_events_company_user_created (company_id, user_id, created_at)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
+  `CREATE TABLE IF NOT EXISTS call_logs (
+    id                BIGINT        NOT NULL AUTO_INCREMENT,
+    call_log_id       VARCHAR(20)   NOT NULL,
+    company_id        VARCHAR(20)   NOT NULL,
+    entity_type       VARCHAR(20)   NOT NULL,
+    entity_id         VARCHAR(20)   NOT NULL,
+    lead_id           VARCHAR(20)   NULL,
+    customer_id       VARCHAR(20)   NULL,
+    provider          VARCHAR(60)   NOT NULL,
+    call_sid          VARCHAR(191)  NULL,
+    reference_id      VARCHAR(191)  NULL,
+    from_number       VARCHAR(30)   NULL,
+    to_number         VARCHAR(30)   NOT NULL,
+    duration_seconds  INT           NULL,
+    status            VARCHAR(40)   NOT NULL DEFAULT 'initiated',
+    recording_url     VARCHAR(1024) NULL,
+    provider_payload  JSON          NULL,
+    started_at        DATETIME      NULL,
+    ended_at          DATETIME      NULL,
+    created_by        VARCHAR(20)   NULL,
+    created_at        DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at        DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_call_logs_call_log_id (call_log_id),
+    KEY idx_call_logs_company_lead_created (company_id, lead_id, created_at),
+    KEY idx_call_logs_company_entity_created (company_id, entity_type, entity_id, created_at),
+    KEY idx_call_logs_provider_call_sid (provider, call_sid),
+    KEY idx_call_logs_provider_reference_id (provider, reference_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
   // ── demo_requests ──────────────────────────────────────────
   `CREATE TABLE IF NOT EXISTS demo_requests (
     id          BIGINT        NOT NULL AUTO_INCREMENT,

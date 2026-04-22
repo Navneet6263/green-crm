@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 
 import DashboardShell from "../../../components/dashboard/DashboardShell";
 import DashboardIcon from "../../../components/dashboard/icons";
+import LeadCallHistoryPanel from "../../../components/leads/details/LeadCallHistoryPanel";
 import LeadNotesPanel from "../../../components/leads/details/LeadNotesPanel";
 import LeadQuickStatusControl from "../../../components/leads/LeadQuickStatusControl";
 import { API_BASE, apiRequest } from "../../../lib/api";
@@ -132,7 +133,7 @@ function ActionCard({ href, onClick, disabled = false, title, copy, primary = fa
 export default function LeadDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const [session, setSession] = useState(null), [lead, setLead] = useState(null), [notes, setNotes] = useState([]), [activity, setActivity] = useState([]), [users, setUsers] = useState([]);
+  const [session, setSession] = useState(null), [lead, setLead] = useState(null), [notes, setNotes] = useState([]), [activity, setActivity] = useState([]), [callLogs, setCallLogs] = useState([]), [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true), [savingActivity, setSavingActivity] = useState(false), [savingTask, setSavingTask] = useState(false), [transferring, setTransferring] = useState(false);
   const [error, setError] = useState(""), [notice, setNotice] = useState(""), [activityType, setActivityType] = useState("call"), [activityText, setActivityText] = useState(""), [transferOwner, setTransferOwner] = useState(""), [transferNote, setTransferNote] = useState("");
   const [task, setTask] = useState({ title: "", type: "call", priority: "medium", due_date: "", due_time: "", assigned_to: "", notes: "" });
@@ -186,15 +187,17 @@ export default function LeadDetailPage() {
   }, [currentUserName]);
 
   async function loadLead(activeSession, { includeUsers = false } = {}) {
-    const [leadResponse, notesResponse, activityResponse] = await Promise.all([
+    const [leadResponse, notesResponse, activityResponse, callsResponse] = await Promise.all([
       apiRequest(`/leads/${params.id}`, { token: activeSession.token }),
       apiRequest(`/leads/${params.id}/notes?page_size=12`, { token: activeSession.token }),
       apiRequest(`/leads/${params.id}/activity?page_size=12`, { token: activeSession.token }),
+      apiRequest(`/leads/${params.id}/calls?page_size=12`, { token: activeSession.token }),
     ]);
 
     setLead(leadResponse);
     setNotes(notesResponse.items || []);
     setActivity(activityResponse.items || []);
+    setCallLogs(callsResponse.items || []);
     setTransferOwner(leadResponse.assigned_to_legal || "");
     setTask((current) => ({ ...current, assigned_to: current.assigned_to || leadResponse.assigned_to || activeSession.user?.user_id || "" }));
 
@@ -547,6 +550,8 @@ export default function LeadDetailPage() {
                   </p>
                 )}
               </article>
+
+              <LeadCallHistoryPanel calls={callLogs} panelClass={PANEL_CLASS} kickerClass={KICKER_CLASS} />
 
               <article className={PANEL_CLASS}>
                 <div className="mb-5"><div><span className={KICKER_CLASS}>Activity</span><h2 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Activity Timeline</h2></div></div>

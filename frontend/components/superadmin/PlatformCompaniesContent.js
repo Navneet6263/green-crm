@@ -3,6 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { apiRequest } from "../../lib/api";
+import CommunicationSettingsSection from "../integrations/CommunicationSettingsSection";
+import CompanyRoleControlPanel from "./company-roles/CompanyRoleControlPanel";
+import TenantCapabilityGuide from "./TenantCapabilityGuide";
 import { describeSmtp } from "../../app/super-admin/companies/company-utils";
 import { ACCESS_FEATURES, ACCESS_PRESETS } from "../../app/super-admin/companies/company-config";
 import {
@@ -33,6 +36,7 @@ export default function PlatformCompaniesContent({ session, data, error, loading
   const role = session?.user?.role || "";
   const canCreateCompany = role === "super-admin";
   const canManageTenant = ["super-admin", "platform-admin"].includes(role);
+  const canManageRoles = role === "super-admin";
   const [form, setForm] = useState(createCompanyForm);
   const [createNotice, setCreateNotice] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -282,19 +286,32 @@ export default function PlatformCompaniesContent({ session, data, error, loading
             </section>
 
             {selectedCompany ? (
-              <TenantSettingsSection
-                selectedCompany={selectedCompany}
-                selectedCompanyName={selectedCompanyName}
-                canManageTenant={canManageTenant}
-                settingsDraft={settingsDraft}
-                settingsNotice={settingsNotice}
-                onFieldChange={updateSettingsField}
-                onLimitChange={updateLimitField}
-                onSave={handleSaveCompanySettings}
-                onSendTestEmail={handleSendTestEmail}
-                savingSettings={savingSettings}
-                testingEmail={testingEmail}
-              />
+              <>
+                <TenantCapabilityGuide />
+                <TenantSettingsSection
+                  selectedCompany={selectedCompany}
+                  selectedCompanyName={selectedCompanyName}
+                  canManageTenant={canManageTenant}
+                  settingsDraft={settingsDraft}
+                  settingsNotice={settingsNotice}
+                  onFieldChange={updateSettingsField}
+                  onLimitChange={updateLimitField}
+                  onSave={handleSaveCompanySettings}
+                  onSendTestEmail={handleSendTestEmail}
+                  savingSettings={savingSettings}
+                  testingEmail={testingEmail}
+                />
+                <CommunicationSettingsSection
+                  companyId={selectedCompany.company_id}
+                  token={session?.token}
+                  title="Channel capability, provider mode, and platform approvals"
+                  description="This section controls whether calling, WhatsApp, SMS, and attendance actions actually work after the module is visible in the tenant workspace."
+                  canEditIntegrations={canManageTenant}
+                  canEditPermissions={canManageTenant && selectedCompany.company_id !== "platform-root"}
+                  platformRoot={selectedCompany.company_id === "platform-root"}
+                />
+                <CompanyRoleControlPanel companyId={selectedCompany.company_id} companyName={selectedCompany.name} token={session?.token} canManage={canManageRoles} />
+              </>
             ) : null}
           </PageFrame>
         </div>

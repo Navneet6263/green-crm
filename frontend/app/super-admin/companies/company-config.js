@@ -14,6 +14,7 @@ export const ACCESS_FEATURES = [
   { key: "tasks", label: "Tasks", group: "Execution", description: "Task queue and daily workload coordination." },
   { key: "calendar", label: "Calendar", group: "Execution", description: "Follow-up schedule, meetings, and date visibility." },
   { key: "communications", label: "Communications", group: "Service", description: "Alerts, activity feed, and message-focused surfaces." },
+  { key: "attendance", label: "Attendance / Location", group: "Execution", description: "Standalone punch in and punch out module with office IP checks." },
   { key: "analytics", label: "Analytics", group: "Insights", description: "Performance dashboards, source mix, and conversion insight." },
   { key: "support", label: "Support", group: "Service", description: "Support inbox, escalations, and ticket visibility." },
   { key: "documents", label: "Documents", group: "Compliance", description: "Document review surfaces for legal and finance teams." },
@@ -31,7 +32,7 @@ export const ROLE_LIMIT_FIELDS = [
   { key: "viewer", label: "Viewer" },
 ];
 
-const CORE_ACCESS_KEYS = ["dashboard", "leads", "customers", "workflow", "team_management", "communications", "support"];
+const CORE_ACCESS_KEYS = ["dashboard", "leads", "customers", "workflow", "team_management", "communications", "attendance", "support"];
 const LITE_ACCESS_KEYS = ["dashboard", "team_management", "communications"];
 
 export const ACCESS_PRESETS = {
@@ -50,6 +51,7 @@ export const FEATURE_ICON_MAP = {
   tasks: "tasks",
   calendar: "calendar",
   communications: "message",
+  attendance: "attendance",
   analytics: "analytics",
   support: "support",
   documents: "documents",

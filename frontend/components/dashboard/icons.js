@@ -81,6 +81,19 @@ const ICONS = {
       <path d="M8 13h5" />
     </>
   ),
+  phone: (
+    <>
+      <path d="M6.5 4.5h3l1.5 4-2 1.4a15 15 0 0 0 5.1 5.1l1.4-2 4 1.5v3c0 .8-.7 1.5-1.5 1.5C10.6 19 5 13.4 5 6c0-.8.7-1.5 1.5-1.5Z" />
+    </>
+  ),
+  attendance: (
+    <>
+      <path d="M12 7v5l3 2" />
+      <circle cx="12" cy="13" r="8" />
+      <path d="M7 4V2" />
+      <path d="M17 4V2" />
+    </>
+  ),
   workflow: (
     <>
       <circle cx="6" cy="6" r="2.5" />

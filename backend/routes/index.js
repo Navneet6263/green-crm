@@ -1,7 +1,9 @@
 const express = require("express");
 
 const authRoutes = require("./authRoutes");
+const attendanceRoutes = require("./attendanceRoutes");
 const auditRoutes = require("./auditRoutes");
+const capabilitiesRoutes = require("./capabilitiesRoutes");
 const companyRoutes = require("./companyRoutes");
 const communicationsRoutes = require("./communicationsRoutes");
 const customerRoutes = require("./customerRoutes");
@@ -19,7 +21,9 @@ const dashboardRoutes = require("./dashboardRoutes");
 const router = express.Router();
 
 router.use("/auth", authRoutes);
+router.use("/attendance", attendanceRoutes);
 router.use("/audit-logs", auditRoutes);
+router.use("/capabilities", capabilitiesRoutes);
 router.use("/companies", companyRoutes);
 router.use("/communications", communicationsRoutes);
 router.use("/customers", customerRoutes);

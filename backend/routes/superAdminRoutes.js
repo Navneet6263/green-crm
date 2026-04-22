@@ -13,6 +13,7 @@ router.post("/create-super-admin", asyncHandler(superAdminController.createSuper
 router.put("/deactivate/:userId", asyncHandler(superAdminController.deactivate));
 router.put("/activate/:userId", asyncHandler(superAdminController.activate));
 router.put("/reset-password/:userId", asyncHandler(superAdminController.resetPassword));
+router.put("/users/:userId/role", asyncHandler(superAdminController.updateTenantRole));
 router.get("/safety-status", asyncHandler(superAdminController.safetyStatus));
 
 module.exports = router;

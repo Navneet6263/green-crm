@@ -11,6 +11,7 @@ const { buildTalentId, createPrefixedId, slugify } = require("../utils/ids");
 const AppError = require("../utils/appError");
 const { isPlatformOperatorRole } = require("../utils/tenant");
 const { getAuthCacheKey, rememberRevokedAuthKey } = require("../utils/requestAuthCache");
+const { initializeCompanyCommunicationControls } = require("./communication/companyCommunicationSetupService");
 const { ensureInitialCompanyTeam } = require("./teamProvisioningService");
 
 function sanitizeUser(user) {
@@ -102,6 +103,8 @@ async function registerCompany(payload) {
       },
       transaction
     );
+
+    await initializeCompanyCommunicationControls(companyId, transaction);
 
     const adminUser = await userRepository.createUser(
       {

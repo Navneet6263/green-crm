@@ -521,9 +521,9 @@ export function AccessSection({
   return (
     <article className={PANEL_CLASS}>
       <SectionHeader
-        eyebrow="Access Matrix"
-        title="Shape the tenant plan."
-        description="Turn modules on or off, keep mandatory modules fixed, and save the plan back into the company record."
+        eyebrow="Module Access"
+        title="Control sidebar and page visibility."
+        description="Use this layer to show or hide workspace modules. Calling, WhatsApp, SMS, and attendance still need channel capability setup below before tenant users can actually use them."
         action={
           <>
             <button className={SECONDARY_BUTTON_CLASS} type="button" onClick={() => onApplyPreset("full")} disabled={!selectedCompany || !canManageTenant}>
@@ -563,7 +563,7 @@ export function AccessSection({
 
           {!canManageTenant ? (
             <p className="mt-4 text-sm leading-6 text-slate-500">
-              Read-only mode is active for this account. Access rules can be changed by super-admin or platform-admin.
+              Read-only mode is active for this account. Module access can be changed by super-admin or platform-admin.
             </p>
           ) : null}
 
@@ -585,10 +585,10 @@ export function AccessSection({
           </div>
 
           <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-[22px] border border-slate-200 bg-slate-50 px-4 py-4">
-            <p className="text-sm leading-6 text-slate-500">Mandatory modules stay locked on. Other services can be packaged tenant by tenant.</p>
+            <p className="text-sm leading-6 text-slate-500">This only controls what the tenant can see in the sidebar and app shell. Channel actions are configured separately in Channel Capability.</p>
             <button className={PRIMARY_BUTTON_CLASS} type="button" onClick={onSave} disabled={savingAccess || !canManageTenant}>
               <DashboardIcon name="settings" className="h-4 w-4" />
-              {savingAccess ? "Saving..." : "Save Access Rules"}
+              {savingAccess ? "Saving..." : "Save Module Access"}
             </button>
           </div>
         </div>

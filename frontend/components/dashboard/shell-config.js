@@ -49,6 +49,7 @@ export const PAGE_SUMMARY = {
   Tasks: "Keep execution visible with a lighter task workspace designed around urgency and completion.",
   Calendar: "Stay on top of the schedule with a focused view of upcoming actions and workload timing.",
   Communications: "Review alerts and recent activity without burying the important signals.",
+  Attendance: "Keep punch events, office-IP validation, and attendance auditability inside a dedicated module.",
   Customers: "Track active customer records and move between accounts with a cleaner directory experience.",
   Documents: "Access legal and finance documents from a dedicated, simpler review surface.",
   "Team Performance": "Compare team load, member visibility, and upcoming work without dashboard noise.",
@@ -113,6 +114,7 @@ export const SIDEBAR_SECTIONS = {
       ITEM("Tasks", "/tasks", "tasks", "tasks"),
       ITEM("Calendar", "/calendar", "calendar", "calendar"),
       ITEM("Communications", "/communications", "message", "communications"),
+      ITEM("Attendance", "/attendance", "attendance", "attendance"),
     ]),
     SECTION("Insights", [
       ITEM("Analytics", "/analytics", "analytics", "analytics"),
@@ -126,6 +128,7 @@ export const SIDEBAR_SECTIONS = {
       ITEM("Leads", "/leads", "leads", "leads"),
       ITEM("Tasks", "/tasks", "tasks", "tasks"),
       ITEM("Calendar", "/calendar", "calendar", "calendar"),
+      ITEM("Attendance", "/attendance", "attendance", "attendance"),
     ]),
     SECTION("Team", [
       ITEM("Customers", "/customers", "customers", "customers"),
@@ -146,6 +149,7 @@ export const SIDEBAR_SECTIONS = {
     SECTION("Activity", [
       ITEM("Customers", "/customers", "customers", "customers"),
       ITEM("Communications", "/communications", "message", "communications"),
+      ITEM("Attendance", "/attendance", "attendance", "attendance"),
       ITEM("Support", "/support", "support", "support"),
     ]),
   ],
@@ -159,6 +163,7 @@ export const SIDEBAR_SECTIONS = {
     SECTION("Ops", [
       ITEM("Tasks", "/tasks", "tasks", "tasks"),
       ITEM("Communications", "/communications", "message", "communications"),
+      ITEM("Attendance", "/attendance", "attendance", "attendance"),
       ITEM("Customers", "/customers", "customers", "customers"),
     ]),
   ],
@@ -168,6 +173,7 @@ export const SIDEBAR_SECTIONS = {
       ITEM("Legal Queue", "/workflow/legal", "workflow", "workflow"),
       ITEM("Documents", "/documents", "documents", "documents"),
       ITEM("Tasks", "/tasks", "tasks", "tasks"),
+      ITEM("Attendance", "/attendance", "attendance", "attendance"),
     ]),
   ],
   "finance-team": [
@@ -176,6 +182,7 @@ export const SIDEBAR_SECTIONS = {
       ITEM("Finance Queue", "/workflow/finance", "finance", "workflow"),
       ITEM("Documents", "/documents", "documents", "documents"),
       ITEM("Tasks", "/tasks", "tasks", "tasks"),
+      ITEM("Attendance", "/attendance", "attendance", "attendance"),
     ]),
   ],
   support: [
@@ -184,6 +191,7 @@ export const SIDEBAR_SECTIONS = {
       ITEM("Support Center", "/support", "support", "support"),
       ITEM("Tasks", "/tasks", "tasks", "tasks"),
       ITEM("Communications", "/communications", "message", "communications"),
+      ITEM("Attendance", "/attendance", "attendance", "attendance"),
     ]),
   ],
   viewer: [
@@ -191,6 +199,7 @@ export const SIDEBAR_SECTIONS = {
       ITEM("Dashboard", ROLE_HOME_ROUTE.viewer, "dashboard"),
       ITEM("Leads", "/leads", "leads", "leads"),
       ITEM("Customers", "/customers", "customers", "customers"),
+      ITEM("Attendance", "/attendance", "attendance", "attendance"),
     ]),
   ],
 };
@@ -214,41 +223,49 @@ export const ROLE_SHORTCUTS = {
     ITEM("New Lead", "/leads/new", "leads"),
     ITEM("Teams", "/settings/teams", "users"),
     ITEM("Analytics", "/analytics", "analytics"),
+    ITEM("Attendance", "/attendance", "attendance"),
   ],
   manager: [
     ITEM("Leads", "/leads", "leads"),
     ITEM("Products", "/settings/products", "products"),
     ITEM("Teams", "/settings/teams", "users"),
     ITEM("Tasks", "/tasks", "tasks"),
+    ITEM("Attendance", "/attendance", "attendance"),
   ],
   sales: [
     ITEM("New Lead", "/leads/new", "leads"),
     ITEM("Calendar", "/calendar", "calendar"),
     ITEM("Tasks", "/tasks", "tasks"),
+    ITEM("Attendance", "/attendance", "attendance"),
   ],
   marketing: [
     ITEM("Leads", "/leads", "leads"),
     ITEM("Analytics", "/analytics", "analytics"),
     ITEM("Calendar", "/calendar", "calendar"),
+    ITEM("Attendance", "/attendance", "attendance"),
   ],
   "legal-team": [
     ITEM("Legal Queue", "/workflow/legal", "workflow"),
     ITEM("Documents", "/documents", "documents"),
     ITEM("Tasks", "/tasks", "tasks"),
+    ITEM("Attendance", "/attendance", "attendance"),
   ],
   "finance-team": [
     ITEM("Finance Queue", "/workflow/finance", "finance"),
     ITEM("Documents", "/documents", "documents"),
     ITEM("Tasks", "/tasks", "tasks"),
+    ITEM("Attendance", "/attendance", "attendance"),
   ],
   support: [
     ITEM("Support Center", "/support", "support"),
     ITEM("Communications", "/communications", "message"),
     ITEM("Tasks", "/tasks", "tasks"),
+    ITEM("Attendance", "/attendance", "attendance"),
   ],
   viewer: [
     ITEM("Leads", "/leads", "leads"),
     ITEM("Customers", "/customers", "customers"),
+    ITEM("Attendance", "/attendance", "attendance"),
   ],
 };
 
