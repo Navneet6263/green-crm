@@ -79,6 +79,13 @@ export const BULK_IMPORT_FIELDS = [
     note: "Numeric amount only. Currency symbol is not needed.",
   },
   {
+    key: "number_of_units",
+    label: "Number of Units",
+    required: "Optional",
+    example: "12",
+    note: "Whole number only. Leave blank if units do not apply.",
+  },
+  {
     key: "priority",
     label: "Priority",
     required: "Optional",

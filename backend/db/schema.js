@@ -319,6 +319,7 @@ const schemaStatements = [
     status                VARCHAR(60)   NOT NULL DEFAULT 'new',
     priority              VARCHAR(20)   NOT NULL DEFAULT 'medium',
     estimated_value       DECIMAL(15,2) NOT NULL DEFAULT 0,
+    number_of_units       INT           NULL,
     team_id               VARCHAR(20)   NULL,
     assigned_to           VARCHAR(20)   NULL,
     assigned_at           DATETIME      NULL,

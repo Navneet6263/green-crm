@@ -67,6 +67,25 @@ function normalizeEstimatedValue(value) {
   return Number.isFinite(parsed) ? parsed : NaN;
 }
 
+function normalizeUnitCount(value) {
+  if (blank(value)) {
+    return null;
+  }
+
+  const directNumeric = Number(value);
+  if (Number.isFinite(directNumeric)) {
+    return Number.isInteger(directNumeric) ? directNumeric : NaN;
+  }
+
+  const cleaned = String(value).replace(/[^\d-]/g, "").trim();
+  if (!cleaned) {
+    return null;
+  }
+
+  const parsed = Number(cleaned);
+  return Number.isInteger(parsed) ? parsed : NaN;
+}
+
 function toApiDateTime(value) {
   return value ? String(value).replace("T", " ") : null;
 }
@@ -201,6 +220,7 @@ export default function EditLeadPage() {
           status: leadResponse.status || "new",
           workflow_stage: leadResponse.workflow_stage || "sales",
           estimated_value: leadResponse.estimated_value || "",
+          number_of_units: leadResponse.number_of_units ?? "",
           team_id: nextTeamId,
           assigned_to: userItems.some((user) => user.user_id === leadResponse.assigned_to) ? leadResponse.assigned_to || "" : "",
           product_id: leadResponse.product_id || "",
@@ -296,6 +316,7 @@ export default function EditLeadPage() {
     const nextPayload = {
       ...form,
       estimated_value: normalizeEstimatedValue(form.estimated_value),
+      number_of_units: normalizeUnitCount(form.number_of_units),
       follow_up_date: toApiDateTime(form.follow_up_date) || "",
     };
 
@@ -308,6 +329,7 @@ export default function EditLeadPage() {
       ["priority", "Priority", originalLead.priority, nextPayload.priority],
       ["workflow_stage", "Workflow Stage", originalLead.workflow_stage, nextPayload.workflow_stage],
       ["estimated_value", "Estimated Value", originalLead.estimated_value, nextPayload.estimated_value],
+      ["number_of_units", "Number of Units", originalLead.number_of_units, nextPayload.number_of_units],
       ["team_id", "Team", originalLead.team_name || originalLead.team_id, selectedTeam?.name || selectedTeam?.team_id || nextPayload.team_id],
       ["assigned_to", "Lead Owner", originalLead.assigned_to_name || originalLead.assigned_to, selectedOwner?.name || nextPayload.assigned_to],
       ["requirements", "Requirements", originalLead.requirements, nextPayload.requirements],
@@ -355,6 +377,12 @@ export default function EditLeadPage() {
       return;
     }
 
+    const unitCount = normalizeUnitCount(form.number_of_units);
+    if (unitCount !== null && (!Number.isInteger(unitCount) || unitCount < 0)) {
+      setError("Number of units must be a whole number.");
+      return;
+    }
+
     setSaving(true);
     setError("");
 
@@ -362,6 +390,7 @@ export default function EditLeadPage() {
       const nextPayload = {
         ...form,
         estimated_value: estimatedValue,
+        number_of_units: unitCount,
         follow_up_date: toApiDateTime(form.follow_up_date),
         team_id: form.team_id || undefined,
         assigned_to: canManageAssignment ? form.assigned_to || undefined : undefined,
@@ -450,6 +479,7 @@ export default function EditLeadPage() {
                   { label: "Workflow", value: originalLead?.workflow_stage || "--" },
                   { label: "Team", value: selectedTeam?.name || originalLead?.team_name || "Auto team" },
                   { label: "Product", value: productLookup.get(form.product_id) || originalLead?.product_name || "--" },
+                  { label: "Units", value: form.number_of_units || "--" },
                 ].map((item) => (
                   <div key={item.label} className="rounded-[24px] border border-white/10 bg-white/6 p-4">
                     <p className="text-[10px] font-black uppercase tracking-[0.24em] text-white/55">{item.label}</p>
@@ -575,6 +605,10 @@ export default function EditLeadPage() {
                   <label className="space-y-2">
                     <span className={KICKER_CLASS}>Estimated Value</span>
                     <input className={INPUT_CLASS} type="number" value={form.estimated_value} onChange={(event) => setForm((current) => ({ ...current, estimated_value: event.target.value }))} />
+                  </label>
+                  <label className="space-y-2">
+                    <span className={KICKER_CLASS}>Number of Units</span>
+                    <input className={INPUT_CLASS} type="number" min="0" step="1" value={form.number_of_units} onChange={(event) => setForm((current) => ({ ...current, number_of_units: event.target.value }))} />
                   </label>
                   <label className="space-y-2">
                     <span className={KICKER_CLASS}>Product</span>

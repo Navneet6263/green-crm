@@ -16,6 +16,7 @@ export const LEAD_EXPORT_COLUMNS = [
   { key: "assigned_to", label: "Assigned To", resolve: (lead) => lead.assigned_to_name || lead.assigned_to || "" },
   { key: "workflow_stage", label: "Workflow Stage", resolve: (lead) => titleizeLeadValue(lead.workflow_stage || "sales") },
   { key: "estimated_value", label: "Estimated Value", resolve: (lead) => Number(lead.estimated_value || 0) },
+  { key: "number_of_units", label: "Number of Units", resolve: (lead) => lead.number_of_units ?? "" },
   { key: "created_at", label: "Created At", resolve: (lead) => formatLeadExportDate(lead.created_at) },
   { key: "follow_up_date", label: "Follow-up Date", resolve: (lead) => formatLeadExportDate(lead.follow_up_date) },
   { key: "created_by", label: "Created By", resolve: (lead) => lead.created_by_name || lead.created_by || "" },

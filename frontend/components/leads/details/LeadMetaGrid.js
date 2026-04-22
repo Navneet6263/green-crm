@@ -11,6 +11,7 @@ export default function LeadMetaGrid({ lead, teamBadgeLabel }) {
     { label: "Source", value: titleizeLeadValue(lead.lead_source || "website") },
     { label: "Follow Up", value: formatLeadDate(lead.follow_up_date, true) },
     { label: "Estimated Value", value: formatLeadMoney(lead.estimated_value) },
+    { label: "Units", value: lead.number_of_units ?? "--" },
     { label: "Created", value: formatLeadDate(lead.created_at, true) },
     { label: "Workflow", value: titleizeLeadValue(lead.workflow_stage || "sales") },
     { label: "Legal Owner", value: formatWorkflowOwnerIdentity(lead.legal_owner_name, lead.assigned_to_legal) },

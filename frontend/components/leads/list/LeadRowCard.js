@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import LeadQuickStatusControl from "../LeadQuickStatusControl";
 import LeadExpandedDetails from "../details/LeadExpandedDetails";
 import { PRIORITY_TONE, STATUS_TONE } from "../shared/leadPageConstants";
@@ -33,6 +35,7 @@ export default function LeadRowCard({
   onOwnerChange,
   onOwnerNoteChange,
   onPickToggle,
+  onQuickAddNote,
   onSelectToggle,
   owner,
   ownerNote,
@@ -54,8 +57,10 @@ export default function LeadRowCard({
   const primaryName = leadPrimaryName(lead);
   const secondaryName = leadSecondaryName(lead);
   const noteCount = Number(lead.note_count || 0);
+  const unitCount = lead.number_of_units ?? null;
   const locationLabel = formatLeadLocation(lead);
   const selectedLead = selected && activeLead?.lead_id === lead.lead_id ? activeLead : lead;
+  const [quickNoteSaving, setQuickNoteSaving] = useState(false);
   const handleSelectLead = () => {
     onSelectToggle();
   };
@@ -66,6 +71,25 @@ export default function LeadRowCard({
       onSelectToggle();
     }
   };
+
+  async function handleQuickAddNote() {
+    if (!onQuickAddNote || quickNoteSaving) {
+      return;
+    }
+
+    const note = window.prompt("Add a quick note for this lead.")?.trim();
+    if (!note) {
+      return;
+    }
+
+    setQuickNoteSaving(true);
+
+    try {
+      await onQuickAddNote(lead, note);
+    } finally {
+      setQuickNoteSaving(false);
+    }
+  }
 
   return (
     <article
@@ -116,6 +140,7 @@ export default function LeadRowCard({
               <div className="flex flex-wrap gap-x-8 gap-y-1 text-sm text-[#8f816a]">
                 <span>Source: {titleizeLeadValue(lead.lead_source || "website")}</span>
                 <span>Value: {formatLeadMoney(lead.estimated_value)}</span>
+                {unitCount !== null ? <span>Units: {unitCount}</span> : null}
                 <span>Created: {formatLeadDate(lead.created_at)}</span>
                 <span>By: {lead.created_by_name || "Unknown"}</span>
               </div>
@@ -149,6 +174,14 @@ export default function LeadRowCard({
             <div className="inline-flex items-center gap-2 rounded-full border border-[#eadfcd] bg-white px-3 py-2 text-xs font-semibold text-[#7c6d55]">
               <span>Follow-up {formatLeadDate(lead.follow_up_date, true)}</span>
             </div>
+            <button
+              className="inline-flex min-h-[38px] items-center justify-center rounded-[14px] border border-[#eadfcd] bg-white px-3 py-2 text-xs font-semibold text-[#5d503c] transition hover:-translate-y-0.5 hover:text-[#060710] disabled:cursor-not-allowed disabled:opacity-60"
+              type="button"
+              onClick={handleQuickAddNote}
+              disabled={quickNoteSaving}
+            >
+              {quickNoteSaving ? "Saving..." : "Add Note"}
+            </button>
           </div>
           {selected && detailLoading ? <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">Refreshing...</span> : null}
         </div>

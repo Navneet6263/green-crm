@@ -83,6 +83,10 @@ function sourceLabel(value) {
   return nice(value || "website");
 }
 
+function unitText(value) {
+  return value === undefined || value === null || value === "" ? "--" : String(value);
+}
+
 function normalizeMeta(meta = {}, page = 1, pageSize = 15) {
   return {
     page: Number(meta.page || page || 1),
@@ -375,7 +379,7 @@ export default function LeadHistoryPage() {
                         </div>
                       </div>
 
-                      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
                         <div className={SOFT_PANEL_CLASS}>
                           <span className={KICKER_CLASS}>Source</span>
                           <strong className="mt-3 block text-sm font-black text-[#060710]">{sourceLabel(lead.lead_source)}</strong>
@@ -391,6 +395,10 @@ export default function LeadHistoryPage() {
                         <div className={SOFT_PANEL_CLASS}>
                           <span className={KICKER_CLASS}>Value</span>
                           <strong className="mt-3 block text-sm font-black text-[#060710]">{formatMoney(lead.estimated_value)}</strong>
+                        </div>
+                        <div className={SOFT_PANEL_CLASS}>
+                          <span className={KICKER_CLASS}>Units</span>
+                          <strong className="mt-3 block text-sm font-black text-[#060710]">{unitText(lead.number_of_units)}</strong>
                         </div>
                       </div>
 

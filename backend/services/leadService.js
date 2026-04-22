@@ -42,6 +42,28 @@ function normalizeLeadNumber(value) {
   return Number.isFinite(parsed) ? parsed : NaN;
 }
 
+function normalizeLeadInteger(value) {
+  if (value === undefined || value === null || value === "") {
+    return null;
+  }
+
+  const directNumeric = Number(value);
+  if (Number.isFinite(directNumeric)) {
+    return Number.isInteger(directNumeric) ? directNumeric : NaN;
+  }
+
+  const cleaned = String(value)
+    .replace(/[^\d-]/g, "")
+    .trim();
+
+  if (!cleaned) {
+    return null;
+  }
+
+  const parsed = Number(cleaned);
+  return Number.isInteger(parsed) ? parsed : NaN;
+}
+
 function normalizeLeadDate(value) {
   if (value === undefined || value === null || value === "") {
     return null;
@@ -94,6 +116,9 @@ function normalizeLeadPayload(payload) {
     status: String(payload.status || "new").toLowerCase(),
     priority: String(payload.priority || "medium").toLowerCase(),
     estimated_value: normalizeLeadNumber(payload.estimated_value || payload.estimated_deal_value || 0),
+    number_of_units: normalizeLeadInteger(
+      payload.number_of_units ?? payload.number_of_unit ?? payload.unit_count ?? payload.units ?? null
+    ),
     product_id: payload.product_id || null,
     requirements: payload.requirements || payload.notes || null,
     workflow_stage: String(payload.workflow_stage || "sales").toLowerCase(),
@@ -154,6 +179,7 @@ function buildBulkImportLeadPayload(row, defaultCompanyId = null) {
     lead_source: getImportValue(row, ["lead_source", "source"]) || "website",
     follow_up_date: getImportValue(row, ["follow_up_date"]),
     estimated_value: getImportNumber(row, ["estimated_value", "estimated_deal_value"], 0),
+    number_of_units: getImportValue(row, ["number_of_units", "number_of_unit", "unit_count", "units"]),
     priority: getImportValue(row, ["priority"]) || "medium",
     address_street: getImportValue(row, ["address_street", "street"]),
     address_city: getImportValue(row, ["address_city", "city"]),
@@ -186,6 +212,10 @@ function validateLeadPayload(lead) {
 
   if (!Number.isFinite(lead.estimated_value)) {
     throw new AppError("Estimated value must be a valid number.", 400);
+  }
+
+  if (lead.number_of_units !== null && (!Number.isInteger(lead.number_of_units) || lead.number_of_units < 0)) {
+    throw new AppError("Number of units must be a whole number.", 400);
   }
 
   if (lead.follow_up_date === INVALID_LEAD_DATE) {
@@ -230,6 +260,7 @@ function buildLeadChangeSummary(previousLead, nextLead, assignedToOverride) {
   track("Status", previousLead.status, nextLead.status);
   track("Priority", previousLead.priority, nextLead.priority);
   track("Estimated value", previousLead.estimated_value, nextLead.estimated_value);
+  track("Number of units", previousLead.number_of_units, nextLead.number_of_units);
   track("Product", previousLead.product_id, nextLead.product_id);
   track("Workflow", previousLead.workflow_stage, nextLead.workflow_stage);
   track("Requirements", previousLead.requirements, nextLead.requirements);
@@ -528,6 +559,7 @@ async function createLead(auth, payload) {
         status: lead.status,
         priority: lead.priority,
         estimated_value: lead.estimated_value,
+        number_of_units: lead.number_of_units,
         team_id: teamId,
         assigned_to: assignedTo,
         assigned_by: auth.userId,
@@ -599,6 +631,7 @@ async function updateLead(auth, leadId, payload) {
     status: normalized.status,
     priority: normalized.priority,
     estimated_value: normalized.estimated_value,
+    number_of_units: normalized.number_of_units,
     product_id: normalized.product_id,
     requirements: normalized.requirements,
     workflow_stage: normalized.workflow_stage,

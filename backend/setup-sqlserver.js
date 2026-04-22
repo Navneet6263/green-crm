@@ -144,6 +144,7 @@ async function runSchema() {
       status                NVARCHAR(60)   NOT NULL DEFAULT 'new',
       priority              NVARCHAR(20)   NOT NULL DEFAULT 'medium',
       estimated_value       DECIMAL(15,2)  NOT NULL DEFAULT 0,
+      number_of_units       INT            NULL,
       assigned_to           NVARCHAR(20)   NULL,
       assigned_at           DATETIME2      NULL,
       assigned_by           NVARCHAR(20)   NULL,

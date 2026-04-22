@@ -26,6 +26,7 @@ import { useLeadScopeResources } from "../../components/leads/shared/useLeadScop
 import { useLeadSelection } from "../../components/leads/shared/useLeadSelection";
 import { useLeadSessionAccess } from "../../components/leads/shared/useLeadSessionAccess";
 import { AlertError, AlertSuccess } from "../../components/ui/Alert";
+import { apiRequest } from "../../lib/api";
 import {
   isPlatformConsoleRole,
   scopedUsersEmptyMessage,
@@ -100,6 +101,33 @@ export default function LeadsPage() {
     mergeLeadState(updatedLead);
     setNotice(`Lead status moved to ${titleizeLeadValue(updatedLead.status || "new")}.`);
   };
+  const handleQuickAddNote = async (lead, content) => {
+    if (!session?.token || !lead?.lead_id) {
+      return;
+    }
+
+    try {
+      await apiRequest(`/leads/${lead.lead_id}/notes`, {
+        method: "POST",
+        token: session.token,
+        body: { content },
+      });
+
+      const currentLead = selection.activeLead?.lead_id === lead.lead_id
+        ? selection.activeLead
+        : records.leads.find((item) => item.lead_id === lead.lead_id) || lead;
+
+      mergeLeadState({
+        lead_id: lead.lead_id,
+        latest_note: content,
+        note_count: Number(currentLead?.note_count || 0) + 1,
+      });
+      setNotice("Note added successfully.");
+    } catch (requestError) {
+      setError(requestError.message || "Could not save this note.");
+      throw requestError;
+    }
+  };
   const rowSharedProps = {
     archiveLead: ownershipActions.archiveLead,
     assigning: ownershipActions.assigning,
@@ -117,6 +145,7 @@ export default function LeadsPage() {
     owner: ownershipActions.owner,
     ownerNote: ownershipActions.ownerNote,
     ownerUsersMessage,
+    onQuickAddNote: handleQuickAddNote,
     saveOwner: ownershipActions.saveOwner,
     scopedLegalUsers,
     sessionToken: session?.token,

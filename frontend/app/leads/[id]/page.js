@@ -100,6 +100,10 @@ function DetailCell({ label, value, className = "" }) {
   );
 }
 
+function unitText(value) {
+  return value === undefined || value === null || value === "" ? "--" : String(value);
+}
+
 function ActionCard({ href, onClick, disabled = false, title, copy, primary = false, children }) {
   const className = primary ? DARK_ACTION_PRIMARY : DARK_ACTION_GHOST;
   const content = (
@@ -430,7 +434,7 @@ export default function LeadDetailPage() {
                   </div>
                 </article>
 
-                <div className="grid gap-3 sm:grid-cols-3">
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                   <div className={SOFT_PANEL_CLASS}>
                     <span className={KICKER_CLASS}>Follow-up</span>
                     <strong className="mt-3 block text-base font-black text-[#060710]">{when(lead.follow_up_date, true)}</strong>
@@ -442,6 +446,10 @@ export default function LeadDetailPage() {
                   <div className={SOFT_PANEL_CLASS}>
                     <span className={KICKER_CLASS}>Created</span>
                     <strong className="mt-3 block text-base font-black text-[#060710]">{when(lead.created_at, true)}</strong>
+                  </div>
+                  <div className={SOFT_PANEL_CLASS}>
+                    <span className={KICKER_CLASS}>Units</span>
+                    <strong className="mt-3 block text-base font-black text-[#060710]">{unitText(lead.number_of_units)}</strong>
                   </div>
                 </div>
               </div>
@@ -466,6 +474,7 @@ export default function LeadDetailPage() {
                       <DetailCell label="Team" value={teamBadgeLabel(lead) || "Auto team"} />
                       <DetailCell label="Owner" value={lead.assigned_to_name || "Unassigned"} />
                       <DetailCell label="Created By" value={lead.created_by_name || "Unknown"} />
+                      <DetailCell label="Units" value={unitText(lead.number_of_units)} />
                     </div>
 
                     <div className={SOFT_PANEL_CLASS}>

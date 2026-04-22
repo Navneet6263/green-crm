@@ -83,6 +83,7 @@ function createInitialForm(companyId = "") {
     custom_lead_source: "",
     follow_up_date: "",
     estimated_value: "",
+    number_of_units: "",
     priority: "medium",
     requirements: "",
     assigned_to: "",
@@ -454,6 +455,13 @@ export default function NewLeadPage() {
       nextErrors.custom_lead_source = "Enter the custom lead source.";
     }
 
+    if (form.number_of_units !== "") {
+      const units = Number(form.number_of_units);
+      if (!Number.isInteger(units) || units < 0) {
+        nextErrors.number_of_units = "Number of units must be a whole number.";
+      }
+    }
+
     if (isPlatformConsole && !form.assigned_to) {
       nextErrors.assigned_to = "Choose the tenant owner who should receive this lead.";
     }
@@ -492,6 +500,7 @@ export default function NewLeadPage() {
           lead_source: form.lead_source === "other" ? form.custom_lead_source.trim() : form.lead_source,
           follow_up_date: form.follow_up_date ? form.follow_up_date.replace("T", " ") : null,
           estimated_value: Number(form.estimated_value || 0),
+          number_of_units: form.number_of_units === "" ? null : Number(form.number_of_units),
           priority: form.priority,
           requirements: form.requirements.trim() || null,
           assigned_to: form.assigned_to || undefined,
@@ -541,6 +550,7 @@ export default function NewLeadPage() {
                     { label: "Product", value: selectedProduct?.name || "Select product" },
                     { label: "Owner", value: selectedAssignee?.name || (isPlatformConsole ? "Assignment required" : session?.user?.name || "Self owner") },
                     { label: "Value", value: form.estimated_value ? `INR ${Number(form.estimated_value).toLocaleString("en-IN")}` : "Not set" },
+                    { label: "Units", value: form.number_of_units || "Not set" },
                 ].map((item, index) => (
                   <div key={item.label} className={`rounded-[24px] border border-[#eadfcd] p-4 shadow-[0_12px_28px_rgba(79,58,22,0.05)] ${index === 1 ? "bg-[#fff6e4]" : "bg-white/88"}`}>
                     <p className={KICKER_CLASS}>{item.label}</p>
@@ -627,6 +637,7 @@ export default function NewLeadPage() {
                   { label: "Lead Source", name: "lead_source", type: "select", options: LEAD_SOURCE_OPTIONS },
                   { label: "Follow-up Date", name: "follow_up_date", type: "input", inputType: "datetime-local" },
                   { label: "Estimated Deal Value (INR)", name: "estimated_value", type: "input", inputType: "number", placeholder: "50000" },
+                  { label: "Number of Units", name: "number_of_units", type: "input", inputType: "number", placeholder: "25", error: errors.number_of_units },
                   { label: "Priority Level", name: "priority", type: "select", options: PRIORITY_OPTIONS },
                   { label: "Street Address", name: "address_street", type: "input", className: "md:col-span-2", placeholder: "123 Business Park" },
                   { label: "City", name: "address_city", type: "input", placeholder: "Mumbai" },
@@ -657,7 +668,8 @@ export default function NewLeadPage() {
                       <input
                         className={INPUT_CLASS}
                         type={field.inputType || "text"}
-                        min={field.name === "follow_up_date" ? minimumDateTime : undefined}
+                        min={field.name === "follow_up_date" ? minimumDateTime : field.name === "number_of_units" ? 0 : undefined}
+                        step={field.name === "number_of_units" ? 1 : undefined}
                         placeholder={field.placeholder || ""}
                         value={form[field.name]}
                         onChange={(event) => handleFieldChange(field.name, event.target.value)}

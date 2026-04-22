@@ -323,6 +323,7 @@ async function createLead(lead, executor) {
         status,
         priority,
         estimated_value,
+        number_of_units,
         team_id,
         assigned_to,
         assigned_at,
@@ -333,7 +334,7 @@ async function createLead(lead, executor) {
         workflow_stage,
         is_active,
         last_contacted_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
     `,
     [
       lead.lead_id,
@@ -353,6 +354,7 @@ async function createLead(lead, executor) {
       lead.status || "new",
       lead.priority || "medium",
       lead.estimated_value || 0,
+      lead.number_of_units,
       lead.team_id || null,
       lead.assigned_to || null,
       lead.assigned_to ? new Date() : null,
