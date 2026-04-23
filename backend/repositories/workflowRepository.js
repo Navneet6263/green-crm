@@ -1,4 +1,7 @@
 const db = require("../db/connection");
+const { buildLeadUserAccessPredicate } = require("./leadAssignmentRepository");
+
+const SQL_NOW = "SYSUTCDATETIME()";
 
 function getExecutor(executor) {
   return executor || db;
@@ -76,16 +79,19 @@ function buildWorkflowTrackerQuery({
   }
 
   if (assignedUserId) {
-    if (stage === "legal") {
-      conditions.push("(l.assigned_to_legal = ? OR l.assigned_to = ?)");
-      params.push(assignedUserId, assignedUserId);
-    } else if (stage === "finance") {
-      conditions.push("(l.assigned_to_finance = ? OR l.assigned_to = ?)");
-      params.push(assignedUserId, assignedUserId);
-    } else {
-      conditions.push("l.assigned_to = ?");
-      params.push(assignedUserId);
-    }
+    const accessColumns =
+      stage === "legal"
+        ? ["assigned_to_legal", "assigned_to"]
+        : stage === "finance"
+          ? ["assigned_to_finance", "assigned_to"]
+          : ["assigned_to"];
+    const viewerPredicate = buildLeadUserAccessPredicate({
+      leadAlias: "l",
+      primaryColumns: accessColumns,
+      userId: assignedUserId,
+    });
+    conditions.push(viewerPredicate.clause);
+    params.push(...viewerPredicate.params);
   }
 
   if (status) {
@@ -257,7 +263,7 @@ async function getWorkflowTrackerSummary(
       SELECT
         COUNT(*) AS filtered_count,
         COALESCE(SUM(COALESCE(l.invoice_amount, l.estimated_value, 0)), 0) AS total_value,
-        SUM(CASE WHEN l.follow_up_date IS NOT NULL AND l.follow_up_date < GETDATE() THEN 1 ELSE 0 END) AS overdue,
+        SUM(CASE WHEN l.follow_up_date IS NOT NULL AND l.follow_up_date < ${SQL_NOW} THEN 1 ELSE 0 END) AS overdue,
         SUM(CASE WHEN l.status = 'closed-won' AND COALESCE(l.workflow_stage, 'sales') = 'sales' THEN 1 ELSE 0 END) AS ready_for_legal,
         SUM(CASE WHEN l.workflow_stage = 'legal' THEN 1 ELSE 0 END) AS legal_queue,
         SUM(CASE WHEN l.workflow_stage = 'finance' THEN 1 ELSE 0 END) AS finance_queue,
@@ -395,8 +401,8 @@ async function closeOpenStageHistory(leadId, companyId, executor) {
     `
       UPDATE lead_stage_history
       SET
-        exited_at = GETDATE(),
-        duration = DATEDIFF(MINUTE, entered_at, GETDATE())
+        exited_at = ${SQL_NOW},
+        duration = DATEDIFF(MINUTE, entered_at, ${SQL_NOW})
       WHERE lead_id = ? AND company_id = ? AND exited_at IS NULL
     `,
     [leadId, companyId]
@@ -408,7 +414,7 @@ async function addStageHistory(leadId, companyId, stage, executor) {
   await active.query(
     `
       INSERT INTO lead_stage_history (lead_id, company_id, stage, entered_at)
-      VALUES (?, ?, ?, GETDATE())
+      VALUES (?, ?, ?, ${SQL_NOW})
     `,
     [leadId, companyId, stage]
   );

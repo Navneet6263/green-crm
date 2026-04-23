@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { apiRequest } from "../lib/api";
+import { formatIndiaDateWithTime } from "../lib/dateTime";
 import { clearSession, loadSession } from "../lib/session";
 
 const PLATFORM_CONSOLE_ROLES = ["super-admin", "platform-admin", "platform-manager"];
@@ -252,7 +253,7 @@ export default function DashboardClient() {
                     <span>{reminder.contact_person_name}</span>
                   </div>
                   <div>
-                    <span>{new Date(reminder.due_at).toLocaleString()}</span>
+                    <span>{formatIndiaDateWithTime(reminder.due_at)}</span>
                   </div>
                 </div>
               ))

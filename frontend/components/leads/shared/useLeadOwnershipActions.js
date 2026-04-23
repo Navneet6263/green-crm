@@ -70,16 +70,21 @@ export function useLeadOwnershipActions({
     setNotice("");
 
     try {
-      await apiRequest(`/leads/${activeLead.lead_id}/assign`, {
+      const updatedLead = await apiRequest(`/leads/${activeLead.lead_id}/assign`, {
         method: "POST",
         token: session.token,
         body: { assigned_to: owner, change_note: ownerNote.trim() },
       });
 
       const person = teamUsers.find((user) => user.user_id === owner);
-      applyOwner([activeLead.lead_id], owner, person?.name || activeLead.assigned_to_name);
+      mergeLead(updatedLead);
+      applyOwner(
+        [activeLead.lead_id],
+        updatedLead.assigned_to || owner,
+        updatedLead.assigned_to_name || person?.name || activeLead.assigned_to_name
+      );
       setOwnerNote("");
-      setNotice(`Lead owner updated to ${person?.name || "selected user"}.`);
+      setNotice(`Lead owner updated to ${updatedLead.assigned_to_name || person?.name || "selected user"}.`);
     } catch (requestError) {
       setError(formatScopedError(requestError, "Could not update the lead owner."));
     } finally {

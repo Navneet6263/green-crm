@@ -1,6 +1,7 @@
 const db = require("../db/connection");
 const workflowRepository = require("../repositories/workflowRepository");
 const leadRepository = require("../repositories/leadRepository");
+const leadAssignmentRepository = require("../repositories/leadAssignmentRepository");
 const userRepository = require("../repositories/userRepository");
 const auditRepository = require("../repositories/auditRepository");
 const { ROLES } = require("../constants/roles");
@@ -229,6 +230,14 @@ async function moveLead(auth, leadId, toStage, assignedUserId, extraUpdates = {}
     }
 
     await leadRepository.updateLead(lead.lead_id, lead.company_id, updates, transaction);
+    if (updates.assigned_to) {
+      await leadAssignmentRepository.removeSharedUserAccess(
+        lead.lead_id,
+        lead.company_id,
+        updates.assigned_to,
+        transaction
+      );
+    }
     await workflowRepository.closeOpenStageHistory(lead.lead_id, lead.company_id, transaction);
     await workflowRepository.addStageHistory(lead.lead_id, lead.company_id, toStage, transaction);
     await workflowRepository.createTransferHistory(

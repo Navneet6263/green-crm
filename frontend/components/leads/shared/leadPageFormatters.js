@@ -1,5 +1,7 @@
 "use client";
 
+import { formatIndiaDateTime } from "../../../lib/dateTime";
+
 export function buildQueryPath(path, params = {}) {
   const query = new URLSearchParams();
 
@@ -26,16 +28,7 @@ export function titleizeLeadValue(value) {
 }
 
 export function formatLeadDate(value, withTime = false) {
-  if (!value) {
-    return "--";
-  }
-
-  return new Date(value).toLocaleString(
-    "en-IN",
-    withTime
-      ? { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }
-      : { day: "numeric", month: "short", year: "numeric" }
-  );
+  return formatIndiaDateTime(value, withTime);
 }
 
 export function cleanLeadText(value = "") {

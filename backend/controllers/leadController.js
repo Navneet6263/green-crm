@@ -44,6 +44,25 @@ async function assign(req, res) {
   res.json({ data });
 }
 
+async function assignments(req, res) {
+  const data = await leadService.getLeadAssignments(req.auth, req.params.leadId);
+  res.json({ data });
+}
+
+async function updateAssignments(req, res) {
+  const data = await leadService.updateLeadAssignments(req.auth, req.params.leadId, req.body);
+  res.json({ data });
+}
+
+async function removeAssignment(req, res) {
+  const data = await leadService.removeLeadAssignment(
+    req.auth,
+    req.params.leadId,
+    req.params.userId
+  );
+  res.json({ data });
+}
+
 async function activities(req, res) {
   const data = await leadService.listLeadActivities(req.auth, req.params.leadId, req.query);
   res.json(data);
@@ -89,6 +108,7 @@ module.exports = {
   addActivity,
   addNote,
   assign,
+  assignments,
   bulkUpload,
   create,
   getOne,
@@ -99,6 +119,8 @@ module.exports = {
   productHistory,
   productStats,
   reminders,
+  removeAssignment,
   remove,
   update,
+  updateAssignments,
 };

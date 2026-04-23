@@ -1,5 +1,8 @@
 const db = require("../db/connection");
 const { encodeCursor } = require("../utils/pagination");
+const { buildLeadUserAccessPredicate } = require("./leadAssignmentRepository");
+
+const SQL_NOW = "SYSUTCDATETIME()";
 
 function getExecutor(executor) {
   return executor || db;
@@ -57,6 +60,16 @@ function buildWhere(filters) {
   if (filters.assignedTo) {
     conditions.push("l.assigned_to = ?");
     params.push(filters.assignedTo);
+  }
+
+  if (filters.viewerUserId) {
+    const viewerPredicate = buildLeadUserAccessPredicate({
+      leadAlias: "l",
+      primaryColumns: filters.viewerAccessColumns || ["assigned_to"],
+      userId: filters.viewerUserId,
+    });
+    conditions.push(viewerPredicate.clause);
+    params.push(...viewerPredicate.params);
   }
 
   if (filters.teamIds) {
@@ -155,6 +168,9 @@ async function getLeadById(leadId, companyId, executor) {
         l.*,
         p.name AS product_name,
         assignee.name AS assigned_to_name,
+        assignee.email AS assigned_to_email,
+        assignee.role AS assigned_to_role,
+        assignee.department AS assigned_to_department,
         creator.name AS created_by_name,
         team.name AS team_name,
         team.code AS team_code,
@@ -242,6 +258,9 @@ async function listLeads(filters, pagination, executor) {
         l.*,
         p.name AS product_name,
         assignee.name AS assigned_to_name,
+        assignee.email AS assigned_to_email,
+        assignee.role AS assigned_to_role,
+        assignee.department AS assigned_to_department,
         creator.name AS created_by_name,
         team.name AS team_name,
         team.code AS team_code,
@@ -333,8 +352,10 @@ async function createLead(lead, executor) {
         requirements,
         workflow_stage,
         is_active,
-        last_contacted_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
+        last_contacted_at,
+        created_at,
+        updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ${SQL_NOW}, ${SQL_NOW})
     `,
     [
       lead.lead_id,
@@ -382,7 +403,7 @@ async function updateLead(leadId, companyId, updates, executor) {
 
   if (fields.length) {
     await active.query(
-      `UPDATE leads SET ${fields.join(", ")}, updated_at = CURRENT_TIMESTAMP WHERE lead_id = ? AND company_id = ?`,
+      `UPDATE leads SET ${fields.join(", ")}, updated_at = ${SQL_NOW} WHERE lead_id = ? AND company_id = ?`,
       [...params, leadId, companyId]
     );
   }
@@ -393,7 +414,7 @@ async function updateLead(leadId, companyId, updates, executor) {
 async function softDeleteLead(leadId, companyId, executor) {
   const active = getExecutor(executor);
   await active.query(
-    "UPDATE leads SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE lead_id = ? AND company_id = ?",
+    `UPDATE leads SET is_active = 0, updated_at = ${SQL_NOW} WHERE lead_id = ? AND company_id = ?`,
     [leadId, companyId]
   );
 }
@@ -402,8 +423,8 @@ async function createNote(note, executor) {
   const active = getExecutor(executor);
   await active.query(
     `
-      INSERT INTO lead_notes (company_id, lead_id, content, created_by)
-      VALUES (?, ?, ?, ?)
+      INSERT INTO lead_notes (company_id, lead_id, content, created_by, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ${SQL_NOW}, ${SQL_NOW})
     `,
     [note.company_id, note.lead_id, note.content, note.created_by]
   );
@@ -475,8 +496,9 @@ async function createActivity(activity, executor) {
         lead_id,
         type,
         description,
-        created_by
-      ) VALUES (?, ?, ?, ?, ?, ?)
+        created_by,
+        created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ${SQL_NOW})
     `,
     [
       activity.activity_id,
@@ -547,31 +569,48 @@ async function listActivities(leadId, companyId, pagination, executor) {
 
 async function listReminders(filters, pagination, executor) {
   const active = getExecutor(executor);
-  const conditions = ["follow_up_date IS NOT NULL", "is_active = 1"];
+  const conditions = ["l.follow_up_date IS NOT NULL", "l.is_active = 1"];
   const params = [];
 
   if (filters.companyId) {
-    conditions.push("company_id = ?");
+    conditions.push("l.company_id = ?");
     params.push(filters.companyId);
   } else if (Array.isArray(filters.companyIds)) {
     if (!filters.companyIds.length) {
       conditions.push("1 = 0");
     } else {
-      conditions.push(`company_id IN (${filters.companyIds.map(() => "?").join(", ")})`);
+      conditions.push(`l.company_id IN (${filters.companyIds.map(() => "?").join(", ")})`);
       params.push(...filters.companyIds);
     }
   }
 
-  if (filters.userId) {
-    conditions.push("assigned_to = ?");
-    params.push(filters.userId);
+  if (filters.viewerUserId) {
+    const viewerPredicate = buildLeadUserAccessPredicate({
+      companyColumn: "l.company_id",
+      leadAlias: "l",
+      leadColumn: "l.lead_id",
+      primaryColumns: filters.viewerAccessColumns || ["assigned_to"],
+      userId: filters.viewerUserId,
+    });
+    conditions.push(viewerPredicate.clause);
+    params.push(...viewerPredicate.params);
+  } else if (filters.userId) {
+    const viewerPredicate = buildLeadUserAccessPredicate({
+      companyColumn: "l.company_id",
+      leadAlias: "l",
+      leadColumn: "l.lead_id",
+      primaryColumns: filters.viewerAccessColumns || ["assigned_to"],
+      userId: filters.userId,
+    });
+    conditions.push(viewerPredicate.clause);
+    params.push(...viewerPredicate.params);
   }
 
   if (filters.teamIds) {
     if (!filters.teamIds.length) {
       conditions.push("1 = 0");
     } else {
-      conditions.push(`team_id IN (${filters.teamIds.map(() => "?").join(", ")})`);
+      conditions.push(`l.team_id IN (${filters.teamIds.map(() => "?").join(", ")})`);
       params.push(...filters.teamIds);
     }
   }
@@ -583,24 +622,24 @@ async function listReminders(filters, pagination, executor) {
     const cursorLeadId = pagination.cursor.lead_id ? String(pagination.cursor.lead_id) : null;
     const cursorClause =
       cursorDate && cursorLeadId
-        ? " AND (follow_up_date > ? OR (follow_up_date = ? AND lead_id > ?))"
+        ? " AND (l.follow_up_date > ? OR (l.follow_up_date = ? AND l.lead_id > ?))"
         : "";
     const cursorParams = cursorClause ? [cursorDate, cursorDate, cursorLeadId] : [];
 
     const [rows] = await active.query(
       `
         SELECT TOP (?)
-          lead_id AS reminder_id,
-          lead_id,
-          company_id,
-          company_name,
-          contact_person AS contact_person_name,
-          follow_up_date AS due_at,
-          assigned_to,
-          status
-        FROM leads
+          l.lead_id AS reminder_id,
+          l.lead_id,
+          l.company_id,
+          l.company_name,
+          l.contact_person AS contact_person_name,
+          l.follow_up_date AS due_at,
+          l.assigned_to,
+          l.status
+        FROM leads l
         ${whereClause}${cursorClause}
-        ORDER BY follow_up_date ASC, lead_id ASC
+        ORDER BY l.follow_up_date ASC, l.lead_id ASC
       `,
       [pagination.limit + 1, ...params, ...cursorParams]
     );
@@ -614,17 +653,17 @@ async function listReminders(filters, pagination, executor) {
   const [rows] = await active.query(
     `
       SELECT
-        lead_id AS reminder_id,
-        lead_id,
-        company_id,
-        company_name,
-        contact_person AS contact_person_name,
-        follow_up_date AS due_at,
-        assigned_to,
-        status
-      FROM leads
+        l.lead_id AS reminder_id,
+        l.lead_id,
+        l.company_id,
+        l.company_name,
+        l.contact_person AS contact_person_name,
+        l.follow_up_date AS due_at,
+        l.assigned_to,
+        l.status
+      FROM leads l
       ${whereClause}
-      ORDER BY follow_up_date ASC, lead_id ASC
+      ORDER BY l.follow_up_date ASC, l.lead_id ASC
       OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
     `,
     [...params, pagination.offset, pagination.limit]
@@ -640,7 +679,7 @@ async function listReminders(filters, pagination, executor) {
   }
 
   const [countRows] = await active.query(
-    `SELECT COUNT(*) AS total FROM leads ${whereClause}`,
+    `SELECT COUNT(*) AS total FROM leads l ${whereClause}`,
     params
   );
 
@@ -651,10 +690,18 @@ async function listReminders(filters, pagination, executor) {
   };
 }
 
-async function getProductStats({ companyId, teamIds = null, assignedTo = null }, executor) {
+async function getProductStats({ companyId, teamIds = null, assignedTo = null, viewerUserId = null, viewerAccessColumns = ["assigned_to"] }, executor) {
   const active = getExecutor(executor);
   const normalizedTeamIds = Array.isArray(teamIds) ? teamIds.filter(Boolean) : null;
   const assignmentClause = assignedTo ? " AND l.assigned_to = ?" : "";
+  const viewerPredicate = viewerUserId
+    ? buildLeadUserAccessPredicate({
+        leadAlias: "l",
+        primaryColumns: viewerAccessColumns,
+        userId: viewerUserId,
+      })
+    : { clause: "", params: [] };
+  const viewerClause = viewerPredicate.clause ? ` AND ${viewerPredicate.clause}` : "";
   const productTeamClause = normalizedTeamIds
     ? normalizedTeamIds.length
       ? ` AND p.team_id IN (${normalizedTeamIds.map(() => "?").join(", ")})`
@@ -672,12 +719,18 @@ async function getProductStats({ companyId, teamIds = null, assignedTo = null },
         p.name,
         COUNT(l.lead_id) AS total_leads
       FROM products p
-      LEFT JOIN leads l ON l.product_id = p.product_id AND l.is_active = 1${leadTeamJoinClause}${assignmentClause}
+      LEFT JOIN leads l ON l.product_id = p.product_id AND l.is_active = 1${leadTeamJoinClause}${assignmentClause}${viewerClause}
       WHERE p.company_id = ? AND p.is_active = 1${productTeamClause}
       GROUP BY p.product_id, p.name
       ORDER BY total_leads DESC, p.name ASC
     `,
-    [...(normalizedTeamIds || []), ...(assignedTo ? [assignedTo] : []), companyId, ...(normalizedTeamIds || [])]
+    [
+      ...(normalizedTeamIds || []),
+      ...(assignedTo ? [assignedTo] : []),
+      ...viewerPredicate.params,
+      companyId,
+      ...(normalizedTeamIds || []),
+    ]
   );
   return rows;
 }

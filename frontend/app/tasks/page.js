@@ -5,6 +5,7 @@ import { useState } from "react";
 import WorkspacePage from "../../components/dashboard/WorkspacePage";
 import DashboardIcon from "../../components/dashboard/icons";
 import { apiRequest } from "../../lib/api";
+import { formatIndiaCustom } from "../../lib/dateTime";
 import { teamBadgeLabel } from "../../lib/teamScope";
 import { AlertError, AlertSuccess } from "../../components/ui/Alert";
 
@@ -20,10 +21,7 @@ function nice(value = "") {
 }
 
 function when(value) {
-  if (!value) return "--";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "--";
-  return date.toLocaleString("en-IN", {
+  return formatIndiaCustom(value, {
     day: "numeric",
     month: "short",
     hour: "2-digit",
@@ -45,7 +43,9 @@ export default function TasksPage() {
         const tasks = data.tasks?.items || [];
         const pending = tasks.filter((task) => task.status === "pending");
         const done = tasks.filter((task) => task.status === "done");
-        const overdue = tasks.filter((task) => task.status === "pending" && task.due_date && new Date(task.due_date) < new Date());
+        const overdue = tasks.filter(
+          (task) => task.status === "pending" && task.due_date && new Date(task.due_date) < new Date()
+        );
 
         return <TasksContent tasks={tasks} pending={pending} done={done} overdue={overdue} error={error} loading={loading} session={session} refresh={refresh} />;
       }}

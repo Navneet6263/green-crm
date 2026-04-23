@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import DashboardIcon from "../../../components/dashboard/icons";
 import DashboardShell from "../../../components/dashboard/DashboardShell";
 import { apiRequest } from "../../../lib/api";
+import { formatIndiaDateTime } from "../../../lib/dateTime";
 import { ROLE_HOME_ROUTE } from "../../../lib/roles";
 import { loadSession } from "../../../lib/session";
 import { teamBadgeLabel } from "../../../lib/teamScope";
@@ -53,15 +54,7 @@ function formatMoney(value) {
 }
 
 function formatDate(value, withTime = false) {
-  if (!value) return "--";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "--";
-  return date.toLocaleString(
-    "en-IN",
-    withTime
-      ? { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }
-      : { day: "numeric", month: "short", year: "numeric" }
-  );
+  return formatIndiaDateTime(value, withTime);
 }
 
 function nice(value) {

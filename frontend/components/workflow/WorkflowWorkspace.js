@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import DashboardShell from "../dashboard/DashboardShell";
 import DashboardIcon from "../dashboard/icons";
 import { API_BASE, apiRequest } from "../../lib/api";
+import { formatIndiaDateTime } from "../../lib/dateTime";
 import { ROLE_HOME_ROUTE } from "../../lib/roles";
 import { loadSession } from "../../lib/session";
 import {
@@ -93,7 +94,7 @@ const PRIORITY_TONE = {
 
 const nice = (value) => String(value || "").split("-").filter(Boolean).map((item) => item[0].toUpperCase() + item.slice(1)).join(" ");
 const money = (value) => `INR ${Number(value || 0).toLocaleString("en-IN")}`;
-const when = (value, full = false) => !value ? "--" : new Date(value).toLocaleString("en-IN", full ? { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" } : { day: "numeric", month: "short", year: "numeric" });
+const when = (value, full = false) => formatIndiaDateTime(value, full);
 const docHref = (fileUrl) => !fileUrl ? "#" : /^https?:\/\//i.test(fileUrl) ? fileUrl : `${API_BASE}${fileUrl}`;
 const compact = (value) => new Intl.NumberFormat("en-IN", { notation: Number(value || 0) >= 1000 ? "compact" : "standard", maximumFractionDigits: 1 }).format(Number(value || 0));
 const ownerLabel = (lead) => lead.assigned_to_name || lead.legal_owner_name || lead.finance_owner_name || "Unassigned";

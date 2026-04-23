@@ -33,6 +33,7 @@ function normalizeColumn(line) {
     .replace(/\bJSON\b/gi, "NVARCHAR(MAX)")
     .replace(/\bTINYINT\s*\(\s*1\s*\)/gi, "BIT")
     .replace(/\bDATETIME\b/gi, "DATETIME2")
+    .replace(/\bDEFAULT CURRENT_TIMESTAMP\b/gi, "DEFAULT SYSUTCDATETIME()")
     .replace(/\s+AUTO_INCREMENT\b/gi, " IDENTITY(1,1)")
     .replace(/\s+ON UPDATE CURRENT_TIMESTAMP\b/gi, "");
 
@@ -367,6 +368,22 @@ const schemaStatements = [
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
 
   // ── lead_notes ─────────────────────────────────────────────
+  `CREATE TABLE IF NOT EXISTS lead_assignments (
+    id          BIGINT        NOT NULL AUTO_INCREMENT,
+    lead_id     VARCHAR(20)   NOT NULL,
+    company_id  VARCHAR(20)   NOT NULL,
+    user_id     VARCHAR(20)   NOT NULL,
+    access_type VARCHAR(30)   NOT NULL DEFAULT 'shared',
+    created_by  VARCHAR(20)   NULL,
+    created_at  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_lead_assignments_lead_user_access (lead_id, user_id, access_type),
+    KEY idx_lead_assignments_company_lead (company_id, lead_id, access_type),
+    KEY idx_lead_assignments_company_user (company_id, user_id, access_type, created_at),
+    KEY idx_lead_assignments_user_lead (user_id, lead_id, access_type)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
   `CREATE TABLE IF NOT EXISTS lead_notes (
     id          BIGINT        NOT NULL AUTO_INCREMENT,
     company_id  VARCHAR(20)   NOT NULL,
@@ -677,6 +694,8 @@ const performanceIndexDefinitions = [
   { table: "leads", name: "idx_leads_company_legal_queue_perf", columns: "company_id, assigned_to_legal, is_active, updated_at" },
   { table: "leads", name: "idx_leads_company_finance_queue_perf", columns: "company_id, assigned_to_finance, is_active, updated_at" },
   { table: "leads", name: "idx_leads_company_followup_active_perf", columns: "company_id, is_active, follow_up_date" },
+  { table: "lead_assignments", name: "idx_lead_assignments_company_lead_perf", columns: "company_id, lead_id, access_type, user_id" },
+  { table: "lead_assignments", name: "idx_lead_assignments_company_user_perf", columns: "company_id, user_id, access_type, lead_id" },
   { table: "lead_notes", name: "idx_lead_notes_company_lead_created_perf", columns: "company_id, lead_id, created_at" },
   { table: "lead_notes", name: "idx_lead_notes_company_lead_created_id_perf", columns: "company_id, lead_id, created_at, id" },
   { table: "lead_activities", name: "idx_lead_activities_company_lead_created_perf", columns: "company_id, lead_id, created_at" },

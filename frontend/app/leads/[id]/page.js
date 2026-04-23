@@ -7,9 +7,12 @@ import { useParams, useRouter } from "next/navigation";
 import DashboardShell from "../../../components/dashboard/DashboardShell";
 import DashboardIcon from "../../../components/dashboard/icons";
 import LeadCallHistoryPanel from "../../../components/leads/details/LeadCallHistoryPanel";
+import LeadCollaboratorPanel from "../../../components/leads/details/LeadCollaboratorPanel";
 import LeadNotesPanel from "../../../components/leads/details/LeadNotesPanel";
 import LeadQuickStatusControl from "../../../components/leads/LeadQuickStatusControl";
+import { useLeadCollaboratorActions } from "../../../components/leads/shared/useLeadCollaboratorActions";
 import { API_BASE, apiRequest } from "../../../lib/api";
+import { formatIndiaDateTime } from "../../../lib/dateTime";
 import { loadSession } from "../../../lib/session";
 import {
   formatScopedError,
@@ -43,7 +46,7 @@ const DARK_PANEL_CLASS = "rounded-[34px] border border-[#1d1a12] bg-[linear-grad
 const PILL_CLASS = "inline-flex rounded-full px-3 py-1 text-[11px] font-bold";
 const nice = (v) => String(v || "").split("-").filter(Boolean).map((x) => x[0].toUpperCase() + x.slice(1)).join(" ");
 const money = (v) => `INR ${Number(v || 0).toLocaleString("en-IN")}`;
-const when = (v, full = false) => !v ? "--" : new Date(v).toLocaleString("en-IN", full ? { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" } : { day: "numeric", month: "short", year: "numeric" });
+const when = (v, full = false) => formatIndiaDateTime(v, full);
 const hrefForDoc = (fileUrl) => !fileUrl ? "#" : /^https?:\/\//i.test(fileUrl) ? fileUrl : `${API_BASE}${fileUrl}`;
 
 function buildLocalNote(content, createdByName) {
@@ -139,6 +142,7 @@ export default function LeadDetailPage() {
   const [task, setTask] = useState({ title: "", type: "call", priority: "medium", due_date: "", due_time: "", assigned_to: "", notes: "" });
   const role = session?.user?.role || "";
   const canSeeDocs = DOC_VIEW_ROLES.includes(role);
+  const canManageAssignments = ["super-admin", "platform-admin", "platform-manager", "admin", "manager"].includes(role);
   const canTransferToLegal = Boolean(lead?.can_transfer_to_legal) && LEGAL_TRANSFER_ROLES.includes(role);
   const scopedLegalUsers = useMemo(() => users.filter((user) => user.role === "legal-team"), [users]);
   const legalUsers = useMemo(
@@ -148,6 +152,7 @@ export default function LeadDetailPage() {
   const leadName = lead?.contact_person || lead?.company_name || "Lead";
   const hideWorkspaceTitle = ["sales", "marketing", "admin", "manager"].includes(role);
   const scopedUsersMessage = scopedUsersEmptyMessage(lead);
+  const collaboratorUsersMessage = scopedUsersMessage;
   const legalUsersMessage = workflowUsersEmptyMessage(lead?.team_name, "legal");
   const currentUserName = session?.user?.name || session?.user?.full_name || "You";
 
@@ -185,6 +190,14 @@ export default function LeadDetailPage() {
 
     setActivity((current) => [buildLocalActivity(type, trimmedDescription, currentUserName), ...current].slice(0, 12));
   }, [currentUserName]);
+  const collaboratorActions = useLeadCollaboratorActions({
+    activeLead: lead,
+    mergeLead: mergeLeadState,
+    session,
+    setError,
+    setNotice,
+    teamUsers: users,
+  });
 
   async function loadLead(activeSession, { includeUsers = false } = {}) {
     const [leadResponse, notesResponse, activityResponse, callsResponse] = await Promise.all([
@@ -631,6 +644,21 @@ export default function LeadDetailPage() {
 
             <div className="space-y-5">
               {canTransferToLegal ? <article className={`${PANEL_CLASS} bg-[#f5fbf0]`}><div className="mb-5"><div><span className={KICKER_CLASS}>Closed Won</span><h2 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Transfer to legal</h2></div></div><form className="grid gap-4" onSubmit={transferToLegal}><label className="space-y-2"><span className={KICKER_CLASS}>Legal Owner</span><select className={INPUT_CLASS} value={transferOwner} onChange={(event) => setTransferOwner(event.target.value)}><option value="">Assign later</option>{legalUsers.map((user) => <option key={user.user_id} value={user.user_id}>{formatWorkflowOwnerIdentity(user.name, user.user_id, "Legal user")}</option>)}</select>{!scopedLegalUsers.length ? <p className="text-xs font-medium text-[#8d6e27]">{legalUsersMessage}</p> : null}</label><label className="space-y-2"><span className={KICKER_CLASS}>Transfer Note *</span><textarea className={`${INPUT_CLASS} min-h-[150px] resize-y`} rows="4" value={transferNote} onChange={(event) => setTransferNote(event.target.value)} placeholder="What is ready for legal and what should be checked next?" /></label><button className={PRIMARY_BUTTON_CLASS} type="submit" disabled={transferring || !transferNote.trim()}>{transferring ? "Transferring..." : "Transfer to Legal"}</button></form></article> : null}
+
+              <article className={PANEL_CLASS}>
+                <LeadCollaboratorPanel
+                  addCollaborator={collaboratorActions.addCollaborator}
+                  canManage={canManageAssignments}
+                  collaboratorUsersMessage={collaboratorUsersMessage}
+                  lead={lead}
+                  pendingCollaborator={collaboratorActions.pendingCollaborator}
+                  removeCollaborator={collaboratorActions.removeCollaborator}
+                  removingCollaboratorId={collaboratorActions.removingCollaboratorId}
+                  savingCollaborators={collaboratorActions.savingCollaborators}
+                  setPendingCollaborator={collaboratorActions.setPendingCollaborator}
+                  teamUsers={users}
+                />
+              </article>
 
               <article className={PANEL_CLASS}>
                 <div className="mb-5"><div><span className={KICKER_CLASS}>Notes</span><h2 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Lead notes</h2></div></div>

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import DashboardShell from "../../../components/dashboard/DashboardShell";
 import DashboardIcon from "../../../components/dashboard/icons";
 import { apiRequest } from "../../../lib/api";
+import { formatIndiaDateTime } from "../../../lib/dateTime";
 import { loadSession } from "../../../lib/session";
 
 const PANEL = "rounded-[30px] border border-[#eadfcd] bg-white/82 p-5 shadow-[0_14px_36px_rgba(79,58,22,0.06)] md:p-6";
@@ -23,7 +24,7 @@ const LIMITS = [["admin","Admins"],["manager","Managers"],["sales","Sales"],["ma
 const BASE_ROLES = [["manager","Manager"],["sales","Sales"],["marketing","Marketing"],["support","Support"],["legal-team","Legal Team"],["finance-team","Finance Team"],["viewer","Viewer"]];
 const parseJson = (v) => { try { return !v ? {} : typeof v === "string" ? JSON.parse(v) : v; } catch { return {}; } };
 const pretty = (v = "") => String(v).replaceAll("_", "-").split("-").filter(Boolean).map((x) => x[0].toUpperCase() + x.slice(1)).join(" ");
-const when = (v, full = false) => !v ? "--" : (() => { const d = new Date(v); return Number.isNaN(d.getTime()) ? "--" : d.toLocaleString("en-IN", full ? { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" } : { day: "numeric", month: "short", year: "numeric" }); })();
+const when = (v, full = false) => formatIndiaDateTime(v, full);
 const initials = (v = "TM") => String(v).split(" ").filter(Boolean).slice(0, 2).map((x) => x[0]?.toUpperCase() || "").join("") || "TM";
 const getCredentialState = (user) => {
   if (user?.last_login_at) {

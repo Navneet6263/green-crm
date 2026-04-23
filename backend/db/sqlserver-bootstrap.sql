@@ -38,8 +38,8 @@ BEGIN
     [state] NVARCHAR(120)  NULL,
     [country] NVARCHAR(120)  NOT NULL DEFAULT 'India',
     [website] NVARCHAR(255)  NULL,
-    [created_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    [updated_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    [created_at] DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
+    [updated_at] DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
     PRIMARY KEY ([id])
   );
 END
@@ -124,8 +124,8 @@ BEGIN
     [app_preferences] NVARCHAR(MAX)          NULL,
     [notification_prefs] NVARCHAR(MAX)          NULL,
     [created_by] NVARCHAR(20)   NULL,
-    [created_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    [updated_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    [created_at] DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
+    [updated_at] DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
     PRIMARY KEY ([id])
   );
 END
@@ -227,8 +227,8 @@ BEGIN
     [description] NVARCHAR(255)  NULL,
     [created_by] NVARCHAR(20)   NULL,
     [is_active] BIT    NOT NULL DEFAULT 1,
-    [created_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    [updated_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    [created_at] DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
+    [updated_at] DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
     PRIMARY KEY ([id]),
     [CONSTRAINT] fk_teams_company FOREIGN KEY (company_id) REFERENCES companies (company_id)
   );
@@ -319,8 +319,8 @@ BEGIN
     [is_primary] BIT    NOT NULL DEFAULT 0,
     [is_active] BIT    NOT NULL DEFAULT 1,
     [added_by] NVARCHAR(20)   NULL,
-    [created_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    [updated_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    [created_at] DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
+    [updated_at] DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
     PRIMARY KEY ([id]),
     [CONSTRAINT] fk_team_members_team FOREIGN KEY (company_id, team_id) REFERENCES teams (company_id, team_id),
     [CONSTRAINT] fk_team_members_user FOREIGN KEY (company_id, user_id) REFERENCES users (company_id, user_id)
@@ -386,8 +386,8 @@ BEGIN
     [user_id] NVARCHAR(20)   NOT NULL,
     [is_active] BIT    NOT NULL DEFAULT 1,
     [added_by] NVARCHAR(20)   NULL,
-    [created_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    [updated_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    [created_at] DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
+    [updated_at] DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
     PRIMARY KEY ([id]),
     [CONSTRAINT] fk_team_managers_team FOREIGN KEY (company_id, team_id) REFERENCES teams (company_id, team_id),
     [CONSTRAINT] fk_team_managers_user FOREIGN KEY (company_id, user_id) REFERENCES users (company_id, user_id)
@@ -439,7 +439,7 @@ BEGIN
     [user_id] NVARCHAR(20)   NOT NULL,
     [company_id] NVARCHAR(20)   NOT NULL,
     [created_by] NVARCHAR(20)   NULL,
-    [created_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    [created_at] DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
     PRIMARY KEY ([id])
   );
 END
@@ -492,7 +492,7 @@ BEGIN
     [reason] NVARCHAR(60)   NOT NULL DEFAULT 'LOGOUT',
     [deactivated_by] NVARCHAR(20)   NULL,
     [expires_at] DATETIME2      NOT NULL,
-    [created_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    [created_at] DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
     PRIMARY KEY ([id])
   );
 END
@@ -546,8 +546,8 @@ BEGIN
     [color] NVARCHAR(32)   NOT NULL DEFAULT '#22c55e',
     [is_active] BIT    NOT NULL DEFAULT 1,
     [created_by] NVARCHAR(20)   NULL,
-    [created_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    [updated_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    [created_at] DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
+    [updated_at] DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
     PRIMARY KEY ([id]),
     [CONSTRAINT] fk_products_team FOREIGN KEY (company_id, team_id) REFERENCES teams (company_id, team_id)
   );
@@ -653,8 +653,8 @@ BEGIN
     [is_active] BIT    NOT NULL DEFAULT 1,
     [tags] NVARCHAR(MAX)          NULL,
     [last_contacted_at] DATETIME2      NULL,
-    [created_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    [updated_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    [created_at] DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
+    [updated_at] DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
     PRIMARY KEY ([id]),
     [CONSTRAINT] fk_leads_team FOREIGN KEY (company_id, team_id) REFERENCES teams (company_id, team_id)
   );
@@ -794,6 +794,71 @@ END
 GO
 
 
+IF OBJECT_ID(N'dbo.lead_assignments', N'U') IS NULL
+BEGIN
+  CREATE TABLE [dbo].[lead_assignments] (
+    [id] BIGINT        NOT NULL IDENTITY(1,1),
+    [lead_id] NVARCHAR(20)   NOT NULL,
+    [company_id] NVARCHAR(20)   NOT NULL,
+    [user_id] NVARCHAR(20)   NOT NULL,
+    [access_type] NVARCHAR(30)   NOT NULL DEFAULT 'shared',
+    [created_by] NVARCHAR(20)   NULL,
+    [created_at] DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
+    [updated_at] DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
+    PRIMARY KEY ([id])
+  );
+END
+GO
+
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
+  WHERE name = N'uq_lead_assignments_lead_user_access' AND object_id = OBJECT_ID(N'dbo.lead_assignments')
+)
+BEGIN
+  CREATE UNIQUE INDEX [uq_lead_assignments_lead_user_access]
+  ON [dbo].[lead_assignments] ([lead_id], [user_id], [access_type]);
+END
+GO
+
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
+  WHERE name = N'idx_lead_assignments_company_lead' AND object_id = OBJECT_ID(N'dbo.lead_assignments')
+)
+BEGIN
+  CREATE INDEX [idx_lead_assignments_company_lead]
+  ON [dbo].[lead_assignments] ([company_id], [lead_id], [access_type]);
+END
+GO
+
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
+  WHERE name = N'idx_lead_assignments_company_user' AND object_id = OBJECT_ID(N'dbo.lead_assignments')
+)
+BEGIN
+  CREATE INDEX [idx_lead_assignments_company_user]
+  ON [dbo].[lead_assignments] ([company_id], [user_id], [access_type], [created_at]);
+END
+GO
+
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
+  WHERE name = N'idx_lead_assignments_user_lead' AND object_id = OBJECT_ID(N'dbo.lead_assignments')
+)
+BEGIN
+  CREATE INDEX [idx_lead_assignments_user_lead]
+  ON [dbo].[lead_assignments] ([user_id], [lead_id], [access_type]);
+END
+GO
+
+
 IF OBJECT_ID(N'dbo.lead_notes', N'U') IS NULL
 BEGIN
   CREATE TABLE [dbo].[lead_notes] (
@@ -802,8 +867,8 @@ BEGIN
     [lead_id] NVARCHAR(20)   NOT NULL,
     [content] NVARCHAR(MAX)      NOT NULL,
     [created_by] NVARCHAR(20)   NOT NULL,
-    [created_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    [updated_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    [created_at] DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
+    [updated_at] DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
     PRIMARY KEY ([id])
   );
 END
@@ -844,7 +909,7 @@ BEGIN
     [type] NVARCHAR(40)   NOT NULL,
     [description] NVARCHAR(MAX)      NULL,
     [created_by] NVARCHAR(20)   NOT NULL,
-    [created_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    [created_at] DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
     PRIMARY KEY ([id])
   );
 END
@@ -906,7 +971,7 @@ BEGIN
     [lead_id] NVARCHAR(20)   NOT NULL,
     [company_id] NVARCHAR(20)   NOT NULL,
     [stage] NVARCHAR(40)   NOT NULL,
-    [entered_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    [entered_at] DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
     [exited_at] DATETIME2      NULL,
     [duration] INT           NULL,
     PRIMARY KEY ([id])
@@ -949,7 +1014,7 @@ BEGIN
     [to_stage] NVARCHAR(30)   NOT NULL,
     [transferred_by] NVARCHAR(20)   NOT NULL,
     [transferred_to] NVARCHAR(20)   NULL,
-    [transferred_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    [transferred_at] DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
     [notes] NVARCHAR(MAX)      NULL,
     PRIMARY KEY ([id])
   );
@@ -992,7 +1057,7 @@ BEGIN
     [file_size] BIGINT        NULL,
     [uploaded_by] NVARCHAR(20)   NOT NULL,
     [document_type] NVARCHAR(40)   NOT NULL DEFAULT 'agreement',
-    [uploaded_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    [uploaded_at] DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
     PRIMARY KEY ([id])
   );
 END
@@ -1034,7 +1099,7 @@ BEGIN
     [file_size] BIGINT        NULL,
     [uploaded_by] NVARCHAR(20)   NOT NULL,
     [document_type] NVARCHAR(40)   NOT NULL DEFAULT 'invoice',
-    [uploaded_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    [uploaded_at] DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
     PRIMARY KEY ([id])
   );
 END
@@ -1084,8 +1149,8 @@ BEGIN
     [next_follow_up] DATETIME2      NULL,
     [notes] NVARCHAR(MAX)      NULL,
     [is_active] BIT    NOT NULL DEFAULT 1,
-    [created_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    [updated_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    [created_at] DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
+    [updated_at] DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
     PRIMARY KEY ([id]),
     [CONSTRAINT] fk_customers_team FOREIGN KEY (company_id, team_id) REFERENCES teams (company_id, team_id)
   );
@@ -1170,8 +1235,8 @@ BEGIN
     [related_id] NVARCHAR(20)   NULL,
     [created_by] NVARCHAR(20)   NOT NULL,
     [notes] NVARCHAR(MAX)      NULL,
-    [created_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    [updated_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    [created_at] DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
+    [updated_at] DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
     PRIMARY KEY ([id]),
     [CONSTRAINT] fk_tasks_team FOREIGN KEY (company_id, team_id) REFERENCES teams (company_id, team_id)
   );
@@ -1255,7 +1320,7 @@ BEGIN
     [actionable] BIT    NOT NULL DEFAULT 0,
     [action_url] NVARCHAR(255)  NULL,
     [metadata] NVARCHAR(MAX)          NULL,
-    [created_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    [created_at] DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
     PRIMARY KEY ([id])
   );
 END
@@ -1312,7 +1377,7 @@ BEGIN
     [ip_address] NVARCHAR(45)   NULL,
     [record_count] INT           NULL,
     [details] NVARCHAR(MAX)          NULL,
-    [logged_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    [logged_at] DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
     PRIMARY KEY ([id])
   );
 END
@@ -1373,7 +1438,7 @@ BEGIN
     [company_id] NVARCHAR(20)   NOT NULL,
     [metric_key] NVARCHAR(100)  NOT NULL,
     [metric_value] NVARCHAR(MAX)          NOT NULL,
-    [cached_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    [cached_at] DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
     PRIMARY KEY ([company_id], [metric_key])
   );
 END
@@ -1402,8 +1467,8 @@ BEGIN
     [provider] NVARCHAR(60)   NOT NULL,
     [mode] NVARCHAR(40)   NOT NULL DEFAULT 'own_credentials',
     [config_json] NVARCHAR(MAX)          NULL,
-    [created_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    [updated_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    [created_at] DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
+    [updated_at] DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
     PRIMARY KEY ([id])
   );
 END
@@ -1443,8 +1508,8 @@ BEGIN
     [can_use_platform_whatsapp] BIT    NOT NULL DEFAULT 0,
     [can_use_platform_sms] BIT    NOT NULL DEFAULT 0,
     [can_use_attendance] BIT    NOT NULL DEFAULT 0,
-    [created_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    [updated_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    [created_at] DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
+    [updated_at] DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
     PRIMARY KEY ([id])
   );
 END
@@ -1472,7 +1537,7 @@ BEGIN
     [user_id] NVARCHAR(20)   NOT NULL,
     [event_type] NVARCHAR(20)   NOT NULL,
     [ip_address] NVARCHAR(45)   NOT NULL,
-    [created_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    [created_at] DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
     PRIMARY KEY ([id])
   );
 END
@@ -1525,8 +1590,8 @@ BEGIN
     [started_at] DATETIME2      NULL,
     [ended_at] DATETIME2      NULL,
     [created_by] NVARCHAR(20)   NULL,
-    [created_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    [updated_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    [created_at] DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
+    [updated_at] DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
     PRIMARY KEY ([id])
   );
 END
@@ -1603,7 +1668,7 @@ BEGIN
     [company] NVARCHAR(191)  NULL,
     [message] NVARCHAR(MAX)      NULL,
     [status] NVARCHAR(30)   NOT NULL DEFAULT 'pending',
-    [created_at] DATETIME2      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    [created_at] DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
     PRIMARY KEY ([id])
   );
 END
@@ -1864,6 +1929,30 @@ IF NOT EXISTS (
 BEGIN
   CREATE INDEX [idx_leads_company_followup_active_perf]
   ON [dbo].[leads] ([company_id], [is_active], [follow_up_date]);
+END
+GO
+
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
+  WHERE name = N'idx_lead_assignments_company_lead_perf' AND object_id = OBJECT_ID(N'dbo.lead_assignments')
+)
+BEGIN
+  CREATE INDEX [idx_lead_assignments_company_lead_perf]
+  ON [dbo].[lead_assignments] ([company_id], [lead_id], [access_type], [user_id]);
+END
+GO
+
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
+  WHERE name = N'idx_lead_assignments_company_user_perf' AND object_id = OBJECT_ID(N'dbo.lead_assignments')
+)
+BEGIN
+  CREATE INDEX [idx_lead_assignments_company_user_perf]
+  ON [dbo].[lead_assignments] ([company_id], [user_id], [access_type], [lead_id]);
 END
 GO
 

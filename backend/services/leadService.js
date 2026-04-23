@@ -3,6 +3,7 @@ const companyRepository = require("../repositories/companyRepository");
 const userRepository = require("../repositories/userRepository");
 const productRepository = require("../repositories/productRepository");
 const leadRepository = require("../repositories/leadRepository");
+const leadAssignmentRepository = require("../repositories/leadAssignmentRepository");
 const workflowRepository = require("../repositories/workflowRepository");
 const auditRepository = require("../repositories/auditRepository");
 const { LEAD_ACTIVITY_TYPES, LEAD_PRIORITIES, LEAD_STATUSES } = require("../constants/lead");
@@ -24,6 +25,15 @@ const {
 } = require("./accessScopeService");
 
 const INVALID_LEAD_DATE = Symbol("invalid_lead_date");
+const PRIMARY_ASSIGNMENT_ACCESS_TYPE = "primary";
+const SHARED_ACCESS_ROLES = [
+  ROLES.SALES,
+  ROLES.MARKETING,
+  ROLES.LEGAL_TEAM,
+  ROLES.FINANCE_TEAM,
+  ROLES.SUPPORT,
+  ROLES.VIEWER,
+];
 
 function normalizeLeadNumber(value) {
   if (value === undefined || value === null || value === "") {
@@ -289,6 +299,112 @@ async function ensureSameCompanyUser(userId, companyId) {
   return user;
 }
 
+function normalizeUserIdList(values = []) {
+  const queue = Array.isArray(values) ? values : [values];
+  const items = [];
+
+  queue.forEach((value) => {
+    if (Array.isArray(value)) {
+      items.push(...value);
+      return;
+    }
+
+    if (value && typeof value === "object") {
+      items.push(value.user_id || value.id || "");
+      return;
+    }
+
+    items.push(...String(value || "").split(","));
+  });
+
+  return [...new Set(items.map((value) => String(value || "").trim()).filter(Boolean))];
+}
+
+function getRestrictedLeadAccessColumns(role) {
+  if (role === ROLES.LEGAL_TEAM) {
+    return ["assigned_to_legal", "assigned_to"];
+  }
+
+  if (role === ROLES.FINANCE_TEAM) {
+    return ["assigned_to_finance", "assigned_to"];
+  }
+
+  if (SHARED_ACCESS_ROLES.includes(role)) {
+    return ["assigned_to"];
+  }
+
+  return [];
+}
+
+function buildLeadAssignmentPayload(lead, sharedUsers = []) {
+  const primaryAssignee = lead?.assigned_to
+    ? {
+        user_id: lead.assigned_to,
+        name: lead.assigned_to_name || null,
+        email: lead.assigned_to_email || null,
+        role: lead.assigned_to_role || null,
+        department: lead.assigned_to_department || null,
+        access_type: PRIMARY_ASSIGNMENT_ACCESS_TYPE,
+        is_primary: true,
+      }
+    : null;
+  const collaborators = (Array.isArray(sharedUsers) ? sharedUsers : []).map((user) => ({
+    user_id: user.user_id,
+    name: user.name || null,
+    email: user.email || null,
+    role: user.role || null,
+    department: user.department || null,
+    access_type: user.access_type || "shared",
+    is_primary: false,
+    created_at: user.created_at || null,
+    updated_at: user.updated_at || null,
+  }));
+
+  return {
+    primary_assignee: primaryAssignee,
+    shared_users: collaborators,
+    shared_user_ids: collaborators.map((user) => user.user_id),
+    assignment_users: primaryAssignee ? [primaryAssignee, ...collaborators] : collaborators,
+  };
+}
+
+function buildSharedAssignmentChangeMessage(addedUsers = [], removedUsers = []) {
+  const parts = [];
+
+  if (addedUsers.length) {
+    parts.push(`Added ${addedUsers.join(", ")}`);
+  }
+
+  if (removedUsers.length) {
+    parts.push(`Removed ${removedUsers.join(", ")}`);
+  }
+
+  return parts.length ? `Shared access updated. ${parts.join(". ")}.` : "Shared access updated.";
+}
+
+async function ensureSharedUsersAllowed(lead, userIds) {
+  const normalizedUserIds = normalizeUserIdList(userIds).filter((userId) => userId !== lead.assigned_to);
+  const users = [];
+
+  for (const userId of normalizedUserIds) {
+    const user = await ensureSameCompanyUser(userId, lead.company_id);
+    await ensureUserBelongsToTeam(lead.company_id, user.user_id, lead.team_id, "Shared user");
+    users.push(user);
+  }
+
+  return users;
+}
+
+async function getLeadRecord(auth, leadId) {
+  const lead = await leadRepository.getLeadById(
+    leadId,
+    auth.role === ROLES.SUPER_ADMIN || isPlatformOperatorRole(auth.role) ? null : auth.companyId
+  );
+
+  await assertLeadAccess(auth, lead);
+  return lead;
+}
+
 async function assertLeadAccess(auth, lead) {
   if (!lead) {
     throw new AppError("Lead not found.", 404);
@@ -299,14 +415,6 @@ async function assertLeadAccess(auth, lead) {
     includeMembership: true,
   });
 
-  if (auth.role === ROLES.SALES && lead.assigned_to !== auth.userId) {
-    throw new AppError("Sales users can only access leads assigned to them.", 403);
-  }
-
-  if (auth.role === ROLES.MARKETING && lead.assigned_to !== auth.userId) {
-    throw new AppError("Marketing users can only access leads assigned to them.", 403);
-  }
-
   if (auth.role === ROLES.LEGAL_TEAM && lead.workflow_stage !== "legal") {
     throw new AppError("Legal team can only access legal stage leads.", 403);
   }
@@ -315,8 +423,24 @@ async function assertLeadAccess(auth, lead) {
     throw new AppError("Finance team can only access finance stage leads.", 403);
   }
 
-  if ([ROLES.SUPPORT, ROLES.VIEWER].includes(auth.role) && lead.assigned_to !== auth.userId) {
-    throw new AppError("This role can only access leads assigned to them.", 403);
+  const accessColumns = getRestrictedLeadAccessColumns(auth.role);
+  if (!accessColumns.length) {
+    return;
+  }
+
+  const hasPrimaryAccess = accessColumns.some((column) => lead[column] === auth.userId);
+  if (hasPrimaryAccess) {
+    return;
+  }
+
+  const hasSharedAccess = await leadAssignmentRepository.hasSharedUserAccess(
+    lead.lead_id,
+    lead.company_id,
+    auth.userId
+  );
+
+  if (!hasSharedAccess) {
+    throw new AppError("You can only access leads shared with you or assigned to you.", 403);
   }
 }
 
@@ -435,17 +559,22 @@ async function buildLeadFilters(auth, query) {
   filters.companyId = auth.companyId;
 
   if (auth.role === ROLES.SALES) {
-    filters.assignedTo = auth.userId;
+    filters.viewerUserId = auth.userId;
+    filters.viewerAccessColumns = getRestrictedLeadAccessColumns(auth.role);
   } else if (auth.role === ROLES.MARKETING) {
-    filters.assignedTo = auth.userId;
+    filters.viewerUserId = auth.userId;
+    filters.viewerAccessColumns = getRestrictedLeadAccessColumns(auth.role);
   } else if (auth.role === ROLES.LEGAL_TEAM) {
     filters.workflowStage = "legal";
-    filters.assignedTo = auth.userId;
+    filters.viewerUserId = auth.userId;
+    filters.viewerAccessColumns = getRestrictedLeadAccessColumns(auth.role);
   } else if (auth.role === ROLES.FINANCE_TEAM) {
     filters.workflowStage = "finance";
-    filters.assignedTo = auth.userId;
+    filters.viewerUserId = auth.userId;
+    filters.viewerAccessColumns = getRestrictedLeadAccessColumns(auth.role);
   } else if ([ROLES.SUPPORT, ROLES.VIEWER].includes(auth.role)) {
-    filters.assignedTo = auth.userId;
+    filters.viewerUserId = auth.userId;
+    filters.viewerAccessColumns = getRestrictedLeadAccessColumns(auth.role);
   } else {
     filters.assignedTo = query.assigned_to || null;
     filters.createdBy = query.created_by || null;
@@ -475,21 +604,19 @@ async function listLeads(auth, query) {
 }
 
 async function getLead(auth, leadId) {
-  const lead = await leadRepository.getLeadById(
-    leadId,
-    auth.role === ROLES.SUPER_ADMIN || isPlatformOperatorRole(auth.role) ? null : auth.companyId
-  );
-
-  await assertLeadAccess(auth, lead);
-  const [legalDocuments, financeDocuments, stageHistory, transferHistory] = await Promise.all([
+  const lead = await getLeadRecord(auth, leadId);
+  const [legalDocuments, financeDocuments, stageHistory, transferHistory, sharedUsers] = await Promise.all([
     workflowRepository.listLegalDocumentsByLead(lead.lead_id, lead.company_id),
     workflowRepository.listFinanceDocumentsByLead(lead.lead_id, lead.company_id),
     workflowRepository.listStageHistoryByLead(lead.lead_id, lead.company_id),
     workflowRepository.listTransferHistoryByLead(lead.lead_id, lead.company_id),
+    leadAssignmentRepository.listSharedUsersByLead(lead.lead_id, lead.company_id),
   ]);
+  const assignmentPayload = buildLeadAssignmentPayload(lead, sharedUsers);
 
   return {
     ...lead,
+    ...assignmentPayload,
     legal_documents: legalDocuments,
     finance_documents: financeDocuments,
     stage_history: stageHistory,
@@ -605,7 +732,7 @@ async function createLead(auth, payload) {
 }
 
 async function updateLead(auth, leadId, payload) {
-  const lead = await getLead(auth, leadId);
+  const lead = await getLeadRecord(auth, leadId);
 
   if (auth.role === ROLES.SUPPORT || auth.role === ROLES.VIEWER) {
     throw new AppError("This role cannot update lead core fields.", 403);
@@ -680,8 +807,16 @@ async function updateLead(auth, leadId, payload) {
     throw new AppError("A note is required whenever a lead is changed.", 400);
   }
 
-  return db.withTransaction(async (transaction) => {
+  const updatedLead = await db.withTransaction(async (transaction) => {
     await leadRepository.updateLead(leadId, lead.company_id, updates, transaction);
+    if (updates.assigned_to) {
+      await leadAssignmentRepository.removeSharedUserAccess(
+        leadId,
+        lead.company_id,
+        updates.assigned_to,
+        transaction
+      );
+    }
 
     await leadRepository.createNote(
       {
@@ -707,10 +842,19 @@ async function updateLead(auth, leadId, payload) {
 
     return leadRepository.getLeadById(leadId, lead.company_id, transaction);
   });
+
+  const sharedUsers = await leadAssignmentRepository.listSharedUsersByLead(
+    updatedLead.lead_id,
+    updatedLead.company_id
+  );
+  return {
+    ...updatedLead,
+    ...buildLeadAssignmentPayload(updatedLead, sharedUsers),
+  };
 }
 
 async function deleteLead(auth, leadId, payload = {}) {
-  const lead = await getLead(auth, leadId);
+  const lead = await getLeadRecord(auth, leadId);
 
   if (!MANAGER_ROLES.includes(auth.role) && auth.role !== ROLES.SUPER_ADMIN) {
     throw new AppError("Only admins and managers can delete leads.", 403);
@@ -757,7 +901,7 @@ async function assignLead(auth, leadId, payload) {
     throw new AppError("assigned_to is required.");
   }
 
-  const lead = await getLead(auth, leadId);
+  const lead = await getLeadRecord(auth, leadId);
   const assignee = await ensureSameCompanyUser(payload.assigned_to, lead.company_id);
   return updateLead(auth, leadId, {
     assigned_to: assignee.user_id,
@@ -765,8 +909,149 @@ async function assignLead(auth, leadId, payload) {
   });
 }
 
+async function getLeadAssignments(auth, leadId) {
+  const lead = await getLeadRecord(auth, leadId);
+  const sharedUsers = await leadAssignmentRepository.listSharedUsersByLead(lead.lead_id, lead.company_id);
+
+  return {
+    lead_id: lead.lead_id,
+    ...buildLeadAssignmentPayload(lead, sharedUsers),
+  };
+}
+
+async function updateLeadAssignments(auth, leadId, payload) {
+  if (!MANAGER_ROLES.includes(auth.role)) {
+    throw new AppError("Only managers and admins can update shared lead access.", 403);
+  }
+
+  const lead = await getLeadRecord(auth, leadId);
+  const currentSharedUsers = await leadAssignmentRepository.listSharedUsersByLead(lead.lead_id, lead.company_id);
+  const nextSharedUsers = await ensureSharedUsersAllowed(lead, [
+    payload.shared_user_ids,
+    payload.user_ids,
+    payload.user_id,
+  ]);
+  const nextUserIds = nextSharedUsers.map((user) => user.user_id);
+
+  const result = await db.withTransaction(async (transaction) => {
+    const replacement = await leadAssignmentRepository.replaceSharedUsers(
+      lead.lead_id,
+      lead.company_id,
+      nextUserIds,
+      auth.userId,
+      transaction
+    );
+
+    if (replacement.addedUserIds.length || replacement.removedUserIds.length) {
+      const addedLabels = nextSharedUsers
+        .filter((user) => replacement.addedUserIds.includes(user.user_id))
+        .map((user) => user.name || user.user_id);
+      const removedLabels = currentSharedUsers
+        .filter((user) => replacement.removedUserIds.includes(user.user_id))
+        .map((user) => user.name || user.user_id);
+
+      await leadRepository.createActivity(
+        {
+          activity_id: await createPrefixedId("act"),
+          company_id: lead.company_id,
+          lead_id: lead.lead_id,
+          type: "updated",
+          description: buildSharedAssignmentChangeMessage(addedLabels, removedLabels),
+          created_by: auth.userId,
+        },
+        transaction
+      );
+
+      await auditRepository.createLog(
+        {
+          audit_id: await createPrefixedId("aud"),
+          company_id: lead.company_id,
+          entity_type: "lead",
+          entity_id: lead.lead_id,
+          action: "lead.shared_access.updated",
+          performed_by: auth.userId,
+          details: {
+            added_user_ids: replacement.addedUserIds,
+            removed_user_ids: replacement.removedUserIds,
+            primary_assignee: lead.assigned_to || null,
+          },
+        },
+        transaction
+      );
+    }
+
+    return replacement;
+  });
+
+  return {
+    lead_id: lead.lead_id,
+    ...buildLeadAssignmentPayload(lead, result.rows),
+  };
+}
+
+async function removeLeadAssignment(auth, leadId, userId) {
+  if (!MANAGER_ROLES.includes(auth.role)) {
+    throw new AppError("Only managers and admins can remove shared lead access.", 403);
+  }
+
+  const lead = await getLeadRecord(auth, leadId);
+  if (String(userId || "").trim() === lead.assigned_to) {
+    throw new AppError("Primary assignee must be changed through lead owner controls.", 400);
+  }
+
+  const sharedUsers = await leadAssignmentRepository.listSharedUsersByLead(lead.lead_id, lead.company_id);
+  const existingUser = sharedUsers.find((user) => user.user_id === String(userId || "").trim());
+  if (!existingUser) {
+    return {
+      lead_id: lead.lead_id,
+      ...buildLeadAssignmentPayload(lead, sharedUsers),
+    };
+  }
+
+  await db.withTransaction(async (transaction) => {
+    await leadAssignmentRepository.removeSharedUserAccess(
+      lead.lead_id,
+      lead.company_id,
+      existingUser.user_id,
+      transaction
+    );
+    await leadRepository.createActivity(
+      {
+        activity_id: await createPrefixedId("act"),
+        company_id: lead.company_id,
+        lead_id: lead.lead_id,
+        type: "updated",
+        description: buildSharedAssignmentChangeMessage([], [existingUser.name || existingUser.user_id]),
+        created_by: auth.userId,
+      },
+      transaction
+    );
+    await auditRepository.createLog(
+      {
+        audit_id: await createPrefixedId("aud"),
+        company_id: lead.company_id,
+        entity_type: "lead",
+        entity_id: lead.lead_id,
+        action: "lead.shared_access.removed",
+        performed_by: auth.userId,
+        details: {
+          removed_user_ids: [existingUser.user_id],
+          primary_assignee: lead.assigned_to || null,
+        },
+      },
+      transaction
+    );
+  });
+
+  const nextSharedUsers = sharedUsers.filter((user) => user.user_id !== existingUser.user_id);
+  return {
+    lead_id: lead.lead_id,
+    ...buildLeadAssignmentPayload(lead, nextSharedUsers),
+  };
+}
+
 async function addLeadNote(auth, leadId, payload) {
-  const lead = await getLead(auth, leadId);
+  const lead = await getLeadRecord(auth, leadId);
 
   if (!payload.content) {
     throw new AppError("Note content is required.");
@@ -783,7 +1068,7 @@ async function addLeadNote(auth, leadId, payload) {
 }
 
 async function addLeadActivity(auth, leadId, payload) {
-  const lead = await getLead(auth, leadId);
+  const lead = await getLeadRecord(auth, leadId);
   const type = String(payload.type || payload.activity_type || "comment").toLowerCase();
 
   if (!LEAD_ACTIVITY_TYPES.includes(type)) {
@@ -803,7 +1088,7 @@ async function addLeadActivity(auth, leadId, payload) {
 }
 
 async function listLeadActivities(auth, leadId, query) {
-  const lead = await getLead(auth, leadId);
+  const lead = await getLeadRecord(auth, leadId);
   const pagination = parsePagination(query);
   const { rows, total, pageInfo } = await leadRepository.listActivities(
     leadId,
@@ -815,7 +1100,7 @@ async function listLeadActivities(auth, leadId, query) {
 }
 
 async function listLeadNotes(auth, leadId, query) {
-  const lead = await getLead(auth, leadId);
+  const lead = await getLeadRecord(auth, leadId);
   const pagination = parsePagination(query);
   const { rows, total, pageInfo } = await leadRepository.listNotes(leadId, lead.company_id, pagination);
 
@@ -827,9 +1112,9 @@ async function listReminders(auth, query) {
   const filters = {
     companyId: null,
     companyIds: null,
-    userId: [ROLES.SALES, ROLES.MARKETING, ROLES.LEGAL_TEAM, ROLES.FINANCE_TEAM, ROLES.SUPPORT, ROLES.VIEWER].includes(auth.role)
-      ? auth.userId
-      : query.user_id || null,
+    viewerUserId: SHARED_ACCESS_ROLES.includes(auth.role) ? auth.userId : null,
+    viewerAccessColumns: getRestrictedLeadAccessColumns(auth.role),
+    userId: !SHARED_ACCESS_ROLES.includes(auth.role) ? query.user_id || null : null,
     teamIds: null,
   };
 
@@ -881,9 +1166,9 @@ async function getProductStats(auth, query = {}) {
   return leadRepository.getProductStats({
     companyId,
     teamIds,
-    assignedTo: [ROLES.SALES, ROLES.MARKETING, ROLES.LEGAL_TEAM, ROLES.FINANCE_TEAM, ROLES.SUPPORT, ROLES.VIEWER].includes(auth.role)
-      ? auth.userId
-      : query.assigned_to || null,
+    assignedTo: !SHARED_ACCESS_ROLES.includes(auth.role) ? query.assigned_to || null : null,
+    viewerUserId: SHARED_ACCESS_ROLES.includes(auth.role) ? auth.userId : null,
+    viewerAccessColumns: getRestrictedLeadAccessColumns(auth.role),
   });
 }
 
@@ -966,6 +1251,7 @@ module.exports = {
   createLead,
   deleteLead,
   getLead,
+  getLeadAssignments,
   getProductStats,
   getUserProductHistory,
   listLeadActivities,
@@ -973,5 +1259,7 @@ module.exports = {
   listLeads,
   listMyLeads,
   listReminders,
+  removeLeadAssignment,
   updateLead,
+  updateLeadAssignments,
 };

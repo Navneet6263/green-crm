@@ -8,6 +8,7 @@ import DashboardShell from "../../../components/dashboard/DashboardShell";
 import DashboardIcon from "../../../components/dashboard/icons";
 import { apiRequest } from "../../../lib/api";
 import { buildCustomerNotes, parseCustomerProfile, stripCustomerProfile } from "../../../lib/customerProfile";
+import { formatIndiaDateTime } from "../../../lib/dateTime";
 import { loadSession } from "../../../lib/session";
 import { formatScopedError, teamBadgeLabel } from "../../../lib/teamScope";
 import { AlertError, AlertSuccess } from "../../../components/ui/Alert";
@@ -22,15 +23,7 @@ const HERO_PANEL_CLASS = "rounded-[30px] border border-[#eadfcd] bg-white/86 p-5
 const DARK_PANEL_CLASS = "rounded-[34px] border border-[#1d1a12] bg-[linear-gradient(155deg,#10111d_0%,#171a28_56%,#25212d_100%)] p-6 text-white shadow-[0_24px_80px_rgba(6,7,16,0.3)] md:p-7";
 
 function when(value, full = false) {
-  if (!value) return "--";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "--";
-  return date.toLocaleString(
-    "en-IN",
-    full
-      ? { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }
-      : { day: "numeric", month: "short", year: "numeric" }
-  );
+  return formatIndiaDateTime(value, full);
 }
 
 function money(value) {

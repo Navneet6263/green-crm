@@ -1,5 +1,8 @@
 const db = require("../db/connection");
 const { PLATFORM_COMPANY_ID } = require("../db/schema");
+const { buildLeadUserAccessPredicate } = require("./leadAssignmentRepository");
+
+const SQL_NOW = "SYSUTCDATETIME()";
 
 async function queryRows(sqlText, params = []) {
   const [rows] = await db.query(sqlText, params);
@@ -125,7 +128,7 @@ async function getCompanySummary(companyId, teamIds = null) {
       `
         SELECT
           SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS pending_tasks,
-          SUM(CASE WHEN status = 'pending' AND due_date < GETDATE() THEN 1 ELSE 0 END) AS overdue_tasks
+          SUM(CASE WHEN status = 'pending' AND due_date < ${SQL_NOW} THEN 1 ELSE 0 END) AS overdue_tasks
         FROM tasks
         WHERE company_id = ?${teamScope.clause}
       `,
@@ -182,16 +185,31 @@ async function getCompanySummary(companyId, teamIds = null) {
   };
 }
 
-async function getUserSummary({ companyId, userId, scope, teamIds = null }) {
-  const column = scope === "created" ? "created_by" : scope === "assigned" ? "assigned_to" : null;
-  const params = [companyId];
-  const scopedCondition = column ? `AND ${column} = ?` : "";
-  const activityScopedCondition = column ? ` AND l.${column} = ?` : "";
-  const teamScope = buildScopedTeamClause(teamIds, "team_id");
-
-  if (column) {
-    params.push(userId);
-  }
+async function getUserSummary({
+  companyId,
+  userId,
+  scope,
+  teamIds = null,
+  viewerAccessColumns = ["assigned_to"],
+}) {
+  const leadTeamScope = buildScopedTeamClause(teamIds, "l.team_id");
+  const taskTeamScope = buildScopedTeamClause(teamIds, "team_id");
+  const createdParams = scope === "created" ? [userId] : [];
+  const viewerPredicate =
+    scope === "assigned"
+      ? buildLeadUserAccessPredicate({
+          leadAlias: "l",
+          primaryColumns: viewerAccessColumns,
+          userId,
+        })
+      : { clause: "", params: [] };
+  const scopedCondition =
+    scope === "created"
+      ? "AND l.created_by = ?"
+      : scope === "assigned" && viewerPredicate.clause
+        ? `AND ${viewerPredicate.clause}`
+        : "";
+  const leadParams = [companyId, ...createdParams, ...viewerPredicate.params, ...leadTeamScope.params];
 
   const taskParams = [companyId];
   let taskCondition = "";
@@ -205,29 +223,29 @@ async function getUserSummary({ companyId, userId, scope, teamIds = null }) {
     queryRows(
       `
         SELECT status, COUNT(*) AS total
-        FROM leads
-        WHERE company_id = ? AND is_active = 1 ${scopedCondition} ${teamScope.clause}
+        FROM leads l
+        WHERE l.company_id = ? AND l.is_active = 1 ${scopedCondition} ${leadTeamScope.clause}
         GROUP BY status
       `,
-      [...params, ...teamScope.params]
+      leadParams
     ),
     queryRows(
       `
         SELECT
           SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS pending_tasks,
-          SUM(CASE WHEN status = 'pending' AND due_date < GETDATE() THEN 1 ELSE 0 END) AS overdue_tasks
+          SUM(CASE WHEN status = 'pending' AND due_date < ${SQL_NOW} THEN 1 ELSE 0 END) AS overdue_tasks
         FROM tasks
-        WHERE company_id = ? ${taskCondition} ${teamScope.clause}
+        WHERE company_id = ? ${taskCondition} ${taskTeamScope.clause}
       `,
-      [...taskParams, ...teamScope.params]
+      [...taskParams, ...taskTeamScope.params]
     ),
     queryRows(
       `
         SELECT COUNT(*) AS total
-        FROM leads
-        WHERE company_id = ? AND is_active = 1 ${scopedCondition} ${teamScope.clause} AND follow_up_date IS NOT NULL
+        FROM leads l
+        WHERE l.company_id = ? AND l.is_active = 1 ${scopedCondition} ${leadTeamScope.clause} AND l.follow_up_date IS NOT NULL
       `,
-      [...params, ...teamScope.params]
+      leadParams
     ),
     queryRows(
       `
@@ -239,11 +257,11 @@ async function getUserSummary({ companyId, userId, scope, teamIds = null }) {
           l.company_name,
           l.contact_person
         FROM lead_activities la
-        INNER JOIN leads l ON l.lead_id = la.lead_id
-        WHERE la.company_id = ?${activityScopedCondition}${teamScope.clause.replace(/team_id/g, "l.team_id")}
+        INNER JOIN leads l ON l.lead_id = la.lead_id AND l.company_id = la.company_id
+        WHERE la.company_id = ? ${scopedCondition} ${leadTeamScope.clause}
         ORDER BY la.created_at DESC, la.id DESC
       `,
-      [companyId, ...(column ? [userId] : []), ...teamScope.params]
+      leadParams
     ),
   ]);
   const taskSummary = taskSummaryRows[0] || {};

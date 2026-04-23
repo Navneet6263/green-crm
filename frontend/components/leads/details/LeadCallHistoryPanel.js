@@ -1,6 +1,7 @@
 "use client";
 
 import { API_BASE } from "../../../lib/api";
+import { formatIndiaDateWithTime } from "../../../lib/dateTime";
 
 function nice(value) {
   return String(value || "")
@@ -11,15 +12,7 @@ function nice(value) {
 }
 
 function when(value) {
-  return value
-    ? new Date(value).toLocaleString("en-IN", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    : "--";
+  return formatIndiaDateWithTime(value);
 }
 
 function durationText(value) {

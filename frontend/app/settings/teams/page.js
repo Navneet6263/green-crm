@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import DashboardShell from "../../../components/dashboard/DashboardShell";
 import DashboardIcon from "../../../components/dashboard/icons";
 import { apiRequest } from "../../../lib/api";
+import { formatIndiaDateTime } from "../../../lib/dateTime";
 import { loadSession } from "../../../lib/session";
 import {
   formatScopedError,
@@ -77,21 +78,7 @@ function prettyRole(value = "") {
 }
 
 function when(value, withTime = false) {
-  if (!value) {
-    return "--";
-  }
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return "--";
-  }
-
-  return date.toLocaleString(
-    "en-IN",
-    withTime
-      ? { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }
-      : { day: "numeric", month: "short", year: "numeric" }
-  );
+  return formatIndiaDateTime(value, withTime);
 }
 
 function buildTeamPath(teamId, companyId) {

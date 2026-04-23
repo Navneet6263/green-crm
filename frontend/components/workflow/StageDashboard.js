@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import DashboardShell from "../dashboard/DashboardShell";
 import DashboardIcon from "../dashboard/icons";
 import { apiRequest } from "../../lib/api";
+import { formatIndiaDateTime } from "../../lib/dateTime";
 import { ROLE_HOME_ROUTE } from "../../lib/roles";
 import { loadSession } from "../../lib/session";
 
@@ -54,15 +55,7 @@ const CONFIG = {
 };
 
 const money = (value) => `INR ${Number(value || 0).toLocaleString("en-IN")}`;
-const when = (value, withTime = false) =>
-  !value
-    ? "--"
-    : new Date(value).toLocaleString(
-        "en-IN",
-        withTime
-          ? { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }
-          : { day: "numeric", month: "short", year: "numeric" }
-      );
+const when = (value, withTime = false) => formatIndiaDateTime(value, withTime);
 const nice = (value = "") =>
   String(value || "")
     .replaceAll("_", "-")

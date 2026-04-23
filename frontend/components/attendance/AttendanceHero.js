@@ -1,4 +1,5 @@
 import { KICKER_CLASS } from "../communications/constants";
+import { formatIndiaCustom } from "../../lib/dateTime";
 
 function stat(label, value) {
   return { label, value: value ?? "--" };
@@ -9,7 +10,17 @@ export default function AttendanceHero({ attendance, historyCount }) {
     stat("Provider", attendance?.provider || "custom"),
     stat("Source", attendance?.source || "tenant"),
     stat("Recent Events", historyCount || 0),
-    stat("Last Sync", attendance?.last_event?.created_at ? new Date(attendance.last_event.created_at).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "--"),
+    stat(
+      "Last Sync",
+      attendance?.last_event?.created_at
+        ? formatIndiaCustom(attendance.last_event.created_at, {
+            day: "numeric",
+            month: "short",
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        : "--"
+    ),
   ];
 
   return (

@@ -1,5 +1,7 @@
 "use client";
 
+import { formatIndiaDateTime } from "../../lib/dateTime";
+
 export const ALLOWED_ROLES = ["super-admin", "platform-admin", "platform-manager", "admin", "manager"];
 export const WORKFLOW_PAGE_SIZE = 25;
 export const WORKFLOW_BATCH = 4;
@@ -87,19 +89,7 @@ export function compact(value) {
 }
 
 export function when(value, full = false) {
-  if (!value) {
-    return "--";
-  }
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return "--";
-  }
-  return date.toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    ...(full ? { hour: "2-digit", minute: "2-digit" } : {}),
-  });
+  return formatIndiaDateTime(value, full);
 }
 
 export function formatDuration(minutes) {

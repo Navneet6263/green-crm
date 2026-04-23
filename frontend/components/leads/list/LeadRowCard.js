@@ -23,6 +23,7 @@ export default function LeadRowCard({
   canManage,
   canTransferRow,
   company,
+  collaboratorUsersMessage,
   deleting,
   detailLoading,
   handleInlineStatusUpdate,
@@ -34,6 +35,7 @@ export default function LeadRowCard({
   lead,
   onOwnerChange,
   onOwnerNoteChange,
+  pendingCollaborator,
   onPickToggle,
   onQuickAddNote,
   onSelectToggle,
@@ -41,10 +43,15 @@ export default function LeadRowCard({
   ownerNote,
   ownerUsersMessage,
   picked,
+  removeCollaborator,
+  removingCollaboratorId,
+  saveCollaborator,
   saveOwner,
+  savingCollaborators,
   scopedLegalUsers,
   selected,
   sessionToken,
+  setPendingCollaborator,
   setLegalTransferNote,
   setLegalTransferOwner,
   teamBadgeLabel,
@@ -195,6 +202,7 @@ export default function LeadRowCard({
           canManage={canManage}
           canTransfer={canTransferRow}
           company={company}
+          collaboratorUsersMessage={collaboratorUsersMessage}
           deleting={deleting}
           isPlatformConsole={isPlatformConsole}
           lead={selectedLead}
@@ -204,11 +212,17 @@ export default function LeadRowCard({
           legalUsersMessage={legalUsersMessage}
           onOwnerChange={onOwnerChange}
           onOwnerNoteChange={onOwnerNoteChange}
+          pendingCollaborator={pendingCollaborator}
           owner={owner}
           ownerNote={ownerNote}
           ownerUsersMessage={ownerUsersMessage}
+          removeCollaborator={removeCollaborator}
+          removingCollaboratorId={removingCollaboratorId}
+          saveCollaborator={saveCollaborator}
           saveOwner={saveOwner}
+          savingCollaborators={savingCollaborators}
           scopedLegalUsers={scopedLegalUsers}
+          setPendingCollaborator={setPendingCollaborator}
           setLegalTransferNote={setLegalTransferNote}
           setLegalTransferOwner={setLegalTransferOwner}
           teamBadgeLabel={teamBadgeLabel}

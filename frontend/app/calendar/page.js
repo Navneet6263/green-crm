@@ -1,6 +1,7 @@
 "use client";
 
 import WorkspacePage from "../../components/dashboard/WorkspacePage";
+import { formatIndiaCustom, formatIndiaDate } from "../../lib/dateTime";
 
 const PANEL_CLASS = "rounded-[30px] border border-[#eadfcd] bg-white/82 p-5 shadow-[0_14px_36px_rgba(79,58,22,0.06)] md:p-6";
 const KICKER_CLASS = "text-[10px] font-black uppercase tracking-[0.28em] text-[#9a886d]";
@@ -14,10 +15,7 @@ function nice(value = "") {
 }
 
 function fullDate(value) {
-  if (!value) return "--";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "--";
-  return date.toLocaleString("en-IN", {
+  return formatIndiaCustom(value, {
     day: "numeric",
     month: "short",
     hour: "2-digit",
@@ -26,10 +24,8 @@ function fullDate(value) {
 }
 
 function dateKey(value) {
-  if (!value) return "No Date";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "No Date";
-  return date.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+  const formatted = value ? formatIndiaDate(value) : "";
+  return formatted && formatted !== "--" ? formatted : "No Date";
 }
 
 export default function CalendarPage() {

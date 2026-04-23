@@ -5,6 +5,18 @@ const { parseRequestedTeamIds, resolveTeamScope } = require("./accessScopeServic
 
 const dashboardCache = new Map();
 
+function getAssignedViewerColumns(role) {
+  if (role === ROLES.LEGAL_TEAM) {
+    return ["assigned_to_legal", "assigned_to"];
+  }
+
+  if (role === ROLES.FINANCE_TEAM) {
+    return ["assigned_to_finance", "assigned_to"];
+  }
+
+  return ["assigned_to"];
+}
+
 function parseCacheControl(value) {
   return ["1", "true", "yes", "on"].includes(String(value || "").trim().toLowerCase());
 }
@@ -108,6 +120,7 @@ async function loadSummary(auth, query = {}) {
       userId: auth.userId,
       scope: "assigned",
       teamIds,
+      viewerAccessColumns: getAssignedViewerColumns(auth.role),
     });
   }
 

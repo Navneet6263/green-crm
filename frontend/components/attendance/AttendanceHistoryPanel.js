@@ -1,15 +1,8 @@
 import { KICKER_CLASS, PANEL_CLASS } from "../communications/constants";
+import { formatIndiaDateWithTime } from "../../lib/dateTime";
 
 function formatDateTime(value) {
-  return value
-    ? new Date(value).toLocaleString("en-IN", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    : "--";
+  return formatIndiaDateWithTime(value);
 }
 
 function titleCase(value) {

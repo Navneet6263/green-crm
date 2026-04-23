@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 
+import LeadCollaboratorPanel from "./LeadCollaboratorPanel";
 import LeadMetaGrid from "./LeadMetaGrid";
 import LeadOwnerControls from "./LeadOwnerControls";
 import LeadTransferPanel from "./LeadTransferPanel";
@@ -14,6 +15,7 @@ export default function LeadExpandedDetails({
   canManage,
   canTransfer,
   company,
+  collaboratorUsersMessage,
   deleting,
   isPlatformConsole,
   lead,
@@ -23,11 +25,17 @@ export default function LeadExpandedDetails({
   legalUsersMessage,
   onOwnerChange,
   onOwnerNoteChange,
+  pendingCollaborator,
   owner,
   ownerNote,
   ownerUsersMessage,
+  removeCollaborator,
+  removingCollaboratorId,
+  saveCollaborator,
   saveOwner,
+  savingCollaborators,
   scopedLegalUsers,
+  setPendingCollaborator,
   setLegalTransferNote,
   setLegalTransferOwner,
   teamBadgeLabel,
@@ -69,6 +77,19 @@ export default function LeadExpandedDetails({
         setLegalTransferOwner={setLegalTransferOwner}
         transferLeadToLegal={transferLeadToLegal}
         transferring={transferring}
+      />
+
+      <LeadCollaboratorPanel
+        addCollaborator={saveCollaborator}
+        canManage={canManage}
+        collaboratorUsersMessage={collaboratorUsersMessage}
+        lead={lead}
+        pendingCollaborator={pendingCollaborator}
+        removeCollaborator={removeCollaborator}
+        removingCollaboratorId={removingCollaboratorId}
+        savingCollaborators={savingCollaborators}
+        setPendingCollaborator={setPendingCollaborator}
+        teamUsers={teamUsers}
       />
 
       <LeadOwnerControls
