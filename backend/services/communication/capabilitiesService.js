@@ -1,4 +1,5 @@
 const { readCapabilityCache, writeCapabilityCache } = require("./capabilityCache");
+const { resolveEmailCapability } = require("./managedEmailService");
 const { resolveCapabilities } = require("./integrationResolver");
 
 async function getCapabilities(companyId, options = {}) {
@@ -9,7 +10,15 @@ async function getCapabilities(companyId, options = {}) {
     }
   }
 
-  return writeCapabilityCache(companyId, await resolveCapabilities(companyId));
+  const [channelCapabilities, emailCapability] = await Promise.all([
+    resolveCapabilities(companyId),
+    resolveEmailCapability(companyId),
+  ]);
+
+  return writeCapabilityCache(companyId, {
+    email: emailCapability,
+    ...channelCapabilities,
+  });
 }
 
 module.exports = {

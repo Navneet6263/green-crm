@@ -114,23 +114,48 @@ function getTransportTimeouts() {
   };
 }
 
-function buildTransportConfig(company, platformCompany) {
-  const smtpProfile = resolveSmtpProfile(company, platformCompany);
-  const companyHost = normalizeString(company?.smtp_host);
-  const companyPort = Number(company?.smtp_port || 0);
-  const companyUser = normalizeString(company?.smtp_user);
-  const companyPass = normalizeString(company?.smtp_password);
+function hasTenantSmtpTransport(company) {
+  const host = normalizeString(company?.smtp_host);
+  const port = Number(company?.smtp_port || 0);
+  const user = normalizeString(company?.smtp_user);
+  const pass = normalizeString(company?.smtp_password);
+  return Boolean(host && port && user && pass);
+}
 
-  if (companyHost && companyPort && companyUser && companyPass) {
-    const fromEmail = smtpProfile.from_email || normalizeString(process.env.SMTP_FROM || companyUser);
+function resolveCompanyTransportConfig(company, smtpProfile) {
+  if (!hasTenantSmtpTransport(company)) {
+    return null;
+  }
+
+  const companyPort = Number(company.smtp_port || 0);
+  const companyUser = normalizeString(company.smtp_user);
+  const fromEmail = smtpProfile.from_email || normalizeString(process.env.SMTP_FROM || companyUser);
+
+  return {
+    scope: "company",
+    host: normalizeString(company.smtp_host),
+    port: companyPort,
+    secure: companyPort === 465,
+    user: companyUser,
+    pass: normalizeString(company.smtp_password),
+    from: buildFromHeader(fromEmail, smtpProfile.from_name) || fromEmail,
+    replyTo: smtpProfile.reply_to || fromEmail,
+  };
+}
+
+function resolvePlatformTransportConfig(platformCompany, smtpProfile) {
+  if (hasTenantSmtpTransport(platformCompany)) {
+    const platformPort = Number(platformCompany.smtp_port || 0);
+    const platformUser = normalizeString(platformCompany.smtp_user);
+    const fromEmail = smtpProfile.from_email || normalizeString(process.env.SMTP_FROM || platformUser);
 
     return {
-      scope: "company",
-      host: companyHost,
-      port: companyPort,
-      secure: companyPort === 465,
-      user: companyUser,
-      pass: companyPass,
+      scope: "platform",
+      host: normalizeString(platformCompany.smtp_host),
+      port: platformPort,
+      secure: platformPort === 465,
+      user: platformUser,
+      pass: normalizeString(platformCompany.smtp_password),
       from: buildFromHeader(fromEmail, smtpProfile.from_name) || fromEmail,
       replyTo: smtpProfile.reply_to || fromEmail,
     };
@@ -141,22 +166,33 @@ function buildTransportConfig(company, platformCompany) {
   const user = normalizeString(process.env.SMTP_USER);
   const pass = normalizeString(process.env.SMTP_PASS);
 
-  if (host && port && user && pass) {
-    const fromEmail = smtpProfile.from_email || normalizeString(process.env.SMTP_FROM || user);
-
-    return {
-      scope: "global",
-      host,
-      port,
-      secure: normalizeString(process.env.SMTP_SECURE).toLowerCase() === "true" || port === 465,
-      user,
-      pass,
-      from: buildFromHeader(fromEmail, smtpProfile.from_name) || fromEmail,
-      replyTo: smtpProfile.reply_to || fromEmail,
-    };
+  if (!(host && port && user && pass)) {
+    return null;
   }
 
-  return null;
+  const fromEmail = smtpProfile.from_email || normalizeString(process.env.SMTP_FROM || user);
+  return {
+    scope: "global",
+    host,
+    port,
+    secure: normalizeString(process.env.SMTP_SECURE).toLowerCase() === "true" || port === 465,
+    user,
+    pass,
+    from: buildFromHeader(fromEmail, smtpProfile.from_name) || fromEmail,
+    replyTo: smtpProfile.reply_to || fromEmail,
+  };
+}
+
+function hasPlatformSmtpTransport(platformCompany) {
+  return Boolean(resolvePlatformTransportConfig(platformCompany, resolveSmtpProfile(null, platformCompany)));
+}
+
+function buildTransportConfig(company, platformCompany) {
+  const smtpProfile = resolveSmtpProfile(company, platformCompany);
+  return (
+    resolveCompanyTransportConfig(company, smtpProfile) ||
+    resolvePlatformTransportConfig(platformCompany, smtpProfile)
+  );
 }
 
 function getTransporter(config) {
@@ -438,6 +474,8 @@ module.exports = {
   dispatchUserCredentialsEmail,
   getFrontendUrl,
   getLoginUrl,
+  hasPlatformSmtpTransport,
+  hasTenantSmtpTransport,
   resolveAuthDelivery,
   sendCustomEmail,
   sendEmail,

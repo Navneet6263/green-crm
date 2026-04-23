@@ -604,6 +604,7 @@ const schemaStatements = [
   `CREATE TABLE IF NOT EXISTS company_permissions (
     id                         BIGINT        NOT NULL AUTO_INCREMENT,
     company_id                 VARCHAR(20)   NOT NULL,
+    can_use_platform_email     TINYINT(1)    NOT NULL DEFAULT 0,
     can_use_platform_call      TINYINT(1)    NOT NULL DEFAULT 0,
     can_use_platform_whatsapp  TINYINT(1)    NOT NULL DEFAULT 0,
     can_use_platform_sms       TINYINT(1)    NOT NULL DEFAULT 0,

@@ -77,7 +77,13 @@ export function useCommunicationSettings({ companyId, token, enabled = true, can
     setState((current) => ({
       ...current,
       message: "",
-      draft: { ...current.draft, permissions: { ...current.draft.permissions, [key]: !current.draft.permissions[key] } },
+      draft: {
+        ...current.draft,
+        permissions: {
+          ...(current.draft.permissions || {}),
+          [key]: !current.draft.permissions?.[key],
+        },
+      },
     }));
   }
 

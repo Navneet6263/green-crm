@@ -22,10 +22,22 @@ export default function EmailComposerPanel({
   sendEmail,
   sending,
   record,
+  capability,
 }) {
   if (!record) {
     return null;
   }
+
+  const statusLabel = capability?.enabled
+    ? capability?.source === "platform"
+      ? "Platform SMTP"
+      : "Own SMTP"
+    : "Managed service locked";
+  const note = capability?.enabled
+    ? capability?.source === "platform"
+      ? "Uses superadmin-approved GreenCall SMTP because tenant SMTP is not available for this action."
+      : "Uses the company's own SMTP route."
+    : "Email remains visible for discovery. Sending will be blocked until own SMTP is configured or superadmin enables GreenCall SMTP.";
 
   return (
     <article className={PANEL_CLASS}>
@@ -33,8 +45,12 @@ export default function EmailComposerPanel({
         <div>
           <p className={KICKER_CLASS}>Compose</p>
           <h3 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Send email from CRM</h3>
+          <p className="mt-3 max-w-2xl text-sm leading-7 text-[#746853]">{note}</p>
         </div>
-        <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">{record.entity_type} sync</span>
+        <div className="flex flex-wrap gap-2">
+          <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">{record.entity_type} sync</span>
+          <span className={`inline-flex rounded-full border px-3 py-1 text-[11px] font-bold ${capability?.enabled ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-amber-200 bg-amber-50 text-amber-700"}`}>{statusLabel}</span>
+        </div>
       </div>
 
       <div className="grid gap-4">

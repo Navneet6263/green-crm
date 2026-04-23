@@ -1,5 +1,5 @@
 const { decryptJson } = require("../../utils/secureConfig");
-const { CHANNELS, DEFAULT_PROVIDER, PLATFORM_PERMISSION_KEY } = require("./channels");
+const { CHANNELS, DEFAULT_PROVIDER, MANAGED_SERVICE_CHANNELS, PLATFORM_PERMISSION_KEY } = require("./channels");
 const { loadIntegrationSnapshot } = require("./integrationSnapshotService");
 const { getProvider } = require("./providerFactory");
 const { parseAllowedIps } = require("./settingsSerializer");
@@ -22,36 +22,96 @@ function validateAttendanceConfig(config = {}) {
   return parseAllowedIps(config.allowed_ips).length > 0;
 }
 
+function validateIntegration(channel, integration) {
+  if (!integration.enabled) {
+    return { valid: false, reason: "disabled" };
+  }
+
+  if (channel === "attendance") {
+    return validateAttendanceConfig(integration.config)
+      ? { valid: true }
+      : { valid: false, reason: "invalid_tenant_config" };
+  }
+
+  return getProvider(channel, integration.provider).validateConfig(integration.config);
+}
+
+function buildEnabledCapability(channel, integration, source, mode, config) {
+  return {
+    channel,
+    enabled: true,
+    provider: integration.provider,
+    mode,
+    source,
+    config,
+  };
+}
+
+function resolveManagedServiceCapability(snapshot, channel) {
+  const integration = normalizeIntegration(snapshot.integrations[channel], channel);
+  const platformIntegration = normalizeIntegration(snapshot.platform_integrations[channel], channel);
+  const hasPlatformAccess = Boolean(snapshot.permissions?.[PLATFORM_PERMISSION_KEY[channel]]);
+  const tenantValidation = validateIntegration(channel, integration);
+
+  if (tenantValidation.valid) {
+    return buildEnabledCapability(channel, integration, "tenant", "own_credentials", integration.config);
+  }
+
+  if (hasPlatformAccess) {
+    const platformValidation = validateIntegration(channel, platformIntegration);
+    if (platformValidation.valid) {
+      return buildEnabledCapability(channel, platformIntegration, "platform", "platform_managed", platformIntegration.config);
+    }
+
+    return buildDisabledCapability(
+      channel,
+      platformIntegration,
+      platformIntegration.enabled
+        ? platformValidation.reason || "invalid_platform_config"
+        : "platform_provider_disabled",
+      "platform"
+    );
+  }
+
+  return buildDisabledCapability(
+    channel,
+    integration,
+    integration.enabled && !tenantValidation.valid ? "invalid_tenant_config" : "platform_access_not_enabled"
+  );
+}
+
 function resolveChannelFromSnapshot(snapshot, channel) {
   const integration = normalizeIntegration(snapshot.integrations[channel], channel);
   const platformIntegration = normalizeIntegration(snapshot.platform_integrations[channel], channel);
   const hasPlatformAccess = Boolean(snapshot.permissions?.[PLATFORM_PERMISSION_KEY[channel]]);
 
-  if (!integration.enabled) return buildDisabledCapability(channel, integration, "disabled");
-  if (channel === "attendance" && !hasPlatformAccess) return buildDisabledCapability(channel, integration, "attendance_not_approved");
+  if (MANAGED_SERVICE_CHANNELS.includes(channel)) {
+    return resolveManagedServiceCapability(snapshot, channel);
+  }
 
-  if (integration.mode === "platform_credentials") {
-    if (!hasPlatformAccess) return buildDisabledCapability(channel, integration, "platform_access_not_approved", "platform");
-    if (!platformIntegration.enabled) return buildDisabledCapability(channel, integration, "platform_provider_disabled", "platform");
-
-    const validation = channel === "attendance"
-      ? { valid: validateAttendanceConfig(platformIntegration.config) }
-      : getProvider(channel, platformIntegration.provider).validateConfig(platformIntegration.config);
-
-    return validation.valid
-      ? { channel, enabled: true, provider: platformIntegration.provider, mode: integration.mode, source: "platform", config: platformIntegration.config }
-      : buildDisabledCapability(channel, integration, "invalid_platform_config", "platform");
+  if (!integration.enabled) {
+    return buildDisabledCapability(channel, integration, "disabled");
   }
 
   if (channel === "attendance") {
-    return validateAttendanceConfig(integration.config)
-      ? { channel, enabled: true, provider: integration.provider, mode: integration.mode, source: "tenant", config: integration.config }
+    if (!hasPlatformAccess) {
+      return buildDisabledCapability(channel, integration, "attendance_not_approved");
+    }
+
+    if (integration.mode === "platform_credentials") {
+      const validation = validateIntegration(channel, platformIntegration);
+      return validation.valid
+        ? buildEnabledCapability(channel, platformIntegration, "platform", integration.mode, platformIntegration.config)
+        : buildDisabledCapability(channel, integration, "invalid_platform_config", "platform");
+    }
+
+    return validateIntegration(channel, integration).valid
+      ? buildEnabledCapability(channel, integration, "tenant", integration.mode, integration.config)
       : buildDisabledCapability(channel, integration, "invalid_tenant_config");
   }
 
-  const validation = getProvider(channel, integration.provider).validateConfig(integration.config);
-  return validation.valid
-    ? { channel, enabled: true, provider: integration.provider, mode: integration.mode, source: "tenant", config: integration.config }
+  return validateIntegration(channel, integration).valid
+    ? buildEnabledCapability(channel, integration, integration.mode === "platform_credentials" ? "platform" : "tenant", integration.mode, integration.config)
     : buildDisabledCapability(channel, integration, "invalid_tenant_config");
 }
 

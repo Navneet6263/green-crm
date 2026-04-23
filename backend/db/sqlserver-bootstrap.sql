@@ -1504,6 +1504,7 @@ BEGIN
   CREATE TABLE [dbo].[company_permissions] (
     [id] BIGINT        NOT NULL IDENTITY(1,1),
     [company_id] NVARCHAR(20)   NOT NULL,
+    [can_use_platform_email] BIT    NOT NULL DEFAULT 0,
     [can_use_platform_call] BIT    NOT NULL DEFAULT 0,
     [can_use_platform_whatsapp] BIT    NOT NULL DEFAULT 0,
     [can_use_platform_sms] BIT    NOT NULL DEFAULT 0,

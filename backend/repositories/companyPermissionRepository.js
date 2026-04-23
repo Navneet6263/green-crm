@@ -1,6 +1,7 @@
 const db = require("../db/connection");
 
 const DEFAULT_PERMISSIONS = {
+  can_use_platform_email: false,
   can_use_platform_call: false,
   can_use_platform_whatsapp: false,
   can_use_platform_sms: false,
@@ -30,11 +31,12 @@ async function ensurePermissions(companyId, executor) {
       BEGIN
         INSERT INTO company_permissions (
           company_id,
+          can_use_platform_email,
           can_use_platform_call,
           can_use_platform_whatsapp,
           can_use_platform_sms,
           can_use_attendance
-        ) VALUES (?, 0, 0, 0, 0)
+        ) VALUES (?, 0, 0, 0, 0, 0)
       END
     `,
     [companyId, companyId]
@@ -52,7 +54,8 @@ async function upsertPermissions(companyId, permissions, executor) {
       IF EXISTS (SELECT 1 FROM company_permissions WHERE company_id = ?)
       BEGIN
         UPDATE company_permissions
-        SET can_use_platform_call = ?,
+        SET can_use_platform_email = ?,
+            can_use_platform_call = ?,
             can_use_platform_whatsapp = ?,
             can_use_platform_sms = ?,
             can_use_attendance = ?,
@@ -63,21 +66,24 @@ async function upsertPermissions(companyId, permissions, executor) {
       BEGIN
         INSERT INTO company_permissions (
           company_id,
+          can_use_platform_email,
           can_use_platform_call,
           can_use_platform_whatsapp,
           can_use_platform_sms,
           can_use_attendance
-        ) VALUES (?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?)
       END
     `,
     [
       companyId,
+      nextPermissions.can_use_platform_email ? 1 : 0,
       nextPermissions.can_use_platform_call ? 1 : 0,
       nextPermissions.can_use_platform_whatsapp ? 1 : 0,
       nextPermissions.can_use_platform_sms ? 1 : 0,
       nextPermissions.can_use_attendance ? 1 : 0,
       companyId,
       companyId,
+      nextPermissions.can_use_platform_email ? 1 : 0,
       nextPermissions.can_use_platform_call ? 1 : 0,
       nextPermissions.can_use_platform_whatsapp ? 1 : 0,
       nextPermissions.can_use_platform_sms ? 1 : 0,

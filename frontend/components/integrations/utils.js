@@ -25,7 +25,7 @@ export function buildCommunicationDraft(data) {
   return {
     company_id: data?.company_id || "",
     capabilities: data?.capabilities || {},
-    permissions: data?.permissions || {},
+    permissions: data?.permissions ?? null,
     integrations: CHANNEL_ORDER.reduce((acc, channel) => {
       acc[channel] = buildChannelDraft(data, channel);
       return acc;

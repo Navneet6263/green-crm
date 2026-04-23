@@ -12,7 +12,9 @@ const { buildPaginatedResult, parsePagination } = require("../utils/pagination")
 const AppError = require("../utils/appError");
 const { buildServiceSettingsPatch, mergeDeep, parseCompanySettings } = require("../utils/companySettings");
 const { assertCompanyAccess, getAccessibleCompanyIds, isPlatformOperatorRole } = require("../utils/tenant");
+const { clearCapabilityCache } = require("./communication/capabilityCache");
 const { initializeCompanyCommunicationControls } = require("./communication/companyCommunicationSetupService");
+const { invalidateIntegrationSnapshot } = require("./communication/integrationSnapshotService");
 const { ensureInitialCompanyTeam } = require("./teamProvisioningService");
 
 function sanitizeUser(user) {
@@ -267,6 +269,12 @@ async function updateCompany(auth, companyId, payload) {
   }
 
   const updates = {};
+  const touchesSmtpTransport = [
+    "smtp_host",
+    "smtp_port",
+    "smtp_user",
+    "smtp_password",
+  ].some((key) => Object.prototype.hasOwnProperty.call(payload, key));
 
   [
     "name",
@@ -324,6 +332,16 @@ async function updateCompany(auth, companyId, payload) {
     user_role: auth.role,
     details: payload,
   });
+
+  if (touchesSmtpTransport) {
+    await invalidateIntegrationSnapshot(companyId);
+    await clearCapabilityCache(companyId);
+
+    if (companyId === PLATFORM_COMPANY_ID) {
+      await invalidateIntegrationSnapshot();
+      await clearCapabilityCache();
+    }
+  }
 
   return updatedCompany;
 }

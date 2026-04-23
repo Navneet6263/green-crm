@@ -3,6 +3,7 @@ const { loadEntity } = require("./entityResolver");
 const { resolveChannel } = require("./integrationResolver");
 const { getProvider } = require("./providerFactory");
 const { recordEntityCommunication } = require("./entitySyncService");
+const { MANAGED_SERVICE_DISABLED_MESSAGE } = require("./managedServiceConstants");
 
 async function executeChannelAction(auth, channel, payload, methodName) {
   const entityType = String(payload.entity_type || "").trim().toLowerCase();
@@ -18,13 +19,11 @@ async function executeChannelAction(auth, channel, payload, methodName) {
     throw new AppError("Message body is required.", 400);
   }
 
-  const [entity, capability] = await Promise.all([
-    loadEntity(auth, entityType, entityId),
-    resolveChannel(auth.companyId, channel),
-  ]);
+  const entity = await loadEntity(auth, entityType, entityId);
+  const capability = await resolveChannel(entity.company_id, channel);
 
   if (!capability.enabled) {
-    throw new AppError(`${channel} is not enabled for this company.`, 403);
+    throw new AppError(MANAGED_SERVICE_DISABLED_MESSAGE, 403);
   }
 
   const provider = getProvider(channel, capability.provider);

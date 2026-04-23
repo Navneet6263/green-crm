@@ -1,12 +1,12 @@
 import { KICKER_CLASS } from "./constants";
 
 export default function CommunicationHero({ leads, customers, records, selectedRecord, capabilities }) {
-  const enabledChannels = ["call", "whatsapp", "sms"].filter((channel) => capabilities?.[channel]?.enabled).length;
+  const enabledChannels = ["email", "call", "whatsapp", "sms"].filter((channel) => capabilities?.[channel]?.enabled).length;
   const stats = [
     { label: "Lead Contacts", value: leads.length },
     { label: "Customers", value: customers.length },
     { label: "Reachable Records", value: records.filter((record) => record.email || record.phone).length },
-    { label: "Live Channels", value: enabledChannels || "Email" },
+    { label: "Live Channels", value: enabledChannels || 0 },
   ];
 
   return (
@@ -18,7 +18,7 @@ export default function CommunicationHero({ leads, customers, records, selectedR
             One communication desk for email, call, WhatsApp, and SMS.
           </h2>
           <p className="max-w-3xl text-sm leading-7 text-[#746853] md:text-base">
-            Channels are enabled tenant-wise from backend capabilities. Attendance now lives in its own module, while this desk stays focused on provider-backed communication work only.
+            Communication modules stay visible for discovery, but backend capability rules decide whether tenant credentials or superadmin-approved GreenCRM services can execute each action.
           </p>
         </div>
 

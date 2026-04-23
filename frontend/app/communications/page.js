@@ -28,7 +28,7 @@ export default function CommunicationsPage() {
               {workspace.selectedRecord ? (
                 <>
                   <EmailTemplatePanel templates={workspace.templates} selectedTemplateId={workspace.selectedTemplateId} chooseTemplate={workspace.chooseTemplate} />
-                  <EmailComposerPanel recipient={workspace.recipient} cc={workspace.cc} subject={workspace.subject} body={workspace.body} setRecipient={workspace.setRecipient} setCc={workspace.setCc} setSubject={workspace.setSubject} setBody={workspace.setBody} copyDraft={workspace.copyDraft} copyState={workspace.copyState} sendEmail={workspace.sendEmail} sending={workspace.sending} record={workspace.selectedRecord} />
+                  <EmailComposerPanel recipient={workspace.recipient} cc={workspace.cc} subject={workspace.subject} body={workspace.body} setRecipient={workspace.setRecipient} setCc={workspace.setCc} setSubject={workspace.setSubject} setBody={workspace.setBody} copyDraft={workspace.copyDraft} copyState={workspace.copyState} sendEmail={workspace.sendEmail} sending={workspace.sending} record={workspace.selectedRecord} capability={workspace.capabilities.email} />
                   <ChannelActionsPanel record={workspace.selectedRecord} capabilities={workspace.capabilities} phoneDrafts={workspace.phoneDrafts} setPhoneDraft={workspace.setPhoneDraft} sendChannel={workspace.sendChannel} sending={workspace.sending} />
                 </>
               ) : null}

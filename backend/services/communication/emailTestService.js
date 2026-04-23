@@ -5,11 +5,7 @@ const { PLATFORM_COMPANY_ID } = require("../../db/schema");
 const { createPrefixedId } = require("../../utils/ids");
 const AppError = require("../../utils/appError");
 const { assertCompanyAccess, getAccessibleCompanyIds } = require("../../utils/tenant");
-const emailService = require("../emailService");
-
-async function getPlatformCompany() {
-  return companyRepository.getCompanyWithSettings(PLATFORM_COMPANY_ID);
-}
+const { sendManagedTestEmail } = require("./managedEmailService");
 
 async function resolveCompany(auth, requestedCompanyId) {
   if (auth.role === ROLES.ADMIN) {
@@ -43,9 +39,7 @@ async function sendTestEmail(auth, payload) {
   }
 
   const company = await resolveCompany(auth, payload.company_id || null);
-  const delivery = await emailService.sendSmtpTestEmail({
-    company,
-    platformCompany: await getPlatformCompany(),
+  const delivery = await sendManagedTestEmail(company.company_id, {
     to,
     requestedByName: auth.name || auth.email || "GreenCRM",
   });

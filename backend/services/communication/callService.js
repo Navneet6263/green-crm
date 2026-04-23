@@ -4,6 +4,7 @@ const { resolveChannel } = require("./integrationResolver");
 const { getProvider } = require("./providerFactory");
 const { recordEntityCommunication } = require("./entitySyncService");
 const { attachProviderResponse, createCallLog, markCallFailed } = require("./callLogService");
+const { MANAGED_SERVICE_DISABLED_MESSAGE } = require("./managedServiceConstants");
 const { buildCallWebhookUrl } = require("./webhookUrlService");
 
 async function initiateCall(auth, payload, req) {
@@ -15,13 +16,11 @@ async function initiateCall(auth, payload, req) {
     throw new AppError("entity_id and recipient are required.", 400);
   }
 
-  const [entity, capability] = await Promise.all([
-    loadEntity(auth, entityType, entityId),
-    resolveChannel(auth.companyId, "call"),
-  ]);
+  const entity = await loadEntity(auth, entityType, entityId);
+  const capability = await resolveChannel(entity.company_id, "call");
 
   if (!capability.enabled) {
-    throw new AppError("call is not enabled for this company.", 403);
+    throw new AppError(MANAGED_SERVICE_DISABLED_MESSAGE, 403);
   }
 
   const provider = getProvider("call", capability.provider);

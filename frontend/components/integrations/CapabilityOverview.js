@@ -1,4 +1,4 @@
-import { CHANNEL_META, CHANNEL_ORDER } from "./config";
+import { CAPABILITY_ORDER, CHANNEL_META } from "./config";
 import { SUB_PANEL_CLASS } from "./constants";
 import { formatReason, getCapabilityTone } from "./utils";
 
@@ -31,7 +31,7 @@ export default function CapabilityOverview({ capabilities }) {
         <p className="mt-2 text-sm leading-6 text-slate-600">Each card shows the backend-authoritative result after tenant config, platform approval, and provider mode are combined.</p>
       </div>
       <div className="grid gap-4 xl:grid-cols-2">
-        {CHANNEL_ORDER.map((channel) => (
+        {CAPABILITY_ORDER.map((channel) => (
           <CapabilityCard key={channel} channel={channel} capability={capabilities?.[channel]} />
         ))}
       </div>

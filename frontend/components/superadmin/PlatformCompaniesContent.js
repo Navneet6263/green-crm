@@ -304,10 +304,10 @@ export default function PlatformCompaniesContent({ session, data, error, loading
                 <CommunicationSettingsSection
                   companyId={selectedCompany.company_id}
                   token={session?.token}
-                  title="Channel capability, provider mode, and platform approvals"
-                  description="This section controls whether calling, WhatsApp, SMS, and attendance actions actually work after the module is visible in the tenant workspace."
+                  title="Managed services, provider routing, and capability resolution"
+                  description="Tenant modules can stay visible even when paid services are blocked. Backend rules resolve own credentials first and superadmin-approved platform services second."
                   canEditIntegrations={canManageTenant}
-                  canEditPermissions={canManageTenant && selectedCompany.company_id !== "platform-root"}
+                  canEditPermissions={role === "super-admin" && selectedCompany.company_id !== "platform-root"}
                   platformRoot={selectedCompany.company_id === "platform-root"}
                 />
                 <CompanyRoleControlPanel companyId={selectedCompany.company_id} companyName={selectedCompany.name} token={session?.token} canManage={canManageRoles} />

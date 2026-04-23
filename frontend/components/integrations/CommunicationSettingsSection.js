@@ -7,6 +7,10 @@ import CapabilityOverview from "./CapabilityOverview";
 import PlatformAccessPanel from "./PlatformAccessPanel";
 import SmsSettingsCard from "./SmsSettingsCard";
 import WhatsAppSettingsCard from "./WhatsAppSettingsCard";
+import {
+  ADDITIONAL_PERMISSION_FIELDS,
+  MANAGED_SERVICE_PERMISSION_FIELDS,
+} from "./config";
 import { PANEL_CLASS, PRIMARY_BUTTON_CLASS } from "./constants";
 import { useCommunicationSettings } from "./useCommunicationSettings";
 
@@ -55,16 +59,31 @@ export default function CommunicationSettingsSection({
       {!settings.loading ? (
         <div className="mt-6 space-y-5">
           <div className="rounded-[20px] border border-slate-200 bg-slate-50 px-4 py-4 text-sm leading-6 text-slate-600">
-            Module Access decides whether a tenant sees Communications or Attendance in the sidebar. Channel Capability decides whether provider-backed actions are active once those modules are visible.
+            Module access decides whether tenants see the workspace. Managed services decide whether cost-based actions can actually execute after backend priority checks finish.
           </div>
           <CapabilityOverview capabilities={settings.draft.capabilities} />
           {settings.draft.permissions ? (
-            <PlatformAccessPanel
-              permissions={settings.draft.permissions}
-              canEdit={canEditPermissions}
-              onToggle={settings.togglePermission}
-              platformChannels={platformChannels}
-            />
+            <div className="grid gap-4 xl:grid-cols-2">
+              <PlatformAccessPanel
+                permissions={settings.draft.permissions}
+                canEdit={canEditPermissions}
+                onToggle={settings.togglePermission}
+                platformChannels={platformChannels}
+                fields={MANAGED_SERVICE_PERMISSION_FIELDS}
+                eyebrow="Managed Services"
+                title="Superadmin-controlled paid services"
+                description="Tenant users can still see email, call, WhatsApp, and SMS actions. Execution works only after backend checks own credentials first and approved GreenCRM services second."
+              />
+              <PlatformAccessPanel
+                permissions={settings.draft.permissions}
+                canEdit={canEditPermissions}
+                onToggle={settings.togglePermission}
+                fields={ADDITIONAL_PERMISSION_FIELDS}
+                eyebrow="Additional Approval"
+                title="Attendance platform approval"
+                description="Attendance stays separate from paid communication services and keeps its existing approval flow."
+              />
+            </div>
           ) : null}
           <div className="grid gap-4 xl:grid-cols-2">
             <CallSettingsCard

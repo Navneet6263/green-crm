@@ -131,7 +131,7 @@ export default function CompanySettingsPage() {
   }
 
   const isPlatformRoot = company?.company_id === "platform-root";
-  const canEditPermissions = ["super-admin", "platform-admin"].includes(session?.user?.role) && !isPlatformRoot;
+  const canEditPermissions = session?.user?.role === "super-admin" && !isPlatformRoot;
 
   return (
     <DashboardShell session={session} title="Company Settings" hideTitle heroStats={[]}>
@@ -159,7 +159,7 @@ export default function CompanySettingsPage() {
             description={
               isPlatformRoot
                 ? "Define the shared provider credentials and office attendance IP policy used when companies are approved for platform-managed channels."
-                : "Manage tenant-level provider credentials, switch channels to platform mode, and review which capabilities are currently active for this company."
+                : "Manage tenant credentials, review managed paid service status, and see the backend-resolved capability for each communication channel."
             }
             canEditIntegrations={["super-admin", "admin"].includes(session?.user?.role)}
             canEditPermissions={canEditPermissions}

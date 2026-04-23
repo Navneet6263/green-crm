@@ -11,6 +11,7 @@ const { clearCapabilityCache } = require("./capabilityCache");
 const { CHANNELS } = require("./channels");
 const { getCapabilities } = require("./capabilitiesService");
 const { invalidateIntegrationSnapshot } = require("./integrationSnapshotService");
+const { logManagedServiceChanges } = require("./managedServiceAuditService");
 const { getProvider } = require("./providerFactory");
 const { normalizeIntegrationInput, parseAllowedIps, serializeIntegrations } = require("./settingsSerializer");
 
@@ -32,7 +33,7 @@ function canManageIntegrations(auth, companyId) {
 }
 
 function canManagePermissions(auth, companyId) {
-  return companyId !== PLATFORM_COMPANY_ID && [ROLES.SUPER_ADMIN, ROLES.PLATFORM_ADMIN].includes(auth.role);
+  return companyId !== PLATFORM_COMPANY_ID && auth.role === ROLES.SUPER_ADMIN;
 }
 
 function validateAttendanceConfig(config = {}) {
@@ -103,8 +104,13 @@ async function updateCompanyCommunicationSettings(auth, companyId, payload) {
   }
 
   if (payload.permissions && !canManagePermissions(auth, companyId)) {
-    throw new AppError("Only super-admin and platform-admin can change platform approvals.", 403);
+    throw new AppError("Only super-admin can change managed service approvals.", 403);
   }
+
+  const currentPermissions = payload.permissions
+    ? await companyPermissionRepository.ensurePermissions(companyId)
+    : null;
+  let managedServiceChanges = [];
 
   if (Array.isArray(payload.integrations)) {
     const validChannels = new Set(CHANNELS);
@@ -113,7 +119,13 @@ async function updateCompanyCommunicationSettings(auth, companyId, payload) {
   }
 
   if (payload.permissions && canManagePermissions(auth, companyId)) {
-    await companyPermissionRepository.upsertPermissions(companyId, payload.permissions);
+    const updatedPermissions = await companyPermissionRepository.upsertPermissions(companyId, payload.permissions);
+    managedServiceChanges = await logManagedServiceChanges({
+      auth,
+      companyId,
+      previousPermissions: currentPermissions,
+      nextPermissions: updatedPermissions,
+    });
   }
 
   await invalidateIntegrationSnapshot(companyId);
@@ -135,6 +147,7 @@ async function updateCompanyCommunicationSettings(auth, companyId, payload) {
         ? payload.integrations.map((item) => item.channel)
         : [],
       permissions_updated: Boolean(payload.permissions),
+      managed_services_updated: managedServiceChanges.map((item) => item.label),
     },
   });
 

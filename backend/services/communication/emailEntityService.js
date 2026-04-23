@@ -1,15 +1,13 @@
 const db = require("../../db/connection");
 const auditRepository = require("../../repositories/auditRepository");
-const companyRepository = require("../../repositories/companyRepository");
 const customerRepository = require("../../repositories/customerRepository");
 const leadRepository = require("../../repositories/leadRepository");
-const { PLATFORM_COMPANY_ID } = require("../../db/schema");
 const { createPrefixedId } = require("../../utils/ids");
 const AppError = require("../../utils/appError");
 const { parseRecipientList } = require("../../utils/emailRecipients");
 const customerService = require("../customerService");
-const emailService = require("../emailService");
 const leadService = require("../leadService");
+const { sendManagedCustomEmail } = require("./managedEmailService");
 
 function appendCustomerEmailNote(existingNotes, auth, subject, body, sentAt, ccRecipients = []) {
   const ccNote = ccRecipients.length ? ` | CC: ${ccRecipients.join(", ")}` : "";
@@ -17,23 +15,16 @@ function appendCustomerEmailNote(existingNotes, auth, subject, body, sentAt, ccR
   return existingNotes ? `${existingNotes}\n${entry}` : entry;
 }
 
-async function getPlatformCompany() {
-  return companyRepository.getCompanyWithSettings(PLATFORM_COMPANY_ID);
-}
-
-async function sendLeadEmail(auth, payload, platformCompany) {
+async function sendLeadEmail(auth, payload) {
   const lead = await leadService.getLead(auth, payload.entity_id);
-  const company = await companyRepository.getCompanyWithSettings(lead.company_id);
   const sentAt = new Date();
   const ccRecipients = parseRecipientList(payload.cc);
-  const delivery = await emailService.sendCustomEmail({
-    company,
-    platformCompany,
+  const delivery = await sendManagedCustomEmail(lead.company_id, {
     to: payload.to,
     cc: ccRecipients,
     subject: payload.subject,
     body: payload.body,
-    heading: company?.name ? `${company.name} Lead Outreach` : "Lead Outreach",
+    heading: lead.company_name ? `${lead.company_name} Lead Outreach` : "Lead Outreach",
   });
 
   const entity = await db.withTransaction(async (transaction) => {
@@ -86,19 +77,16 @@ async function sendLeadEmail(auth, payload, platformCompany) {
   return { entity_type: "lead", entity, delivery };
 }
 
-async function sendCustomerEmail(auth, payload, platformCompany) {
+async function sendCustomerEmail(auth, payload) {
   const customer = await customerService.getCustomer(auth, payload.entity_id);
-  const company = await companyRepository.getCompanyWithSettings(customer.company_id);
   const sentAt = new Date();
   const ccRecipients = parseRecipientList(payload.cc);
-  const delivery = await emailService.sendCustomEmail({
-    company,
-    platformCompany,
+  const delivery = await sendManagedCustomEmail(customer.company_id, {
     to: payload.to,
     cc: ccRecipients,
     subject: payload.subject,
     body: payload.body,
-    heading: company?.name ? `${company.name} Customer Outreach` : "Customer Outreach",
+    heading: customer.company_name ? `${customer.company_name} Customer Outreach` : "Customer Outreach",
   });
 
   const entity = await db.withTransaction(async (transaction) => {
@@ -148,10 +136,9 @@ async function sendEntityEmail(auth, payload) {
     throw new AppError("Entity, recipient, subject, and body are required.", 400);
   }
 
-  const platformCompany = await getPlatformCompany();
   return entityType === "lead"
-    ? sendLeadEmail(auth, payload, platformCompany)
-    : sendCustomerEmail(auth, payload, platformCompany);
+    ? sendLeadEmail(auth, payload)
+    : sendCustomerEmail(auth, payload);
 }
 
 module.exports = {
