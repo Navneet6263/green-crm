@@ -7,7 +7,27 @@ export default function robots() {
     rules: [
       {
         userAgent: "*",
-        allow: ["/", "/book-demo", "/icon.svg"],
+        allow: [
+          "/",
+          "/book-demo",
+          "/icon.svg",
+          "/crm-software-india",
+          "/crm-in-noida",
+          "/crm-for-small-business",
+          "/crm-with-calling",
+          "/crm-with-whatsapp",
+          "/crm-for-sales-team",
+          "/crm-for-startups",
+          "/crm-with-attendance",
+          "/blog",
+          "/blog/",
+          "/blog/what-is-crm-software",
+          "/blog/best-crm-tools-india",
+          "/blog/how-crm-helps-small-business",
+          "/blog/crm-vs-excel-for-sales",
+          "/blog/why-sales-team-needs-crm",
+          "/blog/benefits-of-crm-for-startups",
+        ],
         disallow: [
           "/login",
           "/register",

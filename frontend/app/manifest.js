@@ -5,7 +5,7 @@ export default function manifest() {
     name: BRAND_NAME,
     short_name: BRAND_NAME,
     description:
-      "GreenCRM is a role-based CRM platform for leads, customers, workflow, reminders, and team operations.",
+      "GreenCRM is the best CRM software in India for small businesses and sales teams. Manage leads, calls, WhatsApp, SMS, attendance, and dashboards in one affordable CRM. Based in Noida, serving all of India.",
     start_url: "/",
     display: "standalone",
     background_color: "#f8fbff",

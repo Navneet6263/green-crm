@@ -2,18 +2,57 @@ import { BRAND_LOGO, BRAND_NAME } from "../components/branding/brandConfig";
 
 const SITE_NAME = BRAND_NAME;
 const DEFAULT_DESCRIPTION =
-  "GreenCRM is a sales CRM for India that helps businesses manage leads, calls, WhatsApp, SMS, attendance, and dashboards from one fast workspace.";
+  "GreenCRM is the best CRM software in India for small businesses, startups, and sales teams. Manage leads, calls, WhatsApp, SMS, attendance, and dashboards from one fast workspace. Affordable CRM in Noida with free demo.";
 const DEFAULT_KEYWORDS = [
+  // Brand
   "GreenCRM",
   "GreenCall CRM",
+  "GreenCRM software",
+  "GreenCRM India",
+  // High search - core
+  "CRM software",
+  "CRM software India",
+  "best CRM software",
+  "sales CRM",
+  "CRM for business",
+  "customer relationship management software",
+  "CRM tools",
+  "CRM system",
+  // High intent buyers
+  "best CRM software for small business",
+  "affordable CRM software India",
+  "CRM software pricing India",
+  "CRM with free demo",
+  "CRM for startups India",
+  // Medium - real target
+  "CRM software in India",
+  "sales CRM India",
+  "lead management CRM India",
+  "CRM for small business India",
+  "CRM for sales team India",
+  "CRM software for startups",
+  "simple CRM software India",
+  "easy CRM for business",
+  // Feature based
+  "CRM with calling",
+  "CRM with WhatsApp",
+  "CRM with SMS",
+  "CRM with email integration",
+  "CRM with automation",
+  "CRM with pipeline management",
+  // Easy wins - local
   "CRM in Noida",
   "CRM software in Noida",
-  "Best CRM software India",
-  "Sales CRM India",
-  "CRM for small business India",
-  "Lead management CRM India",
-  "CRM with calling feature",
-  "CRM with WhatsApp integration",
+  "best CRM in Noida",
+  "CRM for small business in Noida",
+  "CRM company in Noida",
+  // Long tail
+  "CRM with calling and WhatsApp India",
+  "CRM for sales team with call tracking",
+  "CRM for field sales India",
+  "CRM for local business India",
+  "CRM with geo fencing",
+  "CRM with attendance system",
 ];
 
 function normalizeSiteUrl(value) {
@@ -72,6 +111,12 @@ export function buildMetadata({
       canonical,
     },
     robots,
+    other: {
+      "geo.region": "IN-UP",
+      "geo.placename": "Noida, Uttar Pradesh, India",
+      "geo.position": "28.5355;77.3910",
+      ICBM: "28.5355, 77.3910",
+    },
     openGraph: {
       title: resolvedTitle,
       description,
@@ -100,7 +145,7 @@ export function buildMetadata({
 export const DEFAULT_METADATA = {
   metadataBase: new URL(getSiteUrl()),
   title: {
-    default: `${SITE_NAME} | Sales CRM India for Leads, Calls and WhatsApp`,
+    default: `${SITE_NAME} | Best CRM Software India – Leads, Calls, WhatsApp & Attendance`,
     template: `%s | ${SITE_NAME}`,
   },
   description: DEFAULT_DESCRIPTION,
@@ -110,11 +155,17 @@ export const DEFAULT_METADATA = {
   publisher: SITE_NAME,
   category: "technology",
   keywords: DEFAULT_KEYWORDS,
+  other: {
+    "geo.region": "IN-UP",
+    "geo.placename": "Noida, Uttar Pradesh, India",
+    "geo.position": "28.5355;77.3910",
+    ICBM: "28.5355, 77.3910",
+  },
   alternates: {
     canonical: absoluteUrl("/"),
   },
   openGraph: {
-    title: `${SITE_NAME} | Sales CRM India for Leads, Calls and WhatsApp`,
+    title: `${SITE_NAME} | Best CRM Software India – Leads, Calls, WhatsApp & Attendance`,
     description: DEFAULT_DESCRIPTION,
     url: absoluteUrl("/"),
     siteName: SITE_NAME,
@@ -131,7 +182,7 @@ export const DEFAULT_METADATA = {
   },
   twitter: {
     card: "summary_large_image",
-    title: `${SITE_NAME} | Sales CRM India for Leads, Calls and WhatsApp`,
+    title: `${SITE_NAME} | Best CRM Software India – Leads, Calls, WhatsApp & Attendance`,
     description: DEFAULT_DESCRIPTION,
     images: [absoluteUrl(BRAND_LOGO.src)],
   },

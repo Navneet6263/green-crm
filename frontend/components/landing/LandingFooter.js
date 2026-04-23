@@ -14,26 +14,26 @@ export default function LandingFooter() {
             <p className="mt-3 text-sm text-slate-500">{BRAND_COPY.footer}</p>
           </div>
           <p className="mt-5 max-w-xl text-sm leading-8 text-slate-600">
-            Sales CRM built for leads, calls, WhatsApp, attendance, and team dashboards.
+            Best CRM software in India for small businesses, startups, and sales teams. Manage leads, calls, WhatsApp, SMS, attendance, and dashboards from one affordable CRM.
           </p>
 
           <div className="mt-6 rounded-[1.6rem] border border-slate-200 bg-[#f8fafc] p-5">
-            <p className="text-sm font-semibold text-slate-950">Contact GreenCRM</p>
+            <p className="text-sm font-semibold text-slate-950">Contact GreenCRM — CRM Company in Noida</p>
             <p className="mt-2 text-sm leading-7 text-slate-600">
-              Use the demo request form for product queries, pricing, and setup support.
+              Use the demo request form for product queries, pricing, and setup support. Free demo available.
             </p>
             <div className="mt-4 flex flex-wrap items-center gap-3">
               <Link href="/book-demo" className="inline-flex items-center rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800">
                 Book Free Demo
               </Link>
               <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm text-emerald-700">
-                Built for growing teams
+                Affordable CRM India
               </span>
             </div>
           </div>
         </div>
 
-        <div className="grid gap-8 sm:grid-cols-2">
+        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
           {FOOTER_LINK_GROUPS.map((group) => (
             <div key={group.title}>
               <p className="text-sm font-semibold text-slate-950">{group.title}</p>

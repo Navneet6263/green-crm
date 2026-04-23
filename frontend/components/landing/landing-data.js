@@ -7,26 +7,27 @@ export const LANDING_NAV_ITEMS = [
 ];
 
 export const HERO_VARIATIONS = [
-  "Best CRM Software in Noida for Sales Teams",
-  "Manage Leads, Calls and WhatsApp in One CRM",
-  "Simple, Fast CRM for Growing Businesses in India",
+  "Best CRM Software in India for Sales Teams",
+  "Affordable CRM in Noida – Leads, Calls, WhatsApp in One Place",
+  "Simple CRM for Small Business India – Free Demo Available",
+  "CRM with Calling, WhatsApp & Attendance – Built for India",
 ];
 
 export const HERO_POINTS = [
   {
-    label: "Lead management that stays clear",
+    label: "Lead management CRM India",
     value:
-      "Capture enquiries, assign owners, and keep every follow-up visible from one simple sales CRM.",
+      "Capture enquiries, assign owners, and keep every follow-up visible from one simple sales CRM built for India.",
   },
   {
-    label: "Calling, WhatsApp, and SMS together",
+    label: "CRM with calling, WhatsApp & SMS",
     value:
-      "Talk to leads faster with click-to-call, WhatsApp follow-ups, and SMS updates from one workspace.",
+      "Talk to leads faster with click-to-call, WhatsApp follow-ups, and SMS updates from one CRM workspace.",
   },
   {
-    label: "Attendance and dashboards for action",
+    label: "Attendance & geo fencing for field teams",
     value:
-      "Track field teams, geo fencing, and daily performance without adding heavy software to the stack.",
+      "Track field teams, geo fencing, and daily performance — the CRM with attendance system built for India.",
   },
 ];
 
@@ -161,21 +162,21 @@ export const WORKFLOW_STEPS = [
 export const TESTIMONIALS = [
   {
     quote:
-      "Before GreenCRM, our leads were in Excel and follow-ups were missed. Now the team calls faster and everyone sees the same pipeline.",
+      "Before GreenCRM, our leads were in Excel and follow-ups were missed. Now the team calls faster and everyone sees the same pipeline. Best CRM software we have used in India.",
     name: "Rohit S.",
-    role: "Sales Manager, Real Estate Team",
+    role: "Sales Manager, Real Estate Team, Noida",
   },
   {
     quote:
-      "We wanted a CRM with WhatsApp integration and field attendance in one place. GreenCRM made daily work much simpler for our team.",
+      "We wanted a CRM with WhatsApp integration and field attendance in one place. GreenCRM made daily work much simpler. Affordable CRM for our startup in Delhi NCR.",
     name: "Priya M.",
-    role: "Founder, Delhi NCR Service Business",
+    role: "Founder, Service Business, Delhi NCR",
   },
   {
     quote:
-      "The dashboards are clean, the UI is fast, and our reps can update lead status right after a call. That alone saved time every day.",
+      "The dashboards are clean, the UI is fast, and our reps can update lead status right after a call. GreenCRM is the best CRM for small business in India we have tried.",
     name: "Amit V.",
-    role: "Operations Lead, Local Distribution Company",
+    role: "Operations Lead, Local Distribution Company, India",
   },
 ];
 
@@ -193,6 +194,30 @@ export const FOOTER_LINK_GROUPS = [
       { label: "Why GreenCRM", href: "#why-greencrm" },
       { label: "Use Cases", href: "#use-cases" },
       { label: "Testimonials", href: "#testimonials" },
+    ],
+  },
+  {
+    title: "CRM Solutions",
+    links: [
+      { label: "CRM Software India", href: "/crm-software-india" },
+      { label: "CRM in Noida", href: "/crm-in-noida" },
+      { label: "CRM for Small Business", href: "/crm-for-small-business" },
+      { label: "CRM with Calling", href: "/crm-with-calling" },
+      { label: "CRM with WhatsApp", href: "/crm-with-whatsapp" },
+      { label: "CRM for Sales Team", href: "/crm-for-sales-team" },
+      { label: "CRM for Startups", href: "/crm-for-startups" },
+      { label: "CRM with Attendance", href: "/crm-with-attendance" },
+    ],
+  },
+  {
+    title: "Blog",
+    links: [
+      { label: "What is CRM Software", href: "/blog/what-is-crm-software" },
+      { label: "CRM vs Excel for Sales", href: "/blog/crm-vs-excel-for-sales" },
+      { label: "Best CRM Tools India", href: "/blog/best-crm-tools-india" },
+      { label: "CRM for Small Business", href: "/blog/how-crm-helps-small-business" },
+      { label: "Why Sales Team Needs CRM", href: "/blog/why-sales-team-needs-crm" },
+      { label: "CRM for Startups", href: "/blog/benefits-of-crm-for-startups" },
     ],
   },
   {
