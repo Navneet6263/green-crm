@@ -104,29 +104,6 @@ svg {
   border-bottom: 1px solid rgba(209, 227, 244, 0.92);
 }
 
-.brand-mark {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.85rem;
-  font-family: var(--font-display);
-  font-size: 1.35rem;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.brand-mark::before {
-  content: "G";
-  display: inline-grid;
-  place-items: center;
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 0.95rem;
-  background: linear-gradient(135deg, #5b95ff 0%, #7ec8ff 100%);
-  color: #f7fffb;
-  box-shadow: 0 14px 24px rgba(91, 149, 255, 0.18);
-}
-
 .site-nav {
   display: flex;
   align-items: center;

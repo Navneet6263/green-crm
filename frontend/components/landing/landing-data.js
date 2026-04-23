@@ -1,117 +1,213 @@
 export const LANDING_NAV_ITEMS = [
-  { label: "Platform", href: "#platform" },
-  { label: "Workflow", href: "#workflow" },
-  { label: "Why GreenCRM", href: "#proof" },
+  { label: "Features", href: "#features" },
+  { label: "Why GreenCRM", href: "#why-greencrm" },
+  { label: "Use Cases", href: "#use-cases" },
+  { label: "Testimonials", href: "#testimonials" },
   { label: "Book Demo", href: "#book-demo" },
 ];
 
-export const HERO_METRICS = [
-  { label: "Role-aware collaboration", value: "One shared operating layer for sales, ops, finance, and support." },
-  { label: "Clean handoffs", value: "Every stage keeps the next owner, notes, and customer context visible." },
-  { label: "Manager clarity", value: "Leaders can review pipeline health without pulling teams into status meetings." },
+export const HERO_VARIATIONS = [
+  "Best CRM Software in Noida for Sales Teams",
+  "Manage Leads, Calls and WhatsApp in One CRM",
+  "Simple, Fast CRM for Growing Businesses in India",
 ];
 
-
+export const HERO_POINTS = [
+  {
+    label: "Lead management that stays clear",
+    value:
+      "Capture enquiries, assign owners, and keep every follow-up visible from one simple sales CRM.",
+  },
+  {
+    label: "Calling, WhatsApp, and SMS together",
+    value:
+      "Talk to leads faster with click-to-call, WhatsApp follow-ups, and SMS updates from one workspace.",
+  },
+  {
+    label: "Attendance and dashboards for action",
+    value:
+      "Track field teams, geo fencing, and daily performance without adding heavy software to the stack.",
+  },
+];
 
 export const FEATURE_HIGHLIGHTS = [
   {
     icon: "layers",
-    eyebrow: "Pipeline clarity",
-    title: "Keep the full customer journey readable.",
-    copy: "From the first inquiry to the final handoff, every team works from the same record instead of rebuilding context in chat and spreadsheets.",
-    points: ["Lead ownership and status", "Follow-up cadence", "Customer history in one place"],
-  },
-  {
-    icon: "spark",
-    eyebrow: "Execution focus",
-    title: "Give teams their own workflow without fragmenting the CRM.",
-    copy: "Sales, legal, finance, support, and managers each get a focused view while the company still shares one reliable source of truth.",
-    points: ["Role-based dashboards", "Team-aware visibility", "Cleaner daily prioritization"],
-  },
-  {
-    icon: "path",
-    eyebrow: "Operational control",
-    title: "Design the process around how work actually moves.",
-    copy: "Track stage movement, blockers, document readiness, and next actions so operations feel disciplined instead of reactive.",
-    points: ["Stage-by-stage ownership", "Task and reminder support", "Workflow accountability"],
+    eyebrow: "Core CRM",
+    title: "Lead Management",
+    copy:
+      "Capture new leads, assign owners, add notes, and move deals stage by stage without losing context.",
+    points: ["Lead capture", "Owner assignment", "Follow-up reminders"],
   },
   {
     icon: "pulse",
-    eyebrow: "Management visibility",
-    title: "Review pipeline health without noisy reporting layers.",
-    copy: "Decision-makers can monitor movement, gaps, and queue pressure from a calm reporting surface built for day-to-day operating decisions.",
-    points: ["Readable metrics", "Queue visibility", "Fast status reviews"],
+    eyebrow: "Fast follow-up",
+    title: "Calling Integration",
+    copy:
+      "Use click-to-call and call tracking so your team can speak to leads faster and keep every outcome logged.",
+    points: ["Click-to-call", "Call history", "Call notes"],
+  },
+  {
+    icon: "spark",
+    eyebrow: "Daily outreach",
+    title: "WhatsApp Automation",
+    copy:
+      "Reply faster on WhatsApp and support SMS integration for reminders, updates, and repeat follow-up work.",
+    points: ["WhatsApp follow-ups", "SMS integration", "Template messages"],
+  },
+  {
+    icon: "path",
+    eyebrow: "Field control",
+    title: "Attendance & Geo Tracking",
+    copy:
+      "Track check-in, check-out, and field movement with an attendance system built around geo fencing.",
+    points: ["Attendance system", "Geo fencing", "Location updates"],
+  },
+  {
+    icon: "grid",
+    eyebrow: "Manager visibility",
+    title: "Multi Dashboard",
+    copy:
+      "Give owners, managers, and reps clean dashboards so everyone sees the right numbers without clutter.",
+    points: ["Owner dashboard", "Manager view", "Team KPIs"],
+  },
+];
+
+export const WHY_CHOOSE_FACTS = [
+  "Fast and lightweight UI",
+  "Affordable for startups",
+  "Built for growing teams",
+];
+
+export const WHY_CHOOSE_ITEMS = [
+  {
+    icon: "pulse",
+    title: "Speed",
+    copy:
+      "The interface is fast, lightweight, and built for daily calling, updating, and follow-up work.",
+  },
+  {
+    icon: "grid",
+    title: "Easy UI",
+    copy:
+      "Short screens, clear labels, and clean dashboards make onboarding easier for small teams.",
+  },
+  {
+    icon: "chart",
+    title: "Affordable",
+    copy:
+      "GreenCRM is designed as an affordable CRM for startups and small businesses, not a heavy enterprise rollout.",
+  },
+  {
+    icon: "shield",
+    title: "Built for growing businesses",
+    copy:
+      "Calling, WhatsApp, SMS, attendance, and field tracking fit naturally into the product flow.",
+  },
+];
+
+export const USE_CASES = [
+  {
+    icon: "layers",
+    title: "Small businesses",
+    copy:
+      "A practical CRM for small teams that want leads, customers, and follow-ups in one place.",
+    points: ["Easy lead tracking", "Simple follow-ups", "Clear owner-wise updates"],
+  },
+  {
+    icon: "pulse",
+    title: "Sales teams",
+    copy:
+      "Track calls, WhatsApp replies, daily targets, and conversions without depending on manual sheets.",
+    points: ["Call tracking", "Daily activity", "Manager visibility"],
+  },
+  {
+    icon: "path",
+    title: "Field employees",
+    copy:
+      "Geo-fencing attendance and location updates help managers see who checked in and where work is moving.",
+    points: ["Geo attendance", "Visit updates", "Field performance"],
+  },
+  {
+    icon: "grid",
+    title: "Local businesses",
+    copy:
+      "Useful for real estate, service teams, local shops, and growing businesses that handle leads on phone and WhatsApp.",
+    points: ["Local lead tracking", "Faster replies", "Repeat customer follow-up"],
   },
 ];
 
 export const WORKFLOW_STEPS = [
   {
     step: "01",
-    title: "Capture and qualify",
-    note: "Bring inquiries, callbacks, and source details into a structured lead record from the start.",
+    title: "Add leads",
+    note:
+      "Bring website enquiries, call leads, walk-ins, or imported contacts into one clean lead list.",
   },
   {
     step: "02",
-    title: "Coordinate the next move",
-    note: "Assign owners, log follow-ups, and keep commitments visible before deals go quiet.",
+    title: "Call or WhatsApp",
+    note:
+      "Use click-to-call, WhatsApp, and SMS follow-ups from the same CRM record so nothing gets missed.",
   },
   {
     step: "03",
-    title: "Run the handoff cleanly",
-    note: "Move work into legal, finance, or delivery with context intact instead of restarting the conversation.",
-  },
-  {
-    step: "04",
-    title: "Stay accountable after close",
-    note: "Customer records, tasks, reminders, and team visibility stay connected for the long run.",
+    title: "Track performance",
+    note:
+      "Review conversions, pending follow-ups, attendance, and dashboards without chasing status updates.",
   },
 ];
 
-export const PLATFORM_FACTS = [
-  { value: "Leads to customers", label: "A single CRM thread across the relationship lifecycle." },
-  { value: "Tasks and reminders", label: "Daily follow-up stays tied to the record it belongs to." },
-  { value: "Role and team views", label: "The product is built for real operating structures, not one generic screen." },
-];
-
-export const TRUST_PILLARS = [
+export const TESTIMONIALS = [
   {
-    icon: "shield",
-    title: "Built for serious internal workflows",
-    copy: "GreenCRM is shaped around handoffs, ownership, approvals, and visibility across multiple teams.",
+    quote:
+      "Before GreenCRM, our leads were in Excel and follow-ups were missed. Now the team calls faster and everyone sees the same pipeline.",
+    name: "Rohit S.",
+    role: "Sales Manager, Real Estate Team",
   },
   {
-    icon: "grid",
-    title: "Designed to stay calm as complexity grows",
-    copy: "Layouts, spacing, and hierarchy prioritize readability so busy teams can move quickly without visual fatigue.",
+    quote:
+      "We wanted a CRM with WhatsApp integration and field attendance in one place. GreenCRM made daily work much simpler for our team.",
+    name: "Priya M.",
+    role: "Founder, Delhi NCR Service Business",
   },
   {
-    icon: "chart",
-    title: "Easy to extend as the product grows",
-    copy: "The landing experience is modular, and the Book Demo path can evolve cleanly into richer forms and conversion flows.",
+    quote:
+      "The dashboards are clean, the UI is fast, and our reps can update lead status right after a call. That alone saved time every day.",
+    name: "Amit V.",
+    role: "Operations Lead, Local Distribution Company",
   },
 ];
 
 export const DEMO_AGENDA = [
-  "Review your current lead-to-close workflow",
-  "Map role-based views for each team involved",
-  "Show how reminders, handoffs, and customer history stay connected",
+  "See lead capture, calling, WhatsApp, and SMS in one flow",
+  "Review dashboards for owners, managers, and sales reps",
+  "Check attendance and geo-fencing for field teams",
 ];
 
 export const FOOTER_LINK_GROUPS = [
   {
     title: "Product",
     links: [
-      { label: "Platform", href: "#platform" },
-      { label: "Workflow", href: "#workflow" },
-      { label: "Why GreenCRM", href: "#proof" },
+      { label: "Features", href: "#features" },
+      { label: "Why GreenCRM", href: "#why-greencrm" },
+      { label: "Use Cases", href: "#use-cases" },
+      { label: "Testimonials", href: "#testimonials" },
     ],
   },
   {
     title: "Actions",
     links: [
       { label: "Book Demo", href: "/book-demo" },
-      { label: "Create Workspace", href: "/register" },
       { label: "Login", href: "/login" },
+      { label: "Create Workspace", href: "/register" },
     ],
   },
+];
+
+export const SEO_PAGE_IDEAS = [
+  "/crm-with-calling",
+  "/crm-with-whatsapp",
+  "/crm-for-small-business",
+  "/crm-india",
 ];

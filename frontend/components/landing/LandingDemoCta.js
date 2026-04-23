@@ -10,17 +10,18 @@ export default function LandingDemoCta() {
         <div className="grid gap-8 lg:grid-cols-[1fr_0.88fr] lg:items-center">
           <div>
             <span className="inline-flex rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[0.72rem] font-semibold uppercase tracking-[0.2em] text-emerald-200">
-              Book Demo
+              Book Free Demo
             </span>
             <h2 className="mt-5 max-w-2xl text-3xl font-semibold tracking-tight md:text-[2.2rem]">
-              Walk through GreenCRM with the workflow you actually need to run.
+              See how GreenCRM fits your sales process in one practical walkthrough.
             </h2>
             <p className="mt-4 max-w-2xl text-base leading-8 text-emerald-100/80">
-              Use the demo request route when you want a guided review of lead movement, role-based views, handoffs, and the operating structure behind the product.
+              We will show lead capture, calling, WhatsApp, SMS, dashboards, and attendance based on the way your
+              business actually works.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link href="/book-demo" className={btnCtaLight}>Open Demo Request</Link>
-              <Link href="/register" className={btnCtaOutline}>Explore Workspace Setup</Link>
+              <Link href="/book-demo" className={btnCtaLight}>Book Free Demo</Link>
+              <Link href="#use-cases" className={btnCtaOutline}>See Use Cases</Link>
             </div>
           </div>
 
@@ -38,7 +39,7 @@ export default function LandingDemoCta() {
             </div>
             <div className="mt-5 rounded-[1.25rem] border border-emerald-300/20 bg-emerald-400/10 px-4 py-3">
               <p className="text-sm leading-7 text-emerald-100">
-                The CTA is intentionally modular so this panel can expand into a richer inline booking experience later without rewriting the section.
+                Bring your current sheet, current CRM, or current process. We will map GreenCRM around it in simple terms.
               </p>
             </div>
           </aside>

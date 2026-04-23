@@ -1,16 +1,19 @@
-const SITE_NAME = "GreenCRM";
+import { BRAND_LOGO, BRAND_NAME } from "../components/branding/brandConfig";
+
+const SITE_NAME = BRAND_NAME;
 const DEFAULT_DESCRIPTION =
-  "GreenCRM helps teams manage leads, customers, follow-ups, workflow handoffs, tasks, and role-based CRM operations from one workspace.";
+  "GreenCRM is a sales CRM for India that helps businesses manage leads, calls, WhatsApp, SMS, attendance, and dashboards from one fast workspace.";
 const DEFAULT_KEYWORDS = [
   "GreenCRM",
-  "CRM software",
-  "lead management CRM",
-  "customer management software",
-  "sales CRM India",
-  "workflow CRM",
-  "team CRM platform",
-  "follow-up management",
-  "role based CRM",
+  "GreenCall CRM",
+  "CRM in Noida",
+  "CRM software in Noida",
+  "Best CRM software India",
+  "Sales CRM India",
+  "CRM for small business India",
+  "Lead management CRM India",
+  "CRM with calling feature",
+  "CRM with WhatsApp integration",
 ];
 
 function normalizeSiteUrl(value) {
@@ -78,9 +81,9 @@ export function buildMetadata({
       locale: "en_IN",
       images: [
         {
-          url: absoluteUrl("/icon.svg"),
-          width: 512,
-          height: 512,
+          url: absoluteUrl(BRAND_LOGO.src),
+          width: BRAND_LOGO.width,
+          height: BRAND_LOGO.height,
           alt: `${SITE_NAME} logo`,
         },
       ],
@@ -89,7 +92,7 @@ export function buildMetadata({
       card: "summary_large_image",
       title: resolvedTitle,
       description,
-      images: [absoluteUrl("/icon.svg")],
+      images: [absoluteUrl(BRAND_LOGO.src)],
     },
   };
 }
@@ -97,8 +100,8 @@ export function buildMetadata({
 export const DEFAULT_METADATA = {
   metadataBase: new URL(getSiteUrl()),
   title: {
-    default: "GreenCRM | Leads, Customers, Workflow, and Team CRM",
-    template: "%s | GreenCRM",
+    default: `${SITE_NAME} | Sales CRM India for Leads, Calls and WhatsApp`,
+    template: `%s | ${SITE_NAME}`,
   },
   description: DEFAULT_DESCRIPTION,
   applicationName: SITE_NAME,
@@ -111,7 +114,7 @@ export const DEFAULT_METADATA = {
     canonical: absoluteUrl("/"),
   },
   openGraph: {
-    title: "GreenCRM | Leads, Customers, Workflow, and Team CRM",
+    title: `${SITE_NAME} | Sales CRM India for Leads, Calls and WhatsApp`,
     description: DEFAULT_DESCRIPTION,
     url: absoluteUrl("/"),
     siteName: SITE_NAME,
@@ -119,27 +122,26 @@ export const DEFAULT_METADATA = {
     locale: "en_IN",
     images: [
       {
-        url: absoluteUrl("/icon.svg"),
-        width: 512,
-        height: 512,
+        url: absoluteUrl(BRAND_LOGO.src),
+        width: BRAND_LOGO.width,
+        height: BRAND_LOGO.height,
         alt: `${SITE_NAME} logo`,
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "GreenCRM | Leads, Customers, Workflow, and Team CRM",
+    title: `${SITE_NAME} | Sales CRM India for Leads, Calls and WhatsApp`,
     description: DEFAULT_DESCRIPTION,
-    images: [absoluteUrl("/icon.svg")],
+    images: [absoluteUrl(BRAND_LOGO.src)],
   },
   icons: {
-    icon: "/icon.svg",
-    shortcut: "/icon.svg",
-    apple: "/icon.svg",
+    icon: BRAND_LOGO.src,
+    shortcut: BRAND_LOGO.src,
+    apple: BRAND_LOGO.src,
   },
   manifest: "/manifest.webmanifest",
   verification: {
     google: "1y_xR8m5EhD-GBaJSQmBmXFZCPoC0lcXUrKoJxIn-0Y",
   },
 };
-

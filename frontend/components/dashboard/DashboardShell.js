@@ -8,6 +8,7 @@ import { apiRequest } from "../../lib/api";
 import { PLATFORM_CONSOLE_ROLES, ROLE_HOME_ROUTE } from "../../lib/roles";
 import { clearSession } from "../../lib/session";
 import { useLiveSessionProfile } from "../../lib/useLiveSessionProfile";
+import AppLogo from "../branding/AppLogo";
 import DashboardIcon from "./icons";
 import { getRoleMeta } from "./shell-config";
 
@@ -407,13 +408,14 @@ export default function DashboardShell({ session: initialSession, children, titl
       >
         <div className="flex items-center justify-between gap-3">
           <Link href={ROLE_HOME_ROUTE[role] || "/"} prefetch={false} className="flex items-center gap-3">
-            <span className="grid h-12 w-12 place-items-center rounded-2xl bg-[#060710] text-lg font-black text-white shadow-[0_16px_28px_rgba(6,7,16,0.2)]">
-              G
-            </span>
-            <span>
-              <strong className="block text-[1.05rem] tracking-[0.08em] text-[#060710]">GREENCRM</strong>
-              <small className="block text-[10px] font-bold uppercase tracking-[0.28em] text-[#8e7f66]">Platform</small>
-            </span>
+            <AppLogo
+              size="md"
+              showTagline
+              priority
+              nameClassName="text-[1.05rem] font-bold uppercase tracking-[0.08em] text-[#060710]"
+              taglineClassName="text-[10px] font-bold uppercase tracking-[0.28em] text-[#8e7f66]"
+              imageClassName="rounded-2xl border border-[#e7dccb] bg-white shadow-[0_16px_28px_rgba(6,7,16,0.1)]"
+            />
           </Link>
           <button
             className="grid h-10 w-10 place-items-center rounded-2xl border border-[#e7dccb] bg-white text-[#6d604b] lg:hidden"

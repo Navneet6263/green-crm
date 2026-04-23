@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 
+import AppLogo from "../branding/AppLogo";
 import { LANDING_NAV_ITEMS } from "./landing-data";
 import { btnPrimarySmall, btnSecondarySmall } from "./landing-styles";
 
@@ -16,10 +17,12 @@ export default function LandingNavbar() {
     <header className="sticky top-0 z-50 border-b border-slate-200/70 bg-[#f5f7fb]/86 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
         <Link href="/" className="flex items-center gap-3 text-slate-950">
-          <span className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-500 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(16,185,129,0.22)]">
-            G
-          </span>
-          <span className="text-base font-semibold tracking-[0.08em] text-slate-950">GreenCRM</span>
+          <AppLogo
+            size="sm"
+            priority
+            nameClassName="text-base font-semibold tracking-[0.08em] text-slate-950"
+            imageClassName="rounded-2xl border border-emerald-100/70 shadow-[0_12px_24px_rgba(16,185,129,0.14)]"
+          />
         </Link>
 
         <nav className="hidden items-center gap-8 lg:flex">
@@ -32,7 +35,6 @@ export default function LandingNavbar() {
 
         <div className="hidden items-center gap-3 lg:flex">
           <Link href="/login" className={linkClass}>Login</Link>
-          <Link href="/register" className={btnSecondarySmall}>Create Workspace</Link>
           <Link href="/book-demo" className={btnPrimarySmall}>Book Demo</Link>
         </div>
 
@@ -40,7 +42,7 @@ export default function LandingNavbar() {
           <Link href="/book-demo" className={btnPrimarySmall}>Book Demo</Link>
           <button
             type="button"
-            onClick={() => setOpen((c) => !c)}
+            onClick={() => setOpen((current) => !current)}
             className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700"
             aria-label={open ? "Close navigation menu" : "Open navigation menu"}
             aria-expanded={open}
@@ -65,9 +67,8 @@ export default function LandingNavbar() {
                 {item.label}
               </Link>
             ))}
-            <div className="grid gap-3 border-t border-slate-100 pt-3 sm:grid-cols-2">
+            <div className="border-t border-slate-100 pt-3">
               <Link href="/login" className={btnSecondarySmall} onClick={() => setOpen(false)}>Login</Link>
-              <Link href="/register" className={btnSecondarySmall} onClick={() => setOpen(false)}>Create Workspace</Link>
             </div>
           </div>
         </div>

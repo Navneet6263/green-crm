@@ -3,15 +3,35 @@ import LandingFeatureHighlights from "../components/landing/LandingFeatureHighli
 import LandingFooter from "../components/landing/LandingFooter";
 import LandingHero from "../components/landing/LandingHero";
 import LandingNavbar from "../components/landing/LandingNavbar";
+import LandingTestimonials from "../components/landing/LandingTestimonials";
 import LandingTrustSection from "../components/landing/LandingTrustSection";
+import LandingUseCases from "../components/landing/LandingUseCases";
 import LandingWorkflow from "../components/landing/LandingWorkflow";
+import { BRAND_LOGO, BRAND_NAME } from "../components/branding/brandConfig";
 import { absoluteUrl, buildMetadata } from "../lib/seo";
 
+const homeDescription =
+  "GreenCRM is a fast sales CRM in Noida for small businesses. Manage leads, calls, WhatsApp, SMS, attendance, and dashboards in one place.";
+
 export const metadata = buildMetadata({
-  title: "Modern CRM For Leads, Workflow Handoffs, and Team Execution",
-  description:
-    "GreenCRM is a modern CRM for lead operations, role-based workflows, customer continuity, and calm team execution across every handoff.",
+  title: "CRM Software in Noida | Sales CRM India | GreenCRM",
+  description: homeDescription,
   path: "/",
+  keywords: [
+    "CRM in Noida",
+    "CRM software in Noida",
+    "Best CRM software India",
+    "Sales CRM India",
+    "CRM for small business India",
+    "CRM with calling feature",
+    "CRM with WhatsApp integration",
+    "CRM with SMS integration",
+    "CRM with attendance system",
+    "CRM with geo fencing",
+    "Lead management CRM India",
+    "GreenCRM",
+    "GreenCall CRM",
+  ],
 });
 
 export default function HomePage() {
@@ -19,37 +39,56 @@ export default function HomePage() {
     {
       "@context": "https://schema.org",
       "@type": "Organization",
-      name: "GreenCRM",
+      name: BRAND_NAME,
+      alternateName: "GreenCall CRM",
       url: absoluteUrl("/"),
-      logo: absoluteUrl("/icon.svg"),
-      description:
-        "GreenCRM is a modern CRM for lead operations, customer continuity, workflow handoffs, reminders, and team coordination.",
+      logo: absoluteUrl(BRAND_LOGO.src),
+      description: homeDescription,
+      areaServed: ["Noida", "India"],
     },
     {
       "@context": "https://schema.org",
       "@type": "SoftwareApplication",
-      name: "GreenCRM",
+      name: BRAND_NAME,
+      alternateName: "GreenCall CRM",
       applicationCategory: "BusinessApplication",
       operatingSystem: "Web",
       url: absoluteUrl("/"),
-      description:
-        "GreenCRM helps businesses manage leads, customers, workflow queues, tasks, reminders, and role-based operations in one workspace.",
+      description: homeDescription,
+      audience: {
+        "@type": "Audience",
+        audienceType: "Small businesses, startups, sales teams, and local businesses",
+      },
+      featureList: [
+        "Lead management",
+        "Click-to-call",
+        "WhatsApp messaging",
+        "SMS integration",
+        "Attendance with geo fencing",
+        "Multi-dashboard system",
+      ],
       offers: {
         "@type": "Offer",
         price: "0",
         priceCurrency: "INR",
       },
+      areaServed: {
+        "@type": "Country",
+        name: "India",
+      },
     },
   ];
 
   return (
-    <div className="min-h-screen bg-[#f5f7fb] text-slate-950">
+    <div className="min-h-screen bg-[linear-gradient(180deg,#f7fcf9_0%,#f5f7fb_34%,#ffffff_100%)] text-slate-950">
       <LandingNavbar />
       <main>
         <LandingHero />
         <LandingFeatureHighlights />
-        <LandingWorkflow />
         <LandingTrustSection />
+        <LandingUseCases />
+        <LandingWorkflow />
+        <LandingTestimonials />
         <LandingDemoCta />
       </main>
       <LandingFooter />

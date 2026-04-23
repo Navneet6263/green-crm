@@ -3,13 +3,13 @@ import { WORKFLOW_STEPS } from "./landing-data";
 
 export default function LandingWorkflow() {
   return (
-    <section id="workflow" className="border-y border-slate-200/70 bg-white/70">
+    <section id="how-it-works" className="border-y border-slate-200/70 bg-white/70">
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-18 sm:px-6 lg:grid-cols-[0.82fr_1.18fr] lg:px-8">
         <div className="lg:sticky lg:top-28 lg:self-start">
           <SectionIntro
             eyebrow="How It Works"
-            title="A simple operating rhythm from first touch to completed handoff."
-            description="The workflow is intentionally easy to scan. Teams can see what just happened, what is blocked, and what needs to happen next."
+            title="How GreenCRM works in 3 simple steps."
+            description="The workflow stays easy to scan so your team can move faster from new lead to clear performance tracking."
           />
         </div>
 

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 
+import AppLogo from "../branding/AppLogo";
 import DashboardIcon from "../dashboard/icons";
 
 function FeatureCard({ icon, title, copy, tone = "bg-[#fff4d9] text-[#8d6e27]" }) {
@@ -49,13 +50,14 @@ export default function AuthShell({
       <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-4 sm:px-6 lg:px-8">
         <header className="flex items-center justify-between gap-4 py-2">
           <Link href="/" className="flex items-center gap-3">
-            <span className="grid h-12 w-12 place-items-center rounded-2xl bg-[#10111d] text-lg font-black text-white shadow-[0_16px_28px_rgba(6,7,16,0.18)]">
-              G
-            </span>
-            <div>
-              <p className="text-[1.7rem] font-black tracking-[0.08em] text-[#060710]">GREENCRM</p>
-              <p className="text-[11px] font-bold uppercase tracking-[0.32em] text-[#9a886d]">Platform</p>
-            </div>
+            <AppLogo
+              size="md"
+              showTagline
+              priority
+              nameClassName="text-[1.7rem] font-black uppercase tracking-[0.08em] text-[#060710]"
+              taglineClassName="text-[11px] font-bold uppercase tracking-[0.32em] text-[#9a886d]"
+              imageClassName="rounded-2xl border border-[#e3d8c5] bg-white shadow-[0_16px_28px_rgba(6,7,16,0.1)]"
+            />
           </Link>
 
           <div className="flex items-center gap-2">

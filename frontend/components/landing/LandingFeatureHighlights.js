@@ -5,14 +5,14 @@ import { iconBg } from "./landing-styles";
 
 export default function LandingFeatureHighlights() {
   return (
-    <section id="platform" className="mx-auto max-w-7xl px-4 py-18 sm:px-6 lg:px-8">
+    <section id="features" className="mx-auto max-w-7xl px-4 py-18 sm:px-6 lg:px-8">
       <SectionIntro
-        eyebrow="Product Value"
-        title="Designed for teams that need more than a simple contact list."
-        description="The product experience is organized around ownership, movement, and accountability so teams can operate with less friction and less reporting noise."
+        eyebrow="Features"
+        title="A sales CRM built for calls, follow-ups, and field execution."
+        description="GreenCRM gives small businesses and sales teams one place to manage lead flow, communication, attendance, and dashboards."
       />
 
-      <div className="mt-10 grid gap-4 lg:grid-cols-2">
+      <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {FEATURE_HIGHLIGHTS.map((item) => (
           <article
             key={item.title}

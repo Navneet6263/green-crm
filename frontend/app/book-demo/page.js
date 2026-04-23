@@ -44,11 +44,14 @@ export default function BookDemoPage() {
 
       <main className="auth-page">
         <section className="auth-card wide">
-          <span className="eyebrow">Book Demo</span>
-          <h1>Walk through the showroom version of GreenCRM</h1>
-          <p>Share the team size and workflow you want. We can tune the same design system around your actual modules.</p>
+          <span className="eyebrow">Book Free Demo</span>
+          <h1>Book a free demo of GreenCRM</h1>
+          <p>
+            Tell us about your business and team. We will show how GreenCRM can fit lead management, calling,
+            WhatsApp, SMS, attendance, and dashboards in one setup.
+          </p>
 
-          {submitted ? <div className="alert">Demo request captured. Our team can now review it from the super-admin demo requests page.</div> : null}
+          {submitted ? <div className="alert">Demo request received. Our team will contact you to schedule the walkthrough.</div> : null}
           {error ? <div className="alert error">{error}</div> : null}
 
           <form className="form-grid two-column" onSubmit={handleSubmit}>
@@ -62,7 +65,7 @@ export default function BookDemoPage() {
             </label>
 
             <label className="field">
-              <span>Company</span>
+              <span>Business name</span>
               <input
                 value={form.company}
                 onChange={(event) => setForm((current) => ({ ...current, company: event.target.value }))}
@@ -95,12 +98,12 @@ export default function BookDemoPage() {
                 rows="5"
                 value={form.requirements}
                 onChange={(event) => setForm((current) => ({ ...current, requirements: event.target.value }))}
-                placeholder="Tell us about leads, teams, role views, products, or integrations."
+                placeholder="Share your business type, team size, lead sources, and whether you need calling, WhatsApp, SMS, or attendance tracking."
               />
             </label>
 
             <button className="button primary" type="submit" disabled={loading}>
-              {loading ? "Sending..." : "Send Demo Request"}
+              {loading ? "Sending..." : "Book Free Demo"}
             </button>
           </form>
         </section>
