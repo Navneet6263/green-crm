@@ -1,4 +1,4 @@
-import { BRAND_LOGO, BRAND_NAME } from "../components/branding/brandConfig";
+import { BRAND_ICONS, BRAND_NAME } from "../components/branding/brandConfig";
 
 export default function manifest() {
   return {
@@ -12,8 +12,16 @@ export default function manifest() {
     theme_color: "#10111d",
     icons: [
       {
-        src: BRAND_LOGO.src,
-        sizes: "any",
+        src: BRAND_ICONS.icon192.src,
+        sizes: `${BRAND_ICONS.icon192.width}x${BRAND_ICONS.icon192.height}`,
+        type: BRAND_ICONS.icon192.type,
+        purpose: "any",
+      },
+      {
+        src: BRAND_ICONS.icon512.src,
+        sizes: `${BRAND_ICONS.icon512.width}x${BRAND_ICONS.icon512.height}`,
+        type: BRAND_ICONS.icon512.type,
+        purpose: "any maskable",
       },
     ],
   };

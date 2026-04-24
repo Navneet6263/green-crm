@@ -3,11 +3,34 @@ import Image from "next/image";
 import { BRAND_LOGO, BRAND_NAME, BRAND_TAGLINE } from "./brandConfig";
 
 const SIZE_MAP = {
-  xs: 32,
-  sm: 40,
-  md: 48,
-  lg: 56,
-  xl: 64,
+  xs: 104,
+  sm: 128,
+  md: 156,
+  lg: 184,
+  xl: 220,
+};
+
+const VARIANT_MAP = {
+  default: {
+    frame: "px-0.5 py-0.5",
+    logo: "",
+  },
+  landing: {
+    frame: "px-1 py-1",
+    logo: "drop-shadow-[0_10px_24px_rgba(15,23,42,0.08)]",
+  },
+  auth: {
+    frame: "px-1 py-1",
+    logo: "drop-shadow-[0_8px_18px_rgba(79,58,22,0.08)]",
+  },
+  sidebar: {
+    frame: "px-1.5 py-1",
+    logo: "drop-shadow-[0_12px_24px_rgba(79,58,22,0.08)]",
+  },
+  footer: {
+    frame: "px-1 py-0.5",
+    logo: "drop-shadow-[0_8px_18px_rgba(15,23,42,0.06)]",
+  },
 };
 
 function cn(...values) {
@@ -24,33 +47,44 @@ function resolveSize(size) {
 
 export default function AppLogo({
   size = "md",
-  showText = true,
+  variant = "default",
+  showText = false,
   showTagline = false,
   className = "",
   imageClassName = "",
+  logoClassName = "",
   textClassName = "",
   nameClassName = "",
   taglineClassName = "",
   priority = false,
 }) {
-  const dimension = resolveSize(size);
+  const width = resolveSize(size);
+  const sizes = `(max-width: 640px) ${Math.max(Math.round(width * 0.8), 72)}px, ${width}px`;
+  const variantStyle = VARIANT_MAP[variant] || VARIANT_MAP.default;
 
   return (
-    <div className={cn("inline-flex items-center gap-3", className)}>
+    <div className={cn("inline-flex min-w-0 items-center gap-3", className)}>
       <span
         className={cn(
-          "relative shrink-0 overflow-hidden rounded-[18px] border border-slate-200/70 bg-white shadow-[0_10px_24px_rgba(15,23,42,0.08)]",
+          "block max-w-full shrink-0",
+          variantStyle.frame,
           imageClassName
         )}
-        style={{ width: dimension, height: dimension }}
+        style={{ width, maxWidth: "100%" }}
       >
         <Image
           src={BRAND_LOGO.src}
           alt={BRAND_LOGO.alt}
-          fill
+          width={BRAND_LOGO.width}
+          height={BRAND_LOGO.height}
           priority={priority}
-          sizes={`${dimension}px`}
-          className="object-contain p-[12%]"
+          unoptimized
+          sizes={sizes}
+          className={cn(
+            "h-auto w-full max-w-full object-contain",
+            variantStyle.logo,
+            logoClassName
+          )}
         />
       </span>
 

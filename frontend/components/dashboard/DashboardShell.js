@@ -407,14 +407,11 @@ export default function DashboardShell({ session: initialSession, children, titl
         )}
       >
         <div className="flex items-center justify-between gap-3">
-          <Link href={ROLE_HOME_ROUTE[role] || "/"} prefetch={false} className="flex items-center gap-3">
+          <Link href={ROLE_HOME_ROUTE[role] || "/"} prefetch={false} className="inline-flex max-w-[10.5rem] items-center">
             <AppLogo
               size="md"
-              showTagline
+              variant="sidebar"
               priority
-              nameClassName="text-[1.05rem] font-bold uppercase tracking-[0.08em] text-[#060710]"
-              taglineClassName="text-[10px] font-bold uppercase tracking-[0.28em] text-[#8e7f66]"
-              imageClassName="rounded-2xl border border-[#e7dccb] bg-white shadow-[0_16px_28px_rgba(6,7,16,0.1)]"
             />
           </Link>
           <button

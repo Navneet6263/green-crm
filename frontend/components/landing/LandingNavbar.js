@@ -16,12 +16,11 @@ export default function LandingNavbar() {
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200/70 bg-[#f5f7fb]/86 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
-        <Link href="/" className="flex items-center gap-3 text-slate-950">
+        <Link href="/" className="inline-flex max-w-[min(58vw,11rem)] items-center text-slate-950 sm:max-w-[12rem]">
           <AppLogo
-            size="sm"
+            size="md"
+            variant="landing"
             priority
-            nameClassName="text-base font-semibold tracking-[0.08em] text-slate-950"
-            imageClassName="rounded-2xl border border-emerald-100/70 shadow-[0_12px_24px_rgba(16,185,129,0.14)]"
           />
         </Link>
 

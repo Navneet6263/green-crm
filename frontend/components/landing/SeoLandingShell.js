@@ -1,6 +1,5 @@
 import Link from "next/link";
 
-import AppLogo from "../branding/AppLogo";
 import LandingFooter from "./LandingFooter";
 import LandingNavbar from "./LandingNavbar";
 
@@ -9,7 +8,6 @@ export default function SeoLandingShell({ hero, features, faq, cta }) {
     <div className="min-h-screen bg-[linear-gradient(180deg,#f7fcf9_0%,#f5f7fb_34%,#ffffff_100%)] text-slate-950">
       <LandingNavbar />
       <main>
-        {/* Hero */}
         <section className="mx-auto max-w-7xl px-4 pb-16 pt-12 sm:px-6 lg:px-8">
           <div className="max-w-3xl">
             <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[0.72rem] font-semibold uppercase tracking-[0.2em] text-emerald-700">
@@ -38,7 +36,6 @@ export default function SeoLandingShell({ hero, features, faq, cta }) {
           </div>
         </section>
 
-        {/* Features */}
         {features?.length ? (
           <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -65,7 +62,6 @@ export default function SeoLandingShell({ hero, features, faq, cta }) {
           </section>
         ) : null}
 
-        {/* FAQ */}
         {faq?.length ? (
           <section className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
             <h2 className="text-2xl font-semibold tracking-tight text-slate-950">
@@ -82,7 +78,6 @@ export default function SeoLandingShell({ hero, features, faq, cta }) {
           </section>
         ) : null}
 
-        {/* CTA */}
         <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
           <div className="rounded-[2rem] border border-emerald-100 bg-emerald-50 p-8 text-center sm:p-12">
             <p className="text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">
@@ -96,7 +91,7 @@ export default function SeoLandingShell({ hero, features, faq, cta }) {
               href="/book-demo"
               className="mt-6 inline-flex items-center rounded-xl bg-emerald-600 px-6 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
             >
-              Book Free Demo — It&apos;s Free
+              Book Free Demo - It&apos;s Free
             </Link>
           </div>
         </section>

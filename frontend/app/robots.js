@@ -10,7 +10,6 @@ export default function robots() {
         allow: [
           "/",
           "/book-demo",
-          "/icon.svg",
           "/crm-software-india",
           "/crm-in-noida",
           "/crm-for-small-business",

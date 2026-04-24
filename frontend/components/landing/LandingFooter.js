@@ -10,20 +10,31 @@ export default function LandingFooter() {
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 lg:grid-cols-[1.1fr_0.9fr] lg:px-8">
         <div>
           <div className="text-slate-950">
-            <AppLogo size="md" nameClassName="text-base font-semibold tracking-[0.08em] text-slate-950" />
+            <AppLogo
+              size="lg"
+              variant="footer"
+            />
             <p className="mt-3 text-sm text-slate-500">{BRAND_COPY.footer}</p>
           </div>
           <p className="mt-5 max-w-xl text-sm leading-8 text-slate-600">
-            Best CRM software in India for small businesses, startups, and sales teams. Manage leads, calls, WhatsApp, SMS, attendance, and dashboards from one affordable CRM.
+            Best CRM software in India for small businesses, startups, and sales teams.
+            Manage leads, calls, WhatsApp, SMS, attendance, and dashboards from one
+            affordable CRM.
           </p>
 
           <div className="mt-6 rounded-[1.6rem] border border-slate-200 bg-[#f8fafc] p-5">
-            <p className="text-sm font-semibold text-slate-950">Contact GreenCRM — CRM Company in Noida</p>
+            <p className="text-sm font-semibold text-slate-950">
+              Contact GreenCRM - CRM Company in Noida
+            </p>
             <p className="mt-2 text-sm leading-7 text-slate-600">
-              Use the demo request form for product queries, pricing, and setup support. Free demo available.
+              Use the demo request form for product queries, pricing, and setup support.
+              Free demo available.
             </p>
             <div className="mt-4 flex flex-wrap items-center gap-3">
-              <Link href="/book-demo" className="inline-flex items-center rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800">
+              <Link
+                href="/book-demo"
+                className="inline-flex items-center rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
+              >
                 Book Free Demo
               </Link>
               <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm text-emerald-700">
@@ -39,7 +50,11 @@ export default function LandingFooter() {
               <p className="text-sm font-semibold text-slate-950">{group.title}</p>
               <div className="mt-4 grid gap-3">
                 {group.links.map((link) => (
-                  <Link key={link.href} href={link.href} className="text-sm text-slate-600 transition hover:text-emerald-700">
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className="text-sm text-slate-600 transition hover:text-emerald-700"
+                  >
                     {link.label}
                   </Link>
                 ))}

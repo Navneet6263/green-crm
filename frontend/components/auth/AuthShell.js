@@ -49,14 +49,11 @@ export default function AuthShell({
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(242,220,164,0.35),_rgba(255,250,242,0.85)_35%,_rgba(255,255,255,1)_100%)]">
       <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-4 sm:px-6 lg:px-8">
         <header className="flex items-center justify-between gap-4 py-2">
-          <Link href="/" className="flex items-center gap-3">
+          <Link href="/" className="inline-flex max-w-[min(56vw,11.5rem)] items-center sm:max-w-[12rem]">
             <AppLogo
-              size="md"
-              showTagline
+              size="lg"
+              variant="auth"
               priority
-              nameClassName="text-[1.7rem] font-black uppercase tracking-[0.08em] text-[#060710]"
-              taglineClassName="text-[11px] font-bold uppercase tracking-[0.32em] text-[#9a886d]"
-              imageClassName="rounded-2xl border border-[#e3d8c5] bg-white shadow-[0_16px_28px_rgba(6,7,16,0.1)]"
             />
           </Link>
 

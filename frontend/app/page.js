@@ -7,22 +7,20 @@ import LandingTestimonials from "../components/landing/LandingTestimonials";
 import LandingTrustSection from "../components/landing/LandingTrustSection";
 import LandingUseCases from "../components/landing/LandingUseCases";
 import LandingWorkflow from "../components/landing/LandingWorkflow";
-import { BRAND_LOGO, BRAND_NAME } from "../components/branding/brandConfig";
+import { BRAND_ICONS, BRAND_NAME } from "../components/branding/brandConfig";
 import { absoluteUrl, buildMetadata } from "../lib/seo";
 
 const homeDescription =
   "GreenCRM is the best CRM software in Noida and India for small businesses, startups, and sales teams. Manage leads, calls, WhatsApp, SMS, attendance, and dashboards in one affordable CRM. Book a free demo today.";
 
 export const metadata = buildMetadata({
-  title: "Best CRM Software India | CRM in Noida | Sales CRM for Small Business – GreenCRM",
+  title: "Best CRM Software India | CRM in Noida | Sales CRM for Small Business - GreenCRM",
   description: homeDescription,
   path: "/",
   keywords: [
-    // Brand
     "GreenCRM",
     "GreenCall CRM",
     "GreenCRM India",
-    // High search
     "CRM software",
     "CRM software India",
     "best CRM software",
@@ -33,26 +31,22 @@ export const metadata = buildMetadata({
     "affordable CRM software India",
     "CRM with free demo",
     "CRM for startups India",
-    // Medium
     "CRM software in India",
     "sales CRM India",
     "lead management CRM India",
     "CRM for small business India",
     "CRM for sales team India",
     "simple CRM software India",
-    // Feature
     "CRM with calling",
     "CRM with WhatsApp",
     "CRM with SMS",
     "CRM with automation",
     "CRM with pipeline management",
-    // Local
     "CRM in Noida",
     "CRM software in Noida",
     "best CRM in Noida",
     "CRM for small business in Noida",
     "CRM company in Noida",
-    // Long tail
     "CRM with calling and WhatsApp India",
     "CRM for sales team with call tracking",
     "CRM for field sales India",
@@ -69,7 +63,7 @@ export default function HomePage() {
       name: BRAND_NAME,
       alternateName: ["GreenCall CRM", "GreenCRM India"],
       url: absoluteUrl("/"),
-      logo: absoluteUrl(BRAND_LOGO.src),
+      logo: absoluteUrl(BRAND_ICONS.icon512.src),
       description: homeDescription,
       areaServed: ["Noida", "Delhi NCR", "India"],
       address: {
@@ -99,7 +93,8 @@ export default function HomePage() {
       inLanguage: ["en-IN", "hi-IN"],
       audience: {
         "@type": "Audience",
-        audienceType: "Small businesses, startups, sales teams, field teams, and local businesses in India",
+        audienceType:
+          "Small businesses, startups, sales teams, field teams, and local businesses in India",
       },
       featureList: [
         "Lead management and pipeline tracking",
@@ -117,7 +112,8 @@ export default function HomePage() {
         "@type": "Offer",
         price: "0",
         priceCurrency: "INR",
-        description: "Free demo available. Affordable pricing for small businesses and startups in India.",
+        description:
+          "Free demo available. Affordable pricing for small businesses and startups in India.",
       },
       areaServed: [
         { "@type": "City", name: "Noida" },
@@ -134,7 +130,8 @@ export default function HomePage() {
           name: "What is GreenCRM?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "GreenCRM is an affordable CRM software in India built for small businesses, startups, and sales teams. It combines lead management, calling, WhatsApp, SMS, attendance, and dashboards in one workspace.",
+            text:
+              "GreenCRM is an affordable CRM software in India built for small businesses, startups, and sales teams. It combines lead management, calling, WhatsApp, SMS, attendance, and dashboards in one workspace.",
           },
         },
         {
@@ -142,7 +139,8 @@ export default function HomePage() {
           name: "Is GreenCRM available in Noida?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "Yes. GreenCRM is a CRM company based in Noida and serves businesses across India. You can book a free demo to see how it fits your team.",
+            text:
+              "Yes. GreenCRM is a CRM company based in Noida and serves businesses across India. You can book a free demo to see how it fits your team.",
           },
         },
         {
@@ -150,7 +148,8 @@ export default function HomePage() {
           name: "Does GreenCRM support WhatsApp and calling?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "Yes. GreenCRM includes CRM with calling (click-to-call), WhatsApp integration, and SMS integration so your sales team can follow up from one place.",
+            text:
+              "Yes. GreenCRM includes CRM with calling (click-to-call), WhatsApp integration, and SMS integration so your sales team can follow up from one place.",
           },
         },
         {
@@ -158,7 +157,8 @@ export default function HomePage() {
           name: "Is GreenCRM good for small businesses?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "GreenCRM is designed as an affordable CRM for small businesses and startups in India. It is simple, fast, and includes all features a growing sales team needs.",
+            text:
+              "GreenCRM is designed as an affordable CRM for small businesses and startups in India. It is simple, fast, and includes all features a growing sales team needs.",
           },
         },
         {
@@ -166,7 +166,8 @@ export default function HomePage() {
           name: "Does GreenCRM have geo fencing and attendance?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "Yes. GreenCRM includes an attendance system with geo fencing for field sales teams, so managers can track check-in, check-out, and field movement.",
+            text:
+              "Yes. GreenCRM includes an attendance system with geo fencing for field sales teams, so managers can track check-in, check-out, and field movement.",
           },
         },
       ],

@@ -1,15 +1,13 @@
-import { BRAND_LOGO, BRAND_NAME } from "../components/branding/brandConfig";
+import { BRAND_ICON, BRAND_ICONS, BRAND_NAME } from "../components/branding/brandConfig";
 
 const SITE_NAME = BRAND_NAME;
 const DEFAULT_DESCRIPTION =
   "GreenCRM is the best CRM software in India for small businesses, startups, and sales teams. Manage leads, calls, WhatsApp, SMS, attendance, and dashboards from one fast workspace. Affordable CRM in Noida with free demo.";
 const DEFAULT_KEYWORDS = [
-  // Brand
   "GreenCRM",
   "GreenCall CRM",
   "GreenCRM software",
   "GreenCRM India",
-  // High search - core
   "CRM software",
   "CRM software India",
   "best CRM software",
@@ -18,13 +16,11 @@ const DEFAULT_KEYWORDS = [
   "customer relationship management software",
   "CRM tools",
   "CRM system",
-  // High intent buyers
   "best CRM software for small business",
   "affordable CRM software India",
   "CRM software pricing India",
   "CRM with free demo",
   "CRM for startups India",
-  // Medium - real target
   "CRM software in India",
   "sales CRM India",
   "lead management CRM India",
@@ -33,20 +29,17 @@ const DEFAULT_KEYWORDS = [
   "CRM software for startups",
   "simple CRM software India",
   "easy CRM for business",
-  // Feature based
   "CRM with calling",
   "CRM with WhatsApp",
   "CRM with SMS",
   "CRM with email integration",
   "CRM with automation",
   "CRM with pipeline management",
-  // Easy wins - local
   "CRM in Noida",
   "CRM software in Noida",
   "best CRM in Noida",
   "CRM for small business in Noida",
   "CRM company in Noida",
-  // Long tail
   "CRM with calling and WhatsApp India",
   "CRM for sales team with call tracking",
   "CRM for field sales India",
@@ -72,6 +65,10 @@ function normalizeSiteUrl(value) {
   }
 }
 
+function getSocialImage() {
+  return BRAND_ICONS.icon512;
+}
+
 export function getSiteUrl() {
   return normalizeSiteUrl(
     process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL || process.env.VERCEL_URL
@@ -92,16 +89,10 @@ export function buildMetadata({
 } = {}) {
   const resolvedTitle = title || SITE_NAME;
   const canonical = absoluteUrl(path);
+  const socialImage = getSocialImage();
   const robots = index
-    ? {
-        index: true,
-        follow: true,
-      }
-    : {
-        index: false,
-        follow: false,
-        noarchive: true,
-      };
+    ? { index: true, follow: true }
+    : { index: false, follow: false, noarchive: true };
 
   return {
     title: resolvedTitle,
@@ -126,10 +117,10 @@ export function buildMetadata({
       locale: "en_IN",
       images: [
         {
-          url: absoluteUrl(BRAND_LOGO.src),
-          width: BRAND_LOGO.width,
-          height: BRAND_LOGO.height,
-          alt: `${SITE_NAME} logo`,
+          url: absoluteUrl(socialImage.src),
+          width: socialImage.width,
+          height: socialImage.height,
+          alt: `${SITE_NAME} CRM icon`,
         },
       ],
     },
@@ -137,7 +128,7 @@ export function buildMetadata({
       card: "summary_large_image",
       title: resolvedTitle,
       description,
-      images: [absoluteUrl(BRAND_LOGO.src)],
+      images: [absoluteUrl(socialImage.src)],
     },
   };
 }
@@ -145,7 +136,7 @@ export function buildMetadata({
 export const DEFAULT_METADATA = {
   metadataBase: new URL(getSiteUrl()),
   title: {
-    default: `${SITE_NAME} | Best CRM Software India – Leads, Calls, WhatsApp & Attendance`,
+    default: `${SITE_NAME} | Best CRM Software India - Leads, Calls, WhatsApp & Attendance`,
     template: `%s | ${SITE_NAME}`,
   },
   description: DEFAULT_DESCRIPTION,
@@ -165,7 +156,7 @@ export const DEFAULT_METADATA = {
     canonical: absoluteUrl("/"),
   },
   openGraph: {
-    title: `${SITE_NAME} | Best CRM Software India – Leads, Calls, WhatsApp & Attendance`,
+    title: `${SITE_NAME} | Best CRM Software India - Leads, Calls, WhatsApp & Attendance`,
     description: DEFAULT_DESCRIPTION,
     url: absoluteUrl("/"),
     siteName: SITE_NAME,
@@ -173,23 +164,40 @@ export const DEFAULT_METADATA = {
     locale: "en_IN",
     images: [
       {
-        url: absoluteUrl(BRAND_LOGO.src),
-        width: BRAND_LOGO.width,
-        height: BRAND_LOGO.height,
-        alt: `${SITE_NAME} logo`,
+        url: absoluteUrl(BRAND_ICONS.icon512.src),
+        width: BRAND_ICONS.icon512.width,
+        height: BRAND_ICONS.icon512.height,
+        alt: `${SITE_NAME} CRM icon`,
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: `${SITE_NAME} | Best CRM Software India – Leads, Calls, WhatsApp & Attendance`,
+    title: `${SITE_NAME} | Best CRM Software India - Leads, Calls, WhatsApp & Attendance`,
     description: DEFAULT_DESCRIPTION,
-    images: [absoluteUrl(BRAND_LOGO.src)],
+    images: [absoluteUrl(BRAND_ICONS.icon512.src)],
   },
   icons: {
-    icon: BRAND_LOGO.src,
-    shortcut: BRAND_LOGO.src,
-    apple: BRAND_LOGO.src,
+    icon: [
+      {
+        url: BRAND_ICON.src,
+        type: BRAND_ICON.type,
+        sizes: `${BRAND_ICON.width}x${BRAND_ICON.height}`,
+      },
+      {
+        url: BRAND_ICONS.icon512.src,
+        type: BRAND_ICONS.icon512.type,
+        sizes: `${BRAND_ICONS.icon512.width}x${BRAND_ICONS.icon512.height}`,
+      },
+    ],
+    shortcut: [BRAND_ICON.src],
+    apple: [
+      {
+        url: BRAND_ICONS.apple.src,
+        type: BRAND_ICONS.apple.type,
+        sizes: `${BRAND_ICONS.apple.width}x${BRAND_ICONS.apple.height}`,
+      },
+    ],
   },
   manifest: "/manifest.webmanifest",
   verification: {
