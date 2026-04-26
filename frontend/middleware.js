@@ -9,14 +9,29 @@ const LEGACY_DASHBOARD_REDIRECTS = {
 
 export function middleware(request) {
   const { pathname } = request.nextUrl;
+
+  if (
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/brand") ||
+    pathname === "/favicon.ico" ||
+    pathname === "/robots.txt" ||
+    pathname === "/sitemap.xml" ||
+    pathname === "/manifest.webmanifest" ||
+    pathname.includes(".")
+  ) {
+    return NextResponse.next();
+  }
+
   const token = request.cookies.get("authToken")?.value;
   const role = request.cookies.get("authRole")?.value;
 
   if (PUBLIC_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`))) {
     const response = NextResponse.next();
+
     if (AUTH_NOINDEX_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`))) {
       response.headers.set("x-robots-tag", "noindex, nofollow");
     }
+
     return response;
   }
 
@@ -24,7 +39,10 @@ export function middleware(request) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  const legacyDashboardMatch = Object.entries(LEGACY_DASHBOARD_REDIRECTS).find(([prefix]) => pathname.startsWith(prefix));
+  const legacyDashboardMatch = Object.entries(LEGACY_DASHBOARD_REDIRECTS).find(([prefix]) =>
+    pathname.startsWith(prefix)
+  );
+
   if (legacyDashboardMatch) {
     return NextResponse.redirect(new URL(legacyDashboardMatch[1], request.url));
   }
@@ -39,5 +57,5 @@ export function middleware(request) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.svg|robots.txt|sitemap.xml|manifest.webmanifest).*)"],
+  matcher: ["/((?!_next|brand|favicon.ico|icon.svg|robots.txt|sitemap.xml|manifest.webmanifest|.*\\..*).*)"],
 };
