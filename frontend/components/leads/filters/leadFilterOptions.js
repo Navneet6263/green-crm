@@ -1,6 +1,7 @@
 export const LEAD_STATUS_OPTIONS = [
   { value: "all", label: "All statuses" },
   { value: "active", label: "Open pipeline" },
+  { value: "working", label: "Contacted + working" },
   { value: "pending", label: "New + pending" },
   { value: "assigned", label: "Assigned" },
   { value: "unassigned", label: "Unassigned" },
@@ -10,6 +11,9 @@ export const LEAD_STATUS_OPTIONS = [
   { value: "qualified", label: "Qualified" },
   { value: "proposal", label: "Proposal" },
   { value: "negotiation", label: "Negotiation" },
+  { value: "booked-demo", label: "Booked demo" },
+  { value: "demo-done", label: "Demo done" },
+  { value: "trial-started", label: "Trial started" },
   { value: "closed-won", label: "Closed won" },
   { value: "closed-lost", label: "Closed lost" },
 ];

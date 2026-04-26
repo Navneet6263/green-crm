@@ -581,6 +581,9 @@ export default function EditLeadPage() {
                       <option value="qualified">qualified</option>
                       <option value="proposal">proposal</option>
                       <option value="negotiation">negotiation</option>
+                      <option value="booked-demo">booked-demo</option>
+                      <option value="demo-done">demo-done</option>
+                      <option value="trial-started">trial-started</option>
                       <option value="closed-won">closed-won</option>
                       <option value="closed-lost">closed-lost</option>
                     </select>

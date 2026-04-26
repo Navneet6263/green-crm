@@ -1,5 +1,7 @@
 "use client";
 
+import { LEAD_STATUS_ACCENTS } from "../../../lib/leadStatus";
+
 export const OK_ROLES = [
   "super-admin",
   "platform-admin",
@@ -20,16 +22,7 @@ export const LEAD_BACKGROUND_BATCH_SIZE = 120;
 export const LEAD_BACKGROUND_BATCH_DELAY_MS = 80;
 export const LEAD_EXPORT_PAGE_SIZE = 1000;
 
-export const STATUS_TONE = {
-  new: ["rgba(79,140,255,.12)", "#2f6fdd"],
-  contacted: ["rgba(56,189,248,.14)", "#0077b8"],
-  qualified: ["rgba(167,139,250,.14)", "#6d46d6"],
-  proposal: ["rgba(245,164,45,.14)", "#b96a00"],
-  negotiation: ["rgba(251,146,60,.14)", "#c96200"],
-  "closed-won": ["rgba(31,199,120,.16)", "#0f8c53"],
-  "closed-lost": ["rgba(224,82,82,.14)", "#b63b3b"],
-  pending: ["rgba(245,164,45,.14)", "#b96a00"],
-};
+export const STATUS_TONE = LEAD_STATUS_ACCENTS;
 
 export const PRIORITY_TONE = {
   low: ["rgba(56,189,248,.12)", "#0077b8"],

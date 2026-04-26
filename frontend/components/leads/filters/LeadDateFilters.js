@@ -14,7 +14,7 @@ export default function LeadDateFilters({
   inputClassName,
 }) {
   return (
-    <div className="grid gap-3 md:grid-cols-3">
+    <div className="grid gap-3">
       <LeadFilterSelect
         label="Date preset"
         value={preset}
@@ -23,26 +23,28 @@ export default function LeadDateFilters({
         kickerClassName={kickerClassName}
         inputClassName={inputClassName}
       />
-      <label className="space-y-2">
-        <span className={kickerClassName}>From date</span>
-        <input
-          type="date"
-          value={fromDate}
-          max={toDate || undefined}
-          onChange={(event) => onFromDateChange(event.target.value)}
-          className={inputClassName}
-        />
-      </label>
-      <label className="space-y-2">
-        <span className={kickerClassName}>To date</span>
-        <input
-          type="date"
-          value={toDate}
-          min={fromDate || undefined}
-          onChange={(event) => onToDateChange(event.target.value)}
-          className={inputClassName}
-        />
-      </label>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="flex min-w-0 flex-col gap-2">
+          <span className={kickerClassName}>From date</span>
+          <input
+            type="date"
+            value={fromDate}
+            max={toDate || undefined}
+            onChange={(event) => onFromDateChange(event.target.value)}
+            className={inputClassName}
+          />
+        </label>
+        <label className="flex min-w-0 flex-col gap-2">
+          <span className={kickerClassName}>To date</span>
+          <input
+            type="date"
+            value={toDate}
+            min={fromDate || undefined}
+            onChange={(event) => onToDateChange(event.target.value)}
+            className={inputClassName}
+          />
+        </label>
+      </div>
     </div>
   );
 }

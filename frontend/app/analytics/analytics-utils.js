@@ -11,6 +11,9 @@ export const STATUS_ORDER = [
   "qualified",
   "proposal",
   "negotiation",
+  "booked-demo",
+  "demo-done",
+  "trial-started",
   "closed-won",
 ];
 
@@ -20,6 +23,9 @@ export const STATUS_TONE = {
   qualified: "bg-violet-100 text-violet-700 ring-violet-200",
   proposal: "bg-amber-100 text-amber-700 ring-amber-200",
   negotiation: "bg-orange-100 text-orange-700 ring-orange-200",
+  "booked-demo": "bg-violet-100 text-violet-700 ring-violet-200",
+  "demo-done": "bg-emerald-100 text-emerald-700 ring-emerald-200",
+  "trial-started": "bg-blue-100 text-blue-700 ring-blue-200",
   "closed-won": "bg-emerald-100 text-emerald-700 ring-emerald-200",
   converted: "bg-emerald-100 text-emerald-700 ring-emerald-200",
   closed: "bg-emerald-100 text-emerald-700 ring-emerald-200",

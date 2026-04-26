@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { isPlatformConsoleRole } from "../../../lib/teamScope";
 import { LEAD_DATE_PRESET_OPTIONS } from "../filters/leadFilterOptions";
@@ -26,7 +26,7 @@ export function useLeadFilterState({ role, session }) {
   const canManage = MANAGER_ROLES.includes(role);
   const scopedCompanyId = isPlatformConsole && company !== "all" ? company : undefined;
   const teamCompanyId = isPlatformConsole ? scopedCompanyId : session?.user?.company_id || session?.company?.company_id || "";
-  const quickFilter = useMemo(() => (["active", "pending", "assigned", "unassigned", "transferred"].includes(status) ? status : undefined), [status]);
+  const quickFilter = useMemo(() => (["active", "working", "pending", "assigned", "unassigned", "transferred"].includes(status) ? status : undefined), [status]);
 
   useEffect(() => {
     if (hasFixedAssigneeScope && session?.user?.user_id) {
@@ -108,8 +108,33 @@ export function useLeadFilterState({ role, session }) {
     setDatePreset(fromDate || value ? "custom" : "all");
   }
 
+  const applyQueryFilters = useCallback((query = {}) => {
+    setSearch(query.search || "");
+    setStatus(query.status || "all");
+    setProduct(query.product || "all");
+    setPriority(query.priority || "all");
+    setSource(query.source || "all");
+    setWorkflowStage(query.workflowStage || "all");
+    setCreatedBy(query.createdBy || "all");
+    setFromDate(query.fromDate || "");
+    setToDate(query.toDate || "");
+    setDatePreset(query.fromDate || query.toDate ? "custom" : "all");
+    setTeamFilter(query.teamFilter || "all");
+
+    if (isPlatformConsole) {
+      setCompany(query.company || "all");
+    }
+
+    setAssignedTo(
+      hasFixedAssigneeScope
+        ? session?.user?.user_id || "all"
+        : query.assignedTo || "all"
+    );
+  }, [hasFixedAssigneeScope, isPlatformConsole, session?.user?.user_id]);
+
   return {
     activeFilterCount,
+    applyQueryFilters,
     assignedTo,
     company,
     createdBy,

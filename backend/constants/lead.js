@@ -4,8 +4,22 @@ const LEAD_STATUSES = [
   "qualified",
   "proposal",
   "negotiation",
+  "booked-demo",
+  "demo-done",
+  "trial-started",
   "closed-won",
   "closed-lost",
+];
+
+const OPEN_PIPELINE_STATUSES = [
+  "new",
+  "contacted",
+  "qualified",
+  "proposal",
+  "negotiation",
+  "booked-demo",
+  "demo-done",
+  "trial-started",
 ];
 
 const LEAD_PRIORITIES = ["low", "medium", "high"];
@@ -30,4 +44,5 @@ module.exports = {
   LEAD_ACTIVITY_TYPES,
   LEAD_PRIORITIES,
   LEAD_STATUSES,
+  OPEN_PIPELINE_STATUSES,
 };

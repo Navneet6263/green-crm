@@ -3,16 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { apiRequest } from "../../lib/api";
+import { LEAD_STATUS_ORDER, getLeadStatusLabel } from "../../lib/leadStatus";
 
-const STATUS_OPTIONS = [
-  "new",
-  "contacted",
-  "qualified",
-  "proposal",
-  "negotiation",
-  "closed-won",
-  "closed-lost",
-];
+const STATUS_OPTIONS = LEAD_STATUS_ORDER;
 
 const NOTE_HINTS = {
   new: "Capture what just came in and what should happen next.",
@@ -20,6 +13,9 @@ const NOTE_HINTS = {
   qualified: "Record why this lead is now qualified and what is confirmed.",
   proposal: "Mention proposal scope, pricing, or commercial expectation.",
   negotiation: "Note objections, negotiation pressure, or decision blockers.",
+  "booked-demo": "Capture the booked demo date, owner, and meeting expectation.",
+  "demo-done": "Record demo outcome, objections, and the next conversion step.",
+  "trial-started": "Note trial kickoff details, adoption expectation, and review date.",
   "closed-won": "Capture the winning reason and handoff readiness.",
   "closed-lost": "Record the loss reason so history stays useful.",
 };
@@ -34,15 +30,6 @@ const CANCEL_CLASS =
   "inline-flex min-h-[38px] items-center justify-center rounded-full border border-[#eadfcd] bg-white px-4 py-2 text-xs font-semibold text-[#5d503c] transition hover:-translate-y-0.5 hover:text-[#060710]";
 const NOTE_PANEL_CLASS =
   "rounded-[24px] border border-[#eadfcd] bg-[linear-gradient(180deg,_#fffdf7_0%,_#fff8ec_100%)] p-4 shadow-[0_18px_36px_rgba(79,58,22,0.12)]";
-
-function titleize(value = "") {
-  return String(value)
-    .replaceAll("_", "-")
-    .split("-")
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
 
 export default function LeadQuickStatusControl({
   lead,
@@ -128,7 +115,7 @@ export default function LeadQuickStatusControl({
         >
           {STATUS_OPTIONS.map((item) => (
             <option key={item} value={item}>
-              {titleize(item)}
+              {getLeadStatusLabel(item)}
             </option>
           ))}
         </select>
@@ -142,7 +129,7 @@ export default function LeadQuickStatusControl({
               <p className="mt-2 text-[11px] font-semibold leading-5 text-[#8f816a]">{hint}</p>
             </div>
             <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">
-              {titleize(draftStatus)}
+              {getLeadStatusLabel(draftStatus)}
             </span>
           </div>
           <textarea

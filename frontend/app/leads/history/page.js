@@ -27,6 +27,9 @@ const STATUS_TONE = {
   qualified: "border-teal-200 bg-teal-50 text-teal-700",
   proposal: "border-[#eadfcd] bg-white text-[#7c6d55]",
   negotiation: "border-amber-200 bg-amber-50 text-amber-700",
+  "booked-demo": "border-violet-200 bg-violet-50 text-violet-700",
+  "demo-done": "border-emerald-200 bg-emerald-50 text-emerald-700",
+  "trial-started": "border-blue-200 bg-blue-50 text-blue-700",
   "closed-won": "border-emerald-200 bg-emerald-50 text-emerald-700",
   "closed-lost": "border-rose-200 bg-rose-50 text-rose-700",
 };
@@ -258,6 +261,9 @@ export default function LeadHistoryPage() {
                         <option value="qualified">Qualified</option>
                         <option value="proposal">Proposal</option>
                         <option value="negotiation">Negotiation</option>
+                        <option value="booked-demo">Booked Demo</option>
+                        <option value="demo-done">Demo Done</option>
+                        <option value="trial-started">Trial Started</option>
                         <option value="closed-won">Closed Won</option>
                         <option value="closed-lost">Closed Lost</option>
                       </select>

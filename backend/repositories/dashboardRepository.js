@@ -1,6 +1,7 @@
 const db = require("../db/connection");
 const { PLATFORM_COMPANY_ID } = require("../db/schema");
 const { buildLeadUserAccessPredicate } = require("./leadAssignmentRepository");
+const dashboardLeadAnalyticsRepository = require("./dashboardLeadAnalyticsRepository");
 
 const SQL_NOW = "SYSUTCDATETIME()";
 
@@ -98,10 +99,10 @@ async function getCompanySummary(companyId, teamIds = null) {
     teamRows,
     taskSummaryRows,
     reminderRows,
-    leadCounts,
     sourceMix,
     recentLeads,
     recentProducts,
+    leadAnalytics,
   ] = await Promise.all([
     queryRows(
       `SELECT COUNT(DISTINCT u.user_id) AS total
@@ -139,10 +140,6 @@ async function getCompanySummary(companyId, teamIds = null) {
       [companyId, ...teamScope.params]
     ),
     queryRows(
-      `SELECT status, COUNT(*) AS total FROM leads WHERE company_id = ? AND is_active = 1${teamScope.clause} GROUP BY status`,
-      [companyId, ...teamScope.params]
-    ),
-    queryRows(
       `
         SELECT TOP 5 lead_source, COUNT(*) AS total
         FROM leads
@@ -170,6 +167,7 @@ async function getCompanySummary(companyId, teamIds = null) {
       `,
       [companyId, ...teamScope.params]
     ),
+    dashboardLeadAnalyticsRepository.getCompanyLeadAnalytics(companyId, teamIds),
   ]);
   const taskSummary = taskSummaryRows[0] || {};
 
@@ -178,10 +176,13 @@ async function getCompanySummary(companyId, teamIds = null) {
     pending_tasks: taskSummary.pending_tasks || 0,
     overdue_tasks: taskSummary.overdue_tasks || 0,
     pending_reminders: reminderRows[0].total,
-    lead_counts: leadCounts,
+    lead_counts: leadAnalytics.lead_counts,
     source_mix: sourceMix,
     recent_leads: recentLeads,
     recent_products: recentProducts,
+    kpis: leadAnalytics.kpis,
+    charts: leadAnalytics.charts,
+    insights: leadAnalytics.insights,
   };
 }
 

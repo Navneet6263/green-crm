@@ -10,13 +10,16 @@ const PANEL = "rounded-[30px] border border-[#eadfcd] bg-white/84 p-5 shadow-[0_
 const SOFT = "rounded-[24px] border border-[#eadfcd] bg-[#fffaf1] p-4";
 const KICKER = "text-[10px] font-black uppercase tracking-[0.28em] text-[#9a886d]";
 
-const STATUS_ORDER = ["new", "contacted", "qualified", "proposal", "negotiation", "closed-won"];
+const STATUS_ORDER = ["new", "contacted", "qualified", "proposal", "negotiation", "booked-demo", "demo-done", "trial-started", "closed-won"];
 const STATUS_TONE = {
   new: "bg-[#eef5ff] text-[#2563eb] ring-[#cfe0ff]",
   contacted: "bg-[#ecfbff] text-[#0f8da8] ring-[#c8eef4]",
   qualified: "bg-[#f5efff] text-[#7c3aed] ring-[#e4d8ff]",
   proposal: "bg-[#fff4d9] text-[#8d6e27] ring-[#ecdcae]",
   negotiation: "bg-[#fff0e2] text-[#c56b1c] ring-[#f0d3bc]",
+  "booked-demo": "bg-[#f3ebff] text-[#7a3ef0] ring-[#dfd0ff]",
+  "demo-done": "bg-[#e5fff4] text-[#067647] ring-[#c1f2dd]",
+  "trial-started": "bg-[#edf3ff] text-[#2d64dd] ring-[#d6e3ff]",
   won: "bg-[#ebf8ee] text-[#217346] ring-[#ccead5]",
   "closed-won": "bg-[#ebf8ee] text-[#217346] ring-[#ccead5]",
 };
@@ -164,9 +167,7 @@ export default function ManagerDashboard() {
         const products = summary.recent_products || [];
 
         const totalLeads = leadCounts.reduce((sum, item) => sum + Number(item.total || 0), 0);
-        const openPipeline = leadCounts
-          .filter((item) => ["contacted", "qualified", "proposal", "negotiation"].includes(item.status))
-          .reduce((sum, item) => sum + Number(item.total || 0), 0);
+        const openPipeline = Number(summary.kpis?.open_pipeline || 0);
         const wonLeads = countByStatus(leadCounts, "closed-won");
         const activeUsers = users.filter((item) => item.is_active !== false).length;
         const overdueTasks = tasks.filter((task) => {

@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 import DashboardShell from "../../components/dashboard/DashboardShell";
 import LeadsWorkspaceContent from "../../components/leads/layout/LeadsWorkspaceContent";
@@ -28,6 +29,7 @@ import { useLeadSelection } from "../../components/leads/shared/useLeadSelection
 import { useLeadSessionAccess } from "../../components/leads/shared/useLeadSessionAccess";
 import { AlertError, AlertSuccess } from "../../components/ui/Alert";
 import { apiRequest } from "../../lib/api";
+import { parseLeadFilterSearchParams } from "../../components/leads/shared/leadFilterQuery";
 import {
   isPlatformConsoleRole,
   scopedUsersEmptyMessage,
@@ -39,7 +41,8 @@ import {
   workflowUsersEmptyMessage,
 } from "../../lib/workflowOwners";
 
-export default function LeadsPage() {
+function LeadsPageContent() {
+  const searchParams = useSearchParams();
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [picked, setPicked] = useState([]);
@@ -53,6 +56,11 @@ export default function LeadsPage() {
   const canEdit = role !== "viewer";
   const canLoadScopedUsers = canManage || LEGAL_TRANSFER_ROLES.includes(role);
   const filters = useLeadFilterState({ role, session });
+  const { applyQueryFilters } = filters;
+  const parsedQueryFilters = useMemo(
+    () => parseLeadFilterSearchParams(searchParams),
+    [searchParams]
+  );
   const records = useLeadListData({ leadQueryBase: filters.leadQueryBase, refreshSeed, session });
   const selection = useLeadSelection({ leads: records.leads, resetKey: `${records.leadCacheKey}:${records.page}`, session });
   const scopedTeamId = filters.teamFilter !== "all" ? filters.teamFilter : selection.activeLead?.team_id || "";
@@ -72,6 +80,11 @@ export default function LeadsPage() {
   useEffect(() => { if (accessError) setError(accessError); }, [accessError]);
   useEffect(() => { if (records.listError) setError(records.listError); }, [records.listError]);
   useEffect(() => { if (selection.detailError) setError(selection.detailError); }, [selection.detailError]);
+  useEffect(() => {
+    if (session?.user?.user_id) {
+      applyQueryFilters(parsedQueryFilters);
+    }
+  }, [applyQueryFilters, parsedQueryFilters, session?.user?.user_id]);
   useEffect(() => { records.setPage(1); }, [filters.leadQueryBase]);
   useEffect(() => { setPicked((current) => current.filter((id) => records.leads.some((lead) => lead.lead_id === id))); }, [records.leads]);
 
@@ -238,5 +251,19 @@ export default function LeadsPage() {
         />
       ) : null}
     </DashboardShell>
+  );
+}
+
+export default function LeadsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[linear-gradient(180deg,#fbf6ec_0%,#fffaf2_48%,#fffdf9_100%)] px-5 py-8 text-sm font-medium text-[#6f614c] md:px-7">
+          Loading leads workspace...
+        </div>
+      }
+    >
+      <LeadsPageContent />
+    </Suspense>
   );
 }

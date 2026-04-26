@@ -1,6 +1,7 @@
 const db = require("../db/connection");
 const { encodeCursor } = require("../utils/pagination");
 const { buildLeadUserAccessPredicate } = require("./leadAssignmentRepository");
+const { OPEN_PIPELINE_STATUSES } = require("../constants/lead");
 
 const SQL_NOW = "SYSUTCDATETIME()";
 
@@ -107,6 +108,9 @@ function buildWhere(filters) {
   }
 
   if (filters.quickFilter === "active") {
+    conditions.push(`l.status IN (${OPEN_PIPELINE_STATUSES.map(() => "?").join(", ")})`);
+    params.push(...OPEN_PIPELINE_STATUSES);
+  } else if (filters.quickFilter === "working") {
     conditions.push("l.status IN (?, ?, ?, ?)");
     params.push("contacted", "qualified", "proposal", "negotiation");
   } else if (filters.quickFilter === "pending") {

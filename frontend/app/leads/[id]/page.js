@@ -27,7 +27,7 @@ import {
   workflowUsersEmptyMessage,
 } from "../../../lib/workflowOwners";
 
-const STATUS_ACCENT = { new: ["rgba(79,140,255,.12)", "#2f6fdd"], contacted: ["rgba(56,189,248,.14)", "#0077b8"], qualified: ["rgba(167,139,250,.14)", "#6d46d6"], proposal: ["rgba(245,164,45,.14)", "#b96a00"], negotiation: ["rgba(251,146,60,.14)", "#c96200"], "closed-won": ["rgba(31,199,120,.16)", "#0f8c53"], "closed-lost": ["rgba(224,82,82,.14)", "#b63b3b"] };
+const STATUS_ACCENT = { new: ["rgba(79,140,255,.12)", "#2f6fdd"], contacted: ["rgba(56,189,248,.14)", "#0077b8"], qualified: ["rgba(167,139,250,.14)", "#6d46d6"], proposal: ["rgba(245,164,45,.14)", "#b96a00"], negotiation: ["rgba(251,146,60,.14)", "#c96200"], "booked-demo": ["rgba(137,92,246,.14)", "#7a3ef0"], "demo-done": ["rgba(16,185,129,.14)", "#0f8c53"], "trial-started": ["rgba(59,130,246,.14)", "#2d64dd"], "closed-won": ["rgba(31,199,120,.16)", "#0f8c53"], "closed-lost": ["rgba(224,82,82,.14)", "#b63b3b"] };
 const PRIORITY_ACCENT = { low: ["rgba(56,189,248,.12)", "#0077b8"], medium: ["rgba(245,164,45,.14)", "#b96a00"], high: ["rgba(255,108,156,.14)", "#c4356b"], urgent: ["rgba(224,82,82,.14)", "#b63b3b"] };
 const WORKFLOW = ["sales", "legal", "finance", "completed"];
 const DOC_VIEW_ROLES = ["super-admin", "platform-admin", "platform-manager", "admin", "manager"];
@@ -245,7 +245,7 @@ export default function LeadDetailPage() {
     if (lead.phone) score += 10;
     if (lead.product_id || lead.product_name) score += 12;
     if (lead.follow_up_date) score += 8;
-    score += { new: 8, contacted: 16, qualified: 24, proposal: 30, negotiation: 36, "closed-won": 40, "closed-lost": 4 }[lead.status] || 10;
+    score += { new: 8, contacted: 16, qualified: 24, proposal: 30, negotiation: 36, "booked-demo": 38, "demo-done": 42, "trial-started": 44, "closed-won": 40, "closed-lost": 4 }[lead.status] || 10;
     score += { low: 5, medium: 10, high: 16, urgent: 20 }[lead.priority] || 8;
     score += Math.min(18, Math.round(Math.log10(Number(lead.estimated_value || 0) + 1) * 5));
     score += Math.min(12, activity.length * 2);

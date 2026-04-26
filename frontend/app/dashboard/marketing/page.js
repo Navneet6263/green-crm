@@ -5,7 +5,7 @@ import { apiRequest } from "../../../lib/api";
 import { loadSession } from "../../../lib/session";
 import DashboardShell from "../../../components/dashboard/DashboardShell";
 
-const STATUS_COLOR = { new: "#4a9eff", contacted: "#38bdf8", qualified: "#a78bfa", proposal: "#f5a623", "closed-won": "#1fc778" };
+const STATUS_COLOR = { new: "#4a9eff", contacted: "#38bdf8", qualified: "#a78bfa", proposal: "#f5a623", negotiation: "#f08441", "booked-demo": "#8b5cf6", "demo-done": "#10b981", "trial-started": "#3b82f6", "closed-won": "#1fc778" };
 
 export default function MarketingDashboard() {
   const router = useRouter();
