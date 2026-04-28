@@ -1,17 +1,13 @@
 "use client";
 
-import Link from "next/link";
-
+import LeadInlineFollowUpPanel from "./LeadInlineFollowUpPanel";
 import LeadCollaboratorPanel from "./LeadCollaboratorPanel";
-import LeadMetaGrid from "./LeadMetaGrid";
 import LeadOwnerControls from "./LeadOwnerControls";
 import LeadTransferPanel from "./LeadTransferPanel";
-import { LEAD_GHOST_BUTTON_CLASS } from "../shared/leadPageConstants";
 
 export default function LeadExpandedDetails({
   archiveLead,
   assigning,
-  canEdit,
   canManage,
   canTransfer,
   company,
@@ -23,6 +19,8 @@ export default function LeadExpandedDetails({
   legalTransferNote,
   legalTransferOwner,
   legalUsersMessage,
+  loading,
+  onInlineNoteSaved,
   onOwnerChange,
   onOwnerNoteChange,
   pendingCollaborator,
@@ -35,36 +33,33 @@ export default function LeadExpandedDetails({
   saveOwner,
   savingCollaborators,
   scopedLegalUsers,
+  sessionToken,
   setPendingCollaborator,
   setLegalTransferNote,
   setLegalTransferOwner,
-  teamBadgeLabel,
   teamUsers,
   transferLeadToLegal,
   transferring,
 }) {
   return (
     <div className="mt-5 space-y-4 border-t border-[#efe6d8] pt-5">
-      <LeadMetaGrid lead={lead} teamBadgeLabel={teamBadgeLabel} />
-
-      {lead.latest_note ? (
-        <div className="rounded-[22px] border border-[#efe2c8] bg-[#fffaf1] px-4 py-4 text-sm text-[#6f614c]">
-          <strong className="font-semibold text-[#060710]">Latest note:</strong> {lead.latest_note}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#9a886d]">Lead Access</p>
+          <h4 className="mt-2 text-lg font-semibold text-[#060710]">Assignment, access, and transfer</h4>
         </div>
-      ) : null}
-
-      {lead.requirements ? (
-        <div className="rounded-[22px] border border-[#efe2c8] bg-[#fffaf1] px-4 py-4 text-sm text-[#6f614c]">
-          <strong className="font-semibold text-[#060710]">Requirements:</strong> {lead.requirements}
-        </div>
-      ) : null}
-
-      <div className="flex flex-wrap gap-3">
-        <Link prefetch={false} href={`/leads/${lead.lead_id}`} className={LEAD_GHOST_BUTTON_CLASS}>
-          View Lead
-        </Link>
-        {canEdit ? <Link prefetch={false} href={`/leads/${lead.lead_id}/edit`} className={LEAD_GHOST_BUTTON_CLASS}>Edit Lead</Link> : null}
+        {loading ? (
+          <span className="inline-flex rounded-full border border-[#eadfcd] bg-[#fffaf1] px-3 py-1 text-[11px] font-bold text-[#7c6d55]">
+            Refreshing...
+          </span>
+        ) : null}
       </div>
+
+      <LeadInlineFollowUpPanel
+        lead={lead}
+        onLeadUpdate={onInlineNoteSaved}
+        sessionToken={sessionToken}
+      />
 
       <LeadTransferPanel
         canTransfer={canTransfer}

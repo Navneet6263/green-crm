@@ -28,6 +28,12 @@ router.get("/:leadId/assignments", asyncHandler(leadController.assignments));
 router.put("/:leadId/assignments", asyncHandler(leadController.updateAssignments));
 router.delete("/:leadId/assignments/:userId", asyncHandler(leadController.removeAssignment));
 router.get("/:leadId/calls", asyncHandler(callLogController.listLeadCalls));
+router.get("/:leadId/documents", asyncHandler(leadController.documents));
+router.post(
+  "/:leadId/documents/upload",
+  express.raw({ type: () => true, limit: "15mb" }),
+  asyncHandler(leadController.uploadDocument)
+);
 router.get("/:leadId/notes", asyncHandler(leadController.notes));
 router.post("/:leadId/notes", asyncHandler(leadController.addNote));
 router.get("/:leadId/activity", asyncHandler(leadController.activities));

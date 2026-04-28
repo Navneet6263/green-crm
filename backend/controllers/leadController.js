@@ -78,6 +78,24 @@ async function notes(req, res) {
   res.json(data);
 }
 
+async function documents(req, res) {
+  const data = await leadService.listLeadDocuments(req.auth, req.params.leadId);
+  res.json({ data });
+}
+
+async function uploadDocument(req, res) {
+  const data = await leadService.uploadLeadDocument(
+    req.auth,
+    req.params.leadId,
+    {
+      contentType: req.headers["content-type"],
+      fileName: req.headers["x-file-name"],
+    },
+    req.body
+  );
+  res.status(201).json({ data });
+}
+
 async function addNote(req, res) {
   const data = await leadService.addLeadNote(req.auth, req.params.leadId, req.body);
   res.status(201).json({ data });
@@ -111,6 +129,7 @@ module.exports = {
   assignments,
   bulkUpload,
   create,
+  documents,
   getOne,
   list,
   listByProduct,
@@ -123,4 +142,5 @@ module.exports = {
   remove,
   update,
   updateAssignments,
+  uploadDocument,
 };

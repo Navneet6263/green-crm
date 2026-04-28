@@ -419,8 +419,8 @@ export default function EditLeadPage() {
         <section className="space-y-5">
           <div className="grid gap-5 xl:grid-cols-[1.08fr_0.92fr]">
             <article className={HERO_PANEL_CLASS}>
-              <button className={GHOST_BUTTON_CLASS} type="button" onClick={() => router.back()}>
-                Back
+              <button className={GHOST_BUTTON_CLASS} type="button" onClick={() => router.push("/leads")}>
+                Back to Leads
               </button>
 
               <div className="mt-5 flex items-start gap-4">
@@ -498,9 +498,9 @@ export default function EditLeadPage() {
                   <DashboardIcon name="leads" className="h-5 w-5" />
                 </EditActionCard>
                 <EditActionCard
-                  onClick={() => router.back()}
-                  title="Back to Workspace"
-                  copy="Return without leaving this edit context abruptly."
+                  onClick={() => router.push("/leads")}
+                  title="Back to Leads"
+                  copy="Return to the lead list."
                 >
                   <DashboardIcon name="tasks" className="h-5 w-5" />
                 </EditActionCard>
@@ -655,7 +655,7 @@ export default function EditLeadPage() {
                 </div>
 
                 <div className="mt-5 flex flex-wrap justify-end gap-3">
-                  <button className={GHOST_BUTTON_CLASS} type="button" onClick={() => router.back()}>
+                  <button className={GHOST_BUTTON_CLASS} type="button" onClick={() => router.push(`/leads/${params.id}`)}>
                     <DashboardIcon name="workflow" className="h-4 w-4" />
                     Cancel
                   </button>

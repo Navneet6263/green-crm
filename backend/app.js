@@ -1,3 +1,4 @@
+const path = require("node:path");
 const express = require("express");
 const cors = require("cors");
 
@@ -56,6 +57,7 @@ function buildCorsOptions() {
 
 function createApp() {
   const app = express();
+  const uploadsRoot = path.join(__dirname, "uploads");
   const captureRawBody = (req, _res, buffer) => {
     req.rawBody = buffer?.length ? buffer.toString("utf8") : "";
   };
@@ -77,6 +79,7 @@ function createApp() {
     });
   });
 
+  app.use("/api/uploads", express.static(uploadsRoot));
   app.use("/api", routes);
   app.use(notFoundHandler);
   app.use(errorHandler);

@@ -10,7 +10,6 @@ import {
 } from "../shared/leadPageConstants";
 
 export default function LeadListSection({
-  activeLead,
   allPicked,
   canEdit,
   canManage,
@@ -50,7 +49,8 @@ export default function LeadListSection({
           rows.map((lead) => (
             <LeadRowCard
               key={lead.lead_id}
-              activeLead={activeLead}
+              activeLead={rowActions.activeLead}
+              canTransferRow={rowActions.canTransferActiveLead && rowActions.selectedId === lead.lead_id}
               canEdit={canEdit}
               canManage={canManage}
               picked={picked.includes(lead.lead_id)}
@@ -60,7 +60,6 @@ export default function LeadListSection({
               onSelectToggle={() => rowActions.onSelectToggle(lead.lead_id)}
               {...rowActions.sharedProps}
               lead={lead}
-              canTransferRow={rowActions.selectedId === lead.lead_id && rowActions.canTransferActiveLead && activeLead?.lead_id === lead.lead_id}
             />
           ))
         ) : (

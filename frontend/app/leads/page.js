@@ -18,17 +18,16 @@ import {
   titleizeLeadValue,
 } from "../../components/leads/shared/leadPageFormatters";
 import { useLeadBulkUpload } from "../../components/leads/shared/useLeadBulkUpload";
+import { useLeadCollaboratorActions } from "../../components/leads/shared/useLeadCollaboratorActions";
 import { useLeadExport } from "../../components/leads/shared/useLeadExport";
 import { useLeadFilterFields } from "../../components/leads/shared/useLeadFilterFields";
 import { useLeadFilterState } from "../../components/leads/shared/useLeadFilterState";
 import { useLeadListData } from "../../components/leads/shared/useLeadListData";
-import { useLeadCollaboratorActions } from "../../components/leads/shared/useLeadCollaboratorActions";
 import { useLeadOwnershipActions } from "../../components/leads/shared/useLeadOwnershipActions";
-import { useLeadScopeResources } from "../../components/leads/shared/useLeadScopeResources";
 import { useLeadSelection } from "../../components/leads/shared/useLeadSelection";
+import { useLeadScopeResources } from "../../components/leads/shared/useLeadScopeResources";
 import { useLeadSessionAccess } from "../../components/leads/shared/useLeadSessionAccess";
 import { AlertError, AlertSuccess } from "../../components/ui/Alert";
-import { apiRequest } from "../../lib/api";
 import { parseLeadFilterSearchParams } from "../../components/leads/shared/leadFilterQuery";
 import {
   isPlatformConsoleRole,
@@ -54,7 +53,6 @@ function LeadsPageContent() {
   const canManage = MANAGER_ROLES.includes(role);
   const canCreate = CREATE_ROLES.includes(role);
   const canEdit = role !== "viewer";
-  const canLoadScopedUsers = canManage || LEGAL_TRANSFER_ROLES.includes(role);
   const filters = useLeadFilterState({ role, session });
   const { applyQueryFilters } = filters;
   const parsedQueryFilters = useMemo(
@@ -62,20 +60,24 @@ function LeadsPageContent() {
     [searchParams]
   );
   const records = useLeadListData({ leadQueryBase: filters.leadQueryBase, refreshSeed, session });
-  const selection = useLeadSelection({ leads: records.leads, resetKey: `${records.leadCacheKey}:${records.page}`, session });
-  const scopedTeamId = filters.teamFilter !== "all" ? filters.teamFilter : selection.activeLead?.team_id || "";
+  const selection = useLeadSelection({
+    leads: records.leads,
+    resetKey: `${records.leadCacheKey}:${refreshSeed}`,
+    session,
+  });
+  const canLoadScopedUsers = canManage || LEGAL_TRANSFER_ROLES.includes(role);
+  const scopedTeamId =
+    filters.teamFilter !== "all" ? filters.teamFilter : selection.activeLead?.team_id || "";
+  const teamCompanyId = filters.teamCompanyId || selection.activeLead?.company_id || "";
   const pickedTeamIds = useMemo(() => [...new Set(records.leads.filter((lead) => picked.includes(lead.lead_id)).map((lead) => lead.team_id).filter(Boolean))], [picked, records.leads]);
   const handleInvalidTeamFilter = useCallback(() => {
     filters.setTeamFilter("all");
   }, [filters.setTeamFilter]);
-  const resources = useLeadScopeResources({ canLoadScopedUsers, canManage, isPlatformConsole, onInvalidTeamFilter: handleInvalidTeamFilter, pickedTeamIds, refreshSeed, scopedCompanyId: filters.scopedCompanyId, scopedTeamId, session, teamCompanyId: filters.teamCompanyId, teamFilter: filters.teamFilter });
+  const resources = useLeadScopeResources({ canLoadScopedUsers, canManage, isPlatformConsole, onInvalidTeamFilter: handleInvalidTeamFilter, pickedTeamIds, refreshSeed, scopedCompanyId: filters.scopedCompanyId, scopedTeamId, session, teamCompanyId, teamFilter: filters.teamFilter });
   const leadOptionPool = records.allMatchedLeads.length ? records.allMatchedLeads : records.leads;
   const leadFilterFields = useLeadFilterFields({ companies, filterUsers: resources.filterUsers, filters, leadOptionPool, productOptions: resources.productOptions, role, session, teams: resources.teams });
   const bulkUpload = useLeadBulkUpload({ onImported: () => setRefreshSeed((current) => current + 1), setError, setNotice, token: session?.token });
   const leadExport = useLeadExport({ allMatchedLeads: records.allMatchedLeads, leadQueryBase: filters.leadQueryBase, setError, setNotice, token: session?.token, totalMatched: records.totalMatched });
-  const scopedLegalUsers = useMemo(() => resources.teamUsers.filter((user) => user.role === "legal-team"), [resources.teamUsers]);
-  const legalTeam = useMemo(() => withAssignedWorkflowUser(scopedLegalUsers, selection.activeLead?.assigned_to_legal, selection.activeLead?.legal_owner_name, "legal-team"), [scopedLegalUsers, selection.activeLead?.assigned_to_legal, selection.activeLead?.legal_owner_name]);
-  const canTransferActiveLead = Boolean(selection.activeLead?.can_transfer_to_legal) && LEGAL_TRANSFER_ROLES.includes(role);
 
   useEffect(() => { if (accessError) setError(accessError); }, [accessError]);
   useEffect(() => { if (records.listError) setError(records.listError); }, [records.listError]);
@@ -93,83 +95,104 @@ function LeadsPageContent() {
     selection.mergeSelectedLead(updatedLead);
   }
 
-  function applyOwner(leadIds, nextOwner, label) {
-    records.applyOwnerChanges(leadIds, nextOwner, label);
-    selection.setSelected((current) => current && leadIds.includes(current.lead_id) ? { ...current, assigned_to: nextOwner, assigned_to_name: label } : current);
-  }
-
-  const ownershipActions = useLeadOwnershipActions({ activeLead: selection.activeLead, applyOwner, bulkUsers: resources.bulkUsers, clearSelection: selection.clearSelection, leads: records.leads, mergeLead: mergeLeadState, onArchived: () => setRefreshSeed((current) => current + 1), picked, setPicked, setSelectedLead: selection.setSelected, setError, setNotice, session, teamUsers: resources.teamUsers });
-  const collaboratorActions = useLeadCollaboratorActions({ activeLead: selection.activeLead, mergeLead: mergeLeadState, session, setError, setNotice, teamUsers: resources.teamUsers });
-  const selectedScopeTeam = resources.teams.find((entry) => entry.team_id === scopedTeamId) || null;
+  const collaboratorActions = useLeadCollaboratorActions({
+    activeLead: selection.activeLead,
+    mergeLead: mergeLeadState,
+    session,
+    setError,
+    setNotice,
+    teamUsers: resources.teamUsers,
+  });
+  const ownershipActions = useLeadOwnershipActions({
+    activeLead: selection.activeLead,
+    applyOwner: records.applyOwnerChanges,
+    bulkUsers: resources.bulkUsers,
+    clearSelection: selection.clearSelection,
+    leads: records.leads,
+    mergeLead: mergeLeadState,
+    onArchived: () => setRefreshSeed((current) => current + 1),
+    picked,
+    setPicked,
+    setSelectedLead: selection.setSelected,
+    setError,
+    setNotice,
+    session,
+    teamUsers: resources.teamUsers,
+  });
+  const selectedScopeTeam =
+    resources.teams.find((entry) => entry.team_id === scopedTeamId)
+    || (selection.activeLead?.team_name ? { name: selection.activeLead.team_name } : null);
   const bulkScopeTeam = resources.teams.find((entry) => entry.team_id === pickedTeamIds[0]) || null;
+  const legalUsers = useMemo(
+    () =>
+      withAssignedWorkflowUser(
+        resources.teamUsers.filter((user) => user.role === "legal-team"),
+        selection.activeLead?.assigned_to_legal,
+        selection.activeLead?.legal_owner_name,
+        "legal-team"
+      ),
+    [
+      resources.teamUsers,
+      selection.activeLead?.assigned_to_legal,
+      selection.activeLead?.legal_owner_name,
+    ]
+  );
+  const canTransferActiveLead =
+    Boolean(selection.activeLead?.can_transfer_to_legal) &&
+    LEGAL_TRANSFER_ROLES.includes(role);
+  const collaboratorUsersMessage = scopedUsersEmptyMessage(selectedScopeTeam);
+  const legalUsersMessage = workflowUsersEmptyMessage(selection.activeLead?.team_name, "legal");
   const ownershipLabel = ["sales", "marketing"].includes(role) ? "Assigned to you" : isPlatformConsole ? filters.company === "all" ? isSuper ? "Cross-tenant" : "Assigned companies" : "Single tenant" : "Tenant-wide";
   const closedWonCount = filters.status === "closed-won" ? records.totalMatched : records.leads.filter((lead) => lead.status === "closed-won").length;
   const transferredCount = filters.status === "transferred" ? records.totalMatched : records.leads.filter((lead) => ["legal", "finance", "completed"].includes(lead.workflow_stage || "sales")).length;
   const heroStats = useMemo(() => [{ label: "Matched Leads", value: records.totalMatched }, { label: "Page Value", value: formatLeadMoney(records.leads.reduce((sum, lead) => sum + Number(lead.estimated_value || 0), 0)), color: "#0f8c53" }, { label: "Loaded", value: records.leads.length, color: "#2f6fdd" }, { label: "Closed Won", value: closedWonCount, color: "#0f8c53" }], [closedWonCount, records.leads, records.totalMatched]);
   const emptyLeadsMessage = filters.teamFilter !== "all" && selectedScopeTeam ? `No leads matched ${teamSelectLabel(selectedScopeTeam)}.` : "Adjust the search or filters to widen the result set.";
   const bulkUsersMessage = pickedTeamIds.length > 1 ? "Select leads from one team at a time before bulk assignment." : scopedUsersEmptyMessage(bulkScopeTeam);
-  const ownerUsersMessage = scopedUsersEmptyMessage(selectedScopeTeam);
-  const collaboratorUsersMessage = ownerUsersMessage;
-  const legalUsersMessage = workflowUsersEmptyMessage(selectedScopeTeam?.name, "legal");
   const allPicked = !!records.leads.length && records.leads.every((lead) => picked.includes(lead.lead_id));
   const showBlockingLoader = booting || (records.loading && !records.leads.length && !records.totalMatched);
   const handleInlineStatusUpdate = (updatedLead) => {
     mergeLeadState(updatedLead);
     setNotice(`Lead status moved to ${titleizeLeadValue(updatedLead.status || "new")}.`);
   };
-  const handleQuickAddNote = async (lead, content) => {
-    if (!session?.token || !lead?.lead_id) {
-      return;
-    }
-
-    try {
-      await apiRequest(`/leads/${lead.lead_id}/notes`, {
-        method: "POST",
-        token: session.token,
-        body: { content },
-      });
-
-      const currentLead = selection.activeLead?.lead_id === lead.lead_id
-        ? selection.activeLead
-        : records.leads.find((item) => item.lead_id === lead.lead_id) || lead;
-
-      mergeLeadState({
-        lead_id: lead.lead_id,
-        latest_note: content,
-        note_count: Number(currentLead?.note_count || 0) + 1,
-      });
-      setNotice("Note added successfully.");
-    } catch (requestError) {
-      setError(requestError.message || "Could not save this note.");
-      throw requestError;
-    }
-  };
+  const handleInlineNoteSaved = useCallback((leadId, content) => {
+    const existingLead =
+      (selection.activeLead?.lead_id === leadId ? selection.activeLead : null)
+      || records.leads.find((item) => item.lead_id === leadId)
+      || null;
+    mergeLeadState({
+      lead_id: leadId,
+      latest_note: content,
+      note_count: Number(existingLead?.note_count || 0) + 1,
+    });
+    setNotice("Follow-up note saved.");
+  }, [mergeLeadState, records.leads, selection.activeLead]);
   const rowSharedProps = {
+    activeLead: selection.activeLead,
     archiveLead: ownershipActions.archiveLead,
     assigning: ownershipActions.assigning,
-    company: filters.company,
     collaboratorUsersMessage,
+    company: filters.company,
     deleting: ownershipActions.deleting,
     detailLoading: selection.detailLoading,
     handleInlineStatusUpdate,
     isPlatformConsole,
-    legalTeam,
+    legalTeam: legalUsers,
     legalTransferNote: ownershipActions.legalTransferNote,
     legalTransferOwner: ownershipActions.legalTransferOwner,
     legalUsersMessage,
     onOwnerChange: ownershipActions.setOwner,
+    onInlineNoteSaved: handleInlineNoteSaved,
     onOwnerNoteChange: ownershipActions.setOwnerNote,
-    pendingCollaborator: collaboratorActions.pendingCollaborator,
     owner: ownershipActions.owner,
     ownerNote: ownershipActions.ownerNote,
-    ownerUsersMessage,
-    onQuickAddNote: handleQuickAddNote,
+    ownerUsersMessage: collaboratorUsersMessage,
+    pendingCollaborator: collaboratorActions.pendingCollaborator,
     removeCollaborator: collaboratorActions.removeCollaborator,
     removingCollaboratorId: collaboratorActions.removingCollaboratorId,
     saveCollaborator: collaboratorActions.addCollaborator,
     saveOwner: ownershipActions.saveOwner,
     savingCollaborators: collaboratorActions.savingCollaborators,
-    scopedLegalUsers,
+    scopedLegalUsers: resources.teamUsers.filter((user) => user.role === "legal-team"),
     sessionToken: session?.token,
     setPendingCollaborator: collaboratorActions.setPendingCollaborator,
     setLegalTransferNote: ownershipActions.setLegalTransferNote,
@@ -179,7 +202,6 @@ function LeadsPageContent() {
     transferring: ownershipActions.transferring,
   };
   const listRowActions = {
-    ...rowSharedProps,
     activeLead: selection.activeLead,
     canTransferActiveLead,
     closedWonCount,

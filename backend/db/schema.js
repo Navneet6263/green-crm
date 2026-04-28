@@ -384,6 +384,20 @@ const schemaStatements = [
     KEY idx_lead_assignments_user_lead (user_id, lead_id, access_type)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
 
+  `CREATE TABLE IF NOT EXISTS lead_documents (
+    id            BIGINT        NOT NULL AUTO_INCREMENT,
+    company_id    VARCHAR(20)   NOT NULL,
+    lead_id       VARCHAR(20)   NOT NULL,
+    file_name     VARCHAR(255)  NOT NULL,
+    file_url      VARCHAR(512)  NOT NULL,
+    file_size     BIGINT        NULL,
+    content_type  VARCHAR(191)  NULL,
+    uploaded_by   VARCHAR(20)   NOT NULL,
+    uploaded_at   DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_ld_lead (lead_id, uploaded_at)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
   `CREATE TABLE IF NOT EXISTS lead_notes (
     id          BIGINT        NOT NULL AUTO_INCREMENT,
     company_id  VARCHAR(20)   NOT NULL,
@@ -697,6 +711,8 @@ const performanceIndexDefinitions = [
   { table: "leads", name: "idx_leads_company_followup_active_perf", columns: "company_id, is_active, follow_up_date" },
   { table: "lead_assignments", name: "idx_lead_assignments_company_lead_perf", columns: "company_id, lead_id, access_type, user_id" },
   { table: "lead_assignments", name: "idx_lead_assignments_company_user_perf", columns: "company_id, user_id, access_type, lead_id" },
+  { table: "lead_documents", name: "idx_ld_company_lead_uploaded_perf", columns: "company_id, lead_id, uploaded_at" },
+  { table: "lead_documents", name: "idx_ld_company_uploader_uploaded_perf", columns: "company_id, uploaded_by, uploaded_at" },
   { table: "lead_notes", name: "idx_lead_notes_company_lead_created_perf", columns: "company_id, lead_id, created_at" },
   { table: "lead_notes", name: "idx_lead_notes_company_lead_created_id_perf", columns: "company_id, lead_id, created_at, id" },
   { table: "lead_activities", name: "idx_lead_activities_company_lead_created_perf", columns: "company_id, lead_id, created_at" },

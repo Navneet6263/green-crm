@@ -112,13 +112,13 @@ function getBlockedFeature(pathname, role, companyAccess) {
   return companyAccess[matchedRule.accessKey] === false ? matchedRule : null;
 }
 
-function SidebarNavItem({ item, active }) {
+function SidebarNavItem({ item, active, exactActive }) {
   return (
     <Link
       href={item.href}
       prefetch={false}
       scroll={false}
-      onClick={active ? (event) => event.preventDefault() : undefined}
+      onClick={exactActive ? (event) => event.preventDefault() : undefined}
       className={cn(
         "group flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-sm font-medium transition",
         active
@@ -436,6 +436,7 @@ export default function DashboardShell({ session: initialSession, children, titl
                 {section.items.map((item) => (
                   <SidebarNavItem
                     key={item.href}
+                    exactActive={pathname === item.href}
                     item={item}
                     active={activeNavHref === item.href}
                   />

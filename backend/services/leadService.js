@@ -4,6 +4,7 @@ const userRepository = require("../repositories/userRepository");
 const productRepository = require("../repositories/productRepository");
 const leadRepository = require("../repositories/leadRepository");
 const leadAssignmentRepository = require("../repositories/leadAssignmentRepository");
+const leadDocumentRepository = require("../repositories/leadDocumentRepository");
 const workflowRepository = require("../repositories/workflowRepository");
 const auditRepository = require("../repositories/auditRepository");
 const { LEAD_ACTIVITY_TYPES, LEAD_PRIORITIES, LEAD_STATUSES } = require("../constants/lead");
@@ -13,6 +14,10 @@ const { buildPaginatedResult, parsePagination } = require("../utils/pagination")
 const { createPrefixedId } = require("../utils/ids");
 const AppError = require("../utils/appError");
 const { assertCompanyAccess, getAccessibleCompanyIds, isManagerRole, isPlatformOperatorRole } = require("../utils/tenant");
+const {
+  deleteStoredLeadDocument,
+  storeLeadDocument,
+} = require("./leadDocumentStorageService");
 const {
   assertRecordTeamAccess,
   assertTeamAccess,
@@ -33,6 +38,18 @@ const SHARED_ACCESS_ROLES = [
   ROLES.FINANCE_TEAM,
   ROLES.SUPPORT,
   ROLES.VIEWER,
+];
+const LEAD_DOCUMENT_UPLOAD_ROLES = [
+  ROLES.SUPER_ADMIN,
+  ROLES.PLATFORM_ADMIN,
+  ROLES.PLATFORM_MANAGER,
+  ROLES.ADMIN,
+  ROLES.MANAGER,
+  ROLES.SALES,
+  ROLES.MARKETING,
+  ROLES.LEGAL_TEAM,
+  ROLES.FINANCE_TEAM,
+  ROLES.SUPPORT,
 ];
 
 function normalizeLeadNumber(value) {
@@ -605,7 +622,8 @@ async function listLeads(auth, query) {
 
 async function getLead(auth, leadId) {
   const lead = await getLeadRecord(auth, leadId);
-  const [legalDocuments, financeDocuments, stageHistory, transferHistory, sharedUsers] = await Promise.all([
+  const [documents, legalDocuments, financeDocuments, stageHistory, transferHistory, sharedUsers] = await Promise.all([
+    leadDocumentRepository.listLeadDocumentsByLead(lead.lead_id, lead.company_id),
     workflowRepository.listLegalDocumentsByLead(lead.lead_id, lead.company_id),
     workflowRepository.listFinanceDocumentsByLead(lead.lead_id, lead.company_id),
     workflowRepository.listStageHistoryByLead(lead.lead_id, lead.company_id),
@@ -617,6 +635,7 @@ async function getLead(auth, leadId) {
   return {
     ...lead,
     ...assignmentPayload,
+    documents,
     legal_documents: legalDocuments,
     finance_documents: financeDocuments,
     stage_history: stageHistory,
@@ -626,6 +645,86 @@ async function getLead(auth, leadId) {
       lead.status === "closed-won" &&
       (lead.workflow_stage || "sales") === "sales",
   };
+}
+
+async function listLeadDocuments(auth, leadId) {
+  const lead = await getLeadRecord(auth, leadId);
+  return leadDocumentRepository.listLeadDocumentsByLead(lead.lead_id, lead.company_id);
+}
+
+async function uploadLeadDocument(auth, leadId, metadata, fileBuffer) {
+  const lead = await getLeadRecord(auth, leadId);
+  if (!LEAD_DOCUMENT_UPLOAD_ROLES.includes(auth.role)) {
+    throw new AppError("This role cannot upload lead documents.", 403);
+  }
+
+  const buffer = Buffer.isBuffer(fileBuffer)
+    ? fileBuffer
+    : fileBuffer
+      ? Buffer.from(fileBuffer)
+      : null;
+
+  if (!buffer?.length) {
+    throw new AppError("A document file is required.", 400);
+  }
+
+  const storedDocument = await storeLeadDocument({
+    buffer,
+    companyId: lead.company_id,
+    contentType: String(metadata?.contentType || "application/octet-stream").trim().toLowerCase(),
+    fileName: metadata?.fileName,
+    leadId: lead.lead_id,
+  });
+
+  try {
+    return await db.withTransaction(async (transaction) => {
+      const createdDocument = await leadDocumentRepository.createLeadDocument(
+        {
+          company_id: lead.company_id,
+          lead_id: lead.lead_id,
+          file_name: storedDocument.fileName,
+          file_url: storedDocument.fileUrl,
+          file_size: storedDocument.fileSize,
+          content_type: storedDocument.contentType,
+          uploaded_by: auth.userId,
+        },
+        transaction
+      );
+
+      await leadRepository.createActivity(
+        {
+          activity_id: await createPrefixedId("act"),
+          company_id: lead.company_id,
+          lead_id: lead.lead_id,
+          type: "updated",
+          description: `Document uploaded: ${storedDocument.fileName}`,
+          created_by: auth.userId,
+        },
+        transaction
+      );
+
+      await auditRepository.createLog(
+        {
+          audit_id: await createPrefixedId("aud"),
+          company_id: lead.company_id,
+          entity_id: lead.lead_id,
+          action: "lead.document.uploaded",
+          performed_by: auth.userId,
+          details: {
+            content_type: storedDocument.contentType,
+            file_name: storedDocument.fileName,
+            file_size: storedDocument.fileSize,
+          },
+        },
+        transaction
+      );
+
+      return createdDocument;
+    });
+  } catch (error) {
+    await deleteStoredLeadDocument(storedDocument.fileUrl).catch(() => {});
+    throw error;
+  }
 }
 
 async function createLead(auth, payload) {
@@ -1057,11 +1156,24 @@ async function addLeadNote(auth, leadId, payload) {
     throw new AppError("Note content is required.");
   }
 
-  await leadRepository.createNote({
-    company_id: lead.company_id,
-    lead_id: leadId,
-    content: String(payload.content).trim(),
-    created_by: auth.userId,
+  const content = String(payload.content).trim();
+
+  await db.withTransaction(async (transaction) => {
+    await leadRepository.createNote({
+      company_id: lead.company_id,
+      lead_id: leadId,
+      content,
+      created_by: auth.userId,
+    }, transaction);
+
+    await leadRepository.createActivity({
+      activity_id: await createPrefixedId("act"),
+      company_id: lead.company_id,
+      lead_id: leadId,
+      type: "note",
+      description: content,
+      created_by: auth.userId,
+    }, transaction);
   });
 
   return { created: true };
@@ -1254,6 +1366,7 @@ module.exports = {
   getLeadAssignments,
   getProductStats,
   getUserProductHistory,
+  listLeadDocuments,
   listLeadActivities,
   listLeadNotes,
   listLeads,
@@ -1262,4 +1375,5 @@ module.exports = {
   removeLeadAssignment,
   updateLead,
   updateLeadAssignments,
+  uploadLeadDocument,
 };
