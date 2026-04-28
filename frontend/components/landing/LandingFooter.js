@@ -6,40 +6,23 @@ import { FOOTER_LINK_GROUPS } from "./landing-data";
 
 export default function LandingFooter() {
   return (
-    <footer className="border-t border-slate-200/70 bg-white/80">
+    <footer className="border-t border-white/60 bg-[rgba(255,255,255,0.82)]">
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 lg:grid-cols-[1.1fr_0.9fr] lg:px-8">
-        <div>
-          <div className="text-slate-950">
-            <AppLogo
-              size="lg"
-              variant="footer"
-            />
-            <p className="mt-3 text-sm text-slate-500">{BRAND_COPY.footer}</p>
-          </div>
-          <p className="mt-5 max-w-xl text-sm leading-8 text-slate-600">
-            Best CRM software in India for small businesses, startups, and sales teams.
-            Manage leads, calls, WhatsApp, SMS, attendance, and dashboards from one
-            affordable CRM.
-          </p>
-
-          <div className="mt-6 rounded-[1.6rem] border border-slate-200 bg-[#f8fafc] p-5">
-            <p className="text-sm font-semibold text-slate-950">
-              Contact GreenCRM - CRM Company in Noida
+        <div className="max-w-xl">
+          <AppLogo size="lg" variant="footer" />
+          <p className="mt-4 text-sm leading-7 text-[#5c6f68]">{BRAND_COPY.footer}</p>
+          <div className="mt-6 rounded-[1.6rem] border border-[#e7ece5] bg-[#f9fbf7] p-5">
+            <p className="text-sm font-semibold text-[#0d1f1b]">Need a walkthrough before you decide?</p>
+            <p className="mt-2 text-sm leading-7 text-[#5c6f68]">
+              Book a live demo and see how GreenCRM handles leads, follow-ups, tasks, and customer context.
             </p>
-            <p className="mt-2 text-sm leading-7 text-slate-600">
-              Use the demo request form for product queries, pricing, and setup support.
-              Free demo available.
-            </p>
-            <div className="mt-4 flex flex-wrap items-center gap-3">
-              <Link
-                href="/book-demo"
-                className="inline-flex items-center rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
-              >
-                Book Free Demo
+            <div className="mt-4 flex flex-wrap gap-3">
+              <Link href="/book-demo" className="inline-flex rounded-full bg-[#0f7a5f] px-4 py-2.5 text-sm font-semibold text-white">
+                Book Demo
               </Link>
-              <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm text-emerald-700">
-                Affordable CRM India
-              </span>
+              <Link href="/login" className="inline-flex rounded-full border border-[#d8dfd4] bg-white px-4 py-2.5 text-sm font-semibold text-[#21453d]">
+                Login
+              </Link>
             </div>
           </div>
         </div>
@@ -47,14 +30,10 @@ export default function LandingFooter() {
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
           {FOOTER_LINK_GROUPS.map((group) => (
             <div key={group.title}>
-              <p className="text-sm font-semibold text-slate-950">{group.title}</p>
+              <p className="text-sm font-semibold text-[#0d1f1b]">{group.title}</p>
               <div className="mt-4 grid gap-3">
                 {group.links.map((link) => (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className="text-sm text-slate-600 transition hover:text-emerald-700"
-                  >
+                  <Link key={link.href} href={link.href} className="text-sm text-[#5c6f68] transition hover:text-[#0f7a5f]">
                     {link.label}
                   </Link>
                 ))}
@@ -63,10 +42,11 @@ export default function LandingFooter() {
           ))}
         </div>
       </div>
-      <div className="border-t border-slate-200/70">
-        <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-5 text-sm text-slate-500 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+
+      <div className="border-t border-white/60">
+        <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-5 text-sm text-[#70827a] sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
           <p>&copy; {new Date().getFullYear()} {BRAND_NAME}. All rights reserved.</p>
-          <p>GreenCRM and GreenCall CRM branding may be used across campaigns and demo flows.</p>
+          <p>Built for cleaner follow-up discipline and better lead ownership.</p>
         </div>
       </div>
     </footer>

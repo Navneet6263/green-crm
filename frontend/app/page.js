@@ -175,15 +175,15 @@ export default function HomePage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[linear-gradient(180deg,#f7fcf9_0%,#f5f7fb_34%,#ffffff_100%)] text-slate-950">
+    <div className="min-h-screen bg-[linear-gradient(180deg,#fbf8f0_0%,#f4fbf6_28%,#f7faf6_58%,#ffffff_100%)] text-slate-950">
       <LandingNavbar />
       <main>
         <LandingHero />
-        <LandingFeatureHighlights />
         <LandingTrustSection />
-        <LandingUseCases />
-        <LandingWorkflow />
         <LandingTestimonials />
+        <LandingFeatureHighlights />
+        <LandingWorkflow />
+        <LandingUseCases />
         <LandingDemoCta />
       </main>
       <LandingFooter />

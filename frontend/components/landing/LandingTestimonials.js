@@ -1,29 +1,27 @@
 import SectionIntro from "./SectionIntro";
-import { TESTIMONIALS } from "./landing-data";
+import { PROBLEM_ITEMS } from "./landing-data";
 
 export default function LandingTestimonials() {
   return (
-    <section id="testimonials" className="mx-auto max-w-7xl px-4 py-18 sm:px-6 lg:px-8">
-      <SectionIntro
-        eyebrow="Testimonials"
-        title="What teams say after switching to GreenCRM."
-        description="These sample testimonials reflect the kind of outcomes sales and field teams usually want from a practical CRM."
-      />
+    <section className="mx-auto max-w-7xl px-4 py-18 sm:px-6 lg:px-8">
+      <div className="grid gap-10 lg:grid-cols-[0.84fr_1.16fr]">
+        <SectionIntro
+          eyebrow="The Problem"
+          title="Sales follow-ups break when the system is not built for daily action."
+          description="GreenCRM is designed around the small things teams do every day to move a lead forward."
+        />
 
-      <div className="mt-10 grid gap-4 md:grid-cols-3">
-        {TESTIMONIALS.map((item) => (
-          <article
-            key={item.name}
-            className="rounded-[1.75rem] border border-slate-200/80 bg-white p-6 shadow-[0_18px_50px_rgba(15,23,42,0.06)]"
-          >
-            <p className="text-3xl leading-none text-emerald-500">&ldquo;</p>
-            <p className="mt-4 text-sm leading-8 text-slate-600">{item.quote}</p>
-            <div className="mt-6 border-t border-slate-100 pt-4">
-              <p className="text-sm font-semibold text-slate-950">{item.name}</p>
-              <p className="mt-1 text-sm text-slate-500">{item.role}</p>
-            </div>
-          </article>
-        ))}
+        <div className="grid gap-4 md:grid-cols-3">
+          {PROBLEM_ITEMS.map((item, index) => (
+            <article key={item.title} className="rounded-[1.8rem] border border-[#e7ece5] bg-white/86 p-6 shadow-[0_18px_42px_rgba(13,31,27,0.05)]">
+              <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#edf8f2] text-sm font-semibold text-[#0f7a5f]">
+                0{index + 1}
+              </span>
+              <h3 className="mt-5 text-xl font-semibold tracking-tight text-[#0d1f1b]">{item.title}</h3>
+              <p className="mt-3 text-sm leading-7 text-[#5c6f68]">{item.copy}</p>
+            </article>
+          ))}
+        </div>
       </div>
     </section>
   );

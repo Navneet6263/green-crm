@@ -3,34 +3,22 @@ import { WORKFLOW_STEPS } from "./landing-data";
 
 export default function LandingWorkflow() {
   return (
-    <section id="how-it-works" className="border-y border-slate-200/70 bg-white/70">
-      <div className="mx-auto grid max-w-7xl gap-10 px-4 py-18 sm:px-6 lg:grid-cols-[0.82fr_1.18fr] lg:px-8">
-        <div className="lg:sticky lg:top-28 lg:self-start">
-          <SectionIntro
-            eyebrow="How It Works"
-            title="How GreenCRM works in 3 simple steps."
-            description="The workflow stays easy to scan so your team can move faster from new lead to clear performance tracking."
-          />
-        </div>
+    <section id="workflow" className="mx-auto max-w-7xl px-4 py-18 sm:px-6 lg:px-8">
+      <div className="overflow-hidden rounded-[2.2rem] border border-white/70 bg-[linear-gradient(180deg,rgba(248,251,247,0.96),rgba(255,255,255,0.92))] p-6 shadow-[0_26px_70px_rgba(13,31,27,0.06)] md:p-8">
+        <SectionIntro
+          eyebrow="Workflow"
+          title="Capture lead, assign owner, add follow-up, track history, close cleanly."
+          description="The workflow keeps every step visible so teams can move faster without losing context."
+        />
 
-        <div className="grid gap-4">
-          {WORKFLOW_STEPS.map((step, index) => (
-            <article
-              key={step.step}
-              className="grid gap-4 rounded-[1.75rem] border border-slate-200/80 bg-[#f8fafc] p-5 shadow-[0_18px_44px_rgba(15,23,42,0.05)] md:grid-cols-[auto_1fr]"
-            >
-              <div className="flex items-center gap-4 md:block">
-                <span className="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-500 text-sm font-semibold text-white shadow-[0_10px_20px_rgba(16,185,129,0.2)]">
-                  {step.step}
-                </span>
-                {index < WORKFLOW_STEPS.length - 1 ? (
-                  <span className="hidden h-16 w-px bg-emerald-200 md:mx-auto md:mt-4 md:block" />
-                ) : null}
-              </div>
-              <div className="pt-1">
-                <h3 className="text-xl font-semibold tracking-tight text-slate-950">{step.title}</h3>
-                <p className="mt-3 max-w-2xl text-sm leading-8 text-slate-600">{step.note}</p>
-              </div>
+        <div className="mt-10 grid gap-4 lg:grid-cols-5">
+          {WORKFLOW_STEPS.map((item) => (
+            <article key={item.step} className="relative rounded-[1.7rem] border border-[#e5ece3] bg-white/88 p-5">
+              <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#edf8f2] text-sm font-semibold text-[#0f7a5f]">
+                {item.step}
+              </span>
+              <h3 className="mt-5 text-lg font-semibold text-[#0d1f1b]">{item.title}</h3>
+              <p className="mt-3 text-sm leading-7 text-[#5c6f68]">{item.note}</p>
             </article>
           ))}
         </div>

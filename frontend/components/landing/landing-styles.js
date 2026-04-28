@@ -1,27 +1,23 @@
-// Shared button & style tokens for the landing page
-
 export const btnPrimary =
-  "inline-flex min-h-12 items-center justify-center rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 px-6 py-3 text-[0.95rem] font-semibold tracking-[0.01em] text-white shadow-[0_16px_36px_rgba(16,185,129,0.28)] transition hover:-translate-y-0.5 hover:shadow-[0_20px_44px_rgba(16,185,129,0.34)]";
+  "inline-flex min-h-12 items-center justify-center rounded-full bg-[#0f7a5f] px-6 py-3 text-[0.95rem] font-semibold text-white shadow-[0_18px_40px_rgba(15,122,95,0.22)] transition hover:-translate-y-0.5 hover:bg-[#0b6b53]";
 
 export const btnSecondary =
-  "inline-flex min-h-12 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-3 text-[0.95rem] font-semibold text-slate-700 shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition hover:-translate-y-0.5 hover:border-emerald-300 hover:text-emerald-700";
+  "inline-flex min-h-12 items-center justify-center rounded-full border border-[#d8dfd4] bg-white/88 px-5 py-3 text-[0.95rem] font-semibold text-[#21453d] transition hover:-translate-y-0.5 hover:border-[#a7c7b9] hover:bg-white";
 
 export const btnGhost =
-  "inline-flex min-h-12 items-center justify-center rounded-xl px-5 py-3 text-[0.95rem] font-semibold text-slate-600 transition hover:text-emerald-700";
+  "inline-flex min-h-12 items-center justify-center rounded-full px-5 py-3 text-[0.95rem] font-semibold text-[#4e685f] transition hover:text-[#103a32]";
 
 export const btnPrimarySmall =
-  "inline-flex min-h-11 items-center justify-center rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_14px_30px_rgba(16,185,129,0.24)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(16,185,129,0.32)]";
+  "inline-flex min-h-11 items-center justify-center rounded-full bg-[#0f7a5f] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_14px_28px_rgba(15,122,95,0.18)] transition hover:-translate-y-0.5 hover:bg-[#0b6b53]";
 
 export const btnSecondarySmall =
-  "inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-[0_10px_24px_rgba(15,23,42,0.04)] transition hover:-translate-y-0.5 hover:border-emerald-300 hover:text-emerald-700";
+  "inline-flex min-h-11 items-center justify-center rounded-full border border-[#d8dfd4] bg-white/88 px-4 py-2.5 text-sm font-semibold text-[#21453d] transition hover:-translate-y-0.5 hover:border-[#a7c7b9] hover:bg-white";
 
-// CTA section (dark bg) button variants
 export const btnCtaLight =
-  "inline-flex min-h-12 items-center justify-center rounded-xl bg-white px-5 py-3 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50";
+  "inline-flex min-h-12 items-center justify-center rounded-full bg-[#0f7a5f] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#0b6b53]";
 
 export const btnCtaOutline =
-  "inline-flex min-h-12 items-center justify-center rounded-xl border border-white/15 bg-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/16";
+  "inline-flex min-h-12 items-center justify-center rounded-full border border-[#bfd5cb] bg-white/72 px-5 py-3 text-sm font-semibold text-[#21453d] transition hover:bg-white";
 
-// Accent color for icon backgrounds
-export const iconBg = "bg-gradient-to-br from-emerald-600 to-teal-500 text-white";
-export const iconBgLight = "bg-emerald-50 text-emerald-600";
+export const iconBg = "bg-[#f1fbf6] text-[#0f7a5f]";
+export const iconBgSoft = "bg-white text-[#0f7a5f]";
