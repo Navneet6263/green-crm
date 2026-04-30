@@ -4,6 +4,26 @@ import { apiRequest } from "../../../lib/api";
 import { LEAD_EXPORT_PAGE_SIZE } from "./leadPageConstants";
 import { buildQueryPath, titleizeLeadValue } from "./leadPageFormatters";
 
+function resolveLeadNotesText(lead) {
+  if (!lead.notes) return "";
+  if (typeof lead.notes === "string") return lead.notes;
+  if (!Array.isArray(lead.notes)) return lead.latest_note || "";
+  return lead.notes
+    .map((note) => {
+      if (!note) return "";
+      if (typeof note === "string") return note;
+      return note.content || note.text || "";
+    })
+    .filter(Boolean)
+    .join(" | ");
+}
+
+function resolveLeadNotesCount(lead) {
+  if (Array.isArray(lead.notes)) return lead.notes.length;
+  if (lead.note_count !== undefined) return Number(lead.note_count || 0);
+  return lead.notes ? 1 : 0;
+}
+
 export const LEAD_EXPORT_COLUMNS = [
   { key: "contact_person", label: "Contact Person", resolve: (lead) => lead.contact_person || "" },
   { key: "company_name", label: "Company", resolve: (lead) => lead.company_name || "" },
@@ -20,6 +40,12 @@ export const LEAD_EXPORT_COLUMNS = [
   { key: "created_at", label: "Created At", resolve: (lead) => formatLeadExportDate(lead.created_at) },
   { key: "follow_up_date", label: "Follow-up Date", resolve: (lead) => formatLeadExportDate(lead.follow_up_date) },
   { key: "created_by", label: "Created By", resolve: (lead) => lead.created_by_name || lead.created_by || "" },
+  { key: "latest_note", label: "Latest Note", resolve: (lead) => lead.latest_note || "" },
+  { key: "notes_text", label: "All Notes", resolve: (lead) => resolveLeadNotesText(lead) },
+  { key: "notes_count", label: "Notes Count", resolve: (lead) => resolveLeadNotesCount(lead) },
+  { key: "requirements", label: "Requirements", resolve: (lead) => lead.requirements || "" },
+  { key: "industry", label: "Industry", resolve: (lead) => lead.industry || "" },
+  { key: "updated_at", label: "Last Updated", resolve: (lead) => formatLeadExportDate(lead.updated_at) },
 ];
 
 export function formatLeadExportDate(value) {
@@ -105,81 +131,186 @@ export function buildLeadExportFilename(extension = "csv", prefix = "greencrm-le
   return `${prefix}-${dateStamp}-${timeStamp}.${extension}`;
 }
 
-export function downloadLeadCsv(leads = [], filename = buildLeadExportFilename("csv")) {
-  const header = LEAD_EXPORT_COLUMNS.map((column) => escapeCsvValue(column.label)).join(",");
-  const rows = leads
-    .map((lead) =>
-      LEAD_EXPORT_COLUMNS.map((column) => escapeCsvValue(column.resolve(lead))).join(",")
-    )
-    .join("\n");
-  const content = `${header}\n${rows}`;
-
-  downloadBlob(filename, new Blob([`\uFEFF${content}`], { type: "text/csv;charset=utf-8;" }));
+export function downloadLeadHtml(leads = [], filename = buildLeadExportFilename("html")) {
+  const html = buildLeadHtmlReport(leads);
+  downloadBlob(filename, new Blob([html], { type: "text/html;charset=utf-8;" }));
 }
 
-export function downloadLeadExcel(leads = [], filename = buildLeadExportFilename("xls")) {
-  const workbook = buildLeadExcelWorkbook(leads);
+export function downloadLeadCsv(leads = [], filename = buildLeadExportFilename("csv")) {
+  function escapeCsv(value) {
+    const text = String(value ?? "");
+    return /[",\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+  }
+  const header = LEAD_EXPORT_COLUMNS.map((column) => escapeCsv(column.label)).join(",");
+  const rows = leads
+    .map((lead) =>
+      LEAD_EXPORT_COLUMNS.map((column) => escapeCsv(column.resolve(lead))).join(",")
+    )
+    .join("\n");
+  downloadBlob(filename, new Blob([`\uFEFF${header}\n${rows}`], { type: "text/csv;charset=utf-8;" }));
+}
+
+export function downloadLeadExcel(leads = [], filename = buildLeadExportFilename("html")) {
+  const html = buildLeadHtmlReport(leads);
   downloadBlob(
     filename,
-    new Blob([workbook], {
-      type: "application/vnd.ms-excel;charset=utf-8;",
-    })
+    new Blob([html], { type: "text/html;charset=utf-8;" })
   );
 }
 
-function buildLeadExcelWorkbook(leads = []) {
-  const bodyRows = leads
-    .map((lead) => {
-      const cells = LEAD_EXPORT_COLUMNS.map((column) => {
-        const value = column.resolve(lead);
-        return buildXmlCell(value, typeof value === "number" ? "Number" : "String");
-      }).join("");
+const STATUS_COLORS = {
+  "new": { bg: "#dbeafe", text: "#1d4ed8", border: "#93c5fd" },
+  "contacted": { bg: "#d1fae5", text: "#065f46", border: "#6ee7b7" },
+  "qualified": { bg: "#ede9fe", text: "#5b21b6", border: "#c4b5fd" },
+  "proposal": { bg: "#fce7f3", text: "#9d174d", border: "#f9a8d4" },
+  "negotiation": { bg: "#fef3c7", text: "#92400e", border: "#fcd34d" },
+  "booked-demo": { bg: "#ede9fe", text: "#4c1d95", border: "#a78bfa" },
+  "demo-done": { bg: "#d1fae5", text: "#065f46", border: "#6ee7b7" },
+  "trial-started": { bg: "#dbeafe", text: "#1e40af", border: "#93c5fd" },
+  "closed-won": { bg: "#dcfce7", text: "#166534", border: "#86efac" },
+  "closed-lost": { bg: "#fee2e2", text: "#991b1b", border: "#fca5a5" },
+};
 
-      return `<Row>${cells}</Row>`;
+const PRIORITY_COLORS = {
+  "low": { bg: "#f0fdf4", text: "#166534", border: "#86efac" },
+  "medium": { bg: "#fef9c3", text: "#854d0e", border: "#fde047" },
+  "high": { bg: "#fff7ed", text: "#9a3412", border: "#fdba74" },
+  "urgent": { bg: "#fee2e2", text: "#991b1b", border: "#fca5a5" },
+};
+
+function getBadgeStyle(colorMap, key) {
+  const c = colorMap[String(key || "").toLowerCase()] || { bg: "#f3f4f6", text: "#374151", border: "#d1d5db" };
+  return `background:${c.bg};color:${c.text};border:1px solid ${c.border};padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;display:inline-block;white-space:nowrap;`;
+}
+
+function buildLeadHtmlReport(leads = []) {
+  const now = new Date();
+  const generatedAt = now.toLocaleString("en-IN", { dateStyle: "long", timeStyle: "short" });
+  const totalValue = leads.reduce((sum, l) => sum + Number(l.estimated_value || 0), 0);
+  const wonCount = leads.filter((l) => ["closed-won"].includes(l.status)).length;
+  const lostCount = leads.filter((l) => ["closed-lost"].includes(l.status)).length;
+  const activeCount = leads.filter((l) => !["closed-won", "closed-lost"].includes(l.status)).length;
+
+  const statCards = [
+    { label: "Total Leads", value: leads.length, color: "#2563eb" },
+    { label: "Active", value: activeCount, color: "#0891b2" },
+    { label: "Closed Won", value: wonCount, color: "#16a34a" },
+    { label: "Closed Lost", value: lostCount, color: "#dc2626" },
+    { label: "Total Value", value: `INR ${totalValue.toLocaleString("en-IN")}`, color: "#7c3aed" },
+  ]
+    .map(
+      (s) =>
+        `<div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:18px 22px;min-width:140px;flex:1;">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#9ca3af;margin-bottom:8px;">${escapeHtml(s.label)}</div>
+          <div style="font-size:26px;font-weight:800;color:${s.color};">${escapeHtml(String(s.value))}</div>
+        </div>`
+    )
+    .join("");
+
+  const headerCells = [
+    "#", "Contact Person", "Company", "Email", "Phone",
+    "Product", "Status", "Priority", "Source", "Assigned To",
+    "Workflow Stage", "Estimated Value", "Units", "Created At",
+    "Follow-up Date", "Created By", "Latest Note", "All Notes", "Notes Count",
+    "Requirements", "Industry", "Last Updated",
+  ]
+    .map((h) => `<th style="background:#1e293b;color:#f8fafc;padding:11px 14px;text-align:left;font-size:12px;font-weight:700;white-space:nowrap;border:1px solid #334155;">${escapeHtml(h)}</th>`)
+    .join("");
+
+  const bodyRows = leads
+    .map((lead, idx) => {
+      const statusKey = String(lead.status || "new").toLowerCase();
+      const priorityKey = String(lead.priority || "medium").toLowerCase();
+      const rowBg = idx % 2 === 0 ? "#ffffff" : "#f8fafc";
+
+      const cells = [
+        `<td style="${tdBase}font-weight:700;color:#374151;">${idx + 1}</td>`,
+        `<td style="${tdBase}font-weight:600;color:#111827;">${escapeHtml(lead.contact_person || "")}</td>`,
+        `<td style="${tdBase}font-weight:600;color:#111827;">${escapeHtml(lead.company_name || "")}</td>`,
+        `<td style="${tdBase}color:#2563eb;">${escapeHtml(lead.email || "")}</td>`,
+        `<td style="${tdBase}">${escapeHtml(lead.phone || "")}</td>`,
+        `<td style="${tdBase}">${escapeHtml(lead.product_name || lead.product_id || "")}</td>`,
+        `<td style="${tdBase}"><span style="${getBadgeStyle(STATUS_COLORS, statusKey)}">${escapeHtml(titleizeLeadValue(lead.status || "new"))}</span></td>`,
+        `<td style="${tdBase}"><span style="${getBadgeStyle(PRIORITY_COLORS, priorityKey)}">${escapeHtml(titleizeLeadValue(lead.priority || "medium"))}</span></td>`,
+        `<td style="${tdBase}">${escapeHtml(titleizeLeadValue(lead.lead_source || ""))}</td>`,
+        `<td style="${tdBase}">${escapeHtml(lead.assigned_to_name || lead.assigned_to || "")}</td>`,
+        `<td style="${tdBase}">${escapeHtml(titleizeLeadValue(lead.workflow_stage || "sales"))}</td>`,
+        `<td style="${tdBase}font-weight:700;color:#16a34a;">INR ${Number(lead.estimated_value || 0).toLocaleString("en-IN")}</td>`,
+        `<td style="${tdBase}">${escapeHtml(String(lead.number_of_units ?? ""))}</td>`,
+        `<td style="${tdBase}color:#6b7280;">${escapeHtml(formatLeadExportDate(lead.created_at))}</td>`,
+        `<td style="${tdBase}color:#6b7280;">${escapeHtml(formatLeadExportDate(lead.follow_up_date))}</td>`,
+        `<td style="${tdBase}">${escapeHtml(lead.created_by_name || lead.created_by || "")}</td>`,
+        `<td style="${tdBase}max-width:220px;">${escapeHtml(lead.latest_note || "")}</td>`,
+        `<td style="${tdBase}max-width:280px;color:#4b5563;">${escapeHtml(resolveLeadNotesText(lead))}</td>`,
+        `<td style="${tdBase}text-align:center;font-weight:700;color:#7c3aed;">${resolveLeadNotesCount(lead)}</td>`,
+        `<td style="${tdBase}max-width:220px;">${escapeHtml(lead.requirements || "")}</td>`,
+        `<td style="${tdBase}">${escapeHtml(lead.industry || "")}</td>`,
+        `<td style="${tdBase}color:#6b7280;">${escapeHtml(formatLeadExportDate(lead.updated_at))}</td>`,
+      ].join("");
+
+      return `<tr style="background:${rowBg};transition:background .15s;">${cells}</tr>`;
     })
     .join("");
 
-  return [
-    '<?xml version="1.0"?>',
-    '<?mso-application progid="Excel.Sheet"?>',
-    '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"',
-    ' xmlns:o="urn:schemas-microsoft-com:office:office"',
-    ' xmlns:x="urn:schemas-microsoft-com:office:excel"',
-    ' xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">',
-    "<Styles>",
-    '<Style ss:ID="Header"><Font ss:Bold="1" /><Interior ss:Color="#FBF6EC" ss:Pattern="Solid" /></Style>',
-    "</Styles>",
-    '<Worksheet ss:Name="Leads">',
-    "<Table>",
-    `<Row>${LEAD_EXPORT_COLUMNS.map((column) => buildXmlCell(column.label, "String", true)).join("")}</Row>`,
-    bodyRows,
-    "</Table>",
-    "</Worksheet>",
-    "</Workbook>",
-  ].join("");
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>GreenCRM — Lead Export</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f1f5f9; color: #1e293b; }
+  .page { max-width: 100%; padding: 32px 28px; }
+  .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; flex-wrap: wrap; gap: 12px; }
+  .brand { font-size: 22px; font-weight: 800; color: #166534; letter-spacing: -.02em; }
+  .brand span { color: #1e293b; }
+  .meta { font-size: 12px; color: #64748b; text-align: right; }
+  .stats { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 28px; }
+  .table-wrap { overflow-x: auto; border-radius: 14px; box-shadow: 0 4px 24px rgba(0,0,0,.08); border: 1px solid #e2e8f0; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  tr:hover td { background: #eff6ff !important; }
+  .footer { margin-top: 24px; text-align: center; font-size: 11px; color: #94a3b8; }
+  @media print { body { background: #fff; } .page { padding: 16px; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <div>
+      <div class="brand">Green<span>CRM</span></div>
+      <div style="font-size:13px;color:#64748b;margin-top:4px;">Lead Export Report</div>
+    </div>
+    <div class="meta">
+      <div>Generated: ${escapeHtml(generatedAt)}</div>
+      <div style="margin-top:4px;">${leads.length} lead${leads.length !== 1 ? "s" : ""} exported</div>
+    </div>
+  </div>
+
+  <div class="stats">${statCards}</div>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr>${headerCells}</tr></thead>
+      <tbody>${bodyRows}</tbody>
+    </table>
+  </div>
+
+  <div class="footer">GreenCRM &mdash; Exported on ${escapeHtml(generatedAt)}</div>
+</div>
+</body>
+</html>`;
 }
 
-function buildXmlCell(value, type = "String", isHeader = false) {
-  const style = isHeader ? ' ss:StyleID="Header"' : "";
-  return `<Cell${style}><Data ss:Type="${type}">${escapeXmlValue(value)}</Data></Cell>`;
-}
+const tdBase = "padding:10px 14px;border:1px solid #e2e8f0;vertical-align:top;font-size:12px;word-break:break-word;";
 
-function escapeCsvValue(value) {
-  const text = String(value ?? "");
-  if (!/[",\n]/.test(text)) {
-    return text;
-  }
-
-  return `"${text.replaceAll('"', '""')}"`;
-}
-
-function escapeXmlValue(value) {
+function escapeHtml(value) {
   return String(value ?? "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&apos;");
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 function downloadBlob(filename, blob) {

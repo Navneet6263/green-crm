@@ -55,6 +55,7 @@ export function useLeadFilterFields({ companies, filterUsers, filters, leadOptio
         filters.isPlatformConsole ? { key: "company", label: "Tenant", value: filters.company, onChange: filters.setCompany, options: [{ value: "all", label: "All companies" }, ...companies.map((item) => ({ value: item.company_id, label: item.name }))] } : null,
         teams.length > 1 ? { key: "team", label: "Team", value: filters.teamFilter, onChange: filters.setTeamFilter, options: [{ value: "all", label: "All teams" }, ...teams.map((item) => ({ value: item.team_id, label: teamSelectLabel(item) }))] } : null,
         { key: "status", label: "Status", value: filters.status, onChange: filters.setStatus, options: LEAD_STATUS_OPTIONS },
+        { key: "notes-search", label: "Search Notes", value: filters.notesSearch, onChange: filters.setNotesSearch, options: null, isTextInput: true, placeholder: "Search notes text..." },
         { key: "product", label: "Product", value: filters.product, onChange: filters.setProduct, options: [{ value: "all", label: "All products" }, ...products.map((item) => ({ value: item.value, label: `${item.label} (${item.count})` }))] },
         { key: "priority", label: "Priority", value: filters.priority, onChange: filters.setPriority, options: LEAD_PRIORITY_OPTIONS },
         { key: "source", label: "Source", value: filters.source, onChange: filters.setSource, options: sourceOptions },

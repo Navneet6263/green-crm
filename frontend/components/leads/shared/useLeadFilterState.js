@@ -14,6 +14,7 @@ export function useLeadFilterState({ role, session }) {
   const [datePreset, setDatePreset] = useState("all");
   const [fromDate, setFromDate] = useState("");
   const [priority, setPriority] = useState("all");
+  const [notesSearch, setNotesSearch] = useState("");
   const [product, setProduct] = useState("all");
   const [search, setSearch] = useState("");
   const [source, setSource] = useState("all");
@@ -39,6 +40,7 @@ export function useLeadFilterState({ role, session }) {
       company_id: scopedCompanyId,
       team_ids: teamFilter !== "all" ? teamFilter : undefined,
       search: search.trim() || undefined,
+      notes_search: notesSearch.trim() || undefined,
       product_id: product !== "all" ? product : undefined,
       priority: priority !== "all" ? priority : undefined,
       lead_source: source !== "all" ? source : undefined,
@@ -50,13 +52,14 @@ export function useLeadFilterState({ role, session }) {
       status: quickFilter ? undefined : status,
       quick_filter: quickFilter,
     }),
-    [assignedTo, createdBy, fromDate, priority, product, quickFilter, scopedCompanyId, search, source, status, teamFilter, toDate, workflowStage]
+    [assignedTo, createdBy, fromDate, notesSearch, priority, product, quickFilter, scopedCompanyId, search, source, status, teamFilter, toDate, workflowStage]
   );
 
   const activeFilterCount = useMemo(
     () =>
       [
         Boolean(search.trim()),
+        Boolean(notesSearch.trim()),
         status !== "all",
         product !== "all",
         priority !== "all",
@@ -68,11 +71,12 @@ export function useLeadFilterState({ role, session }) {
         teamFilter !== "all",
         isPlatformConsole && company !== "all",
       ].filter(Boolean).length,
-    [assignedTo, canManage, company, createdBy, fromDate, hasFixedAssigneeScope, isPlatformConsole, priority, product, search, source, status, teamFilter, toDate, workflowStage]
+    [assignedTo, canManage, company, createdBy, fromDate, hasFixedAssigneeScope, isPlatformConsole, notesSearch, priority, product, search, source, status, teamFilter, toDate, workflowStage]
   );
 
   function resetLeadFilters() {
     setSearch("");
+    setNotesSearch("");
     setStatus("all");
     setProduct("all");
     setPriority("all");
@@ -110,6 +114,7 @@ export function useLeadFilterState({ role, session }) {
 
   const applyQueryFilters = useCallback((query = {}) => {
     setSearch(query.search || "");
+    setNotesSearch(query.notesSearch || "");
     setStatus(query.status || "all");
     setProduct(query.product || "all");
     setPriority(query.priority || "all");
@@ -151,12 +156,14 @@ export function useLeadFilterState({ role, session }) {
     product,
     resetLeadFilters,
     scopedCompanyId,
+    notesSearch,
     search,
     setAssignedTo,
     setCompany,
     setCreatedBy,
     setPriority,
     setProduct,
+    setNotesSearch,
     setSearch,
     setSource,
     setStatus,

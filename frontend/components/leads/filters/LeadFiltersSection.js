@@ -38,6 +38,8 @@ export default function LeadFiltersSection({
                 options={filter.options}
                 disabled={filter.disabled}
                 helperText={filter.helperText}
+                isTextInput={filter.isTextInput}
+                placeholder={filter.placeholder}
                 kickerClassName={kickerClassName}
                 inputClassName={inputClassName}
               />
