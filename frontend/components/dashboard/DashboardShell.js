@@ -120,18 +120,18 @@ function SidebarNavItem({ item, active, exactActive }) {
       scroll={false}
       onClick={exactActive ? (event) => event.preventDefault() : undefined}
       className={cn(
-        "group flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-sm font-medium transition",
+        "group flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-semibold transition",
         active
-          ? "bg-[#f3e1ae] text-[#060710] shadow-[0_8px_20px_rgba(203,169,82,0.18)]"
-          : "text-[#3d3529] hover:bg-white/80 hover:text-[#060710]"
+          ? "bg-[#fef3c7] text-slate-950 shadow-[0_12px_28px_rgba(251,191,36,0.16)]"
+          : "text-slate-700 hover:bg-slate-50 hover:text-slate-950"
       )}
     >
       <span
         className={cn(
           "grid h-9 w-9 place-items-center rounded-xl transition",
           active
-            ? "bg-white text-[#060710]"
-            : "bg-[#f6efe2] text-[#927f5e] group-hover:bg-white"
+            ? "bg-white text-[#f59e0b]"
+            : "bg-white text-slate-500 group-hover:text-[#f59e0b]"
         )}
       >
         <DashboardIcon name={item.icon} className="h-3.5 w-3.5" />
@@ -139,7 +139,7 @@ function SidebarNavItem({ item, active, exactActive }) {
       <span className="min-w-0 flex-1">
         <span className={active ? "font-semibold text-[13px]" : "font-medium text-[13px]"}>{item.label}</span>
       </span>
-      {active ? <span className="h-2 w-2 rounded-full bg-[#cba952]" /> : null}
+      {active ? <span className="h-2 w-2 rounded-full bg-[#f59e0b]" /> : null}
     </Link>
   );
 }
@@ -390,7 +390,7 @@ export default function DashboardShell({ session: initialSession, children, titl
   }
 
   return (
-    <div className="min-h-screen bg-[linear-gradient(180deg,#fbf6ec_0%,#fffaf2_48%,#fffdf9_100%)] text-slate-900">
+      <div className="min-h-screen bg-[#f8fafc] text-slate-900">
       <div
         className={cn(
           "fixed inset-0 z-30 bg-[#060710]/45 backdrop-blur-sm transition lg:hidden",
@@ -402,7 +402,7 @@ export default function DashboardShell({ session: initialSession, children, titl
       <aside
         ref={sidebarRef}
         className={cn(
-          "fixed inset-y-0 left-0 z-40 flex w-[280px] flex-col overflow-y-auto border-r border-[#eadfcd] bg-[linear-gradient(180deg,_rgba(255,255,255,0.98),_rgba(249,242,229,0.98))] px-4 py-5 shadow-[0_12px_40px_rgba(79,58,22,0.08)] transition-transform duration-300 lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-40 flex w-[268px] flex-col overflow-y-auto border-r border-slate-200 bg-white px-5 py-6 shadow-[0_18px_55px_rgba(15,23,42,0.04)] transition-transform duration-300 lg:translate-x-0",
           navOpen ? "translate-x-0" : "-translate-x-[112%]"
         )}
       >
@@ -426,13 +426,13 @@ export default function DashboardShell({ session: initialSession, children, titl
           </button>
         </div>
 
-        <nav className="mt-6 flex-1 space-y-5">
+        <nav className="mt-8 flex-1 space-y-7">
           {visibleSections.map((section) => (
             <div key={section.title}>
-              <span className="px-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[#9b8b71]">
+              <span className="px-3 text-[10px] font-black uppercase tracking-[0.22em] text-[#b45309]/70">
                 {section.title}
               </span>
-              <div className="mt-2 space-y-0.5">
+              <div className="mt-3 space-y-1">
                 {section.items.map((item) => (
                   <SidebarNavItem
                     key={item.href}
@@ -447,95 +447,77 @@ export default function DashboardShell({ session: initialSession, children, titl
         </nav>
 
         {hideTitle ? (
-          <div className="mt-6 shrink-0 border-t border-[#eadfcd] pt-5">
-            <div className="rounded-[24px] border border-[#eadfcd] bg-white/96 px-4 py-4 shadow-[0_10px_24px_rgba(79,58,22,0.05)]">
-              <span className="block text-[10px] font-black uppercase tracking-[0.24em] text-[#9b8b71]">
-                Workspace Tools
+          <div className="mt-6 shrink-0 space-y-4 border-t border-slate-100 pt-5">
+            <Link
+              href="/settings/profile"
+              prefetch={false}
+              className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-3 shadow-[0_14px_35px_rgba(15,23,42,0.06)] transition hover:border-amber-200"
+            >
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-slate-100 text-sm font-black text-slate-700">
+                {getInitials(session?.user?.name || session?.user?.full_name || "Preview User")}
               </span>
-
-              <div className="mt-4 grid gap-2">
-                <Link
-                  href="/settings/profile"
-                  prefetch={false}
-                  className="inline-flex min-h-[44px] w-full items-center justify-center rounded-2xl border border-[#eadfcd] bg-[#fffaf1] px-3 text-sm font-semibold text-[#5d503c] transition hover:bg-white hover:text-[#060710]"
-                >
-                  Profile
+              <span className="min-w-0 flex-1">
+                <strong className="block truncate text-sm font-bold text-slate-950">{session?.user?.name || session?.user?.full_name || "Preview User"}</strong>
+                <span className="block truncate text-xs font-medium text-slate-500">{session?.user?.talent_id || roleMeta.label}</span>
+              </span>
+              <DashboardIcon name="settings" className="h-4 w-4 shrink-0 text-slate-400" />
+            </Link>
+            <div className={cn("grid gap-2", showSeparateSettingsLink ? "grid-cols-2" : "grid-cols-1")}>
+              {showSeparateSettingsLink ? (
+                <Link href={settingsHref} prefetch={false} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-center text-xs font-bold text-slate-600 transition hover:bg-[#fef3c7] hover:text-[#b45309]">
+                  Settings
                 </Link>
-                {showSeparateSettingsLink ? (
-                  <Link
-                    href={settingsHref}
-                    prefetch={false}
-                    className="inline-flex min-h-[44px] w-full items-center justify-center rounded-2xl border border-[#eadfcd] bg-[#fffaf1] px-3 text-sm font-semibold text-[#5d503c] transition hover:bg-white hover:text-[#060710]"
-                  >
-                    Settings
-                  </Link>
-                ) : null}
-                <Link
-                  href="/support"
-                  prefetch={false}
-                  className="inline-flex min-h-[44px] w-full items-center justify-center rounded-2xl border border-[#eadfcd] bg-[#fffaf1] px-3 text-sm font-semibold text-[#5d503c] transition hover:bg-white hover:text-[#060710]"
-                >
-                  Support
-                </Link>
-                <button
-                  type="button"
-                  className="inline-flex min-h-[46px] w-full cursor-pointer items-center justify-center rounded-2xl bg-[#060710] px-3 text-sm font-semibold text-white shadow-[0_18px_34px_rgba(6,7,16,0.18)] transition hover:-translate-y-0.5"
-                  onClick={logout}
-                >
-                  Logout
-                </button>
-              </div>
+              ) : null}
+              <button type="button" className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-100" onClick={logout}>
+                Logout
+              </button>
             </div>
           </div>
         ) : null}
       </aside>
 
-      <div className="min-h-screen py-0 lg:pl-[280px]">
+      <div className="min-h-screen py-0 lg:pl-[268px]">
         <div className="space-y-0">
           <header
             className={cn(
-              "sticky top-3 z-20 backdrop-blur",
-              hideTitle
-                ? "px-5 py-5 md:px-7 lg:hidden"
-                : "mx-4 mt-4 rounded-[30px] border border-[#eadfcd] bg-white/78 px-4 py-4 shadow-[0_18px_45px_rgba(79,58,22,0.08)] md:px-6"
+              "sticky top-0 z-20 border-b border-slate-100 bg-white px-5 py-3 md:px-7",
+              hideTitle ? "" : ""
             )}
           >
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <button
-                    className="grid h-9 w-9 place-items-center rounded-xl border border-[#eadfcd] bg-white/90 text-[#6f604a] lg:hidden"
-                    onClick={() => setNavOpen(true)}
-                    aria-label="Open navigation"
-                  >
-                    <span className="flex flex-col gap-1">
-                      <span className="block h-0.5 w-4 rounded-full bg-current" />
-                      <span className="block h-0.5 w-4 rounded-full bg-current" />
-                      <span className="block h-0.5 w-4 rounded-full bg-current" />
-                    </span>
-                  </button>
-                  {!hideTitle && title ? (
-                    <div className="min-w-0">
-                      <h1 className="truncate text-xl font-bold tracking-tight text-slate-900 md:text-2xl">{title}</h1>
-                    </div>
-                  ) : null}
-                </div>
-              </div>
+            <div className="flex items-center gap-3">
+              {/* Mobile menu */}
+              <button
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-slate-200 bg-white text-slate-500 lg:hidden"
+                onClick={() => setNavOpen(true)}
+                aria-label="Open navigation"
+              >
+                <span className="flex flex-col gap-1">
+                  <span className="block h-0.5 w-4 rounded-full bg-current" />
+                  <span className="block h-0.5 w-4 rounded-full bg-current" />
+                  <span className="block h-0.5 w-4 rounded-full bg-current" />
+                </span>
+              </button>
 
-              <div className="flex items-center justify-end gap-3">
+              {/* Search bar */}
+              <Link href="/leads" prefetch={false} className="hidden flex-1 items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2.5 transition hover:border-amber-200 hover:bg-white md:flex">
+                <svg className="h-4 w-4 shrink-0 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="m16 16 4.5 4.5" />
+                </svg>
+                <span className="flex-1 text-sm text-slate-400">Search anything...</span>
+                <span className="rounded-lg border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-semibold text-slate-400">Ctrl + K</span>
+              </Link>
+
+              <div className="ml-auto flex items-center gap-2">
+                {/* Bell */}
                 <div className="relative" ref={notificationRef}>
                   <button
-                    className={cn(
-                      "relative grid h-12 w-12 place-items-center rounded-2xl text-[#6f604a]",
-                      hideTitle
-                        ? "border border-[#eadfcd] bg-white/72 shadow-[0_10px_24px_rgba(79,58,22,0.06)]"
-                        : "border border-[#eadfcd] bg-white text-[#6f604a] shadow-sm"
-                    )}
+                    className="relative grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-white text-slate-500 shadow-sm"
                     onClick={() => setShowNotifications((current) => !current)}
                   >
                     <DashboardIcon name="bell" className="h-5 w-5" />
                     {unreadNotifications.length ? (
-                      <span className="absolute -right-1 -top-1 rounded-full bg-[#1dbf73] px-1.5 py-0.5 text-[10px] font-bold text-white">
+                      <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#F59E0B] px-1 text-[10px] font-bold text-white">
                         {unreadNotifications.length > 9 ? "9+" : unreadNotifications.length}
                       </span>
                     ) : null}
@@ -600,23 +582,27 @@ export default function DashboardShell({ session: initialSession, children, titl
                   ) : null}
                 </div>
 
-                  <div className="relative" ref={accountRef}>
+                  <div className="relative flex items-center gap-2" ref={accountRef}>
+                  <Link
+                    href="/communications"
+                    prefetch={false}
+                    className="relative grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:border-amber-200 hover:text-amber-600"
+                    aria-label="Open communications"
+                  >
+                    <DashboardIcon name="mail" className="h-5 w-5" />
+                    <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#F59E0B] px-1 text-[10px] font-bold text-white">7</span>
+                  </Link>
+
                   <button
-                    className={cn(
-                      "flex items-center gap-3",
-                      hideTitle
-                        ? "rounded-[22px] border border-[#eadfcd] bg-white/72 px-3 py-2 shadow-[0_10px_24px_rgba(79,58,22,0.06)]"
-                        : "rounded-[24px] border border-[#eadfcd] bg-white px-4 py-3 shadow-sm"
-                    )}
+                    type="button"
+                    className="flex h-10 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 shadow-sm"
                     onClick={() => setShowAccountMenu((current) => !current)}
                   >
-                    <span className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-400 text-sm font-bold text-white">
-                      {getInitials(session?.user?.name || session?.user?.full_name || "Preview User")}
+                    <DashboardIcon name="calendar" className="h-4 w-4 text-slate-500" />
+                    <span className="hidden sm:block">
+                      {new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                     </span>
-                    <span className="hidden text-left sm:block">
-                      <strong className="block text-sm text-slate-900">{session?.user?.name || session?.user?.full_name || "Preview User"}</strong>
-                      <span className="block text-xs text-slate-400">{session?.user?.talent_id || roleMeta.label}</span>
-                    </span>
+                    <svg className="h-4 w-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m6 9 6 6 6-6" /></svg>
                   </button>
 
                   {showAccountMenu ? (
@@ -649,7 +635,7 @@ export default function DashboardShell({ session: initialSession, children, titl
             </div>
           </header>
 
-          <div className={cn("space-y-5 pb-6", hideTitle ? "px-5 pt-5 md:px-7 md:pt-6" : "px-4 pt-2 md:px-6")}>
+          <div className={cn("mx-auto max-w-[1280px] space-y-5 pb-6", hideTitle ? "px-4 pt-4 md:px-6 md:pt-5" : "px-4 pt-2 md:px-6")}>
             {heroStats.length ? (
               <section className={cn("grid gap-2", heroStats.length >= 4 ? "md:grid-cols-2 xl:grid-cols-4" : "md:grid-cols-2")}>
                 {heroStats.map((stat) => (
