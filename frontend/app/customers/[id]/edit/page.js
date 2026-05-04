@@ -2,64 +2,64 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-
 import DashboardShell from "../../../../components/dashboard/DashboardShell";
 import DashboardIcon from "../../../../components/dashboard/icons";
 import { apiRequest } from "../../../../lib/api";
 import { buildCustomerNotes, parseCustomerProfile, stripCustomerProfile } from "../../../../lib/customerProfile";
 import { loadSession } from "../../../../lib/session";
 import {
-  canManageScopedAssignments,
-  formatScopedError,
-  loadTeamScopeResources,
-  shouldShowTeamSelector,
-  scopedUsersEmptyMessage,
-  teamBadgeLabel,
-  teamSelectLabel,
-  teamSelectionRequiredMessage,
+  canManageScopedAssignments, formatScopedError, loadTeamScopeResources,
+  shouldShowTeamSelector, scopedUsersEmptyMessage, teamBadgeLabel,
+  teamSelectLabel, teamSelectionRequiredMessage,
 } from "../../../../lib/teamScope";
 import { AlertError } from "../../../../components/ui/Alert";
 
-const PANEL_CLASS = "rounded-[30px] border border-[#eadfcd] bg-white/82 p-5 shadow-[0_14px_36px_rgba(79,58,22,0.06)] md:p-6";
-const SOFT_PANEL_CLASS = "rounded-[24px] border border-[#eadfcd] bg-[#fffaf1] p-4";
-const INPUT_CLASS = "w-full rounded-[18px] border border-[#eadfcd] bg-white px-4 py-3 text-sm text-[#060710] outline-none transition placeholder:text-[#9c8e76] focus:border-[#d7b258] focus:ring-4 focus:ring-[#f6ead0]";
-const PRIMARY_BUTTON_CLASS = "inline-flex min-h-[46px] items-center justify-center gap-2 rounded-[18px] border border-[#d7b258] bg-[#f3dfab] px-4 py-2.5 text-sm font-semibold text-[#060710] shadow-[0_16px_30px_rgba(203,169,82,0.18)] transition hover:-translate-y-0.5 hover:bg-[#efd48f] disabled:cursor-not-allowed disabled:opacity-60";
-const GHOST_BUTTON_CLASS = "inline-flex min-h-[46px] items-center justify-center gap-2 rounded-[18px] border border-[#eadfcd] bg-white px-4 py-2.5 text-sm font-semibold text-[#5d503c] transition hover:-translate-y-0.5 hover:text-[#060710] disabled:cursor-not-allowed disabled:opacity-60";
-const KICKER_CLASS = "text-[10px] font-black uppercase tracking-[0.28em] text-[#9a886d]";
-const HERO_PANEL_CLASS = "rounded-[36px] border border-[#eadfcd] bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.98),_rgba(250,241,221,0.98)_44%,_rgba(245,231,193,0.98)_100%)] p-6 shadow-[0_24px_70px_rgba(79,58,22,0.08)] md:p-8";
-const DARK_PANEL_CLASS = "rounded-[34px] border border-[#1d1a12] bg-[linear-gradient(155deg,#10111d_0%,#171a28_56%,#25212d_100%)] p-6 text-white shadow-[0_24px_80px_rgba(6,7,16,0.3)] md:p-7";
+const C = {
+  panel: "rounded-2xl border border-slate-100 bg-white shadow-sm",
+  input: "w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-amber-400 focus:ring-2 focus:ring-amber-50",
+  kicker: "text-[10px] font-bold uppercase tracking-widest text-slate-400",
+};
+const Btn = {
+  gold: "inline-flex items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-5 py-2.5 text-sm font-semibold text-amber-900 transition hover:bg-amber-100 hover:border-amber-400 disabled:opacity-50 disabled:cursor-not-allowed",
+  ghost: "inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900 disabled:opacity-50",
+};
 
-function initials(value = "Customer") {
-  return String(value)
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() || "")
-    .join("") || "C";
+function initials(v = "C") { return String(v).split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() || "").join("") || "C"; }
+
+function createForm(c = null) {
+  const p = parseCustomerProfile(c?.notes);
+  return {
+    name: c?.name || "", company_name: c?.company_name || "", email: c?.email || "", phone: c?.phone || "",
+    status: c?.status || "active", total_value: String(c?.total_value || ""), team_id: c?.team_id || "",
+    assigned_to: c?.assigned_to || "", next_follow_up: c?.next_follow_up ? new Date(c.next_follow_up).toISOString().slice(0, 16) : "",
+    website: p.website || "", industry: p.industry || "", business_summary: p.business_summary || "",
+    address_street: p.address_street || "", address_city: p.address_city || "", address_state: p.address_state || "",
+    address_zip: p.address_zip || "", country: p.country || "India",
+  };
 }
 
-function createInitialForm(customer = null) {
-  const profile = parseCustomerProfile(customer?.notes);
-  return {
-    customer_id: customer?.customer_id || "",
-    name: customer?.name || "",
-    company_name: customer?.company_name || "",
-    email: customer?.email || "",
-    phone: customer?.phone || "",
-    status: customer?.status || "active",
-    total_value: String(customer?.total_value || ""),
-    team_id: customer?.team_id || "",
-    assigned_to: customer?.assigned_to || "",
-    next_follow_up: customer?.next_follow_up ? new Date(customer.next_follow_up).toISOString().slice(0, 16) : "",
-    website: profile.website || "",
-    industry: profile.industry || "",
-    business_summary: profile.business_summary || "",
-    address_street: profile.address_street || "",
-    address_city: profile.address_city || "",
-    address_state: profile.address_state || "",
-    address_zip: profile.address_zip || "",
-    country: profile.country || "India",
-  };
+function Section({ step, title, sub, children }) {
+  return (
+    <div className="rounded-2xl border border-slate-100 bg-white shadow-sm px-5 py-5">
+      <div className="mb-5 flex items-center gap-3 border-b border-slate-50 pb-4">
+        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-amber-50 text-xs font-bold text-amber-700 border border-amber-200">{step}</span>
+        <div>
+          <p className="text-sm font-bold text-slate-900">{title}</p>
+          {sub ? <p className="text-xs text-slate-400">{sub}</p> : null}
+        </div>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">{children}</div>
+    </div>
+  );
+}
+
+function Label({ label, span, children }) {
+  return (
+    <label className={`block space-y-1.5 ${span || ""}`}>
+      <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{label}</span>
+      {children}
+    </label>
+  );
 }
 
 export default function EditCustomerPage() {
@@ -69,7 +69,7 @@ export default function EditCustomerPage() {
   const [customer, setCustomer] = useState(null);
   const [users, setUsers] = useState([]);
   const [teams, setTeams] = useState([]);
-  const [form, setForm] = useState(createInitialForm());
+  const [form, setForm] = useState(createForm());
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -79,470 +79,181 @@ export default function EditCustomerPage() {
   const canAssign = canManageScopedAssignments(role);
   const teamSelectorVisible = shouldShowTeamSelector(role, teams);
   const teamSelectionPending = teamSelectorVisible && !form.team_id;
-  const selectedTeam = useMemo(() => teams.find((team) => team.team_id === form.team_id) || null, [form.team_id, teams]);
-  const hideTitle = true;
-  const ownerEmptyMessage = useMemo(() => {
-    if (!canAssign || resourceLoading) {
-      return "";
-    }
-
-    if (teamSelectionPending) {
-      return "Choose a team to load available owners.";
-    }
-
-    if (!users.length) {
-      return scopedUsersEmptyMessage(selectedTeam);
-    }
-
+  const selectedTeam = useMemo(() => teams.find(t => t.team_id === form.team_id) || null, [form.team_id, teams]);
+  const ownerMsg = useMemo(() => {
+    if (!canAssign || resourceLoading) return "";
+    if (teamSelectionPending) return "Choose a team to load available owners.";
+    if (!users.length) return scopedUsersEmptyMessage(selectedTeam);
     return "";
   }, [canAssign, resourceLoading, selectedTeam, teamSelectionPending, users.length]);
 
-  const readinessItems = useMemo(
-    () => [
-      { label: "Primary contact added", done: Boolean(form.name.trim()) },
-      { label: "Company identity ready", done: Boolean(form.company_name.trim()) },
-      { label: "Email and phone ready", done: Boolean(form.email.trim() && form.phone.trim()) },
-      { label: "Business summary added", done: Boolean(form.business_summary.trim()) },
-      { label: "Location added", done: Boolean(form.address_city.trim() || form.address_state.trim() || form.country.trim()) },
-    ],
-    [form]
-  );
+  const set = key => e => setForm(f => ({ ...f, [key]: e.target.value }));
 
   useEffect(() => {
-    const activeSession = loadSession();
-    if (!activeSession) {
-      router.replace("/login");
-      return;
-    }
-
-    if (activeSession.user?.role === "viewer") {
-      router.replace(`/customers/${params.id}`);
-      return;
-    }
-
-    setSession(activeSession);
-    const allowAssignments = canManageScopedAssignments(activeSession.user?.role);
-    Promise.all([
-      apiRequest(`/customers/${params.id}`, { token: activeSession.token }),
-    ])
-      .then(async ([customerResponse]) => {
-        const companyId = customerResponse.company_id || activeSession.user?.company_id || activeSession.company?.company_id || "";
-        const scopeResponse = await loadTeamScopeResources(activeSession.token, {
-          companyId,
-          teamId: customerResponse.team_id || "",
-          includeUsers: allowAssignments,
-        });
-        const teamItems = scopeResponse.teams || [];
-        const userItems = scopeResponse.users || [];
-
-        setCustomer(customerResponse);
-        setTeams(teamItems);
-        setForm(() => ({
-          ...createInitialForm(customerResponse),
-          team_id: scopeResponse.teamId || "",
-          assigned_to: userItems.some((user) => user.user_id === customerResponse.assigned_to)
-            ? customerResponse.assigned_to
-            : "",
-        }));
-        setUsers(userItems);
+    const s = loadSession();
+    if (!s) return router.replace("/login");
+    if (s.user?.role === "viewer") return router.replace(`/customers/${params.id}`);
+    setSession(s);
+    const allowAssign = canManageScopedAssignments(s.user?.role);
+    apiRequest(`/customers/${params.id}`, { token: s.token })
+      .then(async c => {
+        const cid = c.company_id || s.user?.company_id || s.company?.company_id || "";
+        const scope = await loadTeamScopeResources(s.token, { companyId: cid, teamId: c.team_id || "", includeUsers: allowAssign });
+        const tms = scope.teams || [], urs = scope.users || [];
+        setCustomer(c); setTeams(tms); setUsers(urs);
+        setForm({ ...createForm(c), team_id: scope.teamId || "", assigned_to: urs.some(u => u.user_id === c.assigned_to) ? c.assigned_to : "" });
       })
-      .catch((requestError) => setError(formatScopedError(requestError, "Failed to load customer.")))
+      .catch(e => setError(formatScopedError(e, "Failed to load customer.")))
       .finally(() => setLoading(false));
   }, [params.id, router]);
 
   useEffect(() => {
     let ignore = false;
-
-    async function reloadScopedUsers() {
-      if (!session?.token || !customer?.company_id || !canAssign) {
-        return;
-      }
-
+    async function reload() {
+      if (!session?.token || !customer?.company_id || !canAssign) return;
       setResourceLoading(true);
-
       try {
-        if (teamSelectionPending) {
-          if (!ignore) {
-            setUsers([]);
-            setForm((current) => ({
-              ...current,
-              assigned_to: "",
-            }));
-          }
-          return;
-        }
-
-        const scopedResponse = await loadTeamScopeResources(session.token, {
-          companyId: customer.company_id,
-          teamId: form.team_id,
-          includeUsers: true,
-        });
-        const scopedUsers = scopedResponse.users || [];
-
-        if (ignore) {
-          return;
-        }
-
-        setUsers(scopedUsers);
-        setForm((current) => ({
-          ...current,
-          assigned_to: scopedUsers.some((user) => user.user_id === current.assigned_to) ? current.assigned_to : "",
-        }));
-      } catch (_error) {
-        if (!ignore) {
-          setUsers([]);
-        }
-      } finally {
-        if (!ignore) {
-          setResourceLoading(false);
-        }
-      }
+        if (teamSelectionPending) { if (!ignore) { setUsers([]); setForm(f => ({ ...f, assigned_to: "" })); } return; }
+        const r = await loadTeamScopeResources(session.token, { companyId: customer.company_id, teamId: form.team_id, includeUsers: true });
+        const urs = r.users || [];
+        if (!ignore) { setUsers(urs); setForm(f => ({ ...f, assigned_to: urs.some(u => u.user_id === f.assigned_to) ? f.assigned_to : "" })); }
+      } catch (_) { if (!ignore) setUsers([]); }
+      finally { if (!ignore) setResourceLoading(false); }
     }
-
-    reloadScopedUsers();
-
-    return () => {
-      ignore = true;
-    };
+    reload();
+    return () => { ignore = true; };
   }, [canAssign, customer?.company_id, form.team_id, session, teamSelectionPending]);
 
-  async function handleSubmit(event) {
-    event.preventDefault();
-    if (!form.name.trim() || !form.company_name.trim() || !form.email.trim() || !form.phone.trim()) {
-      setError("Name, company name, email, and phone are required.");
-      return;
-    }
-    if (teamSelectorVisible && !form.team_id) {
-      setError(teamSelectionRequiredMessage("customer"));
-      return;
-    }
-
-    setSaving(true);
-    setError("");
-
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (!form.name.trim() || !form.company_name.trim() || !form.email.trim() || !form.phone.trim()) { setError("Name, company, email, and phone are required."); return; }
+    if (teamSelectorVisible && !form.team_id) { setError(teamSelectionRequiredMessage("customer")); return; }
+    setSaving(true); setError("");
     try {
       await apiRequest(`/customers/${params.id}`, {
-        method: "PATCH",
-        token: session.token,
+        method: "PATCH", token: session.token,
         body: {
-          name: form.name.trim(),
-          company_name: form.company_name.trim(),
-          email: form.email.trim(),
-          phone: form.phone.trim(),
-          status: form.status,
-          total_value: Number(form.total_value || 0),
-          team_id: form.team_id || undefined,
-          assigned_to: canAssign ? form.assigned_to || null : undefined,
+          name: form.name.trim(), company_name: form.company_name.trim(), email: form.email.trim(), phone: form.phone.trim(),
+          status: form.status, total_value: Number(form.total_value || 0),
+          team_id: form.team_id || undefined, assigned_to: canAssign ? form.assigned_to || null : undefined,
           next_follow_up: form.next_follow_up || null,
-          notes: buildCustomerNotes(
-            {
-              website: form.website.trim(),
-              industry: form.industry.trim(),
-              business_summary: form.business_summary.trim(),
-              address_street: form.address_street.trim(),
-              address_city: form.address_city.trim(),
-              address_state: form.address_state.trim(),
-              address_zip: form.address_zip.trim(),
-              country: form.country.trim(),
-            },
-            stripCustomerProfile(customer?.notes),
-            customer?.notes
-          ),
+          notes: buildCustomerNotes({ website: form.website.trim(), industry: form.industry.trim(), business_summary: form.business_summary.trim(), address_street: form.address_street.trim(), address_city: form.address_city.trim(), address_state: form.address_state.trim(), address_zip: form.address_zip.trim(), country: form.country.trim() }, stripCustomerProfile(customer?.notes), customer?.notes),
         },
       });
       router.push(`/customers/${params.id}`);
-    } catch (requestError) {
-      setError(formatScopedError(requestError, "Failed to save customer."));
-    } finally {
-      setSaving(false);
-    }
+    } catch (err) { setError(formatScopedError(err, "Failed to save customer.")); }
+    finally { setSaving(false); }
   }
 
   return (
-    <DashboardShell session={session} title="Edit Customer" hideTitle={hideTitle} heroStats={[]}>
-      <AlertError message={error} onDismiss={() => setError("")} />
-      {loading ? <div className="rounded-[20px] border border-[#eadfcd] bg-white px-4 py-3 text-sm font-medium text-[#6f614c]">Loading customer...</div> : null}
+    <DashboardShell session={session} title="Edit Customer" hideTitle heroStats={[]}>
+      <div className="mx-auto max-w-[860px] space-y-5 px-1">
+        <AlertError message={error} onDismiss={() => setError("")} />
 
-      {!loading && customer ? (
-        <section className="space-y-5">
-          <div className="grid gap-5 xl:grid-cols-[1.08fr_0.92fr]">
-            <article className={HERO_PANEL_CLASS}>
-              <div className="flex items-start gap-4">
-                <div className="grid h-16 w-16 shrink-0 place-items-center rounded-[22px] bg-[#10111d] text-xl font-bold text-white shadow-[0_18px_32px_rgba(6,7,16,0.18)]">
-                  {initials(form.company_name || form.name || "Customer")}
-                </div>
-                <div className="space-y-4">
-                  <span className="inline-flex rounded-full border border-[#ddd3c2] bg-white/85 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.24em] text-[#7c6d55]">
-                    Customer Edit
-                  </span>
-                  <div>
-                    <h2 className="text-3xl font-semibold tracking-tight text-[#060710] md:text-[2.2rem] md:leading-[1.08]">
-                      Edit: {customer.company_name || customer.name}
-                    </h2>
-                    <p className="mt-3 max-w-3xl text-sm leading-7 text-[#746853]">
-                      Update profile, address, owner, and follow-up.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-8 grid gap-4 md:grid-cols-3">
-                <div className={SOFT_PANEL_CLASS}>
-                  <p className={KICKER_CLASS}>Customer ID</p>
-                  <strong className="mt-3 block text-2xl font-black tracking-tight text-[#060710]">{customer.customer_id}</strong>
-                </div>
-                <div className={SOFT_PANEL_CLASS}>
-                  <p className={KICKER_CLASS}>Current Owner</p>
-                  <strong className="mt-3 block text-2xl font-black tracking-tight text-[#060710]">{customer.assigned_to_name || "Unassigned"}</strong>
-                </div>
-                <div className="rounded-[24px] border border-[#eadfcd] bg-[#fff7e8] p-4">
-                  <p className={KICKER_CLASS}>Current Value</p>
-                  <strong className="mt-3 block text-2xl font-black tracking-tight text-[#060710]">INR {Number(form.total_value || 0).toLocaleString("en-IN")}</strong>
-                </div>
-                <div className="rounded-[24px] border border-[#eadfcd] bg-white/90 p-4">
-                  <p className={KICKER_CLASS}>Current Team</p>
-                  <strong className="mt-3 block text-2xl font-black tracking-tight text-[#060710]">{selectedTeam?.name || customer.team_name || "Auto team"}</strong>
-                </div>
-              </div>
-            </article>
-
-            <article className={DARK_PANEL_CLASS}>
-              <div className="space-y-4">
-                <span className="inline-flex rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.24em] text-white/70">
-                  Profile Health
-                </span>
-                <h3 className="text-[2rem] font-semibold leading-[1.08] tracking-tight text-white">
-                  Account profile
-                </h3>
-                <p className="text-sm leading-7 text-white/68">
-                  Keep the record clean and ready.
-                </p>
-              </div>
-
-              <div className="mt-8 grid gap-3 sm:grid-cols-2">
-                {[
-                  { label: "Status", value: form.status || "active" },
-                  { label: "Industry", value: form.industry || "Not set" },
-                  { label: "Country", value: form.country || "Not set" },
-                  { label: "Follow-up", value: form.next_follow_up || "Not set" },
-                ].map((item) => (
-                  <div key={item.label} className="rounded-[24px] border border-white/10 bg-white/6 p-4">
-                    <p className="text-[10px] font-black uppercase tracking-[0.24em] text-white/55">{item.label}</p>
-                    <strong className="mt-3 block text-xl font-black text-white">{item.value}</strong>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-8 space-y-3">
-                {readinessItems.map((item) => (
-                  <div key={item.label} className="flex items-center gap-3 rounded-[20px] border border-white/10 bg-white/6 px-4 py-3.5">
-                    <span className={`h-2.5 w-2.5 rounded-full ${item.done ? "bg-emerald-400" : "bg-[#d7b258]"}`} />
-                    <strong className="text-sm text-white">{item.label}</strong>
-                  </div>
-                ))}
-              </div>
-            </article>
+        {/* Header */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className={C.kicker}>Customer Desk</p>
+            <h1 className="mt-0.5 text-2xl font-bold tracking-tight text-slate-900">
+              {customer ? `Edit: ${customer.company_name || customer.name}` : "Edit Customer"}
+            </h1>
           </div>
+          <button className={Btn.ghost} type="button" onClick={() => router.push(`/customers/${params.id}`)}>← Back</button>
+        </div>
 
-          <div className="grid gap-5 xl:grid-cols-[1.06fr_0.94fr] xl:items-start">
-            <form className="grid gap-5" onSubmit={handleSubmit}>
-              <article className={PANEL_CLASS}>
-                <div className="mb-5">
-                  <p className={KICKER_CLASS}>Primary Contact</p>
-                  <h3 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Who owns this account</h3>
-                </div>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <label className="space-y-2">
-                    <span className={KICKER_CLASS}>Contact Name</span>
-                    <input className={INPUT_CLASS} value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} required />
-                  </label>
-                  <label className="space-y-2">
-                    <span className={KICKER_CLASS}>Company Name</span>
-                    <input className={INPUT_CLASS} value={form.company_name} onChange={(event) => setForm((current) => ({ ...current, company_name: event.target.value }))} required />
-                  </label>
-                  <label className="space-y-2">
-                    <span className={KICKER_CLASS}>Email</span>
-                    <input className={INPUT_CLASS} type="email" value={form.email} onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))} required />
-                  </label>
-                  <label className="space-y-2">
-                    <span className={KICKER_CLASS}>Phone</span>
-                    <input className={INPUT_CLASS} value={form.phone} onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))} required />
-                  </label>
-                </div>
-              </article>
+        {loading ? <div className="rounded-2xl border border-slate-100 bg-white px-5 py-4 text-sm text-slate-500">Loading customer…</div> : null}
 
-              <article className={PANEL_CLASS}>
-                <div className="mb-5">
-                  <p className={KICKER_CLASS}>Company Profile</p>
-                  <h3 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">What this company does</h3>
-                </div>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <label className="space-y-2">
-                    <span className={KICKER_CLASS}>Industry</span>
-                    <input className={INPUT_CLASS} value={form.industry} onChange={(event) => setForm((current) => ({ ...current, industry: event.target.value }))} />
-                  </label>
-                  <label className="space-y-2">
-                    <span className={KICKER_CLASS}>Website</span>
-                    <input className={INPUT_CLASS} value={form.website} onChange={(event) => setForm((current) => ({ ...current, website: event.target.value }))} />
-                  </label>
-                  <label className="space-y-2 md:col-span-2">
-                    <span className={KICKER_CLASS}>Business Summary</span>
-                    <textarea className={`${INPUT_CLASS} min-h-[150px] resize-y`} rows="5" value={form.business_summary} onChange={(event) => setForm((current) => ({ ...current, business_summary: event.target.value }))} />
-                  </label>
-                </div>
-              </article>
+        {!loading && customer ? (
+          <>
+            {/* Preview strip */}
+            <div className="rounded-2xl border border-amber-100 bg-gradient-to-r from-amber-50 to-white px-5 py-4 flex flex-wrap items-center gap-4">
+              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-emerald-600 text-sm font-bold text-white">
+                {initials(form.company_name || form.name)}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-bold text-slate-900">{form.company_name || "—"}</p>
+                <p className="truncate text-xs text-slate-400">{form.name}{form.email ? ` · ${form.email}` : ""}</p>
+              </div>
+              <div className="flex flex-wrap gap-2 text-xs">
+                <span className="rounded-full border border-slate-200 bg-white px-3 py-0.5 font-semibold text-slate-600">{customer.customer_id}</span>
+                <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-0.5 font-semibold text-amber-700">₹{Number(form.total_value||0).toLocaleString("en-IN")}</span>
+              </div>
+            </div>
 
-              <article className={PANEL_CLASS}>
-                <div className="mb-5">
-                  <p className={KICKER_CLASS}>Address</p>
-                  <h3 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Location details</h3>
-                </div>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <label className="space-y-2 md:col-span-2">
-                    <span className={KICKER_CLASS}>Street Address</span>
-                    <input className={INPUT_CLASS} value={form.address_street} onChange={(event) => setForm((current) => ({ ...current, address_street: event.target.value }))} />
-                  </label>
-                  <label className="space-y-2">
-                    <span className={KICKER_CLASS}>City</span>
-                    <input className={INPUT_CLASS} value={form.address_city} onChange={(event) => setForm((current) => ({ ...current, address_city: event.target.value }))} />
-                  </label>
-                  <label className="space-y-2">
-                    <span className={KICKER_CLASS}>State</span>
-                    <input className={INPUT_CLASS} value={form.address_state} onChange={(event) => setForm((current) => ({ ...current, address_state: event.target.value }))} />
-                  </label>
-                  <label className="space-y-2">
-                    <span className={KICKER_CLASS}>Postal Code</span>
-                    <input className={INPUT_CLASS} value={form.address_zip} onChange={(event) => setForm((current) => ({ ...current, address_zip: event.target.value }))} />
-                  </label>
-                  <label className="space-y-2">
-                    <span className={KICKER_CLASS}>Country</span>
-                    <input className={INPUT_CLASS} value={form.country} onChange={(event) => setForm((current) => ({ ...current, country: event.target.value }))} />
-                  </label>
-                </div>
-              </article>
+            <form className="space-y-4" onSubmit={handleSubmit}>
+              {/* Section 1 — Identity */}
+              <Section step="01" title="Primary Contact" sub="Name, email, and phone">
+                <Label label="Contact Name *"><input className={C.input} value={form.name} onChange={set("name")} required /></Label>
+                <Label label="Company Name *"><input className={C.input} value={form.company_name} onChange={set("company_name")} required /></Label>
+                <Label label="Email *"><input className={C.input} type="email" value={form.email} onChange={set("email")} required /></Label>
+                <Label label="Phone *"><input className={C.input} value={form.phone} onChange={set("phone")} required /></Label>
+              </Section>
 
-              <article className={PANEL_CLASS}>
-                <div className="mb-5">
-                  <p className={KICKER_CLASS}>Account Control</p>
-                  <h3 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Status, ownership, and follow-up</h3>
-                </div>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <label className="space-y-2">
-                    <span className={KICKER_CLASS}>Status</span>
-                    <select className={INPUT_CLASS} value={form.status} onChange={(event) => setForm((current) => ({ ...current, status: event.target.value }))}>
-                      <option value="active">Active</option>
-                      <option value="inactive">Inactive</option>
-                      <option value="suspended">Suspended</option>
-                    </select>
-                  </label>
-                  <label className="space-y-2">
-                    <span className={KICKER_CLASS}>Total Value</span>
-                    <input className={INPUT_CLASS} type="number" value={form.total_value} onChange={(event) => setForm((current) => ({ ...current, total_value: event.target.value }))} />
-                  </label>
-                  <label className="space-y-2">
-                    <span className={KICKER_CLASS}>Next Follow-up</span>
-                    <input className={INPUT_CLASS} type="datetime-local" value={form.next_follow_up} onChange={(event) => setForm((current) => ({ ...current, next_follow_up: event.target.value }))} />
-                  </label>
-                  <label className="space-y-2">
-                    <span className={KICKER_CLASS}>Owner</span>
-                    <select className={INPUT_CLASS} value={form.assigned_to} onChange={(event) => setForm((current) => ({ ...current, assigned_to: event.target.value }))} disabled={!canAssign || resourceLoading || teamSelectionPending}>
+              {/* Section 2 — Company Profile */}
+              <Section step="02" title="Company Profile" sub="Industry, website, and business summary">
+                <Label label="Industry"><input className={C.input} value={form.industry} onChange={set("industry")} /></Label>
+                <Label label="Website"><input className={C.input} value={form.website} onChange={set("website")} /></Label>
+                <Label label="Business Summary" span="sm:col-span-2">
+                  <textarea className={`${C.input} min-h-[110px] resize-y`} rows={4} value={form.business_summary} onChange={set("business_summary")} />
+                </Label>
+              </Section>
+
+              {/* Section 3 — Address */}
+              <Section step="03" title="Location" sub="Address details">
+                <Label label="Street Address" span="sm:col-span-2"><input className={C.input} value={form.address_street} onChange={set("address_street")} /></Label>
+                <Label label="City"><input className={C.input} value={form.address_city} onChange={set("address_city")} /></Label>
+                <Label label="State"><input className={C.input} value={form.address_state} onChange={set("address_state")} /></Label>
+                <Label label="Postal Code"><input className={C.input} value={form.address_zip} onChange={set("address_zip")} /></Label>
+                <Label label="Country"><input className={C.input} value={form.country} onChange={set("country")} /></Label>
+              </Section>
+
+              {/* Section 4 — Account Control */}
+              <Section step="04" title="Account Control" sub="Status, value, ownership, and follow-up">
+                <Label label="Status">
+                  <select className={C.input} value={form.status} onChange={set("status")}>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                    <option value="suspended">Suspended</option>
+                  </select>
+                </Label>
+                <Label label="Total Value (₹)"><input className={C.input} type="number" value={form.total_value} onChange={set("total_value")} /></Label>
+                <Label label="Next Follow-up"><input className={C.input} type="datetime-local" value={form.next_follow_up} onChange={set("next_follow_up")} /></Label>
+                {canAssign ? (
+                  <Label label="Assign Owner">
+                    <select className={C.input} value={form.assigned_to} onChange={set("assigned_to")} disabled={!canAssign || resourceLoading || teamSelectionPending}>
                       <option value="">Unassigned</option>
-                      {users.map((user) => (
-                        <option key={user.user_id} value={user.user_id}>
-                          {user.name} | {user.role}
-                        </option>
-                      ))}
+                      {users.map(u => <option key={u.user_id} value={u.user_id}>{u.name} · {u.role}</option>)}
                     </select>
-                    {ownerEmptyMessage ? <small className="text-xs font-semibold text-[#8f816a]">{ownerEmptyMessage}</small> : null}
-                  </label>
-                  {teamSelectorVisible ? (
-                    <label className="space-y-2">
-                      <span className={KICKER_CLASS}>Team</span>
-                      <select className={INPUT_CLASS} value={form.team_id} onChange={(event) => setForm((current) => ({ ...current, team_id: event.target.value }))}>
-                        <option value="">Select team</option>
-                        {teams.map((team) => (
-                          <option key={team.team_id} value={team.team_id}>
-                            {teamSelectLabel(team)}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  ) : null}
-                </div>
+                    {ownerMsg ? <p className="text-xs text-amber-600 mt-1">{ownerMsg}</p> : null}
+                  </Label>
+                ) : null}
+                {teamSelectorVisible ? (
+                  <Label label="Team">
+                    <select className={C.input} value={form.team_id} onChange={set("team_id")}>
+                      <option value="">Select team</option>
+                      {teams.map(t => <option key={t.team_id} value={t.team_id}>{teamSelectLabel(t)}</option>)}
+                    </select>
+                  </Label>
+                ) : null}
                 {selectedTeam ? (
-                  <div className="mt-4 rounded-[22px] border border-[#eadfcd] bg-[#fffaf1] px-4 py-4 text-sm leading-7 text-[#6f614c]">
-                    <strong className="text-[#060710]">Team scope:</strong> {teamBadgeLabel(selectedTeam)}
+                  <div className="sm:col-span-2 rounded-xl bg-amber-50 border border-amber-100 px-4 py-2.5 text-xs text-amber-800">
+                    Team scope: <strong>{teamBadgeLabel(selectedTeam)}</strong>
                   </div>
                 ) : null}
+              </Section>
 
-                <div className="mt-5 flex flex-wrap justify-end gap-3">
-                  <button className={GHOST_BUTTON_CLASS} type="button" onClick={() => router.push(`/customers/${params.id}`)}>
-                    Cancel
-                  </button>
-                  <button className={PRIMARY_BUTTON_CLASS} type="submit" disabled={saving}>
-                    <DashboardIcon name="settings" className="h-4 w-4" />
-                    {saving ? "Saving..." : "Save Customer"}
-                  </button>
-                </div>
-              </article>
+              {/* Actions */}
+              <div className="flex flex-wrap justify-end gap-3 pt-1">
+                <button className={Btn.ghost} type="button" onClick={() => router.push(`/customers/${params.id}`)}>Cancel</button>
+                <button className={Btn.gold} type="submit" disabled={saving}>
+                  <DashboardIcon name="settings" className="h-4 w-4" />
+                  {saving ? "Saving…" : "Save Customer"}
+                </button>
+              </div>
             </form>
-
-            <div className="space-y-5 xl:sticky xl:top-6">
-              <article className={PANEL_CLASS}>
-                <p className={KICKER_CLASS}>Live Preview</p>
-                <div className="mt-4 rounded-[28px] border border-[#eadfcd] bg-[linear-gradient(145deg,#fffdf7_0%,#fff3d8_100%)] p-5">
-                  <div className="flex items-start gap-4">
-                    <div className="grid h-16 w-16 shrink-0 place-items-center rounded-[22px] bg-[#10111d] text-xl font-bold text-white shadow-[0_18px_32px_rgba(6,7,16,0.18)]">
-                      {initials(form.company_name || form.name || "Customer")}
-                    </div>
-                    <div className="min-w-0">
-                      <span className={KICKER_CLASS}>Account Preview</span>
-                      <h3 className="mt-3 truncate text-[1.9rem] font-black tracking-tight text-[#060710]">
-                        {form.company_name || "Customer profile preview"}
-                      </h3>
-                      <p className="mt-2 text-sm leading-7 text-[#746853]">
-                        {form.business_summary || "The company overview will appear here once you add what the business does."}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-5 grid gap-3">
-                    {[
-                      ["Contact", form.name || "--"],
-                      ["Email", form.email || "--"],
-                      ["Phone", form.phone || "--"],
-                      ["Address", [form.address_street, form.address_city, form.address_state, form.country].filter(Boolean).join(", ") || "--"],
-                    ].map(([label, value]) => (
-                      <div key={label} className={SOFT_PANEL_CLASS}>
-                        <span className={KICKER_CLASS}>{label}</span>
-                        <strong className="mt-3 block text-sm leading-6 text-[#060710]">{value}</strong>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </article>
-
-              <article className={PANEL_CLASS}>
-                <p className={KICKER_CLASS}>What stays preserved</p>
-                <div className="mt-4 space-y-3">
-                  {[
-                    "Existing note history remains attached to this customer.",
-                    "New profile details are stored with the customer record.",
-                    "Owner, status, value, and follow-up stay editable together.",
-                  ].map((item) => (
-                    <div key={item} className="flex items-center gap-3 rounded-[20px] border border-[#eadfcd] bg-[#fffaf1] px-4 py-4">
-                      <span className="grid h-9 w-9 place-items-center rounded-full bg-[#fff0c8] text-[#8d6e27]">
-                        <DashboardIcon name="documents" className="h-4 w-4" />
-                      </span>
-                      <strong className="text-sm text-[#060710]">{item}</strong>
-                    </div>
-                  ))}
-                </div>
-              </article>
-            </div>
-          </div>
-        </section>
-      ) : null}
+          </>
+        ) : null}
+      </div>
     </DashboardShell>
   );
 }
