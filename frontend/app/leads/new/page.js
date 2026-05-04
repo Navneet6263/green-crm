@@ -39,6 +39,7 @@ const INDUSTRY_OPTIONS = [
   { value: "manufacturing", label: "Manufacturing" },
   { value: "retail", label: "Retail" },
   { value: "real-estate", label: "Real Estate" },
+  { value: "staffing", label: "Staffing" },
   { value: "services", label: "Professional Services" },
   { value: "other", label: "Other" },
 ];
