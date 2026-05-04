@@ -866,7 +866,12 @@ async function updateLead(auth, leadId, payload) {
   let assignedToOverride;
 
   if (payload.assigned_to) {
-    if (!MANAGER_ROLES.includes(auth.role)) {
+    const isDemoHandoff =
+      normalized.status === "booked-demo" &&
+      [ROLES.SALES, ROLES.MARKETING].includes(auth.role) &&
+      lead.assigned_to === auth.userId;
+
+    if (!MANAGER_ROLES.includes(auth.role) && !isDemoHandoff) {
       throw new AppError("Only managers and admins can reassign leads.", 403);
     }
 

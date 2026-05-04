@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import DashboardShell from "../../../components/dashboard/DashboardShell";
 import DashboardIcon from "../../../components/dashboard/icons";
 import LeadCollaboratorPanel from "../../../components/leads/details/LeadCollaboratorPanel";
+import LeadAssignmentFlow from "../../../components/leads/details/LeadAssignmentFlow";
 import LeadDocumentsPanel from "../../../components/leads/details/LeadDocumentsPanel";
 import LeadHistoryTimeline from "../../../components/leads/details/LeadHistoryTimeline";
 import LeadNotesPanel from "../../../components/leads/details/LeadNotesPanel";
@@ -327,13 +328,17 @@ export default function LeadDetailPage() {
     finally { setTransferring(false); }
   }
 
-  const handleStatusUpdated = useCallback((updatedLead) => {
+  const handleStatusUpdated = useCallback((updatedLead, statusContext = {}) => {
     mergeLeadState(updatedLead);
-    if (updatedLead?.latest_note) {
-      prependNote(updatedLead.latest_note, { incrementLeadCount: false });
+    const noteContent = updatedLead?.latest_note || statusContext.note;
+    if (noteContent) {
+      prependNote(noteContent, { incrementLeadCount: false });
+    }
+    if (statusContext.activityDescription) {
+      prependActivity(statusContext.scheduled ? "task" : "updated", statusContext.activityDescription);
     }
     setNotice(`Lead status moved to ${nice(updatedLead?.status || "new")}.`);
-  }, [mergeLeadState, prependNote]);
+  }, [mergeLeadState, prependActivity, prependNote]);
 
   function scrollToNotes() {
     document.getElementById("follow-up-notes")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -431,6 +436,7 @@ export default function LeadDetailPage() {
                     <span className={KICKER_CLASS}>Quick Status Update</span>
                     <div className="mt-3">
                       <LeadQuickStatusControl
+                        assigneeOptions={users}
                         lead={lead}
                         token={session?.token}
                         onUpdated={handleStatusUpdated}
@@ -528,6 +534,7 @@ export default function LeadDetailPage() {
                     Workflow remains visible here, while uploaded document review stays limited to admin and manager screens.
                   </p>
                 )}
+                <LeadAssignmentFlow activity={activity} lead={lead} renderWhen={when} />
               </article>
 
               <article className={PANEL_CLASS}>

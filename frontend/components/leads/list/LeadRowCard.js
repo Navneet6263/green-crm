@@ -223,6 +223,7 @@ export default function LeadRowCard({
 
           {canEdit ? (
             <LeadQuickStatusControl
+              assigneeOptions={teamUsers}
               lead={lead}
               token={sessionToken}
               onUpdated={handleInlineStatusUpdate}

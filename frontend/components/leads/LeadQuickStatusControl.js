@@ -1,75 +1,71 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { apiRequest } from "../../lib/api";
 import { LEAD_STATUS_ORDER, getLeadStatusLabel } from "../../lib/leadStatus";
-
-const STATUS_OPTIONS = LEAD_STATUS_ORDER;
-
-const NOTE_HINTS = {
-  new: "Capture what just came in and what should happen next.",
-  contacted: "Note the first outreach, response, or call outcome.",
-  qualified: "Record why this lead is now qualified and what is confirmed.",
-  proposal: "Mention proposal scope, pricing, or commercial expectation.",
-  negotiation: "Note objections, negotiation pressure, or decision blockers.",
-  "booked-demo": "Capture the booked demo date, owner, and meeting expectation.",
-  "demo-done": "Record demo outcome, objections, and the next conversion step.",
-  "trial-started": "Note trial kickoff details, adoption expectation, and review date.",
-  "closed-won": "Capture the winning reason and handoff readiness.",
-  "closed-lost": "Record the loss reason so history stays useful.",
-};
-
+import LeadStatusUpdateDialog from "./LeadStatusUpdateDialog";
+import { buildStatusActivityDescription } from "./LeadStatusUpdateUtils";
 const SELECT_CLASS =
   "min-h-[38px] rounded-full border border-[#eadfcd] bg-white px-3 py-2 text-xs font-semibold text-[#5d503c] outline-none transition focus:border-[#d7b258] focus:ring-4 focus:ring-[#f6ead0]";
-const NOTE_CLASS =
-  "min-h-[96px] w-full rounded-[18px] border border-[#eadfcd] bg-white px-4 py-3 text-sm text-[#060710] outline-none transition placeholder:text-[#9c8e76] focus:border-[#d7b258] focus:ring-4 focus:ring-[#f6ead0]";
-const DONE_CLASS =
-  "inline-flex min-h-[38px] items-center justify-center rounded-full border border-[#d7b258] bg-[#f3dfab] px-4 py-2 text-xs font-semibold text-[#060710] shadow-[0_12px_24px_rgba(203,169,82,0.16)] transition hover:-translate-y-0.5 hover:bg-[#efd48f] disabled:cursor-not-allowed disabled:opacity-60";
-const CANCEL_CLASS =
-  "inline-flex min-h-[38px] items-center justify-center rounded-full border border-[#eadfcd] bg-white px-4 py-2 text-xs font-semibold text-[#5d503c] transition hover:-translate-y-0.5 hover:text-[#060710]";
-const NOTE_PANEL_CLASS =
-  "rounded-[24px] border border-[#eadfcd] bg-[linear-gradient(180deg,_#fffdf7_0%,_#fff8ec_100%)] p-4 shadow-[0_18px_36px_rgba(79,58,22,0.12)]";
 
 export default function LeadQuickStatusControl({
+  assigneeOptions = [],
+  disabled = false,
   lead,
   token,
-  disabled = false,
-  className = "",
   onUpdated,
   hideLabel = false,
+  className = "",
   selectClassName = "",
-  notePanelClassName = "",
-  placeholder = "What changed on this lead?",
 }) {
   const currentStatus = String(lead?.status || "new").toLowerCase();
-  const [draftStatus, setDraftStatus] = useState(currentStatus);
-  const [note, setNote] = useState("");
+  const [nextStatus, setNextStatus] = useState(currentStatus);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setDraftStatus(currentStatus);
-    setNote("");
+    setNextStatus(currentStatus);
+    setDialogOpen(false);
     setError("");
   }, [lead?.lead_id, currentStatus]);
 
-  const changed = draftStatus !== currentStatus;
-  const hint = useMemo(() => NOTE_HINTS[draftStatus] || "Leave one useful note for this status change.", [draftStatus]);
-
-  function resetDraft() {
-    setDraftStatus(currentStatus);
-    setNote("");
+  function cancelDialog() {
+    setNextStatus(currentStatus);
+    setDialogOpen(false);
     setError("");
   }
 
-  async function submitStatusChange() {
-    if (!changed || !token || !lead?.lead_id || disabled) {
-      return;
+  async function createNextFollowUp(followUp, note) {
+    if (!followUp.required) {
+      return null;
     }
 
-    if (!note.trim()) {
-      setError("Status note is required.");
+    const due = `${followUp.date} ${followUp.time}:00`;
+    const title = `${getLeadStatusLabel(nextStatus)} follow-up`;
+    await apiRequest("/tasks", {
+      method: "POST",
+      token,
+      body: {
+        assigned_to: followUp.assignee || lead.assigned_to || undefined,
+        company_id: lead.company_id || undefined,
+        due_date: due,
+        priority: lead.priority || "medium",
+        related_id: lead.lead_id,
+        related_to: "lead",
+        team_id: lead.team_id || undefined,
+        title,
+        type: followUp.mode,
+        notes: note,
+      },
+    });
+
+    return { due, title };
+  }
+
+  async function saveStatusUpdate({ demo = {}, followUp, isDemoStatus = false, note }) {
+    if (!token || !lead?.lead_id || saving || nextStatus === currentStatus) {
       return;
     }
 
@@ -81,17 +77,26 @@ export default function LeadQuickStatusControl({
         method: "PATCH",
         token,
         body: {
-          status: draftStatus,
-          change_note: note.trim(),
+          assigned_to: isDemoStatus ? demo.assignee : undefined,
+          change_note: isDemoStatus ? buildStatusActivityDescription({ assigneeOptions, currentStatus, demo, lead, nextStatus, note }) : note,
+          requirements: isDemoStatus ? demo.requirement.trim() : undefined,
+          status: nextStatus,
         },
       });
+      const demoFollowUp = isDemoStatus ? { assignee: demo.assignee, date: demo.date, mode: "meeting", required: true, time: demo.time } : followUp;
+      const description = buildStatusActivityDescription({ assigneeOptions, currentStatus, demo, followUp: demoFollowUp, lead, nextStatus, note });
+      const scheduled = await createNextFollowUp(demoFollowUp, description);
 
-      setDraftStatus(String(updatedLead.status || draftStatus).toLowerCase());
-      setNote("");
-      setError("");
+      await apiRequest(`/leads/${lead.lead_id}/activity`, {
+        method: "POST",
+        token,
+        body: { description, type: scheduled ? "task" : "updated" },
+      });
 
+      setDialogOpen(false);
+      setNextStatus(String(updatedLead.status || nextStatus).toLowerCase());
       if (onUpdated) {
-        await onUpdated(updatedLead);
+        await onUpdated(updatedLead, { activityDescription: description, note, scheduled });
       }
     } catch (requestError) {
       setError(requestError.message);
@@ -101,54 +106,37 @@ export default function LeadQuickStatusControl({
   }
 
   return (
-    <div className={`relative min-w-0 space-y-2 ${changed ? "z-[70]" : ""} ${className}`.trim()}>
+    <div className={`relative min-w-0 ${className}`.trim()}>
       <div className="flex flex-wrap items-center gap-2">
         {!hideLabel ? <span className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#9a886d]">Status</span> : null}
         <select
           className={`${SELECT_CLASS} ${selectClassName}`.trim()}
-          value={draftStatus}
+          value={nextStatus}
           onChange={(event) => {
-            setDraftStatus(event.target.value);
+            const value = event.target.value;
+            setNextStatus(value);
             setError("");
+            if (value !== currentStatus) setDialogOpen(true);
           }}
           disabled={disabled || saving}
         >
-          {STATUS_OPTIONS.map((item) => (
-            <option key={item} value={item}>
-              {getLeadStatusLabel(item)}
-            </option>
-          ))}
+          {LEAD_STATUS_ORDER.map((status) => <option key={status} value={status}>{getLeadStatusLabel(status)}</option>)}
         </select>
       </div>
 
-      {changed ? (
-        <div className={`${NOTE_PANEL_CLASS} ${notePanelClassName}`.trim()}>
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-[10px] font-black uppercase tracking-[0.24em] text-[#9a886d]">Status Note</p>
-              <p className="mt-2 text-[11px] font-semibold leading-5 text-[#8f816a]">{hint}</p>
-            </div>
-            <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">
-              {getLeadStatusLabel(draftStatus)}
-            </span>
-          </div>
-          <textarea
-            rows="3"
-            value={note}
-            onChange={(event) => setNote(event.target.value)}
-            placeholder={placeholder}
-            className={`${NOTE_CLASS} mt-3 resize-y`}
-          />
-          {error ? <p className="mt-2 text-xs font-semibold text-rose-600">{error}</p> : null}
-          <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
-            <button className={CANCEL_CLASS} type="button" onClick={resetDraft} disabled={saving}>
-              Cancel
-            </button>
-            <button className={DONE_CLASS} type="button" onClick={submitStatusChange} disabled={saving || !note.trim()}>
-              {saving ? "Saving..." : "Done"}
-            </button>
-          </div>
-        </div>
+      {dialogOpen ? (
+        <LeadStatusUpdateDialog
+          assigneeOptions={assigneeOptions}
+          currentStatus={currentStatus}
+          disabled={disabled}
+          error={error}
+          lead={lead}
+          nextStatus={nextStatus}
+          onCancel={cancelDialog}
+          onSave={saveStatusUpdate}
+          saving={saving}
+          setNextStatus={setNextStatus}
+        />
       ) : null}
     </div>
   );
