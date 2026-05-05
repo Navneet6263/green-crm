@@ -140,6 +140,12 @@ export default function LeadRowCard({
           {lead.email ? (
             <span className="hidden sm:inline truncate max-w-[180px] text-slate-400">{lead.email}</span>
           ) : null}
+          {lead.phone ? (
+            <span className="flex items-center gap-1">
+              <span className="text-slate-300">·</span>
+              <a href={`tel:${String(lead.phone).replace(/[^\d+]/g,"")}`} className="text-slate-500 hover:text-amber-700">{lead.phone}</a>
+            </span>
+          ) : null}
 
           {/* Assigned to — with mini avatar */}
           <span className="flex items-center gap-1.5">
