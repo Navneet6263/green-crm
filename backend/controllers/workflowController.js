@@ -1,4 +1,12 @@
 const workflowService = require("../services/workflowService");
+const { parseMultipartFormData } = require("../services/leadDocumentStorageService");
+
+function getUploadPayload(req) {
+  if (String(req.headers["content-type"] || "").toLowerCase().includes("multipart/form-data")) {
+    return parseMultipartFormData(req.body, req.headers["content-type"]);
+  }
+  return req.body;
+}
 
 async function myAssigned(req, res) {
   const data = await workflowService.listMyAssigned(req.auth, req.query);
@@ -36,13 +44,13 @@ async function complete(req, res) {
 }
 
 async function uploadLegal(req, res) {
-  const data = await workflowService.uploadLegalDocument(req.auth, req.params.leadId, req.body);
-  res.status(201).json({ data });
+  const data = await workflowService.uploadLegalDocument(req.auth, req.params.leadId, getUploadPayload(req));
+  res.status(201).json(data);
 }
 
 async function uploadFinance(req, res) {
-  const data = await workflowService.uploadFinanceDocument(req.auth, req.params.leadId, req.body);
-  res.status(201).json({ data });
+  const data = await workflowService.uploadFinanceDocument(req.auth, req.params.leadId, getUploadPayload(req));
+  res.status(201).json(data);
 }
 
 async function deleteLegal(req, res) {

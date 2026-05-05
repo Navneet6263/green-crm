@@ -79,7 +79,8 @@ function createApp() {
     });
   });
 
-  app.use("/api/uploads", express.static(uploadsRoot));
+  app.use("/api/uploads", express.static(uploadsRoot, { fallthrough: false, index: false }));
+  app.use("/uploads", express.static(uploadsRoot, { fallthrough: false, index: false }));
   app.use("/api", routes);
   app.use(notFoundHandler);
   app.use(errorHandler);

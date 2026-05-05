@@ -243,17 +243,19 @@ export default function WorkflowWorkspace({ mode }) {
 
   async function uploadDocument(event) {
     event.preventDefault();
-    if (!selectedLead || !docForm.file_name.trim()) return setError("Document name is required.");
-    if (!docForm.file_url.trim()) {
-      return setError(
-        pickedFile
-          ? "Current workflow API saves documents through a hosted URL. Add the document link to finish attaching this file."
-          : "Document link is required."
-      );
-    }
+    if (!selectedLead || (!pickedFile && !docForm.file_name.trim())) return setError("Document file or name is required.");
+    if (!pickedFile && !docForm.file_url.trim()) return setError("Choose a file or add a hosted document URL.");
     setSavingDoc(true); setError(""); setNotice("");
     try {
-      await apiRequest(`/workflow/${selectedLead.lead_id}/${config.uploadPath}`, { method: "POST", token: session.token, body: { ...docForm, file_size: docForm.file_size ? Number(docForm.file_size) : null } });
+      if (pickedFile) {
+        const formData = new FormData();
+        formData.append("file", pickedFile);
+        formData.append("document_type", docForm.document_type || config.docType);
+        if (docForm.file_name.trim()) formData.append("file_name", docForm.file_name.trim());
+        await apiRequest(`/workflow/${selectedLead.lead_id}/${config.uploadPath}`, { method: "POST", token: session.token, formData });
+      } else {
+        await apiRequest(`/workflow/${selectedLead.lead_id}/${config.uploadPath}`, { method: "POST", token: session.token, body: { ...docForm, file_size: docForm.file_size ? Number(docForm.file_size) : null } });
+      }
       setDocForm({ file_name: "", file_url: "", file_size: "", document_type: config.docType });
       setPickedFile(null);
       setNotice("Document saved successfully.");
@@ -292,18 +294,15 @@ export default function WorkflowWorkspace({ mode }) {
     }
 
     const sizeKb = Math.max(1, Math.ceil(file.size / 1024));
-    setPickedFile({
-      name: file.name,
-      size: sizeKb,
-      type: file.type || "Unknown",
-    });
+    file.displaySizeKb = sizeKb;
+    setPickedFile(file);
     setDocForm((current) => ({
       ...current,
       file_name: current.file_name || file.name,
       file_size: current.file_size || String(sizeKb),
     }));
     setError("");
-    setNotice("File details copied into the document form. Add the hosted document URL to save it.");
+    setNotice("File selected. Save the document to upload it to GreenCRM storage.");
   }
 
   return (
@@ -539,7 +538,7 @@ export default function WorkflowWorkspace({ mode }) {
                             </p>
 
                             <label className="mt-4 grid min-h-[180px] cursor-pointer place-items-center rounded-[24px] border border-dashed border-[#d8c7a9] bg-white px-5 py-6 text-center transition hover:border-[#d7b258] hover:bg-[#fffdf8]">
-                              <input type="file" className="hidden" onChange={handleFileSelection} />
+                              <input type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx" onChange={handleFileSelection} />
                               <div className="space-y-3">
                                 <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-[#fff4d9] text-[#8d6e27]">
                                   <DashboardIcon name="documents" className="h-5 w-5" />
@@ -547,7 +546,7 @@ export default function WorkflowWorkspace({ mode }) {
                                 <div>
                                   <strong className="block text-sm text-[#060710]">{pickedFile ? pickedFile.name : "Choose document file"}</strong>
                                   <span className="mt-1 block text-sm text-[#746853]">
-                                    {pickedFile ? `${pickedFile.size} KB | ${pickedFile.type}` : "PDF, image, or invoice proof"}
+                                    {pickedFile ? `${pickedFile.displaySizeKb || Math.ceil(pickedFile.size / 1024)} KB | ${pickedFile.type || "Unknown"}` : "PDF, image, DOC, DOCX, XLS, or XLSX"}
                                   </span>
                                 </div>
                               </div>
@@ -561,13 +560,13 @@ export default function WorkflowWorkspace({ mode }) {
                                 </div>
                                 <div className="rounded-[20px] border border-[#eadfcd] bg-white px-4 py-4">
                                   <p className={KICKER}>File Size</p>
-                                  <p className="mt-2 text-sm font-semibold text-[#060710]">{pickedFile.size} KB</p>
+                                  <p className="mt-2 text-sm font-semibold text-[#060710]">{pickedFile.displaySizeKb || Math.ceil(pickedFile.size / 1024)} KB</p>
                                 </div>
                               </div>
                             ) : null}
 
                             <div className="mt-4 rounded-[22px] border border-amber-200 bg-amber-50 px-4 py-4 text-sm leading-6 text-amber-800">
-                              Current workflow API saves document records using a hosted URL. Choose the file here, upload it to Drive, SharePoint, or company storage, then paste that link in Step 2.
+                              Files are uploaded to GreenCRM server storage. You can still paste a hosted URL in Step 2 if the document already lives elsewhere.
                             </div>
                           </div>
 
@@ -577,12 +576,12 @@ export default function WorkflowWorkspace({ mode }) {
                                 Step 2
                               </span>
                               <span className="inline-flex rounded-full border border-[#eadfcd] bg-[#fff6e4] px-3 py-1 text-[11px] font-bold text-[#7a6230]">
-                                Add Link
+                                Save Document
                               </span>
                             </div>
                             <h4 className="mt-4 text-lg font-semibold text-[#060710]">Save document record</h4>
                             <p className="mt-2 text-sm leading-6 text-[#746853]">
-                              Paste the final document URL so the team can reopen the same file later from this workflow desk.
+                              Upload the selected file or save a hosted URL so the team can reopen the same document later.
                             </p>
 
                             <div className="mt-4 grid gap-4">
@@ -603,7 +602,7 @@ export default function WorkflowWorkspace({ mode }) {
                               </div>
 
                               <label className="space-y-2">
-                                <span className={KICKER}>Hosted Document URL</span>
+                                  <span className={KICKER}>Hosted Document URL (optional)</span>
                                 <input className={INPUT} value={docForm.file_url} onChange={(event) => setDocForm((current) => ({ ...current, file_url: event.target.value }))} placeholder={config.linkPlaceholder} />
                               </label>
                             </div>

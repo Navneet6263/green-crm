@@ -672,6 +672,7 @@ async function uploadLeadDocument(auth, leadId, metadata, fileBuffer) {
     buffer,
     companyId: lead.company_id,
     contentType: String(metadata?.contentType || "application/octet-stream").trim().toLowerCase(),
+    documentType: "general",
     fileName: metadata?.fileName,
     leadId: lead.lead_id,
   });
@@ -719,7 +720,17 @@ async function uploadLeadDocument(auth, leadId, metadata, fileBuffer) {
         transaction
       );
 
-      return createdDocument;
+      return {
+        id: createdDocument.id,
+        file_name: createdDocument.file_name,
+        file_url: createdDocument.file_url,
+        file_size: createdDocument.file_size,
+        mime_type: createdDocument.content_type || null,
+        document_type: "general",
+        uploaded_by: createdDocument.uploaded_by,
+        created_at: createdDocument.uploaded_at || null,
+        ...createdDocument,
+      };
     });
   } catch (error) {
     await deleteStoredLeadDocument(storedDocument.fileUrl).catch(() => {});

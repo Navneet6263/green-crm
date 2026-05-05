@@ -15,6 +15,21 @@ const {
   parseRequestedTeamIds,
   resolveTeamScope,
 } = require("./accessScopeService");
+const { deleteStoredLeadDocument, storeLeadDocument } = require("./leadDocumentStorageService");
+
+function formatUploadResponse(document = {}) {
+  return {
+    id: document.id,
+    file_name: document.file_name,
+    file_url: document.file_url,
+    file_size: document.file_size,
+    mime_type: document.content_type || document.mime_type || null,
+    document_type: document.document_type,
+    uploaded_by: document.uploaded_by,
+    created_at: document.uploaded_at || document.created_at || null,
+    ...document,
+  };
+}
 
 async function getWorkflowLead(auth, leadId) {
   const lead = await leadRepository.getLeadById(
@@ -347,42 +362,67 @@ async function completeWorkflow(auth, leadId, payload) {
   return updatedLead;
 }
 
-async function uploadLegalDocument(auth, leadId, payload) {
-  const lead = await getWorkflowLead(auth, leadId);
-  if (!payload.file_name || !payload.file_url) {
-    throw new AppError("file_name and file_url are required.");
+async function createWorkflowDocument({ auth, createDocument, defaultType, documentType, lead, payload }) {
+  const fields = payload.fields || payload;
+  const file = payload.file || null;
+  let storedDocument = null;
+
+  if (file) {
+    storedDocument = await storeLeadDocument({
+      buffer: file.buffer,
+      companyId: lead.company_id,
+      contentType: file.contentType,
+      documentType,
+      fileName: file.fileName,
+      leadId: lead.lead_id,
+    });
+  } else if (!fields.file_name || !fields.file_url) {
+    throw new AppError("A document file or file_name and file_url are required.");
   }
 
-  await workflowRepository.createLegalDocument({
+  const documentPayload = {
     company_id: lead.company_id,
+    content_type: storedDocument?.contentType || fields.content_type || fields.mime_type || null,
+    document_type: fields.document_type || defaultType,
+    file_name: storedDocument?.fileName || fields.file_name,
+    file_size: storedDocument?.fileSize || fields.file_size || null,
+    file_url: storedDocument?.fileUrl || fields.file_url,
     lead_id: lead.lead_id,
-    file_name: payload.file_name,
-    file_url: payload.file_url,
-    file_size: payload.file_size || null,
     uploaded_by: auth.userId,
-    document_type: payload.document_type || "agreement",
-  });
+  };
 
-  return { uploaded: true };
+  try {
+    const document = await createDocument(documentPayload);
+    console.log(`[workflow-document] uploaded ${documentType} document`, { lead_id: lead.lead_id, file_url: documentPayload.file_url, user_id: auth.userId });
+    return { success: true, document: formatUploadResponse(document) };
+  } catch (error) {
+    if (storedDocument?.fileUrl) await deleteStoredLeadDocument(storedDocument.fileUrl).catch(() => {});
+    throw error;
+  }
+}
+
+async function uploadLegalDocument(auth, leadId, payload) {
+  const lead = await getWorkflowLead(auth, leadId);
+  return createWorkflowDocument({
+    auth,
+    createDocument: (document) => workflowRepository.createLegalDocument(document),
+    defaultType: "agreement",
+    documentType: "legal",
+    lead,
+    payload,
+  });
 }
 
 async function uploadFinanceDocument(auth, leadId, payload) {
   const lead = await getWorkflowLead(auth, leadId);
-  if (!payload.file_name || !payload.file_url) {
-    throw new AppError("file_name and file_url are required.");
-  }
-
-  await workflowRepository.createFinanceDocument({
-    company_id: lead.company_id,
-    lead_id: lead.lead_id,
-    file_name: payload.file_name,
-    file_url: payload.file_url,
-    file_size: payload.file_size || null,
-    uploaded_by: auth.userId,
-    document_type: payload.document_type || "invoice",
+  return createWorkflowDocument({
+    auth,
+    createDocument: (document) => workflowRepository.createFinanceDocument(document),
+    defaultType: "invoice",
+    documentType: "finance",
+    lead,
+    payload,
   });
-
-  return { uploaded: true };
 }
 
 async function deleteLegalDocument(auth, leadId, docId) {

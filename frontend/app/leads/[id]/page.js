@@ -247,7 +247,7 @@ export default function LeadDetailPage() {
     setNotice("");
 
     try {
-      const createdDocument = await apiRequest(`/leads/${params.id}/documents/upload`, {
+      const uploadResponse = await apiRequest(`/leads/${params.id}/documents/upload`, {
         method: "POST",
         token: session.token,
         headers: {
@@ -256,6 +256,7 @@ export default function LeadDetailPage() {
         },
         rawBody: file,
       });
+      const createdDocument = uploadResponse.document || uploadResponse;
 
       setLead((current) => (
         current

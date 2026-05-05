@@ -167,12 +167,24 @@ async function ensureDatabase() {
   }
 }
 
+async function ensureDocumentUploadColumns(pool) {
+  await pool.request().query(`
+    IF OBJECT_ID('lead_legal_documents', 'U') IS NOT NULL AND COL_LENGTH('lead_legal_documents', 'content_type') IS NULL
+      ALTER TABLE lead_legal_documents ADD content_type VARCHAR(191) NULL;
+    IF OBJECT_ID('lead_finance_documents', 'U') IS NOT NULL AND COL_LENGTH('lead_finance_documents', 'content_type') IS NULL
+      ALTER TABLE lead_finance_documents ADD content_type VARCHAR(191) NULL;
+  `);
+}
+
 async function initializeDatabase() {
   if (!poolPromise) {
     poolPromise = (async () => {
       await ensureDatabase();
       const pool = new sql.ConnectionPool(config);
       await pool.connect();
+      await ensureDocumentUploadColumns(pool).catch((error) => {
+        console.warn("Document upload column check skipped:", error.message);
+      });
       return pool;
     })().catch((error) => {
       poolPromise = null;

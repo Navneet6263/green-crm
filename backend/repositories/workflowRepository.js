@@ -422,42 +422,32 @@ async function addStageHistory(leadId, companyId, stage, executor) {
 
 async function createLegalDocument(document, executor) {
   const active = getExecutor(executor);
-  await active.query(
-    `
-      INSERT INTO lead_legal_documents
-        (company_id, lead_id, file_name, file_url, file_size, uploaded_by, document_type)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `,
-    [
-      document.company_id,
-      document.lead_id,
-      document.file_name,
-      document.file_url,
-      document.file_size || null,
-      document.uploaded_by,
-      document.document_type || "agreement",
-    ]
+  const insert = async (withContentType = true) => active.query(
+    withContentType
+      ? `INSERT INTO lead_legal_documents (company_id, lead_id, file_name, file_url, file_size, content_type, uploaded_by, document_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      : `INSERT INTO lead_legal_documents (company_id, lead_id, file_name, file_url, file_size, uploaded_by, document_type) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    withContentType
+      ? [document.company_id, document.lead_id, document.file_name, document.file_url, document.file_size || null, document.content_type || null, document.uploaded_by, document.document_type || "agreement"]
+      : [document.company_id, document.lead_id, document.file_name, document.file_url, document.file_size || null, document.uploaded_by, document.document_type || "agreement"]
   );
+  try { await insert(true); } catch (error) { if (!/content_type|Invalid column/i.test(error.message)) throw error; await insert(false); }
+  const [rows] = await active.query(`SELECT TOP 1 * FROM lead_legal_documents WHERE company_id = ? AND lead_id = ? ORDER BY id DESC`, [document.company_id, document.lead_id]);
+  return rows[0] || null;
 }
 
 async function createFinanceDocument(document, executor) {
   const active = getExecutor(executor);
-  await active.query(
-    `
-      INSERT INTO lead_finance_documents
-        (company_id, lead_id, file_name, file_url, file_size, uploaded_by, document_type)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `,
-    [
-      document.company_id,
-      document.lead_id,
-      document.file_name,
-      document.file_url,
-      document.file_size || null,
-      document.uploaded_by,
-      document.document_type || "invoice",
-    ]
+  const insert = async (withContentType = true) => active.query(
+    withContentType
+      ? `INSERT INTO lead_finance_documents (company_id, lead_id, file_name, file_url, file_size, content_type, uploaded_by, document_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      : `INSERT INTO lead_finance_documents (company_id, lead_id, file_name, file_url, file_size, uploaded_by, document_type) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    withContentType
+      ? [document.company_id, document.lead_id, document.file_name, document.file_url, document.file_size || null, document.content_type || null, document.uploaded_by, document.document_type || "invoice"]
+      : [document.company_id, document.lead_id, document.file_name, document.file_url, document.file_size || null, document.uploaded_by, document.document_type || "invoice"]
   );
+  try { await insert(true); } catch (error) { if (!/content_type|Invalid column/i.test(error.message)) throw error; await insert(false); }
+  const [rows] = await active.query(`SELECT TOP 1 * FROM lead_finance_documents WHERE company_id = ? AND lead_id = ? ORDER BY id DESC`, [document.company_id, document.lead_id]);
+  return rows[0] || null;
 }
 
 async function deleteLegalDocument(id, companyId, leadId, executor) {

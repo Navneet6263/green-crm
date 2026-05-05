@@ -91,15 +91,16 @@ export async function apiRequest(path, options = {}) {
   const requestPromise = (async () => {
     const hasJsonBody = Object.prototype.hasOwnProperty.call(options, "body") && options.body !== undefined;
     const hasRawBody = Object.prototype.hasOwnProperty.call(options, "rawBody");
+    const hasFormData = Object.prototype.hasOwnProperty.call(options, "formData");
     const headers = {
-      ...(hasRawBody ? {} : { "Content-Type": "application/json" }),
+      ...(hasRawBody || hasFormData ? {} : { "Content-Type": "application/json" }),
       ...(options.token ? { Authorization: `Bearer ${options.token}` } : {}),
       ...(options.headers || {}),
     };
     const response = await fetch(`${API_BASE}${path}`, {
       method,
       headers,
-      body: hasRawBody ? options.rawBody : hasJsonBody ? JSON.stringify(options.body) : undefined,
+      body: hasFormData ? options.formData : hasRawBody ? options.rawBody : hasJsonBody ? JSON.stringify(options.body) : undefined,
       cache: "no-store",
     });
 

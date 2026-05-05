@@ -31,7 +31,7 @@ router.get("/:leadId/calls", asyncHandler(callLogController.listLeadCalls));
 router.get("/:leadId/documents", asyncHandler(leadController.documents));
 router.post(
   "/:leadId/documents/upload",
-  express.raw({ type: () => true, limit: "15mb" }),
+  express.raw({ type: () => true, limit: "10mb" }),
   asyncHandler(leadController.uploadDocument)
 );
 router.get("/:leadId/notes", asyncHandler(leadController.notes));
