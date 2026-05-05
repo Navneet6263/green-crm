@@ -2,51 +2,49 @@
 
 import DashboardIcon from "../../dashboard/icons";
 import LeadRowCard from "./LeadRowCard";
-import {
-  LEAD_GHOST_BUTTON_CLASS,
-  LEAD_KICKER_CLASS,
-  LEAD_PANEL_CLASS,
-  LEAD_PRIMARY_BUTTON_CLASS,
-} from "../shared/leadPageConstants";
+import { LEAD_GHOST_BUTTON_CLASS, LEAD_KICKER_CLASS, LEAD_PRIMARY_BUTTON_CLASS, LEAD_PANEL_CLASS } from "../shared/leadPageConstants";
 
 export default function LeadListSection({
-  allPicked,
-  canEdit,
-  canManage,
-  emptyLeadsMessage,
-  leadMeta,
-  page,
-  picked,
-  rows,
-  rowActions,
-  teamBadgeLabel,
-  totalMatched,
-  totalPages,
+  allPicked, canEdit, canManage, emptyLeadsMessage,
+  leadMeta, page, picked, rows, rowActions, teamBadgeLabel, totalMatched, totalPages,
 }) {
+  const from = totalMatched ? (page - 1) * leadMeta.page_size + 1 : 0;
+  const to = Math.min(page * leadMeta.page_size, totalMatched);
+
   return (
-    <article className={`${LEAD_PANEL_CLASS} overflow-hidden p-5 md:p-6`}>
-      <div className="flex flex-col gap-3 border-b border-[#efe6d8] pb-5 md:flex-row md:items-center md:justify-between">
-        <div>
-          <p className={LEAD_KICKER_CLASS}>Roster</p>
-          <h3 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Lead list</h3>
+    <div className="space-y-3">
+      {/* List header */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm font-semibold text-slate-700">{totalMatched} leads</span>
+          {totalMatched > leadMeta.page_size ? (
+            <span className="text-xs text-slate-400">· showing {from}–{to}</span>
+          ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">
-            Page {Math.min(page, totalPages)} of {totalPages}
-          </span>
           {canManage && rows.length ? (
-            <label className="inline-flex items-center gap-2 rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">
-              <input type="checkbox" checked={allPicked} onChange={rowActions.onToggleAllPicked} className="h-4 w-4 rounded border-[#d9ccb8] text-[#cba952] focus:ring-[#f3dfab]" />
-              <span>Select page</span>
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-amber-300 hover:text-amber-800">
+              <input
+                type="checkbox"
+                checked={allPicked}
+                onChange={rowActions.onToggleAllPicked}
+                className="h-3.5 w-3.5 rounded border-slate-300 accent-amber-500"
+              />
+              Select page
             </label>
           ) : null}
-          {canManage && picked.length ? <span className="inline-flex rounded-full border border-[#ddd3c2] bg-[#fff6e4] px-3 py-1 text-[11px] font-bold text-[#7a6230]">{picked.length} selected</span> : null}
+          {canManage && picked.length ? (
+            <span className="rounded-xl border border-amber-200 bg-amber-100 px-3 py-1.5 text-xs font-bold text-amber-800">
+              {picked.length} selected
+            </span>
+          ) : null}
         </div>
       </div>
 
-      <div className="mt-5 space-y-3">
-        {rows.length ? (
-          rows.map((lead) => (
+      {/* Cards */}
+      {rows.length ? (
+        <div className="space-y-2.5">
+          {rows.map(lead => (
             <LeadRowCard
               key={lead.lead_id}
               activeLead={rowActions.activeLead}
@@ -61,33 +59,38 @@ export default function LeadListSection({
               {...rowActions.sharedProps}
               lead={lead}
             />
-          ))
-        ) : (
-          <div className="rounded-[28px] border border-dashed border-[#ddd0bb] bg-[#fffaf1] px-5 py-14 text-center">
-            <div className="mx-auto grid h-14 w-14 place-items-center rounded-[20px] bg-white text-[#8d6e27] shadow-[0_12px_24px_rgba(79,58,22,0.08)]">
-              <DashboardIcon name="leads" className="h-6 w-6" />
-            </div>
-            <h3 className="mt-5 text-xl font-semibold text-[#060710]">No leads matched</h3>
-            <p className="mt-2 text-sm text-[#7a6b57]">{emptyLeadsMessage}</p>
+          ))}
+        </div>
+      ) : (
+        <div className="flex min-h-[260px] flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-200 bg-white text-center">
+          <div className="grid h-12 w-12 place-items-center rounded-2xl bg-slate-100 text-slate-400">
+            <DashboardIcon name="leads" className="h-6 w-6" />
           </div>
-        )}
-      </div>
+          <p className="text-sm font-semibold text-slate-700">No leads matched</p>
+          <p className="max-w-sm text-xs text-slate-400">{emptyLeadsMessage}</p>
+        </div>
+      )}
 
+      {/* Pagination */}
       {totalMatched > leadMeta.page_size ? (
-        <div className="mt-5 flex flex-col gap-3 border-t border-[#efe6d8] pt-5 md:flex-row md:items-center md:justify-between">
-          <span className="text-sm text-[#7a6b57]">
-            {totalMatched ? (page - 1) * leadMeta.page_size + 1 : 0}-{Math.min(page * leadMeta.page_size, totalMatched)} of {totalMatched}
-          </span>
-          <div className="flex flex-wrap gap-3">
-            <button className={LEAD_GHOST_BUTTON_CLASS} type="button" disabled={page === 1} onClick={() => rowActions.onPageChange(Math.max(1, page - 1))}>
-              Previous
-            </button>
-            <button className={LEAD_PRIMARY_BUTTON_CLASS} type="button" disabled={page === totalPages} onClick={() => rowActions.onPageChange(Math.min(totalPages, page + 1))}>
-              Next
-            </button>
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm">
+          <span className="text-xs text-slate-400">Page {Math.min(page, totalPages)} of {totalPages}</span>
+          <div className="flex gap-2">
+            <button
+              className={LEAD_GHOST_BUTTON_CLASS}
+              type="button"
+              disabled={page === 1}
+              onClick={() => rowActions.onPageChange(Math.max(1, page - 1))}
+            >← Prev</button>
+            <button
+              className={LEAD_PRIMARY_BUTTON_CLASS}
+              type="button"
+              disabled={page === totalPages}
+              onClick={() => rowActions.onPageChange(Math.min(totalPages, page + 1))}
+            >Next →</button>
           </div>
         </div>
       ) : null}
-    </article>
+    </div>
   );
 }

@@ -280,8 +280,8 @@ export default function LeadsPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-[linear-gradient(180deg,#fbf6ec_0%,#fffaf2_48%,#fffdf9_100%)] px-5 py-8 text-sm font-medium text-[#6f614c] md:px-7">
-          Loading leads workspace...
+        <div className="min-h-screen bg-white px-5 py-8 text-sm font-medium text-slate-400">
+          Loading leads workspace…
         </div>
       }
     >

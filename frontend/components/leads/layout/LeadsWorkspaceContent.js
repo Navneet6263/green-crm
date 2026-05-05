@@ -3,34 +3,14 @@
 import LeadBulkAssignCard from "../bulk/LeadBulkAssignCard";
 import LeadBulkUploadPanel from "../bulk/LeadBulkUploadPanel";
 import LeadListSection from "../list/LeadListSection";
-import LeadListToolbar from "../list/LeadListToolbar";
 import LeadsWorkspaceHeader from "./LeadsWorkspaceHeader";
 import LeadsWorkspaceShell from "./LeadsWorkspaceShell";
 
 export default function LeadsWorkspaceContent({
-  allPicked,
-  bulkUpload,
-  bulkUsersMessage,
-  canCreate,
-  canEdit,
-  canManage,
-  emptyLeadsMessage,
-  filterWorkspaceProps,
-  filters,
-  heroStats,
-  isPlatformConsole,
-  isSuper,
-  listRowActions,
-  ownershipActions,
-  ownershipLabel,
-  picked,
-  pickedTeamIds,
-  records,
-  resources,
-  setPicked,
-  showBulkUpload,
-  setShowBulkUpload,
-  teamBadgeLabel,
+  allPicked, bulkUpload, bulkUsersMessage, canCreate, canEdit, canManage,
+  emptyLeadsMessage, filterWorkspaceProps, filters, heroStats, isPlatformConsole,
+  isSuper, listRowActions, ownershipActions, ownershipLabel, picked, pickedTeamIds,
+  records, resources, setPicked, showBulkUpload, setShowBulkUpload, teamBadgeLabel,
 }) {
   return (
     <LeadsWorkspaceShell>
@@ -65,17 +45,6 @@ export default function LeadsWorkspaceContent({
           submitBulkUpload={bulkUpload.submitBulkUpload}
         />
       ) : null}
-
-      <LeadListToolbar
-        backgroundSync={records.backgroundSync}
-        closedWonCount={listRowActions.closedWonCount}
-        ownershipLabel={ownershipLabel}
-        pageRefreshing={records.pageRefreshing}
-        setStatus={filters.setStatus}
-        status={filters.status}
-        totalMatched={records.totalMatched}
-        transferredCount={listRowActions.transferredCount}
-      />
 
       {canManage && picked.length ? (
         <LeadBulkAssignCard

@@ -1,191 +1,187 @@
 "use client";
 
-import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import WorkspacePage from "../../components/dashboard/WorkspacePage";
 import DashboardIcon from "../../components/dashboard/icons";
 import { apiRequest } from "../../lib/api";
 import { formatIndiaCustom } from "../../lib/dateTime";
-import { teamBadgeLabel } from "../../lib/teamScope";
 import { AlertError, AlertSuccess } from "../../components/ui/Alert";
+import { TaskCard } from "./TaskCard";
+import { TaskFilters } from "./TaskFilters";
+import { TaskTimeline } from "./TaskTimeline";
+import { T, nice } from "./task-tokens";
 
-const PANEL_CLASS = "rounded-2xl border border-[#eadfcd] bg-white/82 p-4 shadow-[0_8px_24px_rgba(79,58,22,0.05)] md:p-5";
-const KICKER_CLASS = "text-[10px] font-bold uppercase tracking-[0.22em] text-[#9a886d]";
-
-function nice(value = "") {
-  return String(value)
-    .split("-")
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
+function when(v) {
+  return formatIndiaCustom(v, { day:"numeric", month:"short", hour:"2-digit", minute:"2-digit" });
 }
 
-function when(value) {
-  return formatIndiaCustom(value, {
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+function isOverdue(t) {
+  return t.status === "pending" && t.due_date && new Date(t.due_date) < new Date();
 }
 
 export default function TasksPage() {
   return (
     <WorkspacePage
-      title="Tasks"
-      eyebrow="Execution Queue"
-      hideTitle
-      allowedRoles={["super-admin", "platform-admin", "platform-manager", "admin", "manager", "sales", "marketing", "legal-team", "finance-team", "support"]}
-      requestBuilder={() => [{ key: "tasks", path: "/tasks?page_size=20" }]}
+      title="Tasks" eyebrow="Execution Queue" hideTitle
+      allowedRoles={["super-admin","platform-admin","platform-manager","admin","manager","sales","marketing","legal-team","finance-team","support"]}
+      requestBuilder={() => [{ key:"tasks", path:"/tasks?page_size=60" }]}
       heroStats={() => []}
     >
       {({ data, error, loading, session, refresh }) => {
         const tasks = data.tasks?.items || [];
-        const pending = tasks.filter((task) => task.status === "pending");
-        const done = tasks.filter((task) => task.status === "done");
-        const overdue = tasks.filter(
-          (task) => task.status === "pending" && task.due_date && new Date(task.due_date) < new Date()
-        );
-
-        return <TasksContent tasks={tasks} pending={pending} done={done} overdue={overdue} error={error} loading={loading} session={session} refresh={refresh} />;
+        return <TasksContent tasks={tasks} loadError={error} loading={loading} session={session} refresh={refresh} />;
       }}
     </WorkspacePage>
   );
 }
 
-function TasksContent({ tasks, pending, done, overdue, error: loadError, loading, session, refresh }) {
+function TasksContent({ tasks, loadError, loading, session, refresh }) {
   const [actionError, setActionError] = useState("");
   const [actionNotice, setActionNotice] = useState("");
   const [updatingId, setUpdatingId] = useState("");
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [priorityFilter, setPriorityFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [groupBy, setGroupBy] = useState("status");
+  const [view, setView] = useState("board"); // board | timeline
 
   async function toggleTaskStatus(task) {
     if (!session?.token || !task?.task_id) return;
-    const nextStatus = task.status === "done" ? "pending" : "done";
-    setUpdatingId(task.task_id);
-    setActionError("");
-    setActionNotice("");
+    const next = task.status === "done" ? "pending" : "done";
+    setUpdatingId(task.task_id); setActionError(""); setActionNotice("");
     try {
-      await apiRequest(`/tasks/${task.task_id}`, {
-        method: "PATCH",
-        token: session.token,
-        body: { status: nextStatus },
-      });
-      setActionNotice(`Task marked as ${nextStatus}.`);
+      await apiRequest(`/tasks/${task.task_id}`, { method:"PATCH", token:session.token, body:{ status:next } });
+      setActionNotice(`Task marked as ${next}.`);
       if (refresh) await refresh();
-    } catch (e) {
-      setActionError(e.message || "Could not update task.");
-    } finally {
-      setUpdatingId("");
-    }
+    } catch(e) { setActionError(e.message || "Could not update task."); }
+    finally { setUpdatingId(""); }
   }
 
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return tasks.filter(t => {
+      const hay = [t.title, t.notes, t.assigned_to_name, t.type, t.priority, t.status, t.team_name].filter(Boolean).join(" ").toLowerCase();
+      return (!q || hay.includes(q))
+        && (typeFilter === "all" || t.type === typeFilter)
+        && (priorityFilter === "all" || t.priority === priorityFilter)
+        && (statusFilter === "all" || t.status === statusFilter);
+    });
+  }, [tasks, search, typeFilter, priorityFilter, statusFilter]);
+
+  const stats = useMemo(() => ({
+    pending: tasks.filter(t => t.status === "pending").length,
+    overdue: tasks.filter(isOverdue).length,
+    done:    tasks.filter(t => t.status === "done").length,
+    total:   tasks.length,
+  }), [tasks]);
+
+  const groups = useMemo(() => {
+    if (groupBy === "type") {
+      const m = {};
+      filtered.forEach(t => { const k = t.type||"task"; (m[k]=m[k]||[]).push(t); });
+      return Object.entries(m).sort((a,b)=>b[1].length-a[1].length).map(([k,v])=>({ key:k, label:nice(k), tasks:v }));
+    }
+    if (groupBy === "team") {
+      const m = {};
+      filtered.forEach(t => { const k = t.team_name||"No team"; (m[k]=m[k]||[]).push(t); });
+      return Object.entries(m).sort((a,b)=>b[1].length-a[1].length).map(([k,v])=>({ key:k, label:k, tasks:v }));
+    }
+    const order = ["pending","in-progress","done","cancelled"];
+    const m = {};
+    filtered.forEach(t => { const k = t.status||"pending"; (m[k]=m[k]||[]).push(t); });
+    return order.filter(k=>m[k]).map(k=>({ key:k, label:nice(k), tasks:m[k] }));
+  }, [filtered, groupBy]);
+
   return (
-          <>
-            {loadError ? <AlertError message={loadError} /> : null}
-            <AlertError message={actionError} onDismiss={() => setActionError("")} />
-            <AlertSuccess message={actionNotice} onDismiss={() => setActionNotice("")} />
-            {loading ? <div className="rounded-[20px] border border-[#eadfcd] bg-white px-4 py-3 text-sm font-medium text-[#6f614c]">Loading tasks...</div> : null}
-            {!loading ? (
-              <section className="space-y-5">
-                <article className="rounded-2xl border border-[#eadfcd] bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.95),_rgba(247,240,227,0.96)_42%,_rgba(241,232,215,1)_100%)] p-4 shadow-[0_12px_36px_rgba(79,58,22,0.06)] md:p-5">
-                  <div className="space-y-3">
-                    <span className="inline-flex rounded-full border border-[#ddd3c2] bg-white/85 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.24em] text-[#7c6d55]">
-                      Task Board
-                    </span>
-                    <h2 className="text-3xl font-semibold tracking-tight text-[#060710] md:text-[2.2rem] md:leading-[1.08]">
-                      Task Board
-                    </h2>
-                    <p className="max-w-3xl text-sm leading-7 text-[#746853]">
-                      Pending tasks arrive team-scoped from the CRM backend.
-                    </p>
-                    <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-                      {[
-                        { label: "Pending", value: pending.length },
-                        { label: "Done", value: done.length },
-                        { label: "Overdue", value: overdue.length },
-                        { label: "Total", value: tasks.length },
-                      ].map((item, index) => (
-                        <article key={item.label} className={`rounded-xl border border-[#eadfcd] px-3 py-2.5 ${index === 0 ? "bg-[#fff6e4]" : "bg-white/82"}`}>
-                          <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#9a886d]">{item.label}</p>
-                          <p className="mt-1 text-xl font-semibold tracking-tight text-[#060710]">{item.value}</p>
-                        </article>
+    <>
+      {loadError ? <AlertError message={loadError} /> : null}
+      <AlertError message={actionError} onDismiss={() => setActionError("")} />
+      <AlertSuccess message={actionNotice} onDismiss={() => setActionNotice("")} />
+
+      {loading ? <div className="rounded-2xl border border-slate-100 bg-white px-5 py-4 text-sm text-slate-500">Loading tasks…</div> : null}
+
+      {!loading ? (
+        <div className="space-y-5">
+          <TaskFilters
+            stats={stats} typeFilter={typeFilter} priorityFilter={priorityFilter}
+            statusFilter={statusFilter} search={search}
+            onType={setTypeFilter} onPriority={setPriorityFilter}
+            onStatus={setStatusFilter} onSearch={setSearch}
+          />
+
+          {/* View toggle + group by */}
+          <div className="flex flex-wrap items-center gap-3">
+            {/* View switcher */}
+            <div className="flex rounded-xl border border-slate-200 bg-white p-1">
+              <button
+                type="button"
+                onClick={() => setView("board")}
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${view === "board" ? "bg-amber-50 text-amber-900 border border-amber-200" : "text-slate-500 hover:text-slate-800"}`}
+              >
+                <DashboardIcon name="dashboard" className="h-3.5 w-3.5" />Board
+              </button>
+              <button
+                type="button"
+                onClick={() => setView("timeline")}
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${view === "timeline" ? "bg-amber-50 text-amber-900 border border-amber-200" : "text-slate-500 hover:text-slate-800"}`}
+              >
+                <DashboardIcon name="calendar" className="h-3.5 w-3.5" />Timeline
+              </button>
+            </div>
+
+            {/* Group by — only in board view */}
+            {view === "board" ? (
+              <>
+                <span className={T.kicker}>Group</span>
+                {[["status","Status"],["type","Type"],["team","Team"]].map(([v,l]) => (
+                  <button
+                    key={v} type="button" onClick={() => setGroupBy(v)}
+                    className={`rounded-xl border px-3 py-1.5 text-xs font-semibold transition ${groupBy === v ? "border-amber-300 bg-amber-50 text-amber-900" : "border-slate-200 bg-white text-slate-600 hover:border-amber-200"}`}
+                  >{l}</button>
+                ))}
+              </>
+            ) : null}
+
+            <span className="ml-auto text-xs text-slate-400">{filtered.length} of {tasks.length} tasks</span>
+          </div>
+
+          {/* Board view */}
+          {view === "board" ? (
+            groups.length ? (
+              <div className="space-y-6">
+                {groups.map(group => (
+                  <div key={group.key}>
+                    <div className="mb-3 flex items-center gap-2">
+                      <span className="text-sm font-bold text-slate-700">{group.label}</span>
+                      <span className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-500">{group.tasks.length}</span>
+                      <div className="h-px flex-1 bg-slate-100" />
+                    </div>
+                    <div className="space-y-2.5">
+                      {group.tasks.map(task => (
+                        <TaskCard key={task.task_id} task={task} updatingId={updatingId} onToggle={toggleTaskStatus} when={when} />
                       ))}
                     </div>
                   </div>
-                </article>
+                ))}
+              </div>
+            ) : (
+              <div className="flex min-h-[240px] flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-200 bg-white text-center">
+                <div className="grid h-12 w-12 place-items-center rounded-2xl bg-slate-100 text-slate-400">
+                  <DashboardIcon name="tasks" className="h-6 w-6" />
+                </div>
+                <p className="text-sm font-semibold text-slate-700">No tasks matched</p>
+                <p className="text-xs text-slate-400">Adjust filters or create a task from a lead.</p>
+              </div>
+            )
+          ) : null}
 
-                <article className={PANEL_CLASS}>
-                  <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                    <div>
-                      <p className={KICKER_CLASS}>Task List</p>
-                      <h3 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">All active work</h3>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">
-                        {tasks.length} tasks loaded
-                      </span>
-                      <Link href="/leads" prefetch={false} className="inline-flex min-h-[38px] items-center gap-2 rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55] transition hover:border-[#d7b258] hover:text-[#060710]">
-                        <DashboardIcon name="leads" className="h-3.5 w-3.5" />
-                        Create from Lead
-                      </Link>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    {tasks.length ? tasks.map((task) => (
-                      <article key={task.task_id} className="rounded-xl border border-[#eadfcd] bg-[#fffaf1] p-3">
-                        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                          <div className="space-y-2">
-                            <div className="flex flex-wrap gap-2">
-                              <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">
-                                {nice(task.type || "task")}
-                              </span>
-                              <span className={`inline-flex rounded-full px-3 py-1 text-[11px] font-bold ${task.status === "done" ? "bg-emerald-100 text-emerald-700" : task.status === "pending" ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-700"}`}>
-                                {nice(task.status || "pending")}
-                              </span>
-                              {teamBadgeLabel(task) ? (
-                                <span className="inline-flex rounded-full border border-[#eadfcd] bg-[#fff4d9] px-3 py-1 text-[11px] font-bold text-[#8d6e27]">
-                                  {teamBadgeLabel(task)}
-                                </span>
-                              ) : null}
-                            </div>
-                            <h4 className="text-lg font-semibold text-[#060710]">{task.title || "Untitled task"}</h4>
-                            <p className="text-sm text-[#746853]">{task.notes || "No task notes added yet."}</p>
-                          </div>
-                          <div className="flex flex-wrap gap-3 md:min-w-[220px] md:justify-end">
-                            <div className="grid gap-3 text-sm text-[#7a6b57]">
-                              <div><strong className="block text-[#060710]">Due</strong><span>{when(task.due_date)}</span></div>
-                              <div><strong className="block text-[#060710]">Assignee</strong><span>{task.assigned_to_name || "Unassigned"}</span></div>
-                              <div><strong className="block text-[#060710]">Priority</strong><span>{nice(task.priority || "medium")}</span></div>
-                            </div>
-                            <button
-                              type="button"
-                              disabled={updatingId === task.task_id}
-                              onClick={() => toggleTaskStatus(task)}
-                              className={`inline-flex min-h-[38px] items-center gap-2 self-start rounded-full border px-3 py-1.5 text-xs font-bold transition hover:-translate-y-0.5 disabled:opacity-60 ${
-                                task.status === "done"
-                                  ? "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
-                                  : "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                              }`}
-                            >
-                              {updatingId === task.task_id
-                                ? "Updating..."
-                                : task.status === "done"
-                                  ? "Reopen"
-                                  : "Mark Done"}
-                            </button>
-                          </div>
-                        </div>
-                      </article>
-                    )) : (
-                      <div className="rounded-[24px] border border-dashed border-[#ddd0bb] bg-[#fffaf1] px-5 py-14 text-center text-sm text-[#7a6b57]">
-                        No team-scoped tasks are available right now.
-                      </div>
-                    )}
-                  </div>
-                </article>
-              </section>
-            ) : null}
-          </>
+          {/* Timeline view */}
+          {view === "timeline" ? (
+            <TaskTimeline tasks={filtered} updatingId={updatingId} onToggle={toggleTaskStatus} />
+          ) : null}
+        </div>
+      ) : null}
+    </>
   );
 }

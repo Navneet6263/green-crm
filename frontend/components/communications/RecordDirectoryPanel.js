@@ -1,82 +1,99 @@
 import DashboardIcon from "../dashboard/icons";
+import { INPUT_CLASS, KICKER_CLASS } from "./constants";
 
-import { GHOST_BUTTON_CLASS, INPUT_CLASS, KICKER_CLASS, PANEL_CLASS } from "./constants";
+const GHOST = "inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-[13px] font-semibold text-slate-700 transition hover:border-slate-300 disabled:opacity-50";
+const GOLD  = "inline-flex items-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50 px-3.5 py-2 text-[13px] font-semibold text-amber-900 transition hover:bg-amber-100";
+
+const TYPE_ICON = { lead: "🎯", customer: "🏢", all: "📋" };
 
 export default function RecordDirectoryPanel({
-  currentPage,
-  totalPages,
-  search,
-  setSearch,
-  entityFilter,
-  setEntityFilter,
-  paginatedRecords,
-  filteredRecords,
-  selectedKey,
-  setSelectedKey,
-  setCurrentPage,
+  currentPage, totalPages, search, setSearch, entityFilter, setEntityFilter,
+  paginatedRecords, filteredRecords, selectedKey, setSelectedKey, setCurrentPage,
 }) {
   return (
-    <aside className={PANEL_CLASS}>
-      <div className="mb-5 flex items-center justify-between gap-3">
+    <aside className="rounded-2xl border border-slate-100 bg-white shadow-sm px-5 py-5">
+      {/* Header */}
+      <div className="mb-4 flex items-center justify-between gap-3">
         <div>
           <p className={KICKER_CLASS}>Directory</p>
-          <h3 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Choose a record</h3>
+          <h3 className="mt-0.5 text-base font-bold text-slate-900">Choose a record</h3>
         </div>
-        <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">
-          Page {currentPage} of {totalPages}
+        <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-[11px] font-semibold text-slate-500">
+          {filteredRecords.length} records
         </span>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        {["all", "lead", "customer"].map((type) => {
-          const active = entityFilter === type;
-          return (
-            <button key={type} className={`inline-flex min-h-[46px] items-center justify-center rounded-[18px] border px-4 py-2.5 text-sm font-semibold transition ${active ? "border-[#d7b258] bg-[#f3dfab] text-[#060710]" : "border-[#eadfcd] bg-white text-[#5d503c]"}`} type="button" onClick={() => setEntityFilter(type)}>
-              {type === "all" ? "All Records" : type === "lead" ? "Leads" : "Customers"}
-            </button>
-          );
-        })}
+      {/* Type filter */}
+      <div className="mb-3 flex gap-2">
+        {["all","lead","customer"].map(type => (
+          <button
+            key={type} type="button"
+            onClick={() => setEntityFilter(type)}
+            className={`flex-1 rounded-xl border py-2 text-xs font-bold transition ${
+              entityFilter === type
+                ? "border-amber-300 bg-amber-50 text-amber-900"
+                : "border-slate-200 bg-white text-slate-600 hover:border-amber-200"
+            }`}
+          >
+            {TYPE_ICON[type]} {type === "all" ? "All" : type.charAt(0).toUpperCase() + type.slice(1)}
+          </button>
+        ))}
       </div>
 
-      <label className="mt-4 grid gap-2">
-        <span className={KICKER_CLASS}>Search</span>
-        <div className="relative">
-          <DashboardIcon name="leads" className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9c8e76]" />
-          <input className={`${INPUT_CLASS} pl-11`} value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search company, contact, email, or owner" />
-        </div>
-      </label>
+      {/* Search */}
+      <div className="relative mb-4">
+        <DashboardIcon name="leads" className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        <input
+          className="w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-amber-400 focus:ring-2 focus:ring-amber-50"
+          value={search} onChange={e => setSearch(e.target.value)}
+          placeholder="Search company, contact, email…"
+        />
+      </div>
 
-      <div className="mt-4 space-y-3">
-        {paginatedRecords.length ? paginatedRecords.map((record) => {
-          const active = record.key === selectedKey;
+      {/* Record cards */}
+      <div className="space-y-2 max-h-[520px] overflow-y-auto pr-0.5">
+        {paginatedRecords.length ? paginatedRecords.map(record => {
+          const isActive = record.key === selectedKey;
           return (
-            <button key={record.key} type="button" className={`w-full rounded-[24px] border px-4 py-4 text-left transition ${active ? "border-[#d7b258] bg-[#fff6e4] shadow-[0_12px_28px_rgba(203,169,82,0.14)]" : "border-[#eadfcd] bg-[#fffaf1] hover:bg-white"}`} onClick={() => setSelectedKey(record.key)}>
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <strong className="block text-base text-[#060710]">{record.title}</strong>
-                  <p className="mt-1 text-sm text-[#6f614c]">{record.subtitle}</p>
+            <button
+              key={record.key} type="button"
+              onClick={() => setSelectedKey(record.key)}
+              className={`group relative w-full overflow-hidden rounded-2xl border px-4 py-3.5 text-left transition hover:-translate-y-0.5 ${
+                isActive
+                  ? "border-amber-300 bg-amber-50 shadow-sm"
+                  : "border-slate-100 bg-white hover:border-amber-200 hover:shadow-sm"
+              }`}
+            >
+              <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/50 to-transparent transition-transform duration-500 group-hover:translate-x-full" />
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">{record.entity_type === "lead" ? "🎯" : "🏢"}</span>
+                    <p className="truncate text-sm font-bold text-slate-900">{record.subtitle}</p>
+                  </div>
+                  <p className="mt-0.5 truncate text-xs text-slate-400">{record.title}</p>
+                  <p className="mt-0.5 truncate text-xs text-slate-400">{record.email || record.phone || "No contact"}</p>
                 </div>
-                <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">{record.status}</span>
-              </div>
-              <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold text-[#8f816a]">
-                <span>{record.entity_type}</span>
-                <span>{record.email || record.phone || "No direct contact"}</span>
+                <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
+                  isActive ? "border-amber-300 bg-white text-amber-800" : "border-slate-200 bg-slate-50 text-slate-500"
+                }`}>{record.status}</span>
               </div>
             </button>
           );
         }) : (
-          <div className="rounded-[24px] border border-dashed border-[#ddd0bb] bg-[#fffaf1] px-5 py-14 text-center text-sm text-[#7a6b57]">
-            No records matched the current search.
+          <div className="flex min-h-[160px] items-center justify-center text-center text-sm text-slate-400">
+            No records matched the search.
           </div>
         )}
       </div>
 
-      {filteredRecords.length ? (
-        <div className="mt-4 flex items-center justify-between gap-3 rounded-[22px] border border-[#eadfcd] bg-[#fffaf1] px-4 py-3">
-          <span className="text-sm font-semibold text-[#7c6d55]">{filteredRecords.length} total records</span>
+      {/* Pagination */}
+      {filteredRecords.length > 0 ? (
+        <div className="mt-4 flex items-center justify-between gap-3 border-t border-slate-50 pt-3">
+          <span className="text-xs text-slate-400">Page {currentPage} of {totalPages}</span>
           <div className="flex gap-2">
-            <button className={GHOST_BUTTON_CLASS} type="button" onClick={() => setCurrentPage(Math.max(1, currentPage - 1))} disabled={currentPage === 1}>Previous</button>
-            <button className={GHOST_BUTTON_CLASS} type="button" onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))} disabled={currentPage === totalPages}>Next</button>
+            <button className={GHOST} type="button" onClick={() => setCurrentPage(Math.max(1, currentPage-1))} disabled={currentPage===1}>← Prev</button>
+            <button className={GOLD}  type="button" onClick={() => setCurrentPage(Math.min(totalPages, currentPage+1))} disabled={currentPage===totalPages}>Next →</button>
           </div>
         </div>
       ) : null}

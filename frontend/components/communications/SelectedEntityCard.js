@@ -1,31 +1,38 @@
-import { KICKER_CLASS, PANEL_CLASS } from "./constants";
+const K = "text-[10px] font-bold uppercase tracking-widest text-slate-400";
 
 export default function SelectedEntityCard({ record }) {
-  if (!record) {
-    return null;
-  }
+  if (!record) return null;
+
+  const isLead = record.entity_type === "lead";
 
   return (
-    <article className={PANEL_CLASS}>
-      <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="space-y-2">
-          <span className="inline-flex rounded-full border border-[#eadfcd] bg-[#fff6e4] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.24em] text-[#7c6d55]">{record.entity_type}</span>
+    <div className="rounded-2xl border border-slate-100 bg-white shadow-sm px-5 py-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <div className={`grid h-12 w-12 shrink-0 place-items-center rounded-xl text-base font-bold text-white ${isLead ? "bg-amber-500" : "bg-emerald-600"}`}>
+            {String(record.subtitle || "R").slice(0,2).toUpperCase()}
+          </div>
           <div>
-            <h3 className="text-2xl font-semibold tracking-tight text-[#060710]">{record.subtitle}</h3>
-            <p className="mt-2 text-sm leading-7 text-[#746853]">{record.title}</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="text-lg font-bold text-slate-900">{record.subtitle}</h3>
+              <span className={`rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${isLead ? "border-amber-200 bg-amber-100 text-amber-800" : "border-emerald-200 bg-emerald-100 text-emerald-700"}`}>
+                {record.entity_type}
+              </span>
+              <span className="rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-[11px] font-semibold text-slate-600">{record.status}</span>
+            </div>
+            <p className="mt-0.5 text-sm text-slate-400">{record.title}</p>
           </div>
         </div>
-        <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">{record.status}</span>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        {[["Email", record.email || "Add an email before sending"], ["Phone", record.phone || "No phone on file"], ["Context", record.product], ["Owner", record.owner]].map(([label, value]) => (
-          <div key={label} className="rounded-[22px] border border-[#eadfcd] bg-[#fffaf1] px-4 py-4">
-            <span className={KICKER_CLASS}>{label}</span>
-            <strong className="mt-3 block text-sm leading-6 text-[#060710]">{value}</strong>
+      <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4 border-t border-slate-50 pt-4">
+        {[["Email", record.email || "—"], ["Phone", record.phone || "—"], ["Context", record.product || "—"], ["Owner", record.owner || "—"]].map(([l, v]) => (
+          <div key={l} className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-3">
+            <p className={K}>{l}</p>
+            <p className="mt-1 text-sm font-semibold text-slate-800 break-words">{v}</p>
           </div>
         ))}
       </div>
-    </article>
+    </div>
   );
 }

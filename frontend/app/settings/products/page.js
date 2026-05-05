@@ -3,43 +3,50 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-
 import DashboardShell from "../../../components/dashboard/DashboardShell";
 import DashboardIcon from "../../../components/dashboard/icons";
 import { apiRequest } from "../../../lib/api";
 import { loadSession } from "../../../lib/session";
 import {
-  formatScopedError,
-  isPlatformConsoleRole,
-  loadProductsForScope,
-  loadTeamScopeResources,
-  resolveInitialTeamId,
-  resolveScopedCompanyId,
-  scopedProductsEmptyMessage,
-  shouldShowTeamSelector,
-  teamBadgeLabel,
-  teamSelectLabel,
-  teamSelectionRequiredMessage,
+  formatScopedError, isPlatformConsoleRole, loadProductsForScope,
+  loadTeamScopeResources, resolveInitialTeamId, resolveScopedCompanyId,
+  scopedProductsEmptyMessage, shouldShowTeamSelector, teamBadgeLabel,
+  teamSelectLabel, teamSelectionRequiredMessage,
 } from "../../../lib/teamScope";
 import { AlertError, AlertSuccess } from "../../../components/ui/Alert";
 
-const PANEL = "rounded-[30px] border border-[#eadfcd] bg-white/82 p-5 shadow-[0_14px_36px_rgba(79,58,22,0.06)] md:p-6";
-const HERO = "rounded-[36px] border border-[#eadfcd] bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.98),_rgba(250,241,221,0.98)_44%,_rgba(245,231,193,0.98)_100%)] p-6 shadow-[0_24px_70px_rgba(79,58,22,0.08)] md:p-8";
-const DARK_PANEL = "rounded-[34px] border border-[#1d1a12] bg-[linear-gradient(155deg,#10111d_0%,#171a28_56%,#25212d_100%)] p-6 text-white shadow-[0_24px_80px_rgba(6,7,16,0.3)] md:p-7";
-const INPUT = "w-full rounded-[18px] border border-[#eadfcd] bg-white px-4 py-3 text-sm text-[#060710] outline-none transition placeholder:text-[#9c8e76] focus:border-[#d7b258] focus:ring-4 focus:ring-[#f6ead0]";
-const PRIMARY = "inline-flex min-h-[46px] items-center justify-center gap-2 rounded-[18px] border border-[#d7b258] bg-[#f3dfab] px-4 py-2.5 text-sm font-semibold text-[#060710] shadow-[0_16px_30px_rgba(203,169,82,0.18)] transition hover:-translate-y-0.5 hover:bg-[#efd48f] disabled:cursor-not-allowed disabled:opacity-60";
-const GHOST = "inline-flex min-h-[46px] items-center justify-center gap-2 rounded-[18px] border border-[#eadfcd] bg-white px-4 py-2.5 text-sm font-semibold text-[#5d503c] transition hover:-translate-y-0.5 hover:text-[#060710] disabled:cursor-not-allowed disabled:opacity-60";
-const KICKER = "text-[10px] font-black uppercase tracking-[0.28em] text-[#9a886d]";
-const SWATCHES = ["#cba952", "#8d6e27", "#e59044", "#df6b57", "#5d503c", "#10111d", "#5e7ce2", "#1dbf73", "#6d5bd0"];
-
-const draft = (v = {}) => ({ name: "", color: "#cba952", is_active: true, team_id: "", ...v });
-const hex = (v, f = "#cba952") => (/^#[0-9a-f]{6}$/i.test(String(v || "").trim()) ? String(v).toLowerCase() : f);
-const date = (v) => {
-  if (!v) return "--";
-  const d = new Date(v);
-  return Number.isNaN(d.getTime()) ? "--" : d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+const T = {
+  panel: "rounded-2xl border border-slate-100 bg-white shadow-sm",
+  input: "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-amber-400 focus:ring-2 focus:ring-amber-50",
+  gold:  "inline-flex items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-900 transition hover:bg-amber-100 disabled:opacity-50 disabled:cursor-not-allowed",
+  ghost: "inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:opacity-50",
+  K:     "text-[10px] font-bold uppercase tracking-widest text-slate-400",
 };
-const active = (v) => v === true || v === 1 || v === "1";
+const SWATCHES = ["#f59e0b","#10b981","#3b82f6","#8b5cf6","#ef4444","#06b6d4","#f97316","#ec4899","#84cc16"];
+const draft = (v={}) => ({ name:"", color:"#f59e0b", is_active:true, team_id:"", ...v });
+const hex = (v, f="#f59e0b") => (/^#[0-9a-f]{6}$/i.test(String(v||"").trim()) ? String(v).toLowerCase() : f);
+const fmtDate = v => { if(!v) return "--"; const d=new Date(v); return isNaN(d.getTime()) ? "--" : d.toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"}); };
+const isActive = v => v===true||v===1||v==="1";
+
+function ColorField({ value, onChange, label }) {
+  return (
+    <div className="space-y-2">
+      <span className={T.K}>{label}</span>
+      <div className="flex gap-2">
+        <input className="h-10 w-12 shrink-0 cursor-pointer rounded-xl border border-slate-200 p-1" type="color" value={hex(value)} onChange={e => onChange(e.target.value)} />
+        <input className={T.input} value={value} onChange={e => onChange(e.target.value)} onBlur={() => onChange(hex(value))} placeholder="#f59e0b" />
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {SWATCHES.map(s => (
+          <button key={s} type="button" onClick={() => onChange(s)}
+            className={`h-8 w-8 rounded-xl border-2 transition hover:scale-110 ${hex(value)===s ? "border-slate-900 scale-110" : "border-transparent"}`}
+            style={{ backgroundColor: s }} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function ProductSettingsPage() {
   const router = useRouter();
   const [session, setSession] = useState(null);
@@ -47,6 +54,7 @@ export default function ProductSettingsPage() {
   const [companyId, setCompanyId] = useState("");
   const [teams, setTeams] = useState([]);
   const [products, setProducts] = useState([]);
+  const [leadCounts, setLeadCounts] = useState({});
   const [selectedId, setSelectedId] = useState("");
   const [createForm, setCreateForm] = useState(draft());
   const [editForm, setEditForm] = useState(draft());
@@ -60,281 +68,320 @@ export default function ProductSettingsPage() {
 
   const role = session?.user?.role || "";
   const isPlatformConsole = isPlatformConsoleRole(role);
-  const isSuperAdmin = role === "super-admin";
   const scopedCompanyId = resolveScopedCompanyId(session, companyId);
-  const selectedProduct = useMemo(() => products.find((item) => item.product_id === selectedId) || null, [products, selectedId]);
-  const createTeam = useMemo(() => teams.find((team) => team.team_id === createForm.team_id) || null, [createForm.team_id, teams]);
-  const selectedTeam = useMemo(() => teams.find((team) => team.team_id === editForm.team_id) || null, [editForm.team_id, teams]);
+  const selectedProduct = useMemo(() => products.find(p => p.product_id === selectedId)||null, [products, selectedId]);
   const teamSelectorVisible = shouldShowTeamSelector(role, teams);
-  const createTeamSelectionPending = teamSelectorVisible && !createForm.team_id;
-  const editTeamSelectionPending = teamSelectorVisible && Boolean(selectedProduct) && !editForm.team_id;
+  const createTeamPending = teamSelectorVisible && !createForm.team_id;
+  const editTeamPending = teamSelectorVisible && Boolean(selectedProduct) && !editForm.team_id;
+  const selectedTeam = useMemo(() => teams.find(t => t.team_id === editForm.team_id)||null, [editForm.team_id, teams]);
+
   const filteredProducts = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return q ? products.filter((item) => [item.name, item.product_id, item.color].filter(Boolean).some((v) => String(v).toLowerCase().includes(q))) : products;
+    return q ? products.filter(p => [p.name, p.product_id, p.color].filter(Boolean).some(v => String(v).toLowerCase().includes(q))) : products;
   }, [products, search]);
+
   const stats = useMemo(() => ({
     total: products.length,
-    active: products.filter((item) => active(item.is_active)).length,
-    archived: products.filter((item) => !active(item.is_active)).length,
-    colors: new Set(products.map((item) => hex(item.color)).filter(Boolean)).size,
-  }), [products]);
-  const listEmptyMessage = useMemo(() => {
-    if (isPlatformConsole && !scopedCompanyId) {
-      return "Choose a company first to open the product desk.";
-    }
+    active: products.filter(p => isActive(p.is_active)).length,
+    archived: products.filter(p => !isActive(p.is_active)).length,
+    totalLeads: Object.values(leadCounts).reduce((s,v)=>s+v, 0),
+  }), [products, leadCounts]);
 
-    if (loading) {
-      return "Loading products...";
-    }
-
-    if (!products.length) {
-      return teamSelectorVisible && createTeam
-        ? scopedProductsEmptyMessage(createTeam)
-        : "No products are available in this workspace yet.";
-    }
-
-    return "No products matched the current search.";
-  }, [createTeam, isPlatformConsole, loading, products.length, scopedCompanyId, teamSelectorVisible]);
-
-  async function loadProducts(activeSession, nextCompanyId) {
-    if (isPlatformConsole && !nextCompanyId) {
-      setProducts([]);
-      setLoading(false);
-      return;
-    }
+  async function loadProducts(s, cid) {
+    if (isPlatformConsole && !cid) { setProducts([]); setLoading(false); return; }
     setLoading(true);
     try {
-      const items = await loadProductsForScope(activeSession.token, {
-        companyId: nextCompanyId,
-        pageSize: 120,
-      });
+      const items = await loadProductsForScope(s.token, { companyId: cid, pageSize: 120 });
       setProducts(items);
-    } catch (requestError) {
-      setProducts([]);
-      setError(formatScopedError(requestError, "Could not load products."));
-    } finally {
-      setLoading(false);
-    }
+      // Load lead counts per product
+      try {
+        const counts = {};
+        await Promise.all(items.map(async p => {
+          const r = await apiRequest(`/leads?product_id=${p.product_id}&page_size=1`, { token: s.token });
+          counts[p.product_id] = Number(r.meta?.total || r.items?.length || 0);
+        }));
+        setLeadCounts(counts);
+      } catch(_) {}
+    } catch(e) { setProducts([]); setError(formatScopedError(e, "Could not load products.")); }
+    finally { setLoading(false); }
   }
 
   useEffect(() => {
-    const activeSession = loadSession();
-    if (!activeSession) return router.replace("/login");
-    if (!["super-admin", "platform-admin", "platform-manager", "admin", "manager"].includes(activeSession.user?.role)) return router.replace("/dashboard");
-    setSession(activeSession);
-    if (isPlatformConsoleRole(activeSession.user?.role)) {
-      apiRequest("/companies?page_size=120", { token: activeSession.token })
-        .then((response) => {
-          const items = response.items || [];
-          setCompanies(items);
-          setCompanyId(activeSession.company?.company_id || activeSession.user?.company_id || items[0]?.company_id || "");
-        })
-        .catch((requestError) => setError(formatScopedError(requestError, "Could not load companies.")));
+    const s = loadSession();
+    if (!s) return router.replace("/login");
+    if (!["super-admin","platform-admin","platform-manager","admin","manager"].includes(s.user?.role)) return router.replace("/dashboard");
+    setSession(s);
+    if (isPlatformConsoleRole(s.user?.role)) {
+      apiRequest("/companies?page_size=120", { token: s.token }).then(r => {
+        const items = r.items||[];
+        setCompanies(items);
+        setCompanyId(s.company?.company_id||s.user?.company_id||items[0]?.company_id||"");
+      }).catch(e => setError(formatScopedError(e, "Could not load companies.")));
     }
   }, [router]);
 
-  useEffect(() => {
-    if (session) loadProducts(session, scopedCompanyId);
-  }, [isPlatformConsole, scopedCompanyId, session]);
+  useEffect(() => { if (session) loadProducts(session, scopedCompanyId); }, [isPlatformConsole, scopedCompanyId, session]);
 
   useEffect(() => {
     let ignore = false;
-
     async function loadTeams() {
-      if (!session?.token || !scopedCompanyId) {
-        setTeams([]);
-        setCreateForm((current) => ({ ...current, team_id: "" }));
-        return;
-      }
-
+      if (!session?.token || !scopedCompanyId) { setTeams([]); return; }
       try {
-        const { teams: teamItems, teamId } = await loadTeamScopeResources(session.token, {
-          companyId: scopedCompanyId,
-        });
-        if (ignore) {
-          return;
-        }
-        setTeams(teamItems);
-        setCreateForm((current) => ({
-          ...current,
-          team_id: resolveInitialTeamId(teamItems, current.team_id || teamId),
-        }));
-      } catch (_error) {
-        if (!ignore) {
-          setTeams([]);
-          setCreateForm((current) => ({ ...current, team_id: "" }));
-        }
-      }
+        const { teams: t, teamId } = await loadTeamScopeResources(session.token, { companyId: scopedCompanyId });
+        if (ignore) return;
+        setTeams(t);
+        setCreateForm(f => ({ ...f, team_id: resolveInitialTeamId(t, f.team_id||teamId) }));
+      } catch(_) { if (!ignore) setTeams([]); }
     }
-
     loadTeams();
-
-    return () => {
-      ignore = true;
-    };
+    return () => { ignore = true; };
   }, [scopedCompanyId, session]);
 
   useEffect(() => {
-    if (!products.length) {
-      setSelectedId("");
-      setEditForm(draft());
-      return;
-    }
-    if (!products.some((item) => item.product_id === selectedId)) setSelectedId(products[0].product_id);
+    if (!products.length) { setSelectedId(""); setEditForm(draft()); return; }
+    if (!products.some(p => p.product_id === selectedId)) setSelectedId(products[0].product_id);
   }, [products, selectedId]);
 
   useEffect(() => {
-    if (selectedProduct) {
-      setEditForm(
-        draft({
-          name: selectedProduct.name || "",
-          color: hex(selectedProduct.color),
-          is_active: active(selectedProduct.is_active),
-          team_id: resolveInitialTeamId(teams, selectedProduct.team_id),
-        })
-      );
-    }
+    if (selectedProduct) setEditForm(draft({ name: selectedProduct.name||"", color: hex(selectedProduct.color), is_active: isActive(selectedProduct.is_active), team_id: resolveInitialTeamId(teams, selectedProduct.team_id) }));
   }, [selectedProduct, teams]);
 
-  async function createProduct(event) {
-    event.preventDefault();
+  async function createProduct(e) {
+    e.preventDefault();
     if (!session?.token) return;
-    if (isPlatformConsole && !scopedCompanyId) return setError("Choose a company before creating a product.");
-    if (createTeamSelectionPending) return setError(teamSelectionRequiredMessage("product"));
+    if (isPlatformConsole && !scopedCompanyId) return setError("Choose a company first.");
+    if (createTeamPending) return setError(teamSelectionRequiredMessage("product"));
     setCreating(true); setError(""); setNotice("");
     try {
-      const response = await apiRequest("/products", { method: "POST", token: session.token, body: { name: createForm.name.trim(), color: hex(createForm.color), company_id: isPlatformConsole ? scopedCompanyId : undefined, team_id: createForm.team_id || undefined } });
+      const r = await apiRequest("/products", { method:"POST", token:session.token, body:{ name:createForm.name.trim(), color:hex(createForm.color), company_id:isPlatformConsole?scopedCompanyId:undefined, team_id:createForm.team_id||undefined } });
       setCreateForm(draft({ team_id: resolveInitialTeamId(teams, createForm.team_id) }));
-      setNotice("Product created.");
-      await loadProducts(session, scopedCompanyId);
-      setSelectedId(response.product_id);
-    } catch (requestError) {
-      setError(formatScopedError(requestError, "Could not create product."));
-    } finally {
-      setCreating(false);
-    }
+      setNotice("Product created."); await loadProducts(session, scopedCompanyId); setSelectedId(r.product_id);
+    } catch(e) { setError(formatScopedError(e, "Could not create product.")); }
+    finally { setCreating(false); }
   }
 
-  async function saveProduct(event) {
-    event.preventDefault();
+  async function saveProduct(e) {
+    e.preventDefault();
     if (!session?.token || !selectedProduct) return;
-    if (editTeamSelectionPending) return setError(teamSelectionRequiredMessage("product"));
+    if (editTeamPending) return setError(teamSelectionRequiredMessage("product"));
     setSaving(true); setError(""); setNotice("");
     try {
-      await apiRequest(`/products/${selectedProduct.product_id}`, { method: "PATCH", token: session.token, body: { name: editForm.name.trim(), color: hex(editForm.color), is_active: editForm.is_active, team_id: editForm.team_id || undefined } });
-      setNotice("Product updated.");
-      await loadProducts(session, scopedCompanyId);
-    } catch (requestError) {
-      setError(formatScopedError(requestError, "Could not update product."));
-    } finally {
-      setSaving(false);
-    }
+      await apiRequest(`/products/${selectedProduct.product_id}`, { method:"PATCH", token:session.token, body:{ name:editForm.name.trim(), color:hex(editForm.color), is_active:editForm.is_active, team_id:editForm.team_id||undefined } });
+      setNotice("Product updated."); await loadProducts(session, scopedCompanyId);
+    } catch(e) { setError(formatScopedError(e, "Could not update product.")); }
+    finally { setSaving(false); }
   }
 
   async function toggleProduct(product) {
     if (!session?.token || !product) return;
     setTogglingId(product.product_id); setError(""); setNotice("");
     try {
-      await apiRequest(`/products/${product.product_id}`, { method: "PATCH", token: session.token, body: { is_active: !active(product.is_active) } });
-      setNotice(active(product.is_active) ? "Product archived." : "Product restored.");
-      await loadProducts(session, scopedCompanyId);
-    } catch (requestError) {
-      setError(formatScopedError(requestError, "Could not update product status."));
-    } finally {
-      setTogglingId("");
-    }
+      await apiRequest(`/products/${product.product_id}`, { method:"PATCH", token:session.token, body:{ is_active:!isActive(product.is_active) } });
+      setNotice(isActive(product.is_active) ? "Product archived." : "Product restored."); await loadProducts(session, scopedCompanyId);
+    } catch(e) { setError(formatScopedError(e, "Could not update product.")); }
+    finally { setTogglingId(""); }
   }
 
-  const colorField = (value, setValue, label) => (
-    <div className="space-y-3">
-      <span className={KICKER}>{label}</span>
-      <div className="grid gap-3 md:grid-cols-[84px_1fr]">
-        <input className="h-[54px] w-full cursor-pointer rounded-[18px] border border-[#eadfcd] bg-white p-2" type="color" value={hex(value)} onChange={(event) => setValue(event.target.value)} />
-        <input className={INPUT} value={value} onChange={(event) => setValue(event.target.value)} onBlur={() => setValue(hex(value))} placeholder="#cba952" />
-      </div>
-      <div className="flex flex-wrap gap-2">
-        {SWATCHES.map((swatch) => <button key={swatch} type="button" className={`h-10 w-10 rounded-2xl border ${hex(value) === swatch ? "scale-105 border-[#060710] shadow-[0_12px_22px_rgba(6,7,16,0.18)]" : "border-[#eadfcd]"}`} style={{ backgroundColor: swatch }} onClick={() => setValue(swatch)} aria-label={`Use ${swatch}`} />)}
-      </div>
-    </div>
-  );
-
   return (
-    <DashboardShell session={session} title="Product Settings" hideTitle heroStats={[]}>
-      <div className="mx-auto grid max-w-[1320px] gap-5">
+    <DashboardShell session={session} title="Products" hideTitle heroStats={[]}>
+      <div className="mx-auto max-w-[1320px] space-y-5 px-1">
         <AlertError message={error} onDismiss={() => setError("")} />
         {!error ? <AlertSuccess message={notice} onDismiss={() => setNotice("")} /> : null}
 
-        <section className={HERO}>
-          <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-            <div className="space-y-5">
-              <div className="space-y-3">
-                <span className="inline-flex rounded-full border border-[#ddd3c2] bg-white/85 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.24em] text-[#7c6d55]">Product Desk</span>
-                <div>
-                  <h2 className="text-[2rem] font-semibold tracking-tight text-[#060710] md:text-[2.2rem] md:leading-[1.08]">Product Desk</h2>
-                  <p className="mt-2 max-w-3xl text-sm leading-7 text-[#746853]">Create, recolor, activate, and manage your product catalog.</p>
-                </div>
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                {[{ label: "Products", value: stats.total, tint: "bg-[#fff0c8] text-[#8d6e27]", icon: "products" }, { label: "Active", value: stats.active, tint: "bg-[#fff7e8] text-[#8d6e27]", icon: "dashboard" }, { label: "Archived", value: stats.archived, tint: "bg-[#f6efe2] text-[#5d503c]", icon: "documents" }, { label: "Colors", value: stats.colors, tint: "bg-[#fff4d9] text-[#8d6e27]", icon: "analytics" }].map((item) => <article key={item.label} className={PANEL}><div className="flex items-start justify-between gap-4"><div><p className={KICKER}>{item.label}</p><h3 className="mt-1 text-[1.7rem] font-black leading-none text-slate-900">{item.value}</h3></div><div className={`grid h-12 w-12 place-items-center rounded-2xl ${item.tint}`}><DashboardIcon name={item.icon} className="h-5 w-5" /></div></div></article>)}
-              </div>
-            </div>
-
-            <article className={`${PANEL} bg-[#fffaf1]`}>
-              <div className="space-y-2">
-                <p className={KICKER}>Create Product</p>
-                <h3 className="text-2xl font-semibold tracking-tight text-[#060710]">Add a new branded tile</h3>
-              </div>
-              <form className="mt-5 grid gap-4" onSubmit={createProduct}>
-                {isPlatformConsole ? <label className="space-y-2"><span className={KICKER}>Company</span><select className={INPUT} value={companyId} onChange={(event) => setCompanyId(event.target.value)}><option value="">Choose company</option>{companies.map((item) => <option key={item.company_id} value={item.company_id}>{item.name}</option>)}</select></label> : null}
-                <label className="space-y-2"><span className={KICKER}>Product Name</span><input className={INPUT} value={createForm.name} onChange={(event) => setCreateForm((current) => ({ ...current, name: event.target.value }))} placeholder="GreenCall Premium" required /></label>
-                {teamSelectorVisible ? <label className="space-y-2"><span className={KICKER}>Owning Team</span><select className={INPUT} value={createForm.team_id} onChange={(event) => setCreateForm((current) => ({ ...current, team_id: event.target.value }))}><option value="">Select team</option>{teams.map((team) => <option key={team.team_id} value={team.team_id}>{teamSelectLabel(team)}</option>)}</select>{createTeamSelectionPending ? <p className="text-xs font-medium text-[#8d6e27]">{teamSelectionRequiredMessage("product")}</p> : null}</label> : null}
-                {colorField(createForm.color, (value) => setCreateForm((current) => ({ ...current, color: value })), "Color")}
-                <button className={PRIMARY} type="submit" disabled={creating || (isPlatformConsole && !scopedCompanyId) || createTeamSelectionPending}><DashboardIcon name="products" className="h-4 w-4" />{creating ? "Creating..." : "Create Product"}</button>
-              </form>
-            </article>
+        {/* Header */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className={T.K}>Settings · Products</p>
+            <h1 className="mt-0.5 text-2xl font-bold tracking-tight text-slate-900">Product Desk</h1>
+            <p className="mt-0.5 text-sm text-slate-400">Create, recolor, and manage your product catalog.</p>
           </div>
-        </section>
-
-        <div className="grid gap-5 xl:grid-cols-[1.04fr_0.96fr] xl:items-start">
-          <article className={PANEL}>
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-              <div><p className={KICKER}>Catalog</p><h3 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Editable product roster</h3></div>
-              <label className="space-y-2"><span className={KICKER}>Search</span><input className={INPUT} value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search product, id, or color" /></label>
-            </div>
-            <div className="mt-5 flex flex-wrap gap-2">{selectedProduct ? <span className="inline-flex rounded-full border border-[#eadfcd] bg-[#fffaf1] px-3 py-1 text-[11px] font-bold text-[#7c6d55]">{selectedProduct.product_id}</span> : null}{scopedCompanyId ? <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">{selectedId ? filteredProducts.length : products.length} visible</span> : null}</div>
-            <div className="mt-5 space-y-3">
-              {!loading && filteredProducts.length ? filteredProducts.map((product) => <button key={product.product_id} type="button" onClick={() => setSelectedId(product.product_id)} className={`w-full rounded-[28px] border p-4 text-left transition ${selectedId === product.product_id ? "border-[#d7b258] bg-[#fff8e9] shadow-[0_16px_32px_rgba(203,169,82,0.14)]" : "border-[#eadfcd] bg-white/88 shadow-[0_10px_24px_rgba(79,58,22,0.05)] hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(79,58,22,0.08)]"}`}><div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between"><div className="flex min-w-0 items-start gap-4"><div className="grid h-14 w-14 shrink-0 place-items-center rounded-[20px] bg-[#10111d] text-base font-black text-white shadow-[0_18px_30px_rgba(6,7,16,0.16)]">{String(product.name || "P").slice(0, 2).toUpperCase()}</div><div className="min-w-0"><div className="flex flex-wrap gap-2"><span className="inline-flex rounded-full border border-[#eadfcd] bg-[#fff6e4] px-3 py-1 text-[11px] font-bold text-[#7a6230]">{product.product_id}</span><span className="inline-flex rounded-full border px-3 py-1 text-[11px] font-bold" style={{ backgroundColor: `${hex(product.color)}18`, color: hex(product.color), borderColor: `${hex(product.color)}55` }}>{hex(product.color)}</span>{teamBadgeLabel(product) ? <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">{teamBadgeLabel(product)}</span> : null}</div><h4 className="mt-3 truncate text-lg font-semibold text-[#060710]">{product.name || "Unnamed product"}</h4><p className="mt-1 text-sm text-[#746853]">Created {date(product.created_at)}</p></div></div><div className="flex flex-wrap items-center gap-2"><span className={`inline-flex rounded-full border px-3 py-1 text-[11px] font-bold ${active(product.is_active) ? "border-[#e7d7ab] bg-[#fff4d9] text-[#8d6e27]" : "border-[#eadfcd] bg-white text-[#7c6d55]"}`}>{active(product.is_active) ? "Active" : "Archived"}</span><span className="h-9 w-9 rounded-2xl border border-white shadow-sm" style={{ backgroundColor: hex(product.color) }} /></div></div></button>) : <div className="grid min-h-[220px] place-items-center rounded-[28px] border border-dashed border-[#ddd0bb] bg-[#fffaf1] px-6 text-center text-sm text-[#7a6b57]">{listEmptyMessage}</div>}
-            </div>
-          </article>
-
-          <article className={selectedProduct ? PANEL : DARK_PANEL}>
-            {selectedProduct ? (
-              <div className="space-y-5">
-                <div><p className={KICKER}>Editor</p><h3 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Update selected product</h3></div>
-                <div className="overflow-hidden rounded-[26px] border border-[#eadfcd] bg-white/84 shadow-[0_12px_30px_rgba(79,58,22,0.08)]"><div className="h-2.5 w-full" style={{ backgroundColor: hex(editForm.color) }} /><div className="space-y-4 p-4"><div className="flex items-start justify-between gap-3"><div className="flex items-center gap-3"><div className="grid h-12 w-12 place-items-center rounded-[18px] bg-[#10111d] text-sm font-black text-white shadow-[0_16px_28px_rgba(6,7,16,0.16)]">{String(editForm.name || "P").slice(0, 2).toUpperCase()}</div><div><strong className="block text-base font-black text-[#060710]">{editForm.name || "Product name"}</strong><span className="block text-xs font-semibold text-[#8f816a]">{selectedProduct.product_id}</span></div></div><span className={`inline-flex rounded-full border px-3 py-1 text-[11px] font-bold ${editForm.is_active ? "border-[#e7d7ab] bg-[#fff4d9] text-[#8d6e27]" : "border-[#eadfcd] bg-white text-[#7c6d55]"}`}>{editForm.is_active ? "Active" : "Archived"}</span></div><div className="grid gap-3 sm:grid-cols-2"><div className="rounded-[24px] border border-[#eadfcd] bg-[#fffaf1] p-4"><span className={KICKER}>Color</span><strong className="mt-3 block text-sm text-[#060710]">{hex(editForm.color)}</strong></div><div className="rounded-[24px] border border-[#eadfcd] bg-[#fffaf1] p-4"><span className={KICKER}>Status</span><strong className="mt-3 block text-sm text-[#060710]">{editForm.is_active ? "Visible in lead forms" : "Archived from selection"}</strong></div><div className="rounded-[24px] border border-[#eadfcd] bg-[#fffaf1] p-4 sm:col-span-2"><span className={KICKER}>Team</span><strong className="mt-3 block text-sm text-[#060710]">{selectedTeam?.name || selectedProduct.team_name || "Auto team"}</strong></div></div></div></div>
-                <form className="grid gap-4" onSubmit={saveProduct}>
-                  <label className="space-y-2"><span className={KICKER}>Product Name</span><input className={INPUT} value={editForm.name} onChange={(event) => setEditForm((current) => ({ ...current, name: event.target.value }))} required /></label>
-                  {teamSelectorVisible ? <label className="space-y-2"><span className={KICKER}>Owning Team</span><select className={INPUT} value={editForm.team_id} onChange={(event) => setEditForm((current) => ({ ...current, team_id: event.target.value }))}><option value="">Select team</option>{teams.map((team) => <option key={team.team_id} value={team.team_id}>{teamSelectLabel(team)}</option>)}</select>{editTeamSelectionPending ? <p className="text-xs font-medium text-[#8d6e27]">{teamSelectionRequiredMessage("product")}</p> : null}</label> : null}
-                  {colorField(editForm.color, (value) => setEditForm((current) => ({ ...current, color: value })), "Product Color")}
-                  <label className="flex items-center gap-3 rounded-[22px] border border-[#eadfcd] bg-[#fffaf1] px-4 py-3"><input type="checkbox" checked={editForm.is_active} onChange={(event) => setEditForm((current) => ({ ...current, is_active: event.target.checked }))} className="h-4 w-4 rounded border-[#d9ccb8] text-[#cba952] focus:ring-[#f3dfab]" /><span className="text-sm font-semibold text-[#5d503c]">Keep this product active in the catalog</span></label>
-                  <div className="flex flex-wrap gap-3"><button className={PRIMARY} type="submit" disabled={saving || editTeamSelectionPending}><DashboardIcon name="settings" className="h-4 w-4" />{saving ? "Saving..." : "Save Changes"}</button><button className={GHOST} type="button" disabled={Boolean(togglingId)} onClick={() => toggleProduct(selectedProduct)}><DashboardIcon name="documents" className="h-4 w-4" />{togglingId === selectedProduct.product_id ? "Updating..." : active(selectedProduct.is_active) ? "Archive Product" : "Restore Product"}</button></div>
-                </form>
-              </div>
-            ) : <div className="space-y-4"><span className="inline-flex rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.24em] text-white/70">Product Editor</span><h3 className="text-[2rem] font-semibold leading-[1.08] tracking-tight text-white">Select a product card to edit color, name, and status</h3><p className="text-sm leading-7 text-white/68">Your selected product opens here with a live preview and editable color controls.</p></div>}
-          </article>
         </div>
 
-        <section className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
-          <article className={PANEL}>
-            <div><p className={KICKER}>Palette Row</p><h3 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Current product colors</h3></div>
-            <div className="mt-5 flex flex-wrap gap-3">{Array.from(new Set(products.map((item) => hex(item.color)).filter(Boolean))).length ? Array.from(new Set(products.map((item) => hex(item.color)).filter(Boolean))).map((color) => <div key={color} className="rounded-[24px] border border-[#eadfcd] bg-white px-4 py-4 shadow-[0_10px_24px_rgba(79,58,22,0.05)]"><div className="h-14 w-24 rounded-[18px] border border-white shadow-sm" style={{ backgroundColor: color }} /><strong className="mt-3 block text-sm text-[#060710]">{color}</strong></div>) : <div className="rounded-[24px] border border-dashed border-[#ddd0bb] bg-[#fffaf1] px-4 py-8 text-sm text-[#7a6b57]">Colors will appear here as soon as products are created.</div>}</div>
-          </article>
-          <article className={PANEL}>
-            <div><p className={KICKER}>Connections</p><h3 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Use products across the workspace</h3></div>
-            <div className="mt-5 grid gap-3"><Link className={GHOST} href="/leads/new"><DashboardIcon name="leads" className="h-4 w-4" />Use in Create Lead</Link><Link className={GHOST} href="/leads"><DashboardIcon name="workflow" className="h-4 w-4" />Open Lead Workspace</Link><Link className={GHOST} href="/analytics"><DashboardIcon name="analytics" className="h-4 w-4" />See Product Analytics</Link></div>
-          </article>
-        </section>
+        {/* Stats */}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {[["Products",stats.total,"border-amber-200 bg-amber-50"],["Active",stats.active,"border-emerald-200 bg-emerald-100"],["Archived",stats.archived,"border-slate-200 bg-slate-100"],["Total Leads",stats.totalLeads,"border-sky-200 bg-sky-100"]].map(([l,v,a])=>(
+            <div key={l} className={`rounded-2xl border px-4 py-3.5 ${a}`}>
+              <p className={T.K}>{l}</p>
+              <p className="mt-1 text-2xl font-bold leading-none text-slate-900">{v}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Company selector */}
+        {isPlatformConsole ? (
+          <div className={`${T.panel} flex flex-wrap items-center gap-4 px-5 py-4`}>
+            <p className="text-sm font-semibold text-slate-700">Company</p>
+            <select className={`${T.input} max-w-[280px]`} value={companyId} onChange={e => setCompanyId(e.target.value)}>
+              <option value="">Choose company</option>
+              {companies.map(c => <option key={c.company_id} value={c.company_id}>{c.name}</option>)}
+            </select>
+          </div>
+        ) : null}
+
+        <div className="grid gap-5 xl:grid-cols-[1fr_380px] xl:items-start">
+          {/* Product list */}
+          <div className={`${T.panel} px-5 py-5`}>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className={T.K}>Catalog</p>
+                <h2 className="mt-0.5 text-base font-bold text-slate-900">Product roster · {filteredProducts.length}</h2>
+              </div>
+              <input className={`${T.input} max-w-[220px]`} value={search} onChange={e => setSearch(e.target.value)} placeholder="Search product…" />
+            </div>
+
+            {loading ? <p className="py-6 text-center text-sm text-slate-400">Loading products…</p> : filteredProducts.length ? (
+              <div className="space-y-2.5">
+                {filteredProducts.map(product => {
+                  const color = hex(product.color);
+                  const leads = leadCounts[product.product_id] || 0;
+                  const active = isActive(product.is_active);
+                  return (
+                    <button
+                      key={product.product_id} type="button"
+                      onClick={() => setSelectedId(product.product_id)}
+                      className={`group relative w-full overflow-hidden rounded-2xl border px-4 py-3.5 text-left transition hover:-translate-y-0.5 hover:shadow-md ${
+                        selectedId === product.product_id ? "border-amber-300 bg-amber-50 shadow-sm" : "border-slate-100 bg-white hover:border-amber-200"
+                      }`}
+                    >
+                      <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/50 to-transparent transition-transform duration-500 group-hover:translate-x-full" />
+                      <div className="flex items-center gap-3">
+                        {/* Product color avatar */}
+                        <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl text-sm font-bold text-white shadow-sm" style={{ backgroundColor: color }}>
+                          {String(product.name||"P").slice(0,2).toUpperCase()}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <p className="text-sm font-bold text-slate-900">{product.name||"Unnamed"}</p>
+                            <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${active ? "border-emerald-200 bg-emerald-100 text-emerald-700" : "border-slate-200 bg-slate-100 text-slate-500"}`}>
+                              {active ? "Active" : "Archived"}
+                            </span>
+                            {teamBadgeLabel(product) ? <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800">{teamBadgeLabel(product)}</span> : null}
+                          </div>
+                          <div className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-slate-400">
+                            <span style={{ color }}>{color}</span>
+                            <span>Created {fmtDate(product.created_at)}</span>
+                          </div>
+                        </div>
+                        {/* Lead count badge */}
+                        <div className="shrink-0 text-right">
+                          <p className="text-lg font-bold text-slate-900">{leads}</p>
+                          <p className="text-[10px] font-semibold text-slate-400">leads</p>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="flex min-h-[160px] items-center justify-center text-center text-sm text-slate-400">
+                {isPlatformConsole && !scopedCompanyId ? "Choose a company to load products." : "No products found."}
+              </div>
+            )}
+          </div>
+
+          {/* Right column — create + edit */}
+          <div className="space-y-4">
+            {/* Create form */}
+            <div className={`${T.panel} px-5 py-5`}>
+              <p className={T.K}>Create Product</p>
+              <h3 className="mt-0.5 mb-4 text-base font-bold text-slate-900">Add a new product</h3>
+              <form className="space-y-4" onSubmit={createProduct}>
+                <label className="block space-y-1.5">
+                  <span className={T.K}>Product Name *</span>
+                  <input className={T.input} value={createForm.name} onChange={e => setCreateForm(f=>({...f,name:e.target.value}))} placeholder="e.g. GreenCall Premium" required />
+                </label>
+                {teamSelectorVisible ? (
+                  <label className="block space-y-1.5">
+                    <span className={T.K}>Owning Team</span>
+                    <select className={T.input} value={createForm.team_id} onChange={e => setCreateForm(f=>({...f,team_id:e.target.value}))}>
+                      <option value="">Select team</option>
+                      {teams.map(t => <option key={t.team_id} value={t.team_id}>{teamSelectLabel(t)}</option>)}
+                    </select>
+                  </label>
+                ) : null}
+                <ColorField value={createForm.color} onChange={v => setCreateForm(f=>({...f,color:v}))} label="Product Color" />
+                {/* Live preview */}
+                <div className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
+                  <div className="grid h-10 w-10 place-items-center rounded-xl text-sm font-bold text-white" style={{ backgroundColor: hex(createForm.color) }}>
+                    {String(createForm.name||"P").slice(0,2).toUpperCase()||"P"}
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-slate-900">{createForm.name||"Product name"}</p>
+                    <p className="text-xs text-slate-400">{hex(createForm.color)}</p>
+                  </div>
+                </div>
+                <button className={T.gold} type="submit" disabled={creating||(isPlatformConsole&&!scopedCompanyId)||createTeamPending}>
+                  <DashboardIcon name="products" className="h-4 w-4" />
+                  {creating ? "Creating…" : "Create Product"}
+                </button>
+              </form>
+            </div>
+
+            {/* Edit form */}
+            {selectedProduct ? (
+              <div className={`${T.panel} px-5 py-5`}>
+                <div className="mb-4 flex items-center gap-3">
+                  <div className="grid h-10 w-10 place-items-center rounded-xl text-sm font-bold text-white" style={{ backgroundColor: hex(editForm.color) }}>
+                    {String(editForm.name||"P").slice(0,2).toUpperCase()}
+                  </div>
+                  <div>
+                    <p className={T.K}>Edit Product</p>
+                    <h3 className="text-sm font-bold text-slate-900">{selectedProduct.name}</h3>
+                  </div>
+                  <div className="ml-auto text-right">
+                    <p className="text-xl font-bold text-slate-900">{leadCounts[selectedProduct.product_id]||0}</p>
+                    <p className="text-[10px] font-semibold text-slate-400">leads</p>
+                  </div>
+                </div>
+                <form className="space-y-4" onSubmit={saveProduct}>
+                  <label className="block space-y-1.5">
+                    <span className={T.K}>Product Name</span>
+                    <input className={T.input} value={editForm.name} onChange={e => setEditForm(f=>({...f,name:e.target.value}))} required />
+                  </label>
+                  {teamSelectorVisible ? (
+                    <label className="block space-y-1.5">
+                      <span className={T.K}>Owning Team</span>
+                      <select className={T.input} value={editForm.team_id} onChange={e => setEditForm(f=>({...f,team_id:e.target.value}))}>
+                        <option value="">Select team</option>
+                        {teams.map(t => <option key={t.team_id} value={t.team_id}>{teamSelectLabel(t)}</option>)}
+                      </select>
+                    </label>
+                  ) : null}
+                  <ColorField value={editForm.color} onChange={v => setEditForm(f=>({...f,color:v}))} label="Product Color" />
+                  <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <input type="checkbox" checked={editForm.is_active} onChange={e => setEditForm(f=>({...f,is_active:e.target.checked}))} className="h-4 w-4 rounded border-slate-300 accent-amber-500" />
+                    <span className="text-sm font-semibold text-slate-700">Keep active in catalog</span>
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    <button className={T.gold} type="submit" disabled={saving||editTeamPending}>
+                      <DashboardIcon name="settings" className="h-4 w-4" />{saving ? "Saving…" : "Save Changes"}
+                    </button>
+                    <button className={T.ghost} type="button" disabled={Boolean(togglingId)} onClick={() => toggleProduct(selectedProduct)}>
+                      {togglingId===selectedProduct.product_id ? "Updating…" : isActive(selectedProduct.is_active) ? "Archive" : "Restore"}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            ) : (
+              <div className={`${T.panel} flex min-h-[200px] flex-col items-center justify-center gap-3 px-5 py-8 text-center`}>
+                <div className="grid h-12 w-12 place-items-center rounded-2xl bg-amber-50 text-amber-400">
+                  <DashboardIcon name="products" className="h-6 w-6" />
+                </div>
+                <p className="text-sm font-semibold text-slate-700">Select a product to edit</p>
+                <p className="text-xs text-slate-400">Click any product card to update its name, color, and status.</p>
+              </div>
+            )}
+
+            {/* Quick links */}
+            <div className={`${T.panel} px-5 py-5`}>
+              <p className={`${T.K} mb-3`}>Quick Links</p>
+              <div className="space-y-2">
+                <Link className={T.ghost} href="/leads/new"><DashboardIcon name="leads" className="h-4 w-4" />Use in Create Lead</Link>
+                <Link className={T.ghost} href="/analytics"><DashboardIcon name="analytics" className="h-4 w-4" />Product Analytics</Link>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </DashboardShell>
   );

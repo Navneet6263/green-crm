@@ -38,7 +38,7 @@ export const WORKFLOW_TONE = {
   completed: "bg-emerald-100 text-emerald-700 ring-emerald-200",
 };
 
-const SOURCE_COLORS = ["#d7b258", "#c47a1d", "#2f6fdd", "#6d46d6", "#0f8c53", "#c4356b"];
+const SOURCE_COLORS = ["#f59e0b","#10b981","#3b82f6","#8b5cf6","#ef4444","#06b6d4","#f97316","#84cc16","#ec4899","#14b8a6"];
 const CONVERTED = new Set(["closed-won", "converted", "closed"]);
 
 function matchesFilter(value, filter) {
@@ -66,14 +66,18 @@ function filterAdvanced(leads, filters = {}) {
       (!query || hay.includes(query)) &&
       matchesFilter(lead.assigned_to_name || "Unassigned", filters.owner) &&
       matchesFilter(lead.priority || "medium", filters.priority) &&
-      matchesFilter(lead.lead_source || "unknown", filters.source) &&
+      matchesFilter(String(lead.lead_source || "unknown").toLowerCase().trim(), filters.source) &&
       matchesFilter(lead.product_name || "Unmapped", filters.product)
     );
   });
 }
 
 function buildSelectOptions(leads, key, fallback) {
-  return [...new Set(leads.map((lead) => lead[key] || fallback).filter(Boolean))]
+  return [...new Set(leads.map((lead) => {
+    const raw = lead[key] || fallback;
+    // Normalize source keys to lowercase to match buildMix
+    return key === "lead_source" ? String(raw).toLowerCase().trim() : raw;
+  }).filter(Boolean))]
     .sort((left, right) => String(left).localeCompare(String(right)))
     .map((value) => ({ value, label: titleize(value) }));
 }
@@ -171,17 +175,18 @@ function buildTrend(leads, range) {
 function buildMix(leads, key, palette = SOURCE_COLORS) {
   const map = new Map();
   leads.forEach((lead) => {
-    const bucket = lead[key] || "unknown";
+    // Normalize to lowercase to prevent duplicate keys like "Instagram" vs "instagram"
+    const bucket = String(lead[key] || "unknown").toLowerCase().trim();
     map.set(bucket, (map.get(bucket) || 0) + 1);
   });
   return [...map.entries()]
-    .map(([name, value], index) => ({
+    .sort((left, right) => right[1] - left[1]) // sort by count first
+    .map(([name, value], index) => ({           // then assign color by sorted index
       key: name,
       label: titleize(name),
       value,
       color: palette[index % palette.length],
-    }))
-    .sort((left, right) => right.value - left.value);
+    }));
 }
 
 function buildOwnerBoard(leads) {

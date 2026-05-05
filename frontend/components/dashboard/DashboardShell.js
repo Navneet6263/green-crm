@@ -71,7 +71,6 @@ const ACCESS_ROUTE_RULES = [
   { prefix: "/settings/teams", accessKey: "team_management", label: "Team Management" },
   { prefix: "/settings/users", accessKey: "team_management", label: "Team Management" },
   { prefix: "/tasks", accessKey: "tasks", label: "Tasks" },
-  { prefix: "/calendar", accessKey: "calendar", label: "Calendar" },
   { prefix: "/communications", accessKey: "communications", label: "Communications" },
   { prefix: "/attendance", accessKey: "attendance", label: "Attendance" },
   { prefix: "/analytics", accessKey: "analytics", label: "Analytics" },
@@ -498,15 +497,25 @@ export default function DashboardShell({ session: initialSession, children, titl
                 </span>
               </button>
 
-              {/* Search bar */}
-              <Link href="/leads" prefetch={false} className="hidden flex-1 items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2.5 transition hover:border-amber-200 hover:bg-white md:flex">
-                <svg className="h-4 w-4 shrink-0 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="11" cy="11" r="7" />
-                  <path d="m16 16 4.5 4.5" />
-                </svg>
-                <span className="flex-1 text-sm text-slate-400">Search anything...</span>
-                <span className="rounded-lg border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-semibold text-slate-400">Ctrl + K</span>
-              </Link>
+              {/* Quick actions — Add Lead + Add Customer */}
+              <div className="hidden flex-1 items-center justify-center gap-2 md:flex">
+                <Link
+                  href="/leads/new"
+                  prefetch={false}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2 text-[13px] font-semibold text-amber-900 transition hover:bg-amber-100"
+                >
+                  <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" /></svg>
+                  Add Lead
+                </Link>
+                <Link
+                  href="/customers/new"
+                  prefetch={false}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-[13px] font-semibold text-slate-700 transition hover:border-amber-300 hover:text-amber-800"
+                >
+                  <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" /></svg>
+                  Add Customer
+                </Link>
+              </div>
 
               <div className="ml-auto flex items-center gap-2">
                 {/* Bell */}
@@ -558,18 +567,18 @@ export default function DashboardShell({ session: initialSession, children, titl
                               className={cn(
                                 "flex w-full items-start gap-3 rounded-2xl border px-4 py-3 text-left transition",
                                 item.is_read
-                                  ? "border-[#eadfcd] bg-[#fffaf1]"
-                                  : "border-emerald-100 bg-emerald-50/70"
+                                  ? "border-slate-100 bg-slate-50"
+                                  : "border-amber-200 bg-amber-50"
                               )}
                               onClick={() => markNotificationRead(item.notif_id)}
                               disabled={pendingNotificationIds.includes(item.notif_id)}
                             >
-                              <span className={cn("mt-1 h-2.5 w-2.5 rounded-full", item.is_read ? "bg-slate-300" : "bg-emerald-500")} />
+                              <span className={cn("mt-1.5 h-2 w-2 shrink-0 rounded-full", item.is_read ? "bg-slate-300" : "bg-amber-500")} />
                               <div className="min-w-0 flex-1">
                                 <strong className="block truncate text-sm text-slate-900">{item.title}</strong>
-                                <span className="mt-1 block text-xs text-slate-500">{item.message}</span>
+                                <span className="mt-0.5 block text-xs text-slate-500">{item.message}</span>
                               </div>
-                              <span className="text-[11px] font-medium text-slate-400">{formatNotificationTime(item.created_at)}</span>
+                              <span className="shrink-0 text-[11px] font-medium text-slate-400">{formatNotificationTime(item.created_at)}</span>
                             </button>
                           ))
                         ) : (

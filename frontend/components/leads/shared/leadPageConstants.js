@@ -32,13 +32,13 @@ export const PRIORITY_TONE = {
 };
 
 export const LEAD_PANEL_CLASS =
-  "rounded-[30px] border border-[#eadfcd] bg-white/82 shadow-[0_14px_36px_rgba(79,58,22,0.06)]";
+  "rounded-2xl border border-slate-100 bg-white shadow-sm";
 export const LEAD_INPUT_CLASS =
-  "w-full rounded-[18px] border border-[#eadfcd] bg-white px-4 py-3 text-sm text-[#060710] outline-none transition placeholder:text-[#9c8e76] focus:border-[#d7b258] focus:ring-4 focus:ring-[#f6ead0]";
+  "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-amber-400 focus:ring-2 focus:ring-amber-50";
 export const LEAD_PRIMARY_BUTTON_CLASS =
-  "inline-flex min-h-[46px] cursor-pointer items-center justify-center gap-2 rounded-[18px] border border-[#d7b258] bg-[#f3dfab] px-4 py-2.5 text-sm font-semibold text-[#060710] shadow-[0_16px_30px_rgba(203,169,82,0.18)] transition hover:-translate-y-0.5 hover:bg-[#efd48f] disabled:cursor-not-allowed disabled:opacity-60";
+  "inline-flex min-h-[40px] cursor-pointer items-center justify-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-900 transition hover:bg-amber-100 hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60";
 export const LEAD_GHOST_BUTTON_CLASS =
-  "inline-flex min-h-[46px] cursor-pointer items-center justify-center gap-2 rounded-[18px] border border-[#eadfcd] bg-white px-4 py-2.5 text-sm font-semibold text-[#5d503c] transition hover:-translate-y-0.5 hover:text-[#060710] disabled:cursor-not-allowed disabled:opacity-60";
+  "inline-flex min-h-[40px] cursor-pointer items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900 hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60";
 export const LEAD_DANGER_BUTTON_CLASS =
-  "inline-flex min-h-[46px] cursor-pointer items-center justify-center rounded-[18px] border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:-translate-y-0.5 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60";
-export const LEAD_KICKER_CLASS = "text-[10px] font-black uppercase tracking-[0.28em] text-[#9a886d]";
+  "inline-flex min-h-[40px] cursor-pointer items-center justify-center rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60";
+export const LEAD_KICKER_CLASS = "text-[10px] font-bold uppercase tracking-widest text-slate-400";

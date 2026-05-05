@@ -35,15 +35,15 @@ const WORKFLOW_DOC_VIEW_ROLES = ["super-admin", "platform-admin", "platform-mana
 const DOCUMENT_UPLOAD_ROLES = ["super-admin", "platform-admin", "platform-manager", "admin", "manager", "sales", "marketing", "legal-team", "finance-team", "support"];
 const LEGAL_TRANSFER_ROLES = ["super-admin", "platform-admin", "platform-manager", "admin", "manager", "sales"];
 const ACTIVITY_OPTIONS = ["call", "email", "meeting", "note", "task", "comment"];
-const PANEL_CLASS = "rounded-[30px] border border-[#efe6d8] bg-white/84 p-5 shadow-[0_14px_36px_rgba(79,58,22,0.05)] md:p-6";
-const SOFT_PANEL_CLASS = "rounded-[24px] bg-[#fffaf1] p-4";
-const INPUT_CLASS = "w-full rounded-[18px] border border-[#eadfcd] bg-white px-4 py-3 text-sm text-[#060710] outline-none transition placeholder:text-[#9c8e76] focus:border-[#d7b258] focus:ring-4 focus:ring-[#f6ead0]";
-const PRIMARY_BUTTON_CLASS = "inline-flex min-h-[46px] items-center justify-center gap-2 rounded-[18px] border border-[#d7b258] bg-[#f3dfab] px-4 py-2.5 text-sm font-semibold text-[#060710] shadow-[0_16px_30px_rgba(203,169,82,0.18)] transition hover:-translate-y-0.5 hover:bg-[#efd48f] disabled:cursor-not-allowed disabled:opacity-60";
-const GHOST_BUTTON_CLASS = "inline-flex min-h-[46px] items-center justify-center gap-2 rounded-[18px] border border-[#eadfcd] bg-white px-4 py-2.5 text-sm font-semibold text-[#5d503c] transition hover:-translate-y-0.5 hover:text-[#060710] disabled:cursor-not-allowed disabled:opacity-60";
-const KICKER_CLASS = "text-[10px] font-black uppercase tracking-[0.28em] text-[#9a886d]";
-const HERO_PANEL_CLASS = "rounded-[36px] border border-[#eadfcd] bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.98),_rgba(250,241,221,0.98)_44%,_rgba(245,231,193,0.98)_100%)] p-6 shadow-[0_24px_70px_rgba(79,58,22,0.08)] md:p-8";
-const PILL_CLASS = "inline-flex rounded-full px-3 py-1 text-[11px] font-bold";
-const HEADER_ACTION_BUTTON_CLASS = "inline-flex min-h-[46px] items-center gap-2 rounded-[18px] border border-[#eadfcd] bg-white/90 px-4 py-2.5 text-sm font-semibold text-[#7a6230] transition hover:-translate-y-0.5 hover:border-[#d7b258] hover:text-[#060710] hover:shadow-[0_10px_20px_rgba(203,169,82,0.14)] disabled:cursor-not-allowed disabled:opacity-50";
+const PANEL_CLASS = "rounded-2xl border border-slate-100 bg-white p-5 shadow-sm md:p-6";
+const SOFT_PANEL_CLASS = "rounded-xl border border-slate-100 bg-slate-50 p-4";
+const INPUT_CLASS = "w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-amber-400 focus:ring-2 focus:ring-amber-50";
+const PRIMARY_BUTTON_CLASS = "inline-flex min-h-[40px] items-center justify-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-900 transition hover:bg-amber-100 hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60";
+const GHOST_BUTTON_CLASS = "inline-flex min-h-[40px] items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900 hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60";
+const KICKER_CLASS = "text-[10px] font-bold uppercase tracking-widest text-slate-400";
+const HERO_PANEL_CLASS = "rounded-2xl border border-slate-100 bg-white p-5 shadow-sm md:p-6";
+const PILL_CLASS = "inline-flex rounded-full border px-2.5 py-0.5 text-[11px] font-semibold";
+const HEADER_ACTION_BUTTON_CLASS = "inline-flex min-h-[38px] items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-slate-600 transition hover:border-amber-300 hover:bg-amber-50 hover:text-amber-800 disabled:cursor-not-allowed disabled:opacity-50";
 const nice = (v) => String(v || "").split("-").filter(Boolean).map((x) => x[0].toUpperCase() + x.slice(1)).join(" ");
 const money = (v) => `INR ${Number(v || 0).toLocaleString("en-IN")}`;
 const when = (v, full = false) => formatIndiaDateTime(v, full);
@@ -78,9 +78,9 @@ function buildLocalActivity(type, description, createdByName) {
 
 function DetailCell({ label, value, className = "" }) {
   return (
-    <div className={`rounded-[22px] border border-[#eadfcd] bg-[#fffaf1] px-4 py-4 ${className}`}>
+    <div className={`rounded-xl border border-slate-100 bg-slate-50 px-3 py-3 ${className}`}>
       <span className={KICKER_CLASS}>{label}</span>
-      <strong className="mt-3 block text-sm leading-6 text-[#060710]">{value || "--"}</strong>
+      <strong className="mt-1 block text-sm text-slate-900">{value || "--"}</strong>
     </div>
   );
 }
@@ -356,47 +356,35 @@ export default function LeadDetailPage() {
     <DashboardShell session={session} title={lead ? lead.company_name : "Lead Detail"} hideTitle={hideWorkspaceTitle} heroStats={[]}>
       <AlertError message={error} onDismiss={() => setError("")} />
       {!error ? <AlertSuccess message={notice} onDismiss={() => setNotice("")} /> : null}
-      {loading ? <div className="rounded-[20px] border border-[#eadfcd] bg-white px-4 py-3 text-sm font-medium text-[#6f614c]">Loading lead details...</div> : null}
+      {loading ? <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3 text-sm text-slate-500">Loading lead details…</div> : null}
       {!loading && lead ? (
         <section className="space-y-5">
           <article className={HERO_PANEL_CLASS}>
             <div className="space-y-6">
-              <div className="flex flex-wrap gap-3">
-                <button className={GHOST_BUTTON_CLASS} type="button" onClick={() => router.push("/leads")}>
-                  Back to Leads
-                </button>
-                <button className={GHOST_BUTTON_CLASS} type="button" onClick={() => router.push(`/leads/${lead.lead_id}/edit`)}>
-                  Edit Lead
-                </button>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <button className={GHOST_BUTTON_CLASS} type="button" onClick={() => router.push("/leads")}>← Back</button>
+                <button className={PRIMARY_BUTTON_CLASS} type="button" onClick={() => router.push(`/leads/${lead.lead_id}/edit`)}><DashboardIcon name="settings" className="h-4 w-4" />Edit Lead</button>
               </div>
 
               <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px] xl:items-start">
                 <div className="space-y-5">
                   <div className="flex items-start gap-4">
-                    <div className="grid h-16 w-16 shrink-0 place-items-center rounded-[22px] bg-[#10111d] text-xl font-bold text-white shadow-[0_18px_32px_rgba(6,7,16,0.18)]">
+                    <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-emerald-600 text-xl font-bold text-white">
                       {leadName?.trim()?.slice(0, 1)?.toUpperCase() || "L"}
                     </div>
-                    <div className="space-y-4">
-                      <span className="inline-flex rounded-full border border-[#ddd3c2] bg-white/85 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.24em] text-[#7c6d55]">
-                        Lead Profile
-                      </span>
-                      <div>
-                        <h2 className="text-3xl font-semibold tracking-tight text-[#060710] md:text-[2.2rem] md:leading-[1.08]">
-                          {leadName}
-                        </h2>
-                        <p className="mt-2 max-w-3xl text-sm leading-7 text-[#6f614c]">
-                          {lead.company_name && lead.company_name !== leadName ? lead.company_name : "Lead profile and workflow context"}
-                        </p>
-                      </div>
+                    <div className="space-y-1">
+                      <p className={KICKER_CLASS}>Lead Profile</p>
+                      <h2 className="text-2xl font-bold tracking-tight text-slate-900">{leadName}</h2>
+                      <p className="text-sm text-slate-500">{lead.company_name && lead.company_name !== leadName ? lead.company_name : "Lead profile and workflow context"}</p>
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-1.5">
                     <span className={PILL_CLASS} style={{ background: (STATUS_ACCENT[lead.status] || STATUS_ACCENT.new)[0], color: (STATUS_ACCENT[lead.status] || STATUS_ACCENT.new)[1] }}>{nice(lead.status)}</span>
                     <span className={PILL_CLASS} style={{ background: (PRIORITY_ACCENT[lead.priority] || PRIORITY_ACCENT.medium)[0], color: (PRIORITY_ACCENT[lead.priority] || PRIORITY_ACCENT.medium)[1] }}>{nice(lead.priority || "medium")}</span>
-                    {lead.product_name ? <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">{lead.product_name}</span> : null}
-                    {teamBadgeLabel(lead) ? <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">{teamBadgeLabel(lead)}</span> : null}
-                    <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">Workflow {nice(lead.workflow_stage || "sales")}</span>
+                    {lead.product_name ? <span className="inline-flex rounded-full border border-amber-200 bg-amber-100 px-2.5 py-0.5 text-[11px] font-semibold text-amber-800">{lead.product_name}</span> : null}
+                    {teamBadgeLabel(lead) ? <span className="inline-flex rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-[11px] font-semibold text-slate-600">{teamBadgeLabel(lead)}</span> : null}
+                    <span className="inline-flex rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-[11px] font-semibold text-slate-600">Workflow · {nice(lead.workflow_stage || "sales")}</span>
                   </div>
 
                   <div className="flex flex-wrap items-center gap-3">
@@ -432,7 +420,7 @@ export default function LeadDetailPage() {
                 </div>
 
                 <div className="space-y-3">
-                  <div className={SOFT_PANEL_CLASS}>
+                  <div className="rounded-xl border border-amber-100 bg-amber-50 p-4">
                     <span className={KICKER_CLASS}>Quick Status Update</span>
                     <div className="mt-3">
                       <LeadQuickStatusControl
@@ -448,13 +436,13 @@ export default function LeadDetailPage() {
                   </div>
 
                   <div className="grid gap-3 sm:grid-cols-2">
-                    <div className={SOFT_PANEL_CLASS}>
-                      <span className={KICKER_CLASS}>Primary Assignee</span>
-                      <strong className="mt-3 block text-base font-black text-[#060710]">{lead.assigned_to_name || "Unassigned"}</strong>
+                    <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
+                      <span className={KICKER_CLASS}>Assignee</span>
+                      <strong className="mt-1 block text-sm font-bold text-slate-900">{lead.assigned_to_name || "Unassigned"}</strong>
                     </div>
-                    <div className={SOFT_PANEL_CLASS}>
-                      <span className={KICKER_CLASS}>Last Follow-up</span>
-                      <strong className="mt-3 block text-base font-black text-[#060710]">{when(lead.follow_up_date, true)}</strong>
+                    <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
+                      <span className={KICKER_CLASS}>Follow-up</span>
+                      <strong className="mt-1 block text-sm font-bold text-slate-900">{when(lead.follow_up_date, true)}</strong>
                     </div>
                   </div>
                 </div>
@@ -475,13 +463,11 @@ export default function LeadDetailPage() {
               </article>
 
               <article className={PANEL_CLASS} id="follow-up-history">
-                <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
-                  <div>
-                    <span className={KICKER_CLASS}>Follow-up History</span>
-                    <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Follow-up History</h2>
-                  </div>
+                <div className="mb-4">
+                  <span className={KICKER_CLASS}>Follow-up History</span>
+                  <h2 className="mt-0.5 text-lg font-bold text-slate-900">Activity Log</h2>
                 </div>
-                <form className="grid gap-3 rounded-[24px] bg-[#fffaf1] p-4 md:grid-cols-[0.9fr_1.2fr_auto]" onSubmit={addActivity}>
+                <form className="grid gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3 md:grid-cols-[0.9fr_1.2fr_auto]" onSubmit={addActivity}>
                   <select className={INPUT_CLASS} value={activityType} onChange={(event) => setActivityType(event.target.value)}>
                     {ACTIVITY_OPTIONS.map((option) => <option key={option} value={option}>{nice(option)}</option>)}
                   </select>
@@ -494,30 +480,26 @@ export default function LeadDetailPage() {
               </article>
 
               <article className={PANEL_CLASS}>
-                <div className="mb-5"><div><span className={KICKER_CLASS}>Workflow</span><h2 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Workflow & transfer path</h2></div></div>
+                <div className="mb-4">
+                  <span className={KICKER_CLASS}>Workflow</span>
+                  <h2 className="mt-0.5 text-lg font-bold text-slate-900">Pipeline Stage</h2>
+                </div>
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                   {WORKFLOW.map((step, index) => {
                     const current = WORKFLOW.indexOf(lead.workflow_stage || "sales");
                     const state = index < current ? "done" : index === current ? "active" : "idle";
-
                     return (
-                      <div
-                        key={step}
-                        className={`rounded-[24px] px-4 py-4 shadow-[0_10px_24px_rgba(79,58,22,0.04)] ${
-                          state === "active"
-                            ? "bg-[#fff4d8]"
-                            : state === "done"
-                              ? "bg-emerald-50"
-                              : "bg-[#fffaf1]"
-                        }`}
-                      >
-                        <span className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-current text-xs font-bold">
-                          {index + 1}
-                        </span>
-                        <strong className="mt-4 block text-base text-[#060710]">{nice(step)}</strong>
-                        <p className="mt-2 text-xs font-medium text-[#7c6d55]">
-                          {state === "active" ? "Current stage" : state === "done" ? "Completed stage" : "Waiting"}
-                        </p>
+                      <div key={step} className={`group relative overflow-hidden rounded-2xl border px-4 py-4 transition hover:-translate-y-0.5 ${
+                        state === "active" ? "border-amber-300 bg-amber-50" : state === "done" ? "border-emerald-200 bg-emerald-50" : "border-slate-100 bg-slate-50"
+                      }`}>
+                        <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/60 to-transparent transition-transform duration-500 group-hover:translate-x-full" />
+                        <span className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${
+                          state === "active" ? "bg-amber-500 text-white" : state === "done" ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-500"
+                        }`}>{index + 1}</span>
+                        <strong className="mt-3 block text-sm font-bold text-slate-900">{nice(step)}</strong>
+                        <p className={`mt-0.5 text-xs font-semibold ${
+                          state === "active" ? "text-amber-700" : state === "done" ? "text-emerald-700" : "text-slate-400"
+                        }`}>{state === "active" ? "Current" : state === "done" ? "Done ✓" : "Waiting"}</p>
                       </div>
                     );
                   })}
@@ -538,40 +520,37 @@ export default function LeadDetailPage() {
               </article>
 
               <article className={PANEL_CLASS}>
-                <div className="mb-5"><div><span className={KICKER_CLASS}>Workflow History</span><h2 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Stage movement</h2></div></div>
+                <div className="mb-4">
+                  <span className={KICKER_CLASS}>Workflow History</span>
+                  <h2 className="mt-0.5 text-lg font-bold text-slate-900">Stage Movement</h2>
+                </div>
                 <div className="grid gap-4 xl:grid-cols-2">
-                  <div className="rounded-[24px] border border-[#eadfcd] bg-[#fffaf1] p-4">
-                    <strong className="block text-lg text-[#060710]">Stage history</strong>
-                    <div className="mt-4 space-y-3">
+                  <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                    <strong className="block text-sm font-bold text-slate-900">Stage History</strong>
+                    <div className="mt-3 space-y-2">
                       {(lead.stage_history || []).length ? lead.stage_history.map((item, index) => (
-                        <div className="rounded-[20px] border border-[#eadfcd] bg-white px-4 py-4" key={`stage-${item.stage}-${index}`}>
-                          <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
-                            <div className="space-y-1.5">
-                              <strong className="block text-sm text-[#060710]">{nice(item.stage)}</strong>
-                              <span className="block text-sm leading-6 text-[#6f614c]">
-                                Entered {when(item.entered_at, true)}
-                                {item.exited_at ? ` | Exited ${when(item.exited_at, true)}` : " | Current stage"}
-                              </span>
+                        <div className="rounded-xl border border-slate-100 bg-white px-3 py-3" key={`stage-${item.stage}-${index}`}>
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <strong className="text-sm text-slate-900">{nice(item.stage)}</strong>
+                              <p className="mt-0.5 text-xs text-slate-400">Entered {when(item.entered_at, true)}{item.exited_at ? ` · Exited ${when(item.exited_at, true)}` : " · Active"}</p>
                             </div>
-                            <span className="text-sm font-semibold text-[#8d6e27]">{item.duration ? `${item.duration} min` : "--"}</span>
+                            <span className="text-xs font-semibold text-amber-700">{item.duration ? `${item.duration}m` : "--"}</span>
                           </div>
                         </div>
-                      )) : <p className="rounded-[20px] border border-dashed border-[#ddd0bb] bg-white px-4 py-8 text-center text-sm text-[#7a6b57]">No stage history logged yet.</p>}
+                      )) : <p className="rounded-xl border border-dashed border-slate-200 py-6 text-center text-xs text-slate-400">No stage history yet.</p>}
                     </div>
                   </div>
-                  <div className="rounded-[24px] border border-[#eadfcd] bg-[#fffaf1] p-4">
-                    <strong className="block text-lg text-[#060710]">Transfer log</strong>
-                    <div className="mt-4 space-y-3">
+                  <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                    <strong className="block text-sm font-bold text-slate-900">Transfer Log</strong>
+                    <div className="mt-3 space-y-2">
                       {(lead.transfer_history || []).length ? lead.transfer_history.map((item, index) => (
-                        <div className="rounded-[20px] border border-[#eadfcd] bg-white px-4 py-4" key={`transfer-${item.to_stage}-${index}`}>
-                          <strong className="block text-sm text-[#060710]">{nice(item.from_stage)} to {nice(item.to_stage)}</strong>
-                          <span className="mt-2 block text-sm leading-6 text-[#6f614c]">
-                            {item.transferred_by_name || "User"} | {when(item.transferred_at, true)}
-                            {item.transferred_to_name ? ` | Assigned to ${item.transferred_to_name}` : ""}
-                          </span>
-                          {item.notes ? <p className="mt-3 text-sm leading-6 text-[#5f533f]">{item.notes}</p> : null}
+                        <div className="rounded-xl border border-slate-100 bg-white px-3 py-3" key={`transfer-${item.to_stage}-${index}`}>
+                          <strong className="text-sm text-slate-900">{nice(item.from_stage)} → {nice(item.to_stage)}</strong>
+                          <p className="mt-0.5 text-xs text-slate-400">{item.transferred_by_name || "User"} · {when(item.transferred_at, true)}{item.transferred_to_name ? ` · ${item.transferred_to_name}` : ""}</p>
+                          {item.notes ? <p className="mt-1.5 text-xs text-slate-600">{item.notes}</p> : null}
                         </div>
-                      )) : <p className="rounded-[20px] border border-dashed border-[#ddd0bb] bg-white px-4 py-8 text-center text-sm text-[#7a6b57]">No transfer history recorded yet.</p>}
+                      )) : <p className="rounded-xl border border-dashed border-slate-200 py-6 text-center text-xs text-slate-400">No transfer history yet.</p>}
                     </div>
                   </div>
                 </div>
@@ -580,33 +559,69 @@ export default function LeadDetailPage() {
 
             <div className="space-y-5">
               <article className={PANEL_CLASS}>
-                <div className="mb-5">
-                  <span className={KICKER_CLASS}>Lead Summary</span>
-                  <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Lead Summary</h2>
-                </div>
-                <div className="grid gap-3 md:grid-cols-2">
-                  <DetailCell label="Contact" value={lead.contact_person} />
-                  <DetailCell label="Company" value={lead.company_name} />
-                  <DetailCell label="Phone" value={lead.phone || "--"} />
-                  <DetailCell label="Email" value={lead.email || "--"} />
-                  <DetailCell label="Team" value={teamBadgeLabel(lead) || "Auto team"} />
-                  <DetailCell label="Units" value={unitText(lead.number_of_units)} />
-                  <DetailCell label="Value" value={money(lead.estimated_value)} />
-                  <DetailCell label="Source" value={nice(lead.lead_source || "website")} />
-                  <DetailCell label="Lead ID" value={lead.lead_id} />
-                  <DetailCell label="Created By" value={lead.created_by_name || "--"} />
-                </div>
-                <div className="mt-4 rounded-[24px] bg-[#fffaf1] p-4">
-                  <div className="mb-2 flex items-center justify-between gap-3">
-                    <span className={KICKER_CLASS}>Requirements</span>
-                    <strong className="text-xs font-bold text-[#8f816a]">{lead.product_name || "Lead brief"}</strong>
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <div>
+                    <span className={KICKER_CLASS}>Lead Summary</span>
+                    <h2 className="mt-0.5 text-lg font-bold text-slate-900">Account Overview</h2>
                   </div>
-                  <p className="text-sm leading-7 text-[#5f533f]">{lead.requirements || "No requirements have been added to this lead yet."}</p>
+                  <span className="rounded-full border border-amber-200 bg-amber-100 px-3 py-1 text-[11px] font-bold text-amber-800">
+                    {money(lead.estimated_value)}
+                  </span>
                 </div>
+
+                {/* Contact identity block */}
+                <div className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-4">
+                  <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-emerald-600 text-base font-bold text-white">
+                    {(lead.contact_person || lead.company_name || "L").slice(0,1).toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-bold text-slate-900">{lead.contact_person || "—"}</p>
+                    <p className="truncate text-xs text-slate-500">{lead.company_name || "—"}</p>
+                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-slate-400">
+                      {lead.email ? <a href={`mailto:${lead.email}`} className="hover:text-amber-700 hover:underline">{lead.email}</a> : null}
+                      {lead.phone ? <a href={`tel:${String(lead.phone).replace(/[^\d+]/g,"")}`} className="hover:text-amber-700 hover:underline">{lead.phone}</a> : null}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Key metrics row */}
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  {[
+                    ["Source",    nice(lead.lead_source || "website"),  "border-slate-100 bg-slate-50"],
+                    ["Priority",  nice(lead.priority || "medium"),      "border-amber-100 bg-amber-50"],
+                    ["Team",      teamBadgeLabel(lead) || "Auto team",  "border-slate-100 bg-slate-50"],
+                    ["Units",     unitText(lead.number_of_units),       "border-slate-100 bg-slate-50"],
+                    ["Created By",lead.created_by_name || "—",          "border-slate-100 bg-slate-50"],
+                    ["Lead ID",   lead.lead_id,                         "border-slate-100 bg-slate-50"],
+                  ].map(([label, value, accent]) => (
+                    <div key={label} className={`rounded-xl border px-3 py-2.5 ${accent}`}>
+                      <p className={KICKER_CLASS}>{label}</p>
+                      <p className="mt-0.5 text-sm font-semibold text-slate-800 break-words">{value}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Requirements */}
+                {lead.requirements ? (
+                  <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+                    <div className="mb-1 flex items-center justify-between gap-2">
+                      <span className={KICKER_CLASS}>Requirements</span>
+                      {lead.product_name ? <span className="text-[11px] font-semibold text-amber-700">{lead.product_name}</span> : null}
+                    </div>
+                    <p className="text-sm leading-6 text-slate-700">{lead.requirements}</p>
+                  </div>
+                ) : (
+                  <div className="mt-3 rounded-xl border border-dashed border-slate-200 px-4 py-3 text-center">
+                    <p className="text-xs text-slate-400">No requirements added yet.</p>
+                  </div>
+                )}
               </article>
 
               <article className={PANEL_CLASS} id="schedule-follow-up">
-                <div className="mb-5"><div><span className={KICKER_CLASS}>Schedule Follow-up</span><h2 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Schedule Follow-up</h2></div></div>
+                <div className="mb-4">
+                  <span className={KICKER_CLASS}>Schedule Follow-up</span>
+                  <h2 className="mt-0.5 text-lg font-bold text-slate-900">Book Next Action</h2>
+                </div>
                 <form className="grid gap-4" onSubmit={createTask}>
                   <label className="space-y-2"><span className={KICKER_CLASS}>Title</span><input className={INPUT_CLASS} value={task.title} onChange={(event) => setTask((current) => ({ ...current, title: event.target.value }))} placeholder="Follow-up call, proposal review, demo" /></label>
                   <div className="grid gap-4 sm:grid-cols-2"><label className="space-y-2"><span className={KICKER_CLASS}>Communication Mode</span><select className={INPUT_CLASS} value={task.type} onChange={(event) => setTask((current) => ({ ...current, type: event.target.value }))}><option value="call">Call</option><option value="whatsapp">WhatsApp</option><option value="email">Email</option></select></label><label className="space-y-2"><span className={KICKER_CLASS}>Priority</span><select className={INPUT_CLASS} value={task.priority} onChange={(event) => setTask((current) => ({ ...current, priority: event.target.value }))}><option value="low">low</option><option value="medium">medium</option><option value="high">high</option><option value="urgent">urgent</option></select></label></div>
@@ -618,7 +633,10 @@ export default function LeadDetailPage() {
               </article>
 
               <article className={PANEL_CLASS}>
-                <div className="mb-5"><div><span className={KICKER_CLASS}>Documents</span><h2 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Documents</h2></div></div>
+                <div className="mb-4">
+                  <span className={KICKER_CLASS}>Documents</span>
+                  <h2 className="mt-0.5 text-lg font-bold text-slate-900">Files & Attachments</h2>
+                </div>
                 <LeadDocumentsPanel
                   canUpload={canUploadDocuments}
                   documents={documentRecords}
@@ -638,7 +656,7 @@ export default function LeadDetailPage() {
                 />
               </article>
 
-              {canTransferToLegal ? <article className={`${PANEL_CLASS} bg-[#f5fbf0]`}><div className="mb-5"><div><span className={KICKER_CLASS}>Closed Won</span><h2 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Transfer to legal</h2></div></div><form className="grid gap-4" onSubmit={transferToLegal}><label className="space-y-2"><span className={KICKER_CLASS}>Legal Owner</span><select className={INPUT_CLASS} value={transferOwner} onChange={(event) => setTransferOwner(event.target.value)}><option value="">Assign later</option>{legalUsers.map((user) => <option key={user.user_id} value={user.user_id}>{formatWorkflowOwnerIdentity(user.name, user.user_id, "Legal user")}</option>)}</select>{!scopedLegalUsers.length ? <p className="text-xs font-medium text-[#8d6e27]">{legalUsersMessage}</p> : null}</label><label className="space-y-2"><span className={KICKER_CLASS}>Transfer Note *</span><textarea className={`${INPUT_CLASS} min-h-[150px] resize-y`} rows="4" value={transferNote} onChange={(event) => setTransferNote(event.target.value)} placeholder="What is ready for legal and what should be checked next?" /></label><button className={PRIMARY_BUTTON_CLASS} type="submit" disabled={transferring || !transferNote.trim()}>{transferring ? "Transferring..." : "Transfer to Legal"}</button></form></article> : null}
+              {canTransferToLegal ? <article className={`${PANEL_CLASS} border-emerald-200 bg-emerald-50`}><div className="mb-4"><span className={KICKER_CLASS}>Closed Won</span><h2 className="mt-0.5 text-lg font-bold text-slate-900">Transfer to Legal</h2></div><form className="grid gap-4" onSubmit={transferToLegal}><label className="space-y-2"><span className={KICKER_CLASS}>Legal Owner</span><select className={INPUT_CLASS} value={transferOwner} onChange={(event) => setTransferOwner(event.target.value)}><option value="">Assign later</option>{legalUsers.map((user) => <option key={user.user_id} value={user.user_id}>{formatWorkflowOwnerIdentity(user.name, user.user_id, "Legal user")}</option>)}</select>{!scopedLegalUsers.length ? <p className="text-xs font-medium text-[#8d6e27]">{legalUsersMessage}</p> : null}</label><label className="space-y-2"><span className={KICKER_CLASS}>Transfer Note *</span><textarea className={`${INPUT_CLASS} min-h-[150px] resize-y`} rows="4" value={transferNote} onChange={(event) => setTransferNote(event.target.value)} placeholder="What is ready for legal and what should be checked next?" /></label><button className={PRIMARY_BUTTON_CLASS} type="submit" disabled={transferring || !transferNote.trim()}>{transferring ? "Transferring..." : "Transfer to Legal"}</button></form></article> : null}
 
               <article className={PANEL_CLASS}>
                 <LeadCollaboratorPanel

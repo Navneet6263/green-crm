@@ -46,8 +46,7 @@ export const PAGE_SUMMARY = {
   "Legal Queue": "Review assigned legal-stage opportunities and keep document movement predictable.",
   "Finance Queue": "Review assigned finance-stage opportunities and close invoice readiness gaps quickly.",
   Analytics: "Read source mix and product contribution with a cleaner information hierarchy built for decision-making.",
-  Tasks: "Keep execution visible with a lighter task workspace designed around urgency and completion.",
-  Calendar: "Stay on top of the schedule with a focused view of upcoming actions and workload timing.",
+  Tasks: "Keep execution visible with a task workspace — board view or date-wise timeline.",
   Communications: "Review alerts and recent activity without burying the important signals.",
   Attendance: "Keep punch events, office-IP validation, and attendance auditability inside a dedicated module.",
   Customers: "Track active customer records and move between accounts with a cleaner directory experience.",
@@ -112,7 +111,6 @@ export const SIDEBAR_SECTIONS = {
       ITEM("Products", "/settings/products", "products", "products"),
       ITEM("Teams", "/settings/teams", "users", "team_management"),
       ITEM("Tasks", "/tasks", "tasks", "tasks"),
-      ITEM("Calendar", "/calendar", "calendar", "calendar"),
       ITEM("Communications", "/communications", "message", "communications"),
       ITEM("Attendance", "/attendance", "attendance", "attendance"),
     ]),
@@ -127,7 +125,6 @@ export const SIDEBAR_SECTIONS = {
       ITEM("Dashboard", ROLE_HOME_ROUTE.manager, "dashboard"),
       ITEM("Leads", "/leads", "leads", "leads"),
       ITEM("Tasks", "/tasks", "tasks", "tasks"),
-      ITEM("Calendar", "/calendar", "calendar", "calendar"),
       ITEM("Attendance", "/attendance", "attendance", "attendance"),
     ]),
     SECTION("Team", [
@@ -144,7 +141,6 @@ export const SIDEBAR_SECTIONS = {
       ITEM("Dashboard", ROLE_HOME_ROUTE.sales, "dashboard"),
       ITEM("My Leads", "/leads", "leads", "leads"),
       ITEM("Tasks", "/tasks", "tasks", "tasks"),
-      ITEM("Calendar", "/calendar", "calendar", "calendar"),
     ]),
     SECTION("Activity", [
       ITEM("Customers", "/customers", "customers", "customers"),
@@ -158,7 +154,6 @@ export const SIDEBAR_SECTIONS = {
       ITEM("Dashboard", ROLE_HOME_ROUTE.marketing, "dashboard"),
       ITEM("Leads", "/leads", "leads", "leads"),
       ITEM("Analytics", "/analytics", "analytics", "analytics"),
-      ITEM("Calendar", "/calendar", "calendar", "calendar"),
     ]),
     SECTION("Ops", [
       ITEM("Tasks", "/tasks", "tasks", "tasks"),
@@ -234,14 +229,13 @@ export const ROLE_SHORTCUTS = {
   ],
   sales: [
     ITEM("New Lead", "/leads/new", "leads"),
-    ITEM("Calendar", "/calendar", "calendar"),
     ITEM("Tasks", "/tasks", "tasks"),
     ITEM("Attendance", "/attendance", "attendance"),
   ],
   marketing: [
     ITEM("Leads", "/leads", "leads"),
     ITEM("Analytics", "/analytics", "analytics"),
-    ITEM("Calendar", "/calendar", "calendar"),
+    ITEM("Tasks", "/tasks", "tasks"),
     ITEM("Attendance", "/attendance", "attendance"),
   ],
   "legal-team": [
