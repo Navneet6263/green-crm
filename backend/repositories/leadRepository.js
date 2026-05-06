@@ -418,7 +418,7 @@ async function updateLead(leadId, companyId, updates, executor) {
 async function softDeleteLead(leadId, companyId, executor) {
   const active = getExecutor(executor);
   await active.query(
-    `UPDATE leads SET is_active = 0, updated_at = ${SQL_NOW} WHERE lead_id = ? AND company_id = ?`,
+    `UPDATE leads SET is_active = 0, deleted_at = ${SQL_NOW}, updated_at = ${SQL_NOW} WHERE lead_id = ? AND company_id = ?`,
     [leadId, companyId]
   );
 }

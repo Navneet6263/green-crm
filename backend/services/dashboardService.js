@@ -155,6 +155,59 @@ async function getSummary(auth, query = {}) {
   return summary;
 }
 
+
+
+// Widget-level service methods for lazy/parallel dashboard loading
+// Each widget fetches only what it needs — no more loading everything at once.
+// ---------------------------------------------------------------------------
+
+async function getWidgetKpis(auth, query = {}) {
+  const summary = await getSummary(auth, query);
+  // Return only the KPI numbers — fast, lightweight
+  return {
+    lead_counts: summary.lead_counts || summary.leads || null,
+    kpis: summary.kpis || null,
+    pending_tasks: summary.pending_tasks ?? null,
+    overdue_tasks: summary.overdue_tasks ?? null,
+    pending_reminders: summary.pending_reminders ?? null,
+    team_size: summary.team_size ?? null,
+    companies: summary.companies ?? null,
+    users: summary.users ?? null,
+  };
+}
+
+async function getWidgetRecentLeads(auth, query = {}) {
+  const summary = await getSummary(auth, query);
+  return {
+    recent_leads: summary.recent_leads || [],
+    recent_activity: summary.recent_activity || [],
+  };
+}
+
+async function getWidgetTasks(auth, query = {}) {
+  const summary = await getSummary(auth, query);
+  return {
+    pending_tasks: summary.pending_tasks ?? 0,
+    overdue_tasks: summary.overdue_tasks ?? 0,
+    pending_reminders: summary.pending_reminders ?? 0,
+  };
+}
+
+async function getWidgetCharts(auth, query = {}) {
+  const summary = await getSummary(auth, query);
+  return {
+    charts: summary.charts || null,
+    insights: summary.insights || null,
+    source_mix: summary.source_mix || [],
+    recent_companies: summary.recent_companies || [],
+    recent_products: summary.recent_products || [],
+  };
+}
+
 module.exports = {
   getSummary,
+  getWidgetCharts,
+  getWidgetKpis,
+  getWidgetRecentLeads,
+  getWidgetTasks,
 };

@@ -16,6 +16,7 @@ const {
   resolveTeamScope,
 } = require("./accessScopeService");
 const { deleteStoredLeadDocument, storeLeadDocument } = require("./leadDocumentStorageService");
+const { assertValidTransition } = require("../utils/workflowStateMachine");
 
 function formatUploadResponse(document = {}) {
   return {
@@ -213,6 +214,9 @@ async function moveLead(auth, leadId, toStage, assignedUserId, extraUpdates = {}
   if (lead.workflow_stage === toStage) {
     throw new AppError("Lead is already in this workflow stage.", 400);
   }
+
+  // Enforce valid stage transition order
+  assertValidTransition(lead.workflow_stage, toStage);
 
   if (assignedUserId) {
     const assignee = await userRepository.getUserInCompany(assignedUserId, lead.company_id);

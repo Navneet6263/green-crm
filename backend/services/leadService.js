@@ -28,6 +28,7 @@ const {
   resolvePreferredTeamId,
   resolveTeamScope,
 } = require("./accessScopeService");
+const { assertValidTransition } = require("../utils/workflowStateMachine");
 
 const INVALID_LEAD_DATE = Symbol("invalid_lead_date");
 const PRIMARY_ASSIGNMENT_ACCESS_TYPE = "primary";
@@ -850,6 +851,12 @@ async function updateLead(auth, leadId, payload) {
 
   const normalized = normalizeLeadPayload({ ...lead, ...payload });
   validateLeadPayload(normalized);
+
+  // Enforce workflow stage transition order: sales → legal → finance → completed
+  if (normalized.workflow_stage !== lead.workflow_stage) {
+    assertValidTransition(lead.workflow_stage, normalized.workflow_stage);
+  }
+
   await ensureLeadContext(lead.company_id, normalized.product_id);
 
   const updates = {
@@ -1339,7 +1346,9 @@ async function bulkUpload(auth, payload) {
     auth.role === ROLES.SUPER_ADMIN || isPlatformOperatorRole(auth.role)
       ? payload.company_id || null
       : auth.companyId;
-  const imported = [];
+
+  // Pre-validate all rows before inserting anything
+  const validRows = [];
   const errors = [];
 
   for (const [index, row] of rows.entries()) {
@@ -1347,27 +1356,79 @@ async function bulkUpload(auth, payload) {
     const rowNumber = mappedRow.row_number || index + 1;
 
     try {
-      const createdLead = await createLead(auth, mappedRow);
-
-      imported.push({
-        row: rowNumber,
-        lead_id: createdLead.lead_id,
-        company_id: createdLead.company_id,
-      });
+      const lead = normalizeLeadPayload(mappedRow);
+      validateLeadPayload(lead);
+      validRows.push({ mappedRow, rowNumber });
     } catch (error) {
       errors.push({
         row: rowNumber,
-        message: error.message || "Lead import failed.",
+        field: error.field || null,
+        message: error.message || "Validation failed.",
+        phase: "validation",
       });
     }
   }
 
+  // If any validation errors, return immediately — nothing inserted
+  if (errors.length) {
+    return {
+      imported: 0,
+      failed: errors.length,
+      items: [],
+      errors,
+      lead_ids: [],
+      aborted: true,
+      message: `Import aborted: ${errors.length} row(s) failed validation. Fix errors and retry.`,
+    };
+  }
+
+  // All rows valid — insert inside a single transaction for atomicity
+  const imported = [];
+  const insertErrors = [];
+
+  try {
+    await db.withTransaction(async (transaction) => {
+      for (const { mappedRow, rowNumber } of validRows) {
+        try {
+          const createdLead = await createLead(auth, mappedRow);
+          imported.push({
+            row: rowNumber,
+            lead_id: createdLead.lead_id,
+            company_id: createdLead.company_id,
+          });
+        } catch (error) {
+          insertErrors.push({
+            row: rowNumber,
+            field: null,
+            message: error.message || "Lead insert failed.",
+            phase: "insert",
+          });
+          // Throw to rollback the entire transaction
+          throw error;
+        }
+      }
+    });
+  } catch (_transactionError) {
+    // Transaction rolled back — report the first insert error
+    return {
+      imported: 0,
+      failed: insertErrors.length || 1,
+      items: [],
+      errors: insertErrors.length ? insertErrors : [{ row: null, message: "Transaction failed. No leads were imported.", phase: "insert" }],
+      lead_ids: [],
+      aborted: true,
+      message: "Import rolled back due to an error. No leads were saved.",
+    };
+  }
+
   return {
     imported: imported.length,
-    failed: errors.length,
+    failed: 0,
     items: imported,
-    errors,
+    errors: [],
     lead_ids: imported.map((item) => item.lead_id),
+    aborted: false,
+    message: `Successfully imported ${imported.length} lead(s).`,
   };
 }
 

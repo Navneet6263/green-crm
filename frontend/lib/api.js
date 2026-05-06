@@ -113,6 +113,19 @@ export async function apiRequest(path, options = {}) {
       throw new Error(payload.error || "Request failed");
     }
 
+    // Handle standardized wrapper: { success, data, meta }
+    // Also handle legacy shape: { data } or raw payload
+    if (Object.prototype.hasOwnProperty.call(payload, "success")) {
+      if (!payload.success) {
+        throw new Error(payload.error || "Request failed");
+      }
+      // Return paginated shape as-is so callers can access meta
+      if (payload.meta !== null && payload.meta !== undefined) {
+        return { items: payload.data, meta: payload.meta };
+      }
+      return payload.data;
+    }
+
     return Object.prototype.hasOwnProperty.call(payload, "data") ? payload.data : payload;
   })();
 

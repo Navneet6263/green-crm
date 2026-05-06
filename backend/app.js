@@ -5,6 +5,7 @@ const cors = require("cors");
 const routes = require("./routes");
 const { globalRateLimiter } = require("./middlewares/rateLimiter");
 const { errorHandler, notFoundHandler } = require("./middlewares/errorHandler");
+const responseWrapper = require("./middlewares/responseWrapper");
 
 const DEFAULT_LOCAL_ORIGINS = [
   "http://localhost:3000",
@@ -70,6 +71,9 @@ function createApp() {
   }));
   app.use(express.urlencoded({ extended: false, limit: "1mb", verify: captureRawBody }));
   app.use(globalRateLimiter);
+
+  // Standardize all API responses to { success, data, meta } shape
+  app.use(responseWrapper);
 
   app.get("/health", (_req, res) => {
     res.json({
