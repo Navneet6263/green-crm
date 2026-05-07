@@ -85,7 +85,7 @@ export default function LeadFollowUpStatusButton({ className = "", lead, onSaved
 
       {open ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg rounded-2xl border border-slate-100 bg-white shadow-2xl">
+          <div className="w-full max-w-2xl rounded-2xl border border-slate-100 bg-white shadow-2xl">
             {/* Header */}
             <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
               <div>

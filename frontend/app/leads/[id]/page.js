@@ -10,6 +10,7 @@ import LeadAssignmentFlow from "../../../components/leads/details/LeadAssignment
 import LeadDocumentsPanel from "../../../components/leads/details/LeadDocumentsPanel";
 import LeadHistoryTimeline from "../../../components/leads/details/LeadHistoryTimeline";
 import LeadNotesPanel from "../../../components/leads/details/LeadNotesPanel";
+import LeadFollowUpStatusButton from "../../../components/leads/LeadFollowUpStatusButton";
 import LeadQuickStatusControl from "../../../components/leads/LeadQuickStatusControl";
 import { useLeadCollaboratorActions } from "../../../components/leads/shared/useLeadCollaboratorActions";
 import { API_BASE, apiRequest } from "../../../lib/api";
@@ -234,6 +235,11 @@ export default function LeadDetailPage() {
     });
   }
 
+  function handleFollowUpStatusSaved(_leadId, content) {
+    prependNote(content);
+    setNotice("Follow-up status saved.");
+  }
+
   async function uploadDocument(file) {
     if (!session?.token || !lead?.lead_id || !file) {
       return;
@@ -431,6 +437,17 @@ export default function LeadDetailPage() {
                         selectClassName="min-h-[40px] w-full bg-white pr-8 text-[11px] shadow-none"
                       />
                     </div>
+                  </div>
+
+                  <div className="rounded-xl border border-sky-100 bg-sky-50 p-4">
+                    <span className={KICKER_CLASS}>Follow-up Status</span>
+                    <p className="mt-1 text-xs text-slate-500">Log call, email, WhatsApp, or meeting outcome.</p>
+                    <LeadFollowUpStatusButton
+                      className={`${PRIMARY_BUTTON_CLASS} mt-3 w-full justify-center border-sky-200 bg-white text-sky-700 hover:bg-sky-100`}
+                      lead={lead}
+                      onSaved={handleFollowUpStatusSaved}
+                      token={session?.token}
+                    />
                   </div>
 
                   <div className="grid gap-3 sm:grid-cols-2">

@@ -127,7 +127,6 @@ export default function LeadRowCard({
               {canEdit ? <LeadFollowUpStatusButton
                 className="inline-flex items-center rounded-xl border border-sky-200 bg-sky-50 px-3 py-1.5 text-xs font-semibold text-sky-700 transition hover:bg-sky-100"
                 lead={lead} onSaved={onInlineNoteSaved} token={sessionToken} /> : null}
-              <Link prefetch={false} href={`/leads/${lead.lead_id}#follow-up-notes`} className={BTN}>Notes</Link>
             </div>
           </div>
         </div>
