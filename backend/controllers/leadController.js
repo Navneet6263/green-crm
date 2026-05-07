@@ -39,6 +39,12 @@ async function remove(req, res) {
 }
 
 async function assign(req, res) {
+  if (Array.isArray(req.body?.lead_ids)) {
+    const data = await leadService.bulkAssignLeads(req.auth, req.body);
+    res.json({ data });
+    return;
+  }
+
   const leadId = req.params.leadId || req.body.lead_id || req.body.id;
   const data = await leadService.assignLead(req.auth, leadId, req.body);
   res.json({ data });

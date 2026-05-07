@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import LeadExpandedDetails from "../details/LeadExpandedDetails";
+import LeadFollowUpStatusButton from "../LeadFollowUpStatusButton";
 import LeadQuickStatusControl from "../LeadQuickStatusControl";
 import { PRIORITY_TONE, STATUS_TONE } from "../shared/leadPageConstants";
 import {
@@ -46,11 +47,9 @@ export default function LeadRowCard({
   const avBg         = productHex ? null : avatarBg(primaryName);
 
   return (
-    <article className={`group relative overflow-hidden rounded-2xl border bg-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_32px_rgba(0,0,0,0.07)] ${
+    <article className={`rounded-2xl border bg-white transition-shadow duration-200 hover:shadow-[0_8px_32px_rgba(0,0,0,0.07)] ${
       selected ? "border-amber-300 shadow-[0_4px_20px_rgba(203,169,82,0.15)]" : "border-slate-100 shadow-sm"
     }`}>
-      <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/50 to-transparent transition-transform duration-500 group-hover:translate-x-full" />
-
       <div className="relative px-4 py-3.5 space-y-2.5">
 
         {/* ── Main row: checkbox + avatar + info + [status + buttons] on right ── */}
@@ -124,7 +123,10 @@ export default function LeadRowCard({
             {/* Action buttons below status */}
             <div className="flex items-center gap-1.5">
               <Link prefetch={false} href={`/leads/${lead.lead_id}`} className={BTN}>View Lead</Link>
-              {canEdit ? <Link prefetch={false} href={`/leads/${lead.lead_id}/edit`} className={BTN}>Edit</Link> : null}
+      {canEdit ? <Link prefetch={false} href={`/leads/${lead.lead_id}/edit`} className={BTN}>Edit</Link> : null}
+              {canEdit ? <LeadFollowUpStatusButton
+                className="inline-flex items-center rounded-xl border border-sky-200 bg-sky-50 px-3 py-1.5 text-xs font-semibold text-sky-700 transition hover:bg-sky-100"
+                lead={lead} onSaved={onInlineNoteSaved} token={sessionToken} /> : null}
               <Link prefetch={false} href={`/leads/${lead.lead_id}#follow-up-notes`} className={BTN}>Notes</Link>
             </div>
           </div>

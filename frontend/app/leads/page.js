@@ -20,6 +20,7 @@ import {
 import { useLeadBulkUpload } from "../../components/leads/shared/useLeadBulkUpload";
 import { useLeadCollaboratorActions } from "../../components/leads/shared/useLeadCollaboratorActions";
 import { useLeadExport } from "../../components/leads/shared/useLeadExport";
+import { fetchLeadExportRows } from "../../components/leads/shared/leadExportUtils";
 import { useLeadFilterFields } from "../../components/leads/shared/useLeadFilterFields";
 import { useLeadFilterState } from "../../components/leads/shared/useLeadFilterState";
 import { useLeadListData } from "../../components/leads/shared/useLeadListData";
@@ -46,6 +47,8 @@ function LeadsPageContent() {
   const [notice, setNotice] = useState("");
   const [picked, setPicked] = useState([]);
   const [refreshSeed, setRefreshSeed] = useState(0);
+  const [selectedLeadPool, setSelectedLeadPool] = useState([]);
+  const [selectingAllFiltered, setSelectingAllFiltered] = useState(false);
   const { accessError, booting, companies, session } = useLeadSessionAccess();
   const role = session?.user?.role || "";
   const isPlatformConsole = isPlatformConsoleRole(role);
@@ -69,12 +72,13 @@ function LeadsPageContent() {
   const scopedTeamId =
     filters.teamFilter !== "all" ? filters.teamFilter : selection.activeLead?.team_id || "";
   const teamCompanyId = filters.teamCompanyId || selection.activeLead?.company_id || "";
-  const pickedTeamIds = useMemo(() => [...new Set(records.leads.filter((lead) => picked.includes(lead.lead_id)).map((lead) => lead.team_id).filter(Boolean))], [picked, records.leads]);
+  const leadOptionPool = records.allMatchedLeads.length ? records.allMatchedLeads : records.leads;
+  const selectedScopeLeads = selectedLeadPool.length ? selectedLeadPool : leadOptionPool;
+  const pickedTeamIds = useMemo(() => [...new Set(selectedScopeLeads.filter((lead) => picked.includes(lead.lead_id)).map((lead) => lead.team_id).filter(Boolean))], [picked, selectedScopeLeads]);
   const handleInvalidTeamFilter = useCallback(() => {
     filters.setTeamFilter("all");
   }, [filters.setTeamFilter]);
   const resources = useLeadScopeResources({ canLoadScopedUsers, canManage, isPlatformConsole, onInvalidTeamFilter: handleInvalidTeamFilter, pickedTeamIds, refreshSeed, scopedCompanyId: filters.scopedCompanyId, scopedTeamId, session, teamCompanyId, teamFilter: filters.teamFilter });
-  const leadOptionPool = records.allMatchedLeads.length ? records.allMatchedLeads : records.leads;
   const leadFilterFields = useLeadFilterFields({ companies, filterUsers: resources.filterUsers, filters, leadOptionPool, productOptions: resources.productOptions, role, session, teams: resources.teams });
   const bulkUpload = useLeadBulkUpload({ onImported: () => setRefreshSeed((current) => current + 1), setError, setNotice, token: session?.token });
   const leadExport = useLeadExport({ allMatchedLeads: records.allMatchedLeads, leadQueryBase: filters.leadQueryBase, setError, setNotice, token: session?.token, totalMatched: records.totalMatched });
@@ -87,8 +91,10 @@ function LeadsPageContent() {
       applyQueryFilters(parsedQueryFilters);
     }
   }, [applyQueryFilters, parsedQueryFilters, session?.user?.user_id]);
-  useEffect(() => { records.setPage(1); }, [filters.leadQueryBase]);
-  useEffect(() => { setPicked((current) => current.filter((id) => records.leads.some((lead) => lead.lead_id === id))); }, [records.leads]);
+  useEffect(() => { records.setPage(1); setSelectedLeadPool([]); setPicked([]); }, [filters.leadQueryBase]);
+  useEffect(() => {
+    setPicked((current) => current.filter((id) => selectedScopeLeads.some((lead) => lead.lead_id === id)));
+  }, [selectedScopeLeads]);
 
   function mergeLeadState(updatedLead) {
     records.mergeUpdatedLead(updatedLead);
@@ -108,7 +114,7 @@ function LeadsPageContent() {
     applyOwner: records.applyOwnerChanges,
     bulkUsers: resources.bulkUsers,
     clearSelection: selection.clearSelection,
-    leads: records.leads,
+    leads: selectedScopeLeads,
     mergeLead: mergeLeadState,
     onArchived: () => setRefreshSeed((current) => current + 1),
     picked,
@@ -149,7 +155,33 @@ function LeadsPageContent() {
   const emptyLeadsMessage = filters.teamFilter !== "all" && selectedScopeTeam ? `No leads matched ${teamSelectLabel(selectedScopeTeam)}.` : "Adjust the search or filters to widen the result set.";
   const bulkUsersMessage = pickedTeamIds.length > 1 ? "Select leads from one team at a time before bulk assignment." : scopedUsersEmptyMessage(bulkScopeTeam);
   const allPicked = !!records.leads.length && records.leads.every((lead) => picked.includes(lead.lead_id));
+  const allFilteredPicked = !!records.totalMatched && picked.length === records.totalMatched;
   const showBlockingLoader = booting || (records.loading && !records.leads.length && !records.totalMatched);
+  const handleSelectAllFiltered = async () => {
+    if (!session?.token || !records.totalMatched) return;
+    setSelectingAllFiltered(true);
+    setError("");
+    setNotice("");
+
+    try {
+      const leads =
+        records.allMatchedLeads.length === records.totalMatched
+          ? records.allMatchedLeads
+          : await fetchLeadExportRows({
+            token: session.token,
+            leadQueryBase: filters.leadQueryBase,
+            totalMatched: records.totalMatched,
+          });
+
+      setSelectedLeadPool(leads);
+      setPicked(leads.map((lead) => lead.lead_id));
+      setNotice(`${leads.length} filtered leads selected.`);
+    } catch (requestError) {
+      setError(requestError.message || "Could not select all filtered leads.");
+    } finally {
+      setSelectingAllFiltered(false);
+    }
+  };
   const handleInlineStatusUpdate = (updatedLead) => {
     mergeLeadState(updatedLead);
     setNotice(`Lead status moved to ${titleizeLeadValue(updatedLead.status || "new")}.`);
@@ -205,11 +237,17 @@ function LeadsPageContent() {
     activeLead: selection.activeLead,
     canTransferActiveLead,
     closedWonCount,
+    allFilteredPicked,
     onPageChange: records.setPage,
     onPickToggle: (leadId) => setPicked((current) => current.includes(leadId) ? current.filter((id) => id !== leadId) : [...current, leadId]),
     onSelectToggle: selection.toggleLeadSelection,
-    onToggleAllPicked: () => setPicked(allPicked ? [] : records.leads.map((lead) => lead.lead_id)),
+    onSelectAllFiltered: handleSelectAllFiltered,
+    onToggleAllPicked: () => {
+      setSelectedLeadPool([]);
+      setPicked(allPicked ? [] : records.leads.map((lead) => lead.lead_id));
+    },
     selectedId: selection.selectedId,
+    selectingAllFiltered,
     sharedProps: rowSharedProps,
     transferredCount,
   };
@@ -267,6 +305,7 @@ function LeadsPageContent() {
           records={records}
           resources={resources}
           setPicked={setPicked}
+          setSelectedLeadPool={setSelectedLeadPool}
           setShowBulkUpload={bulkUpload.setShowBulkUpload}
           showBulkUpload={bulkUpload.showBulkUpload}
           teamBadgeLabel={teamBadgeLabel}

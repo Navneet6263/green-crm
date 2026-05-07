@@ -113,22 +113,18 @@ export function useLeadOwnershipActions({
     setNotice("");
 
     try {
-      await Promise.all(
-        picked.map((leadId) =>
-          apiRequest(`/leads/${leadId}/assign`, {
-            method: "POST",
-            token: session.token,
-            body: { assigned_to: bulkOwner, change_note: bulkNote.trim() },
-          })
-        )
-      );
+      const result = await apiRequest("/leads/assign", {
+        method: "POST",
+        token: session.token,
+        body: { lead_ids: picked, assigned_to: bulkOwner, change_note: bulkNote.trim() },
+      });
 
       const person = bulkUsers.find((user) => user.user_id === bulkOwner) || teamUsers.find((user) => user.user_id === bulkOwner);
       applyOwner(picked, bulkOwner, person?.name || "");
       setBulkOwner("");
       setBulkNote("");
       setPicked([]);
-      setNotice(`${picked.length} leads assigned to ${person?.name || "selected user"}.`);
+      setNotice(`${result.updated_count ?? picked.length} leads assigned to ${person?.name || "selected user"}.`);
     } catch (requestError) {
       setError(formatScopedError(requestError, "Could not update the selected lead owners."));
     } finally {

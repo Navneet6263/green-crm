@@ -1,4 +1,5 @@
 const db = require("../db/connection");
+const crypto = require("crypto");
 const companyRepository = require("../repositories/companyRepository");
 const userRepository = require("../repositories/userRepository");
 const productRepository = require("../repositories/productRepository");
@@ -1031,6 +1032,234 @@ async function assignLead(auth, leadId, payload) {
   });
 }
 
+function createBulkActivityId() {
+  return `AI${Date.now().toString(36)}${crypto.randomBytes(4).toString("hex")}`.slice(0, 20);
+}
+
+function placeholders(items) {
+  return items.map(() => "?").join(", ");
+}
+
+function chunkItems(items, size = 250) {
+  const chunks = [];
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size));
+  }
+  return chunks;
+}
+
+async function listBulkAssignableLeads(auth, leadIds) {
+  const rows = [];
+
+  for (const batch of chunkItems(leadIds, 900)) {
+    const [batchRows] = await db.query(
+      `
+        SELECT
+          l.lead_id,
+          l.company_id,
+          l.team_id,
+          l.assigned_to,
+          p.team_id AS product_team_id
+        FROM leads l
+        LEFT JOIN products p ON p.product_id = l.product_id AND p.company_id = l.company_id
+        WHERE l.is_active = 1
+          AND l.lead_id IN (${placeholders(batch)})
+      `,
+      batch
+    );
+    rows.push(...batchRows);
+  }
+
+  if (rows.length !== leadIds.length) {
+    throw new AppError("Some selected leads were not found or are inactive.", 404);
+  }
+
+  const companyIds = [...new Set(rows.map((lead) => lead.company_id).filter(Boolean))];
+  for (const companyId of companyIds) {
+    assertCompanyAccess(auth, companyId);
+    const scope = await resolveTeamScope(auth, companyId, [], {
+      includeManaged: true,
+      includeMembership: true,
+    });
+    if (scope.teamIds) {
+      const outsideTeam = rows.some((lead) => lead.company_id === companyId && (!lead.team_id || !scope.teamIds.includes(lead.team_id)));
+      if (outsideTeam) {
+        throw new AppError("You cannot assign leads outside your allowed teams.", 403);
+      }
+    }
+  }
+
+  return rows;
+}
+
+async function listAssignedUserTeamIds(companyId, userId, teamIds) {
+  const normalizedTeamIds = normalizeUserIdList(teamIds);
+  if (!normalizedTeamIds.length) {
+    return [];
+  }
+
+  const [rows] = await db.query(
+    `
+      SELECT DISTINCT team_id
+      FROM (
+        SELECT team_id
+        FROM team_members
+        WHERE company_id = ? AND user_id = ? AND is_active = 1
+          AND team_id IN (${placeholders(normalizedTeamIds)})
+        UNION
+        SELECT team_id
+        FROM team_managers
+        WHERE company_id = ? AND user_id = ? AND is_active = 1
+          AND team_id IN (${placeholders(normalizedTeamIds)})
+      ) scoped_user_teams
+    `,
+    [companyId, userId, ...normalizedTeamIds, companyId, userId, ...normalizedTeamIds]
+  );
+
+  return normalizeUserIdList(rows.map((row) => row.team_id));
+}
+
+async function prepareBulkAssignmentRows(auth, rows, assignee) {
+  const companyIds = [...new Set(rows.map((lead) => lead.company_id).filter(Boolean))];
+  if (companyIds.length !== 1 || companyIds[0] !== assignee.company_id) {
+    throw new AppError("Bulk assignment supports one company and one matching assignee at a time.", 400);
+  }
+
+  const companyId = companyIds[0];
+  const needsFallbackTeam = rows.some((lead) => !lead.team_id && !lead.product_team_id);
+  let fallbackTeamId = null;
+
+  if (needsFallbackTeam) {
+    fallbackTeamId =
+      await resolvePreferredTeamId(companyId, assignee.user_id)
+      || await resolveDefaultTeamId(companyId);
+    fallbackTeamId = await ensureTeamIdWhenTeamsConfigured(companyId, fallbackTeamId);
+  }
+
+  const prepared = rows.map((lead) => ({
+    ...lead,
+    next_team_id: lead.product_team_id || lead.team_id || fallbackTeamId || null,
+  }));
+  const nextTeamIds = [...new Set(prepared.map((lead) => lead.next_team_id).filter(Boolean))];
+  const userTeamIds = await listAssignedUserTeamIds(companyId, assignee.user_id, nextTeamIds);
+  const missingTeam = nextTeamIds.find((teamId) => !userTeamIds.includes(teamId));
+
+  if (missingTeam) {
+    throw new AppError("Lead owner must belong to every selected lead team.", 400);
+  }
+
+  return prepared.filter((lead) => lead.assigned_to !== assignee.user_id);
+}
+
+async function writeBulkAssignment(auth, leads, assignee, changeNote) {
+  if (!leads.length) {
+    return;
+  }
+
+  await db.withTransaction(async (transaction) => {
+    for (const batch of chunkItems(leads, 250)) {
+      await transaction.query(
+        `
+          UPDATE leads
+          SET
+            assigned_to = ?,
+            assigned_by = ?,
+            assigned_at = SYSUTCDATETIME(),
+            team_id = CASE lead_id ${batch.map(() => "WHEN ? THEN ?").join(" ")} ELSE team_id END,
+            updated_at = SYSUTCDATETIME()
+          WHERE company_id = ?
+            AND lead_id IN (${placeholders(batch)})
+        `,
+        [
+          assignee.user_id,
+          auth.userId,
+          ...batch.flatMap((lead) => [lead.lead_id, lead.next_team_id]),
+          assignee.company_id,
+          ...batch.map((lead) => lead.lead_id),
+        ]
+      );
+
+      await transaction.query(
+        `
+          DELETE FROM lead_assignments
+          WHERE company_id = ?
+            AND user_id = ?
+            AND access_type = ?
+            AND lead_id IN (${placeholders(batch)})
+        `,
+        [assignee.company_id, assignee.user_id, leadAssignmentRepository.SHARED_ACCESS_TYPE, ...batch.map((lead) => lead.lead_id)]
+      );
+
+      await transaction.query(
+        `
+          INSERT INTO lead_notes (company_id, lead_id, content, created_by, created_at, updated_at)
+          VALUES ${batch.map(() => "(?, ?, ?, ?, SYSUTCDATETIME(), SYSUTCDATETIME())").join(", ")}
+        `,
+        batch.flatMap((lead) => [
+          lead.company_id,
+          lead.lead_id,
+          buildChangeNoteContent(changeNote, buildLeadChangeSummary(lead, { ...lead, assigned_to: assignee.user_id }, assignee.user_id)),
+          auth.userId,
+        ])
+      );
+
+      await transaction.query(
+        `
+          INSERT INTO lead_activities (activity_id, company_id, lead_id, type, description, created_by, created_at)
+          VALUES ${batch.map(() => "(?, ?, ?, ?, ?, ?, SYSUTCDATETIME())").join(", ")}
+        `,
+        batch.flatMap((lead) => [
+          createBulkActivityId(),
+          lead.company_id,
+          lead.lead_id,
+          "assigned",
+          `Lead reassigned. ${changeNote}`,
+          auth.userId,
+        ])
+      );
+    }
+  });
+}
+
+async function bulkAssignLeads(auth, payload = {}) {
+  if (!MANAGER_ROLES.includes(auth.role)) {
+    throw new AppError("Only managers, admins, and super admins can assign leads.", 403);
+  }
+
+  const leadIds = normalizeUserIdList(payload.lead_ids || payload.ids);
+  const assignedTo = String(payload.assigned_to || "").trim();
+  const changeNote = String(payload.change_note || payload.note || "").trim();
+
+  if (!leadIds.length) {
+    throw new AppError("lead_ids are required.", 400);
+  }
+  if (!assignedTo) {
+    throw new AppError("assigned_to is required.", 400);
+  }
+  if (!changeNote) {
+    throw new AppError("A note is required whenever a lead is changed.", 400);
+  }
+
+  const selectedLeads = await listBulkAssignableLeads(auth, leadIds);
+  const companyIds = [...new Set(selectedLeads.map((lead) => lead.company_id).filter(Boolean))];
+  const assignee = await ensureSameCompanyUser(assignedTo, companyIds[0]);
+  const changedLeads = await prepareBulkAssignmentRows(auth, selectedLeads, assignee);
+
+  await writeBulkAssignment(auth, changedLeads, assignee, changeNote);
+
+  return {
+    lead_ids: leadIds,
+    skipped_count: selectedLeads.length - changedLeads.length,
+    updated_count: changedLeads.length,
+    updated_leads: changedLeads.map((lead) => ({
+      lead_id: lead.lead_id,
+      assigned_to: assignee.user_id,
+      assigned_to_name: assignee.name || null,
+      team_id: lead.next_team_id,
+    })),
+  };
+}
+
 async function getLeadAssignments(auth, leadId) {
   const lead = await getLeadRecord(auth, leadId);
   const sharedUsers = await leadAssignmentRepository.listSharedUsersByLead(lead.lead_id, lead.company_id);
@@ -1436,6 +1665,7 @@ module.exports = {
   addLeadActivity,
   addLeadNote,
   assignLead,
+  bulkAssignLeads,
   bulkUpload,
   createLead,
   deleteLead,

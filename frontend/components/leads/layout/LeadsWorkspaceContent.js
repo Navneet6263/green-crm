@@ -10,7 +10,7 @@ export default function LeadsWorkspaceContent({
   allPicked, bulkUpload, bulkUsersMessage, canCreate, canEdit, canManage,
   emptyLeadsMessage, filterWorkspaceProps, filters, heroStats, isPlatformConsole,
   isSuper, listRowActions, ownershipActions, ownershipLabel, picked, pickedTeamIds,
-  records, resources, setPicked, showBulkUpload, setShowBulkUpload, teamBadgeLabel,
+  records, resources, setPicked, setSelectedLeadPool, showBulkUpload, setShowBulkUpload, teamBadgeLabel,
 }) {
   return (
     <LeadsWorkspaceShell>
@@ -55,6 +55,7 @@ export default function LeadsWorkspaceContent({
           bulkUsers={resources.bulkUsers}
           bulkUsersMessage={bulkUsersMessage}
           clearBulkSelection={() => {
+            setSelectedLeadPool?.([]);
             setPicked([]);
             ownershipActions.setBulkOwner("");
             ownershipActions.setBulkNote("");

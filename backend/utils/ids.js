@@ -30,6 +30,12 @@ function pad(n) {
   return String(n).padStart(4, "0");
 }
 
+function compactUniqueId(code) {
+  const time = Date.now().toString(36).toUpperCase();
+  const random = crypto.randomBytes(4).toString("hex").toUpperCase();
+  return `${code}${time}${random}`.slice(0, 20);
+}
+
 function buildTalentId(companyId, userId) {
   const companyCode = String(companyId || "COMP")
     .replace(/[^a-z0-9]/gi, "")
@@ -54,13 +60,19 @@ async function createPrefixedId(prefix) {
     return `${prefix}_${crypto.randomUUID()}`;
   }
 
+  if (prefix === "act") {
+    return compactUniqueId(cfg.code);
+  }
+
   // Find highest existing numeric suffix for this code
   const pattern = `${cfg.code}%`;
+  const suffixStart = cfg.code.length + 1;
   const [[row]] = await connection.query(
     `SELECT TOP 1 ${cfg.column} as id FROM ${cfg.table}
      WHERE ${cfg.column} LIKE ?
-     ORDER BY ${cfg.column} DESC`,
-    [pattern]
+       AND TRY_CONVERT(INT, SUBSTRING(${cfg.column}, ?, 32)) IS NOT NULL
+     ORDER BY TRY_CONVERT(INT, SUBSTRING(${cfg.column}, ?, 32)) DESC`,
+    [pattern, suffixStart, suffixStart]
   );
 
   let next = 1;

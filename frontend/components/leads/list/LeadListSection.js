@@ -10,6 +10,7 @@ export default function LeadListSection({
 }) {
   const from = totalMatched ? (page - 1) * leadMeta.page_size + 1 : 0;
   const to = Math.min(page * leadMeta.page_size, totalMatched);
+  const canSelectFiltered = canManage && allPicked && totalMatched > rows.length;
 
   return (
     <div className="space-y-3">
@@ -40,6 +41,25 @@ export default function LeadListSection({
           ) : null}
         </div>
       </div>
+      {canSelectFiltered ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">
+          <span>
+            {rowActions.allFilteredPicked
+              ? `All ${totalMatched} filtered leads selected.`
+              : `Only this page is selected. Select all ${totalMatched} filtered leads to bulk assign everyone.`}
+          </span>
+          {!rowActions.allFilteredPicked ? (
+            <button
+              className="rounded-xl border border-amber-300 bg-white px-3 py-1.5 font-bold text-amber-800 hover:bg-amber-100 disabled:opacity-60"
+              type="button"
+              onClick={rowActions.onSelectAllFiltered}
+              disabled={rowActions.selectingAllFiltered}
+            >
+              {rowActions.selectingAllFiltered ? "Selecting..." : `Select all ${totalMatched}`}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
       {/* Cards */}
       {rows.length ? (
