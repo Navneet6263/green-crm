@@ -347,6 +347,7 @@ const schemaStatements = [
     calls_made            INT           NOT NULL DEFAULT 0,
     meetings_held         INT           NOT NULL DEFAULT 0,
     is_active             TINYINT(1)    NOT NULL DEFAULT 1,
+    deleted_at            DATETIME      NULL,
     tags                  JSON          NULL,
     last_contacted_at     DATETIME      NULL,
     created_at            DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,

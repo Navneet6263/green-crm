@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import DashboardShell from "../../../components/dashboard/DashboardShell";
 import DashboardIcon from "../../../components/dashboard/icons";
@@ -13,7 +13,7 @@ import {
   scopedProductsEmptyMessage, scopedProductsHelperText, scopedUsersEmptyMessage,
   shouldShowTeamSelector, teamSelectionRequiredMessage,
 } from "../../../lib/teamScope";
-import { AlertError } from "../../../components/ui/Alert";
+import { AlertError, AlertSuccess } from "../../../components/ui/Alert";
 import { LeadFormHeader, LeadPreviewStrip, LeadFormSection1, LeadFormSection2, LeadFormSection3 } from "./LeadFormSections";
 import { LeadFormSidebar } from "./LeadFormSidebar";
 import { T } from "./lead-form-tokens";
@@ -59,6 +59,7 @@ const FIELD_SCROLL_MAP = {
 
 export default function NewLeadPage() {
   const router = useRouter();
+  const submitLockRef = useRef(false);
   const [session, setSession] = useState(null);
   const [companies, setCompanies] = useState([]);
   const [teams, setTeams] = useState([]);
@@ -68,9 +69,11 @@ export default function NewLeadPage() {
   const [form, setForm] = useState(createForm());
   const [errors, setErrors] = useState({});
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(true);
   const [resourceLoading, setResourceLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [pendingCreates, setPendingCreates] = useState(0);
 
   const role = session?.user?.role || "";
   const canAssign = canManageScopedAssignments(role);
@@ -193,36 +196,65 @@ export default function NewLeadPage() {
     return Object.keys(e).length === 0;
   }
 
-  async function handleSubmit(ev) {
+  function buildCreatePayload(source) {
+    return {
+      company_id: isPlatformConsole ? source.company_id : undefined,
+      team_id: source.team_id || undefined, product_id: source.product_id,
+      contact_person: source.contact_person.trim(), company_name: source.company_name.trim(),
+      email: source.email.trim(), phone: source.phone.trim(),
+      industry: source.industry || null,
+      lead_source: source.lead_source === "other" ? source.custom_lead_source.trim() : source.lead_source,
+      follow_up_date: source.follow_up_date ? source.follow_up_date.replace("T"," ") : null,
+      estimated_value: Number(source.estimated_value || 0),
+      number_of_units: source.number_of_units === "" ? null : Number(source.number_of_units),
+      priority: source.priority, requirements: source.requirements.trim() || null,
+      assigned_to: source.assigned_to || undefined,
+      address_street: source.address_street.trim() || null, address_city: source.address_city.trim() || null,
+      address_state: source.address_state.trim() || null, address_zip: source.address_zip.trim() || null,
+      address_country: source.address_country.trim() || "India",
+    };
+  }
+
+  function buildNextBlankForm(source) {
+    return { ...createForm(isPlatformConsole ? source.company_id : selectedCompanyId || source.company_id), team_id: source.team_id || "" };
+  }
+
+  function handleSubmit(ev) {
     ev.preventDefault();
-    if (saving || resourceLoading || !validate()) return;
-    setSaving(true); setError("");
-    try {
-      const r = await apiRequest("/leads", { method:"POST", token:session.token, body: {
-        company_id: isPlatformConsole ? form.company_id : undefined,
-        team_id: form.team_id || undefined, product_id: form.product_id,
-        contact_person: form.contact_person.trim(), company_name: form.company_name.trim(),
-        email: form.email.trim(), phone: form.phone.trim(),
-        industry: form.industry || null,
-        lead_source: form.lead_source === "other" ? form.custom_lead_source.trim() : form.lead_source,
-        follow_up_date: form.follow_up_date ? form.follow_up_date.replace("T"," ") : null,
-        estimated_value: Number(form.estimated_value || 0),
-        number_of_units: form.number_of_units === "" ? null : Number(form.number_of_units),
-        priority: form.priority, requirements: form.requirements.trim() || null,
-        assigned_to: form.assigned_to || undefined,
-        address_street: form.address_street.trim() || null, address_city: form.address_city.trim() || null,
-        address_state: form.address_state.trim() || null, address_zip: form.address_zip.trim() || null,
-        address_country: form.address_country.trim() || "India",
-      }});
-      router.push(`/leads/${r.lead_id}`);
-    } catch (err) { setError(formatScopedError(err, "Failed to create lead.")); }
-    finally { setSaving(false); }
+    if (submitLockRef.current || resourceLoading || !validate()) return;
+
+    const draft = form;
+    const body = buildCreatePayload(draft);
+    const blankForm = buildNextBlankForm(draft);
+    const blankSignature = JSON.stringify(blankForm);
+
+    submitLockRef.current = true;
+    setSaving(true); setError(""); setNotice("Saving lead. You can fill the next lead now.");
+    setErrors({}); setForm(blankForm); setPendingCreates((count) => count + 1);
+
+    setTimeout(() => {
+      submitLockRef.current = false;
+      setSaving(false);
+    }, 700);
+
+    apiRequest("/leads", { method:"POST", token:session.token, body })
+      .then((createdLead) => {
+        const label = createdLead?.lead_id ? `Lead ${createdLead.lead_id}` : "Lead";
+        setNotice(`${label} saved. Add the next lead.`);
+      })
+      .catch((err) => {
+        setNotice("");
+        setError(formatScopedError(err, "Failed to create lead."));
+        setForm((current) => JSON.stringify(current) === blankSignature ? draft : current);
+      })
+      .finally(() => setPendingCreates((count) => Math.max(0, count - 1)));
   }
 
   return (
     <DashboardShell session={session} title="Create Lead" hideTitle heroStats={[]}>
       <div className="mx-auto max-w-[1280px] space-y-5 px-1">
         <AlertError message={error} onDismiss={() => setError("")} />
+        {!error ? <AlertSuccess message={notice} onDismiss={() => setNotice("")} /> : null}
 
         {loading ? <div className="rounded-2xl border border-slate-100 bg-white px-5 py-4 text-sm text-slate-500">Loading lead composer…</div> : null}
 
@@ -257,7 +289,7 @@ export default function NewLeadPage() {
                     <button className={T.ghost} type="button" onClick={() => router.push("/leads")}>Cancel</button>
                     <button className={T.gold} type="submit" disabled={saving || resourceLoading || !filteredProducts.length}>
                       <DashboardIcon name={saving ? "analytics" : "leads"} className="h-4 w-4" />
-                      {saving ? "Creating…" : "Create Lead"}
+                      {saving ? "Saving..." : pendingCreates ? "Create Next Lead" : "Create Lead"}
                     </button>
                   </div>
                 </div>

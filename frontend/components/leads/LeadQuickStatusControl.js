@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { apiRequest } from "../../lib/api";
 import { LEAD_STATUS_ORDER, getLeadStatusLabel } from "../../lib/leadStatus";
@@ -24,6 +24,7 @@ export default function LeadQuickStatusControl({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const saveLockRef = useRef(false);
 
   useEffect(() => {
     setNextStatus(currentStatus);
@@ -37,13 +38,13 @@ export default function LeadQuickStatusControl({
     setError("");
   }
 
-  async function createNextFollowUp(followUp, note) {
-    if (!followUp.required) {
+  async function createNextFollowUp(followUp, note, statusValue = nextStatus) {
+    if (!followUp?.required) {
       return null;
     }
 
     const due = `${followUp.date} ${followUp.time}:00`;
-    const title = `${getLeadStatusLabel(nextStatus)} follow-up`;
+    const title = `${getLeadStatusLabel(statusValue)} follow-up`;
     await apiRequest("/tasks", {
       method: "POST",
       token,
@@ -64,28 +65,40 @@ export default function LeadQuickStatusControl({
     return { due, title };
   }
 
-  async function saveStatusUpdate({ demo = {}, followUp, isDemoStatus = false, note }) {
-    if (!token || !lead?.lead_id || saving || nextStatus === currentStatus) {
+  function saveStatusUpdate({ demo = {}, followUp, isDemoStatus = false, note }) {
+    if (!token || !lead?.lead_id || saveLockRef.current || nextStatus === currentStatus) {
       return;
     }
 
+    const submittedStatus = nextStatus;
+    const demoFollowUp = isDemoStatus ? { assignee: demo.assignee, date: demo.date, mode: "meeting", required: true, time: demo.time } : followUp;
+    const description = buildStatusActivityDescription({ assigneeOptions, currentStatus, demo, followUp: demoFollowUp, lead, nextStatus: submittedStatus, note });
+    const optimisticLead = {
+      ...lead,
+      assigned_to: isDemoStatus ? demo.assignee : lead.assigned_to,
+      requirements: isDemoStatus ? demo.requirement.trim() : lead.requirements,
+      status: submittedStatus,
+    };
+
+    saveLockRef.current = true;
     setSaving(true);
     setError("");
+    setDialogOpen(false);
+    setNextStatus(submittedStatus);
+    onUpdated?.(optimisticLead, { activityDescription: description, note, scheduled: demoFollowUp?.required ? { pending: true } : null });
 
-    try {
+    (async () => {
       const updatedLead = await apiRequest(`/leads/${lead.lead_id}`, {
         method: "PATCH",
         token,
         body: {
           assigned_to: isDemoStatus ? demo.assignee : undefined,
-          change_note: isDemoStatus ? buildStatusActivityDescription({ assigneeOptions, currentStatus, demo, lead, nextStatus, note }) : note,
+          change_note: isDemoStatus ? description : note,
           requirements: isDemoStatus ? demo.requirement.trim() : undefined,
-          status: nextStatus,
+          status: submittedStatus,
         },
       });
-      const demoFollowUp = isDemoStatus ? { assignee: demo.assignee, date: demo.date, mode: "meeting", required: true, time: demo.time } : followUp;
-      const description = buildStatusActivityDescription({ assigneeOptions, currentStatus, demo, followUp: demoFollowUp, lead, nextStatus, note });
-      const scheduled = await createNextFollowUp(demoFollowUp, description);
+      const scheduled = await createNextFollowUp(demoFollowUp, description, submittedStatus);
 
       await apiRequest(`/leads/${lead.lead_id}/activity`, {
         method: "POST",
@@ -93,16 +106,15 @@ export default function LeadQuickStatusControl({
         body: { description, type: scheduled ? "task" : "updated" },
       });
 
-      setDialogOpen(false);
-      setNextStatus(String(updatedLead.status || nextStatus).toLowerCase());
-      if (onUpdated) {
-        await onUpdated(updatedLead, { activityDescription: description, note, scheduled });
-      }
-    } catch (requestError) {
+      setNextStatus(String(updatedLead.status || submittedStatus).toLowerCase());
+      onUpdated?.(updatedLead, {});
+    })().catch((requestError) => {
       setError(requestError.message);
-    } finally {
+      setDialogOpen(true);
+    }).finally(() => {
+      saveLockRef.current = false;
       setSaving(false);
-    }
+    });
   }
 
   return (

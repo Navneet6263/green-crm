@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { apiRequest } from "../../../lib/api";
 import { formatIndiaDateTime } from "../../../lib/dateTime";
@@ -35,6 +35,7 @@ export default function LeadInlineFollowUpPanel({
   const [loading, setLoading] = useState(false);
   const [notes, setNotes] = useState([]);
   const [saving, setSaving] = useState(false);
+  const saveLockRef = useRef(false);
 
   useEffect(() => {
     setDraft("");
@@ -74,37 +75,30 @@ export default function LeadInlineFollowUpPanel({
     };
   }, [lead?.lead_id, sessionToken]);
 
-  async function saveNote() {
+  function saveNote() {
     const content = draft.trim();
-    if (!content || saving) {
+    if (!content || saveLockRef.current) {
       return;
     }
 
+    const localNote = {
+      note_id: `local-${Date.now()}`,
+      content,
+      created_at: new Date().toISOString(),
+      created_by_name: "You",
+    };
+    saveLockRef.current = true;
     setSaving(true);
     setError("");
-
-    try {
-      await apiRequest(`/leads/${lead.lead_id}/notes`, {
-        method: "POST",
-        token: sessionToken,
-        body: { content },
-      });
-      setNotes((current) => [
-        {
-          note_id: `local-${Date.now()}`,
-          content,
-          created_at: new Date().toISOString(),
-          created_by_name: "You",
-        },
-        ...current,
-      ].slice(0, 4));
-      setDraft("");
-      onLeadUpdate?.(lead.lead_id, content);
-    } catch (requestError) {
-      setError(formatScopedError(requestError, "Could not save this follow-up note."));
-    } finally {
+    setDraft("");
+    setNotes((current) => [localNote, ...current].slice(0, 4));
+    onLeadUpdate?.(lead.lead_id, content);
+    setTimeout(() => {
+      saveLockRef.current = false;
       setSaving(false);
-    }
+    }, 500);
+    apiRequest(`/leads/${lead.lead_id}/notes`, { method: "POST", token: sessionToken, body: { content } })
+      .catch((requestError) => setError(formatScopedError(requestError, "Could not save this follow-up note.")));
   }
 
   return (

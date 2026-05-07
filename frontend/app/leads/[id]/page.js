@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 
 import DashboardShell from "../../../components/dashboard/DashboardShell";
@@ -108,6 +108,7 @@ function HeaderActionButton({ disabled = false, icon, label, onClick }) {
 export default function LeadDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const activityLockRef = useRef(false);
   const [session, setSession] = useState(null), [lead, setLead] = useState(null), [notes, setNotes] = useState([]), [activity, setActivity] = useState([]), [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true), [savingActivity, setSavingActivity] = useState(false), [savingTask, setSavingTask] = useState(false), [transferring, setTransferring] = useState(false), [uploadingDocuments, setUploadingDocuments] = useState(false);
   const [error, setError] = useState(""), [notice, setNotice] = useState(""), [activityType, setActivityType] = useState("call"), [activityText, setActivityText] = useState(""), [transferOwner, setTransferOwner] = useState(""), [transferNote, setTransferNote] = useState("");
@@ -219,22 +220,18 @@ export default function LeadDetailPage() {
 
   async function refreshLead() { if (session) await loadLead(session); }
 
-  async function saveNote(content) {
+  function saveNote(content) {
     setError("");
-    setNotice("");
+    prependNote(content);
+    setNotice("Follow-up note saved.");
 
-    try {
-      await apiRequest(`/leads/${params.id}/notes`, {
+    apiRequest(`/leads/${params.id}/notes`, {
         method: "POST",
         token: session.token,
         body: { content },
-      });
-      prependNote(content);
-      setNotice("Follow-up note saved.");
-    } catch (requestError) {
-      setError(formatScopedError(requestError, "Could not save this follow-up note."));
-      throw requestError;
-    }
+    }).catch((requestError) => {
+        setError(formatScopedError(requestError, "Could not save this follow-up note."));
+    });
   }
 
   async function uploadDocument(file) {
@@ -273,19 +270,19 @@ export default function LeadDetailPage() {
     }
   }
 
-  async function addActivity(event) {
+  function addActivity(event) {
     event.preventDefault();
     const description = activityText.trim();
-    if (!description) return;
+    if (!description || activityLockRef.current) return;
+    const type = activityType;
+    activityLockRef.current = true;
     setSavingActivity(true); setError(""); setNotice("");
-    try {
-      await apiRequest(`/leads/${params.id}/activity`, { method: "POST", token: session.token, body: { type: activityType, description } });
-      setActivityText("");
-      prependActivity(activityType, description);
-      setNotice("Follow-up history updated.");
-    }
-    catch (requestError) { setError(formatScopedError(requestError, "Could not update the follow-up history.")); }
-    finally { setSavingActivity(false); }
+    setActivityText("");
+    prependActivity(type, description);
+    setNotice("Follow-up history updated.");
+    setTimeout(() => { activityLockRef.current = false; setSavingActivity(false); }, 500);
+    apiRequest(`/leads/${params.id}/activity`, { method: "POST", token: session.token, body: { type, description } })
+      .catch((requestError) => setError(formatScopedError(requestError, "Could not update the follow-up history.")));
   }
 
   async function logQuick(type, description, href, { newTab = false } = {}) {

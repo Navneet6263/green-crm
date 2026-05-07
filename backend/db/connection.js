@@ -176,12 +176,34 @@ async function ensureDocumentUploadColumns(pool) {
   `);
 }
 
+async function ensureLeadCompatibilityColumns(pool) {
+  await pool.request().query(`
+    IF OBJECT_ID('leads', 'U') IS NOT NULL AND COL_LENGTH('leads', 'deleted_at') IS NULL
+      ALTER TABLE leads ADD deleted_at DATETIME2 NULL;
+  `);
+
+  await pool.request().query(`
+    IF OBJECT_ID('leads', 'U') IS NOT NULL AND COL_LENGTH('leads', 'number_of_units') IS NULL
+      ALTER TABLE leads ADD number_of_units INT NULL;
+  `);
+
+  await pool.request().query(`
+    IF OBJECT_ID('leads', 'U') IS NOT NULL AND COL_LENGTH('leads', 'deleted_at') IS NOT NULL
+      UPDATE leads
+      SET deleted_at = updated_at
+      WHERE is_active = 0 AND deleted_at IS NULL;
+  `);
+}
+
 async function initializeDatabase() {
   if (!poolPromise) {
     poolPromise = (async () => {
       await ensureDatabase();
       const pool = new sql.ConnectionPool(config);
       await pool.connect();
+      await ensureLeadCompatibilityColumns(pool).catch((error) => {
+        console.warn("Lead compatibility column check skipped:", error.message);
+      });
       await ensureDocumentUploadColumns(pool).catch((error) => {
         console.warn("Document upload column check skipped:", error.message);
       });

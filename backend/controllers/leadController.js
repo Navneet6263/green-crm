@@ -25,7 +25,7 @@ async function getOne(req, res) {
 
 async function create(req, res) {
   const data = await leadService.createLead(req.auth, req.body);
-  res.status(201).json({ success: true, document: data });
+  res.status(201).json({ data });
 }
 
 async function update(req, res) {

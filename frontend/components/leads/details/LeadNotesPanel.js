@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useState } from "react";
+import { memo, useRef, useState } from "react";
 
 import DashboardIcon from "../../dashboard/icons";
 
@@ -26,26 +26,27 @@ function LeadNotesPanel({
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
   const [composerOpen, setComposerOpen] = useState(false);
+  const saveLockRef = useRef(false);
 
   const hasOverflow = notes.length > 4;
 
-  async function handleSubmit(event) {
+  function handleSubmit(event) {
     event.preventDefault();
 
     const content = draft.trim();
-    if (!content || saving) {
+    if (!content || saveLockRef.current) {
       return;
     }
 
+    saveLockRef.current = true;
     setSaving(true);
-
-    try {
-      await onSave(content);
-      setDraft("");
-      setComposerOpen(false);
-    } finally {
+    setDraft("");
+    setComposerOpen(false);
+    onSave(content);
+    setTimeout(() => {
+      saveLockRef.current = false;
       setSaving(false);
-    }
+    }, 500);
   }
 
   return (

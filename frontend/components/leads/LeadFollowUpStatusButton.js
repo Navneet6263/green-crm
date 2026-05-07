@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { apiRequest } from "../../lib/api";
 
 const FIELD = "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-amber-400 focus:ring-2 focus:ring-amber-50";
@@ -38,37 +38,43 @@ export default function LeadFollowUpStatusButton({ className = "", lead, onSaved
   const [nextTime, setNextTime] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const saveLockRef = useRef(false);
 
   function reset() {
     setNote(""); setNextDate(""); setNextTime(""); setError("");
     setMode("call"); setCallStatus("Connected"); setEmailStatus("Sent"); setResponse("Interested");
   }
 
-  async function save() {
+  function save() {
     if (!note.trim()) { setError("Follow-up note is required."); return; }
     if ((nextDate && !nextTime) || (!nextDate && nextTime)) { setError("Add both date and time for next follow-up."); return; }
+    if (saveLockRef.current) return;
     setSaving(true); setError("");
     const content = buildNote({ callStatus, emailStatus, mode, nextDate, nextTime, note, response });
-    try {
+    const taskPayload = nextDate && nextTime ? {
+      assigned_to: lead.assigned_to || undefined,
+      company_id: lead.company_id || undefined,
+      due_date: `${nextDate} ${nextTime}:00`,
+      priority: lead.priority || "medium",
+      related_id: lead.lead_id,
+      related_to: "lead",
+      team_id: lead.team_id || undefined,
+      title: `${title(mode)} follow-up`,
+      type: mode === "whatsapp" ? "call" : mode,
+      notes: content,
+    } : null;
+
+    saveLockRef.current = true;
+    onSaved?.(lead.lead_id, content);
+    setOpen(false); reset();
+    setTimeout(() => { saveLockRef.current = false; setSaving(false); }, 500);
+
+    (async () => {
       await apiRequest(`/leads/${lead.lead_id}/notes`, { method: "POST", token, body: { content } });
-      if (nextDate && nextTime) {
-        await apiRequest("/tasks", { method: "POST", token, body: {
-          assigned_to: lead.assigned_to || undefined,
-          company_id: lead.company_id || undefined,
-          due_date: `${nextDate} ${nextTime}:00`,
-          priority: lead.priority || "medium",
-          related_id: lead.lead_id,
-          related_to: "lead",
-          team_id: lead.team_id || undefined,
-          title: `${title(mode)} follow-up`,
-          type: mode === "whatsapp" ? "call" : mode,
-          notes: content,
-        }});
+      if (taskPayload) {
+        await apiRequest("/tasks", { method: "POST", token, body: taskPayload });
       }
-      onSaved?.(lead.lead_id, content);
-      setOpen(false); reset();
-    } catch (e) { setError(e.message || "Could not save follow-up."); }
-    finally { setSaving(false); }
+    })().catch((e) => { setOpen(true); setError(e.message || "Could not save follow-up."); });
   }
 
   return (
