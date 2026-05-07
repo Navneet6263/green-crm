@@ -10,19 +10,18 @@ import {
   leadInitials, leadPrimaryName, leadSecondaryName, titleizeLeadValue,
 } from "../shared/leadPageFormatters";
 
-const AVATAR_PALETTE = ["bg-emerald-600","bg-amber-600","bg-sky-600","bg-violet-600","bg-orange-600","bg-cyan-600","bg-rose-600","bg-blue-600"];
-function avatarBg(n="") { return AVATAR_PALETTE[(n.charCodeAt(0)||0)%AVATAR_PALETTE.length]; }
-function validHex(v) { return /^#[0-9a-f]{6}$/i.test(String(v||"").trim()) ? String(v).toLowerCase() : null; }
-function nameInitials(n="") { return String(n).split(" ").filter(Boolean).slice(0,2).map(p=>p[0]?.toUpperCase()||"").join("")||"?"; }
+const AVATAR_PALETTE = ["bg-emerald-600", "bg-amber-600", "bg-sky-600", "bg-violet-600", "bg-orange-600", "bg-cyan-600", "bg-rose-600", "bg-blue-600"];
+const ACTION_BTN = "inline-flex min-h-[32px] items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-amber-300 hover:bg-amber-50 hover:text-amber-800";
+const FOLLOW_UP_BTN = "inline-flex min-h-[32px] items-center justify-center rounded-lg border border-sky-200 bg-sky-50 px-3 py-1.5 text-xs font-semibold text-sky-700 transition hover:border-sky-300 hover:bg-sky-100";
+const META_CHIP = "inline-flex min-h-[27px] max-w-full items-center gap-1.5 rounded-full bg-slate-50 px-2.5 text-xs text-slate-500 ring-1 ring-slate-100";
+const BADGE = "inline-flex min-h-[22px] items-center rounded-full border px-2.5 text-[10px] leading-none";
 
-const BTN = "inline-flex items-center rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-amber-300 hover:bg-amber-50 hover:text-amber-800";
+function avatarBg(name = "") { return AVATAR_PALETTE[(name.charCodeAt(0) || 0) % AVATAR_PALETTE.length]; }
+function validHex(value) { return /^#[0-9a-f]{6}$/i.test(String(value || "").trim()) ? String(value).toLowerCase() : null; }
+function initials(name = "") { return String(name).split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase() || "").join("") || "?"; }
 
 function MiniAvatar({ name, bg = "bg-slate-300" }) {
-  return (
-    <span className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${bg} text-[9px] font-bold text-white`}>
-      {nameInitials(name)}
-    </span>
-  );
+  return <span className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${bg} text-[9px] font-bold text-white`}>{initials(name)}</span>;
 }
 
 export default function LeadRowCard({
@@ -37,164 +36,87 @@ export default function LeadRowCard({
   setLegalTransferNote, setLegalTransferOwner, teamBadgeLabel, teamUsers,
   transferLeadToLegal, transferring,
 }) {
-  const primaryName  = leadPrimaryName(lead);
+  const primaryName = leadPrimaryName(lead);
   const secondaryName = leadSecondaryName(lead);
-  const noteCount    = Number(lead.note_count || 0);
-  const statusTone   = STATUS_TONE[lead.status] || STATUS_TONE.new;
+  const noteCount = Number(lead.note_count || 0);
+  const statusTone = STATUS_TONE[lead.status] || STATUS_TONE.new;
   const priorityTone = PRIORITY_TONE[lead.priority] || PRIORITY_TONE.medium;
   const expandedLead = selected && activeLead?.lead_id === lead.lead_id ? activeLead : lead;
-  const productHex   = validHex(lead.product_color);
-  const avBg         = productHex ? null : avatarBg(primaryName);
+  const productHex = validHex(lead.product_color);
+  const teamLabel = teamBadgeLabel(lead);
+  const avatarClass = productHex ? "" : avatarBg(primaryName);
 
   return (
-    <article className={`rounded-2xl border bg-white transition-shadow duration-200 hover:shadow-[0_8px_32px_rgba(0,0,0,0.07)] ${
-      selected ? "border-amber-300 shadow-[0_4px_20px_rgba(203,169,82,0.15)]" : "border-slate-100 shadow-sm"
-    }`}>
-      <div className="relative px-4 py-3.5 space-y-2.5">
-
-        {/* ── Main row: checkbox + avatar + info + [status + buttons] on right ── */}
-        <div className="flex items-start gap-3">
-          {/* Checkbox */}
-          {canManage ? (
-            <label className="shrink-0 pt-1">
-              <input type="checkbox" checked={picked} onChange={onPickToggle}
-                className="h-4 w-4 rounded border-slate-300 accent-amber-500" />
-            </label>
-          ) : null}
-
-          {/* Avatar */}
-          <button type="button" onClick={onSelectToggle} className="shrink-0 mt-0.5">
-            <div
-              className={`grid h-10 w-10 place-items-center rounded-xl text-sm font-bold text-white ${avBg || ""}`}
-              style={productHex ? { backgroundColor: productHex } : undefined}
-            >
-              {leadInitials(lead.contact_person, lead.company_name, lead.email)}
+    <article className={`w-full overflow-hidden rounded-2xl border transition duration-200 hover:-translate-y-0.5 hover:border-slate-200 hover:shadow-[0_10px_26px_rgba(15,23,42,0.06)] ${selected ? "border-amber-300 bg-amber-50/45 shadow-[0_8px_22px_rgba(203,169,82,0.14)]" : "border-slate-100 bg-white shadow-sm"}`}>
+      <div className="space-y-3 px-3.5 py-3.5 sm:px-4">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+          <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-start gap-3">
+            <div className="flex items-start gap-2">
+              {canManage ? (
+                <label className="pt-3">
+                  <input type="checkbox" checked={picked} onChange={onPickToggle} className="h-4 w-4 rounded border-slate-300 accent-amber-500" />
+                </label>
+              ) : null}
+              <button type="button" onClick={onSelectToggle} className="shrink-0" aria-label={`Select ${primaryName}`}>
+                <div className="rounded-2xl bg-white p-1 shadow-sm ring-1 ring-slate-100 transition group-hover:ring-amber-200">
+                  <div className={`grid h-12 w-12 place-items-center rounded-xl text-sm font-bold text-white ${avatarClass}`} style={productHex ? { backgroundColor: productHex } : undefined}>
+                    {leadInitials(lead.contact_person, lead.company_name, lead.email)}
+                  </div>
+                </div>
+              </button>
             </div>
-          </button>
 
-          {/* Name + badges — flex-1 */}
-          <button type="button" onClick={onSelectToggle} className="min-w-0 flex-1 text-left">
-            {/* Badges */}
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold"
-                style={{ background: statusTone[0], color: statusTone[1] }}>
-                {titleizeLeadValue(lead.status || "new")}
-              </span>
-              <span className="inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold"
-                style={{ background: priorityTone[0], color: priorityTone[1] }}>
-                {titleizeLeadValue(lead.priority || "medium")}
-              </span>
-              {lead.product_name ? (
-                <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">
-                  {productHex ? <span className="h-2 w-2 rounded-full" style={{ backgroundColor: productHex }} /> : null}
-                  {lead.product_name}
-                </span>
-              ) : null}
-              {teamBadgeLabel(lead) ? (
-                <span className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">
-                  {teamBadgeLabel(lead)}
-                </span>
-              ) : null}
-              {noteCount ? (
-                <span className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">
-                  {noteCount} notes
-                </span>
-              ) : null}
-            </div>
-            {/* Primary name */}
-            <h4 className="mt-1 truncate text-sm font-bold text-slate-900">{primaryName}</h4>
-            {secondaryName ? <p className="truncate text-xs text-slate-500">{secondaryName}</p> : null}
-          </button>
+            <button type="button" onClick={onSelectToggle} className="min-w-0 text-left">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className={`${BADGE} font-bold uppercase`} style={{ background: statusTone[0], color: statusTone[1] }}>{titleizeLeadValue(lead.status || "new")}</span>
+                <span className={`${BADGE} font-semibold`} style={{ background: priorityTone[0], color: priorityTone[1] }}>{titleizeLeadValue(lead.priority || "medium")}</span>
+                {lead.product_name ? (
+                  <span className={`${BADGE} min-w-0 max-w-[180px] gap-1 border-amber-200 bg-amber-50 font-bold text-amber-800`}>
+                    {productHex ? <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: productHex }} /> : null}
+                    <span className="truncate">{lead.product_name}</span>
+                  </span>
+                ) : null}
+                {teamLabel ? <span className={`${BADGE} border-slate-200 bg-white font-bold text-slate-600`}>{teamLabel}</span> : null}
+                {noteCount ? <span className={`${BADGE} border-slate-200 bg-white font-semibold text-slate-600`}>Notes {noteCount}</span> : null}
+              </div>
+              <h4 className="mt-1.5 truncate text-base font-bold text-slate-950 sm:text-[17px]">{primaryName}</h4>
+              {secondaryName ? <p className="mt-0.5 truncate text-xs text-slate-500 sm:text-sm">{secondaryName}</p> : null}
+            </button>
+          </div>
 
-          {/* Right side — status dropdown + action buttons stacked */}
-          <div className="flex shrink-0 flex-col items-end gap-1.5">
-            {/* Status — top right with label */}
+          <div className="grid w-full gap-1.5 sm:grid-cols-[minmax(190px,1fr)_auto] sm:items-end lg:w-auto lg:min-w-[245px] lg:grid-cols-1">
             {canEdit ? (
-              <div className="w-[170px]">
+              <div className="min-w-0">
                 <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-slate-400">Lead Status</p>
                 <LeadQuickStatusControl
-                  assigneeOptions={teamUsers} lead={lead} token={sessionToken}
-                  onUpdated={handleInlineStatusUpdate} hideLabel
-                  selectClassName="min-h-[28px] w-full bg-slate-50 border border-slate-200 rounded-xl pr-8 text-[11px] font-semibold text-slate-700 shadow-none focus:border-amber-400"
-                  notePanelClassName="xl:w-[320px]" placeholder="Why is this lead moving?"
+                  assigneeOptions={teamUsers}
+                  lead={lead}
+                  token={sessionToken}
+                  onUpdated={handleInlineStatusUpdate}
+                  hideLabel
+                  selectClassName="min-h-[34px] w-full bg-white border border-slate-200 rounded-lg pr-8 text-xs font-semibold text-slate-700 shadow-none focus:border-amber-400"
                 />
               </div>
             ) : null}
-            {/* Action buttons below status */}
-            <div className="flex items-center gap-1.5">
-              <Link prefetch={false} href={`/leads/${lead.lead_id}`} className={BTN}>View Lead</Link>
-      {canEdit ? <Link prefetch={false} href={`/leads/${lead.lead_id}/edit`} className={BTN}>Edit</Link> : null}
-              {canEdit ? <LeadFollowUpStatusButton
-                className="inline-flex items-center rounded-xl border border-sky-200 bg-sky-50 px-3 py-1.5 text-xs font-semibold text-sky-700 transition hover:bg-sky-100"
-                lead={lead} onSaved={onInlineNoteSaved} token={sessionToken} /> : null}
+            <div className={`grid gap-1.5 ${canEdit ? "grid-cols-2 sm:w-[190px] lg:w-full" : "grid-cols-1 sm:w-[90px] lg:w-full"}`}>
+              <Link prefetch={false} href={`/leads/${lead.lead_id}`} className={ACTION_BTN}>View</Link>
+              {canEdit ? <Link prefetch={false} href={`/leads/${lead.lead_id}/edit`} className={ACTION_BTN}>Edit</Link> : null}
+              {canEdit ? <LeadFollowUpStatusButton className={`${FOLLOW_UP_BTN} col-span-2`} lead={lead} onSaved={onInlineNoteSaved} token={sessionToken} /> : null}
             </div>
           </div>
         </div>
 
-        {/* ── Meta row — labeled, clear, scannable ── */}
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pl-[52px] text-xs">
-
-          {/* Contact */}
-          {lead.contact_person ? (
-            <span className="text-slate-500">{lead.contact_person}</span>
-          ) : null}
-          {lead.email ? (
-            <span className="hidden sm:inline truncate max-w-[180px] text-slate-400">{lead.email}</span>
-          ) : null}
-          {lead.phone ? (
-            <span className="flex items-center gap-1">
-              <span className="text-slate-300">·</span>
-              <a href={`tel:${String(lead.phone).replace(/[^\d+]/g,"")}`} className="text-slate-500 hover:text-amber-700">{lead.phone}</a>
-            </span>
-          ) : null}
-
-          {/* Assigned to — with mini avatar */}
-          <span className="flex items-center gap-1.5">
-            <span className="text-slate-300">·</span>
-            <span className="text-slate-400">Assigned</span>
-            <MiniAvatar name={lead.assigned_to_name || "?"} bg="bg-emerald-500" />
-            <span className="font-semibold text-slate-700">{lead.assigned_to_name || "Unassigned"}</span>
-          </span>
-
-          {/* Created by */}
-          {lead.created_by_name ? (
-            <span className="flex items-center gap-1.5">
-              <span className="text-slate-300">·</span>
-              <span className="text-slate-400">By</span>
-              <MiniAvatar name={lead.created_by_name} bg="bg-slate-400" />
-              <span className="font-semibold text-slate-600">{lead.created_by_name}</span>
-            </span>
-          ) : null}
-
-          {/* Follow-up */}
-          {lead.follow_up_date ? (
-            <span className="flex items-center gap-1">
-              <span className="text-slate-300">·</span>
-              <span className="text-slate-400">Follow-up</span>
-              <span className="font-semibold text-amber-600">{formatLeadDate(lead.follow_up_date, true)}</span>
-            </span>
-          ) : null}
-
-          {/* Source */}
-          <span className="hidden sm:flex items-center gap-1">
-            <span className="text-slate-300">·</span>
-            <span className="text-slate-400">{titleizeLeadValue(lead.lead_source || "website")}</span>
-          </span>
-
-          {/* Value */}
-          <span className="flex items-center gap-1">
-            <span className="text-slate-300">·</span>
-            <strong className="text-slate-700">{formatLeadMoney(lead.estimated_value)}</strong>
-          </span>
-
-          {/* Created date */}
-          <span className="hidden md:flex items-center gap-1">
-            <span className="text-slate-300">·</span>
-            <span className="text-slate-400">Created {formatLeadDate(lead.created_at, false)}</span>
-          </span>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className={META_CHIP}><span className="font-semibold text-slate-400">Owner</span><MiniAvatar name={lead.assigned_to_name || "?"} bg="bg-emerald-500" /><span className="truncate font-semibold text-slate-700">{lead.assigned_to_name || "Unassigned"}</span></span>
+          {lead.phone ? <a href={`tel:${String(lead.phone).replace(/[^\d+]/g, "")}`} className={`${META_CHIP} hover:text-amber-700`}>{lead.phone}</a> : null}
+          {lead.email ? <span className={`${META_CHIP} hidden max-w-[220px] sm:inline-flex`}><span className="truncate">{lead.email}</span></span> : null}
+          {lead.created_by_name ? <span className={META_CHIP}><span className="font-semibold text-slate-400">By</span><MiniAvatar name={lead.created_by_name} bg="bg-slate-400" /><span className="truncate font-semibold text-slate-600">{lead.created_by_name}</span></span> : null}
+          {lead.follow_up_date ? <span className={META_CHIP}><span className="font-semibold text-slate-400">Follow-up</span><span className="font-semibold text-amber-600">{formatLeadDate(lead.follow_up_date, true)}</span></span> : null}
+          <span className={META_CHIP}><strong className="text-slate-700">{formatLeadMoney(lead.estimated_value)}</strong></span>
+          <span className={`${META_CHIP} hidden sm:inline-flex`}>{titleizeLeadValue(lead.lead_source || "website")}</span>
+          <span className={`${META_CHIP} hidden md:inline-flex`}>Created {formatLeadDate(lead.created_at, false)}</span>
         </div>
 
-        {/* ── Expanded panel ── */}
         {selected ? (
           <LeadExpandedDetails
             archiveLead={archiveLead} assigning={assigning} canManage={canManage}
