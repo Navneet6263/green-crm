@@ -117,7 +117,7 @@ export default function LeadDetailPage() {
   const role = session?.user?.role || "";
   const canReviewWorkflowDocs = WORKFLOW_DOC_VIEW_ROLES.includes(role);
   const canUploadDocuments = DOCUMENT_UPLOAD_ROLES.includes(role);
-  const canManageAssignments = ["super-admin", "platform-admin", "platform-manager", "admin", "manager"].includes(role);
+  const canManageAssignments = ["super-admin", "platform-admin", "platform-manager", "admin", "manager", "sales"].includes(role);
   const canTransferToLegal = Boolean(lead?.can_transfer_to_legal) && LEGAL_TRANSFER_ROLES.includes(role);
   const scopedLegalUsers = useMemo(() => users.filter((user) => user.role === "legal-team"), [users]);
   const legalUsers = useMemo(

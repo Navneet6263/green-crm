@@ -599,7 +599,6 @@ export default function DashboardShell({ session: initialSession, children, titl
                     aria-label="Open communications"
                   >
                     <DashboardIcon name="mail" className="h-5 w-5" />
-                    <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#F59E0B] px-1 text-[10px] font-bold text-white">7</span>
                   </Link>
 
                   <button

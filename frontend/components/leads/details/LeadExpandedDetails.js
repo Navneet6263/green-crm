@@ -61,11 +61,11 @@ export default function LeadExpandedDetails({
         </div>
       </div>
 
-      {/* Collaborators */}
+      {/* Collaborators — sales can also add/remove */}
       <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
         <LeadCollaboratorPanel
           addCollaborator={saveCollaborator}
-          canManage={canManage}
+          canManage={true}
           collaboratorUsersMessage={collaboratorUsersMessage}
           lead={lead}
           pendingCollaborator={pendingCollaborator}

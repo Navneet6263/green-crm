@@ -1271,8 +1271,7 @@ async function getLeadAssignments(auth, leadId) {
 }
 
 async function updateLeadAssignments(auth, leadId, payload) {
-  if (!MANAGER_ROLES.includes(auth.role)) {
-    throw new AppError("Only managers and admins can update shared lead access.", 403);
+  if (!MANAGER_ROLES.includes(auth.role) && auth.role !== ROLES.SALES) { throw new AppError("Only managers, admins, and sales can update shared lead access.", 403);
   }
 
   const lead = await getLeadRecord(auth, leadId);
@@ -1341,8 +1340,7 @@ async function updateLeadAssignments(auth, leadId, payload) {
 }
 
 async function removeLeadAssignment(auth, leadId, userId) {
-  if (!MANAGER_ROLES.includes(auth.role)) {
-    throw new AppError("Only managers and admins can remove shared lead access.", 403);
+  if (!MANAGER_ROLES.includes(auth.role) && auth.role !== ROLES.SALES) { throw new AppError("Only managers, admins, and sales can remove shared lead access.", 403);
   }
 
   const lead = await getLeadRecord(auth, leadId);
@@ -1684,3 +1682,4 @@ module.exports = {
   updateLeadAssignments,
   uploadLeadDocument,
 };
+
