@@ -507,6 +507,7 @@ const schemaStatements = [
     status                  VARCHAR(30)   NOT NULL DEFAULT 'active',
     team_id                 VARCHAR(20)   NULL,
     assigned_to             VARCHAR(20)   NULL,
+    created_by              VARCHAR(20)   NULL,
     last_interaction        DATETIME      NULL,
     next_follow_up          DATETIME      NULL,
     onboarding_date         DATETIME      NULL,
@@ -523,6 +524,7 @@ const schemaStatements = [
     KEY idx_cust_company_team (company_id, team_id, is_active, created_at),
     KEY idx_cust_assigned (company_id, assigned_to),
     KEY idx_cust_status (company_id, status),
+    KEY idx_cust_created_by (company_id, created_by),
     CONSTRAINT fk_customers_team FOREIGN KEY (company_id, team_id) REFERENCES teams (company_id, team_id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
 
@@ -540,6 +542,20 @@ const schemaStatements = [
     UNIQUE KEY uq_customer_members_customer_user (customer_id, user_id),
     KEY idx_customer_members_company_customer (company_id, customer_id, is_active),
     KEY idx_customer_members_company_user (company_id, user_id, is_active)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
+  // ── customer_activities ────────────────────────────────────
+  `CREATE TABLE IF NOT EXISTS customer_activities (
+    id            BIGINT        NOT NULL AUTO_INCREMENT,
+    company_id    VARCHAR(20)   NOT NULL,
+    customer_id   VARCHAR(20)   NOT NULL,
+    type          VARCHAR(50)   NOT NULL DEFAULT 'updated',
+    description   LONGTEXT      NULL,
+    created_by    VARCHAR(20)   NULL,
+    created_at    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_cust_act_customer (customer_id, company_id, created_at),
+    KEY idx_cust_act_created_by (company_id, created_by, created_at)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
 
   // ── tasks ──────────────────────────────────────────────────
@@ -747,6 +763,7 @@ const performanceIndexDefinitions = [
   { table: "customers", name: "idx_customers_company_assigned_active_created_perf", columns: "company_id, assigned_to, is_active, created_at" },
   { table: "customers", name: "idx_customers_company_status_active_created_perf", columns: "company_id, status, is_active, created_at" },
   { table: "customers", name: "idx_customers_company_team_active_created_perf", columns: "company_id, team_id, is_active, created_at" },
+  { table: "customer_activities", name: "idx_cust_act_company_customer_created_perf", columns: "company_id, customer_id, created_at" },
   { table: "users", name: "idx_users_company_active_created_perf", columns: "company_id, is_active, created_at" },
   { table: "platform_user_company_access", name: "idx_platform_access_user_company_perf", columns: "user_id, company_id, created_at" },
   { table: "products", name: "idx_products_company_active_created_perf", columns: "company_id, is_active, created_at" },

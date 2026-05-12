@@ -81,7 +81,8 @@ export default function CustomerDetailPage() {
   const [completingFollowUp, setCompletingFollowUp] = useState(false);
   const [members, setMembers] = useState([]);
   const [activities, setActivities] = useState([]);
-  const [addingMember, setAddingMember] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(false);   // controls panel open/close
+  const [savingMember, setSavingMember] = useState(false); // controls submit spinner
   const [availableUsers, setAvailableUsers] = useState([]);
   const [pendingMember, setPendingMember] = useState("");
 
@@ -89,13 +90,28 @@ export default function CustomerDetailPage() {
     const r = await apiRequest(`/customers/${params.id}`, { token: s.token });
     setCustomer(r);
     setFollowUp(r.next_follow_up ? String(r.next_follow_up).slice(0, 16) : "");
-    // Fix: response wrapper returns array directly for list endpoints
+
+    // Members: controller sends { data: [...] } → wrapper → { success, data: [...], meta:null }
+    // api.js returns payload.data which is the array directly
     apiRequest(`/customers/${params.id}/members`, { token: s.token })
-      .then(res => setMembers(Array.isArray(res) ? res : (res?.data || res?.items || [])))
-      .catch(() => {});
+      .then(res => {
+        // res is already the unwrapped value from api.js
+        // Could be array (if data was array) or object
+        const list = Array.isArray(res) ? res : [];
+        setMembers(list);
+      })
+      .catch(() => setMembers([]));
+
+    // Activities: controller sends buildPaginatedResult → { items, meta }
+    // wrapper → { success, data: items, meta } → api.js returns { items: data, meta }
     apiRequest(`/customers/${params.id}/activities?page_size=20`, { token: s.token })
-      .then(res => setActivities(res?.items || res?.data || []))
-      .catch(() => {});
+      .then(res => {
+        const list = Array.isArray(res?.items) ? res.items
+          : Array.isArray(res) ? res
+          : [];
+        setActivities(list);
+      })
+      .catch(() => setActivities([]));
   }
 
   useEffect(()=>{
@@ -146,7 +162,6 @@ export default function CustomerDetailPage() {
     try {
       const res = await apiRequest(`/users?page_size=100&company_id=${customer.company_id}`, { token: session.token });
       const all = res?.items || res?.data || [];
-      // Exclude owner and already-added members
       const memberIds = new Set(members.map(m => m.user_id));
       setAvailableUsers(all.filter(u => u.user_id !== customer.assigned_to && !memberIds.has(u.user_id)));
     } catch (_) {}
@@ -154,14 +169,16 @@ export default function CustomerDetailPage() {
 
   async function addMemberInline(e) {
     e.preventDefault();
-    if (!pendingMember) return;
-    setAddingMember(true); setError(""); setNotice("");
+    if (!pendingMember || savingMember) return;
+    setSavingMember(true); setError(""); setNotice("");
     try {
       await apiRequest(`/customers/${params.id}/members`, { method: "POST", token: session.token, body: { user_id: pendingMember } });
-      setPendingMember(""); setNotice("Person added.");
+      setPendingMember("");
+      setShowAddForm(false);
+      setNotice("Person added.");
       await load(session);
     } catch (err) { setError(formatScopedError(err, "Could not add person.")); }
-    finally { setAddingMember(false); }
+    finally { setSavingMember(false); }
   }
 
   async function removeMemberInline(userId) {
@@ -325,19 +342,25 @@ export default function CustomerDetailPage() {
                     <button
                       className="inline-flex items-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 transition"
                       type="button"
-                      onClick={() => { setAddingMember(v => !v); if (!availableUsers.length) loadAvailableUsers(); }}
+                      onClick={() => {
+                        const next = !showAddForm;
+                        setShowAddForm(next);
+                        setPendingMember("");
+                        if (next && !availableUsers.length) loadAvailableUsers();
+                      }}
                     >
                       <DashboardIcon name="customers" className="h-3.5 w-3.5" />
-                      {addingMember ? "Cancel" : "+ Add Person"}
+                      {showAddForm ? "Cancel" : "+ Add Person"}
                     </button>
                   </div>
 
-                  {addingMember ? (
+                  {showAddForm ? (
                     <form className="mb-3 flex gap-2" onSubmit={addMemberInline}>
                       <select
                         className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-50"
                         value={pendingMember}
                         onChange={e => setPendingMember(e.target.value)}
+                        disabled={savingMember}
                       >
                         <option value="">Select team member…</option>
                         {availableUsers.map(u => (
@@ -347,9 +370,9 @@ export default function CustomerDetailPage() {
                       <button
                         className="rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-800 hover:bg-emerald-100 disabled:opacity-50 transition"
                         type="submit"
-                        disabled={!pendingMember || addingMember}
+                        disabled={!pendingMember || savingMember}
                       >
-                        {addingMember ? "Adding…" : "Add"}
+                        {savingMember ? "Adding…" : "Add"}
                       </button>
                     </form>
                   ) : null}
