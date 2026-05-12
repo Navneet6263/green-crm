@@ -35,12 +35,30 @@ async function addFollowUp(req, res) {
   res.json({ data });
 }
 
+async function listMembers(req, res) {
+  const data = await customerService.listCustomerMembers(req.auth, req.params.customerId);
+  res.json({ data });
+}
+
+async function addMember(req, res) {
+  const data = await customerService.addCustomerMember(req.auth, req.params.customerId, req.body);
+  res.json({ data });
+}
+
+async function removeMember(req, res) {
+  const data = await customerService.removeCustomerMember(req.auth, req.params.customerId, req.params.userId);
+  res.json({ data });
+}
+
 module.exports = {
   addFollowUp,
+  addMember,
   addNote,
   create,
   getOne,
   list,
+  listMembers,
   remove,
+  removeMember,
   update,
 };

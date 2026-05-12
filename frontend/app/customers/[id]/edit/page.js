@@ -32,6 +32,8 @@ function createForm(c = null) {
     name: c?.name || "", company_name: c?.company_name || "", email: c?.email || "", phone: c?.phone || "",
     status: c?.status || "active", total_value: String(c?.total_value || ""), team_id: c?.team_id || "",
     assigned_to: c?.assigned_to || "", next_follow_up: c?.next_follow_up ? new Date(c.next_follow_up).toISOString().slice(0, 16) : "",
+    onboarding_date: c?.onboarding_date ? new Date(c.onboarding_date).toISOString().slice(0, 10) : "",
+    onboarding_status: c?.onboarding_status || "pending",
     website: p.website || "", industry: p.industry || "", business_summary: p.business_summary || "",
     address_street: p.address_street || "", address_city: p.address_city || "", address_state: p.address_state || "",
     address_zip: p.address_zip || "", country: p.country || "India",
@@ -70,6 +72,7 @@ export default function EditCustomerPage() {
   const [users, setUsers] = useState([]);
   const [teams, setTeams] = useState([]);
   const [form, setForm] = useState(createForm());
+  const [members, setMembers] = useState([]);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -102,6 +105,7 @@ export default function EditCustomerPage() {
         const tms = scope.teams || [], urs = scope.users || [];
         setCustomer(c); setTeams(tms); setUsers(urs);
         setForm({ ...createForm(c), team_id: scope.teamId || "", assigned_to: urs.some(u => u.user_id === c.assigned_to) ? c.assigned_to : "" });
+        apiRequest(`/customers/${params.id}/members`, { token: s.token }).then(r => setMembers((r.data || []).map(m => m.user_id))).catch(() => {});
       })
       .catch(e => setError(formatScopedError(e, "Failed to load customer.")))
       .finally(() => setLoading(false));
@@ -137,9 +141,18 @@ export default function EditCustomerPage() {
           status: form.status, total_value: Number(form.total_value || 0),
           team_id: form.team_id || undefined, assigned_to: canAssign ? form.assigned_to || null : undefined,
           next_follow_up: form.next_follow_up || null,
+          onboarding_date: form.onboarding_date || null,
+          onboarding_status: form.onboarding_status || "pending",
           notes: buildCustomerNotes({ website: form.website.trim(), industry: form.industry.trim(), business_summary: form.business_summary.trim(), address_street: form.address_street.trim(), address_city: form.address_city.trim(), address_state: form.address_state.trim(), address_zip: form.address_zip.trim(), country: form.country.trim() }, stripCustomerProfile(customer?.notes), customer?.notes),
         },
       });
+      const existingMembers = await apiRequest(`/customers/${params.id}/members`, { token: session.token }).then(r => (r.data || []).map(m => m.user_id)).catch(() => []);
+      const toAdd = members.filter(id => !existingMembers.includes(id));
+      const toRemove = existingMembers.filter(id => !members.includes(id));
+      await Promise.all([
+        ...toAdd.map(uid => apiRequest(`/customers/${params.id}/members`, { method: "POST", token: session.token, body: { user_id: uid } })),
+        ...toRemove.map(uid => apiRequest(`/customers/${params.id}/members/${uid}`, { method: "DELETE", token: session.token })),
+      ]);
       router.push(`/customers/${params.id}`);
     } catch (err) { setError(formatScopedError(err, "Failed to save customer.")); }
     finally { setSaving(false); }
@@ -208,7 +221,7 @@ export default function EditCustomerPage() {
               </Section>
 
               {/* Section 4 — Account Control */}
-              <Section step="04" title="Account Control" sub="Status, value, ownership, and follow-up">
+              <Section step="04" title="Account Control" sub="Status, onboarding, value, ownership, and follow-up">
                 <Label label="Status">
                   <select className={C.input} value={form.status} onChange={set("status")}>
                     <option value="active">Active</option>
@@ -216,6 +229,14 @@ export default function EditCustomerPage() {
                     <option value="suspended">Suspended</option>
                   </select>
                 </Label>
+                <Label label="Onboarding Status">
+                  <select className={C.input} value={form.onboarding_status} onChange={set("onboarding_status")}>
+                    <option value="pending">Onboarding Pending</option>
+                    <option value="training">Training</option>
+                    <option value="done">Onboarding Done</option>
+                  </select>
+                </Label>
+                <Label label="Onboarding Date"><input className={C.input} type="date" value={form.onboarding_date} onChange={set("onboarding_date")} /></Label>
                 <Label label="Total Value (₹)"><input className={C.input} type="number" value={form.total_value} onChange={set("total_value")} /></Label>
                 <Label label="Next Follow-up"><input className={C.input} type="datetime-local" value={form.next_follow_up} onChange={set("next_follow_up")} /></Label>
                 {canAssign ? (
@@ -226,6 +247,27 @@ export default function EditCustomerPage() {
                     </select>
                     {ownerMsg ? <p className="text-xs text-amber-600 mt-1">{ownerMsg}</p> : null}
                   </Label>
+                ) : null}
+                {canAssign && users.length > 0 ? (
+                  <div className="sm:col-span-2 space-y-2">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">People on This Customer</span>
+                    <div className="flex flex-wrap gap-2">
+                      {members.map(uid => {
+                        const u = users.find(x => x.user_id === uid);
+                        return u ? (
+                          <span key={uid} className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
+                            {u.name}
+                            <button type="button" className="text-emerald-500 hover:text-rose-500" onClick={() => setMembers(m => m.filter(id => id !== uid))}>&times;</button>
+                          </span>
+                        ) : null;
+                      })}
+                    </div>
+                    <select className={C.input} value="" onChange={e => { const v = e.target.value; if (v && !members.includes(v) && v !== form.assigned_to) setMembers(m => [...m, v]); }}>
+                      <option value="">+ Add team member…</option>
+                      {users.filter(u => u.user_id !== form.assigned_to && !members.includes(u.user_id)).map(u => <option key={u.user_id} value={u.user_id}>{u.name} · {u.role}</option>)}
+                    </select>
+                    <p className="text-xs text-slate-400">Add your team members who will collaborate on this customer.</p>
+                  </div>
                 ) : null}
                 {teamSelectorVisible ? (
                   <Label label="Team">

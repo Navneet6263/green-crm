@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import DashboardShell from "../../../components/dashboard/DashboardShell";
 import DashboardIcon from "../../../components/dashboard/icons";
-import { CustomerStatusBadge, isCustomerFollowUpOverdue } from "../../../components/customers/CustomerStatusBits";
+import { CustomerStatusBadge, OnboardingStatusBadge, isCustomerFollowUpOverdue } from "../../../components/customers/CustomerStatusBits";
 import { apiRequest } from "../../../lib/api";
 import { buildCustomerNotes, parseCustomerProfile, stripCustomerProfile } from "../../../lib/customerProfile";
 import { formatIndiaDateTime } from "../../../lib/dateTime";
@@ -79,11 +79,13 @@ export default function CustomerDetailPage() {
   const [savingNote, setSavingNote] = useState(false);
   const [savingFollowUp, setSavingFollowUp] = useState(false);
   const [completingFollowUp, setCompletingFollowUp] = useState(false);
+  const [members, setMembers] = useState([]);
 
   async function load(s) {
     const r = await apiRequest(`/customers/${params.id}`,{token:s.token});
     setCustomer(r);
     setFollowUp(r.next_follow_up ? String(r.next_follow_up).slice(0,16) : "");
+    apiRequest(`/customers/${params.id}/members`,{token:s.token}).then(res => setMembers(res.data || [])).catch(() => {});
   }
 
   useEffect(()=>{
@@ -196,6 +198,8 @@ export default function CustomerDetailPage() {
                     <Field label="Owner" value={customer.assigned_to_name||"Unassigned"} />
                     <Field label="Team" value={teamBadgeLabel(customer)||"Auto team"} />
                     <Field label="Status" value={customer.status||"active"} />
+                    <Field label="Onboarding" value={customer.onboarding_status||"pending"} />
+                    <Field label="Onboarding Date" value={customer.onboarding_date ? when(customer.onboarding_date) : "Not set"} />
                     <Field label="Portfolio Value" value={money(customer.total_value)} />
                     <Field label="Address" value={[profile.address_street,profile.address_city,profile.address_state,profile.address_zip,profile.country].filter(Boolean).join(", ")} span="sm:col-span-2 xl:col-span-3" />
                   </div>
@@ -259,12 +263,37 @@ export default function CustomerDetailPage() {
                 <div className={`${C.panel} px-5 py-5`}>
                   <p className={`${C.kicker} mb-3`}>Quick Stats</p>
                   <div className="grid grid-cols-2 gap-3">
-                    {[["Status",customer.status||"active"],["Value",money(customer.total_value)],["Team",teamBadgeLabel(customer)||"Auto"],["Follow-up",isCustomerFollowUpOverdue(customer.next_follow_up)?"Overdue":customer.next_follow_up?"Scheduled":"None"]].map(([l,v])=>(
+                    {[["Status",customer.status||"active"],["Onboarding",customer.onboarding_status||"pending"],["Value",money(customer.total_value)],["Follow-up",isCustomerFollowUpOverdue(customer.next_follow_up)?"Overdue":customer.next_follow_up?"Scheduled":"None"]].map(([l,v])=>(
                       <div key={l} className="rounded-xl bg-slate-50 px-3 py-3">
                         <p className={C.kicker}>{l}</p>
                         <p className="mt-1 text-sm font-bold text-slate-800">{v}</p>
                       </div>
                     ))}
+                  </div>
+                </div>
+
+                {/* People on this customer */}
+                <div className={`${C.panel} px-5 py-5`}>
+                  <p className={C.kicker}>People</p>
+                  <h2 className="mt-1 mb-3 text-lg font-bold text-slate-900">Team Members</h2>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-3 rounded-xl bg-amber-50 border border-amber-100 px-3 py-2.5">
+                      <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-amber-200 text-xs font-bold text-amber-800">{initials(customer.assigned_to_name||"O")}</div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-slate-900">{customer.assigned_to_name||"Unassigned"}</p>
+                        <p className="text-xs text-amber-700">Owner</p>
+                      </div>
+                    </div>
+                    {members.map(m=>(
+                      <div key={m.user_id} className="flex items-center gap-3 rounded-xl bg-slate-50 border border-slate-100 px-3 py-2.5">
+                        <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-emerald-100 text-xs font-bold text-emerald-700">{initials(m.user_name||"M")}</div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-slate-900">{m.user_name}</p>
+                          <p className="text-xs text-slate-400">{m.user_role} · {m.role||"Collaborator"}</p>
+                        </div>
+                      </div>
+                    ))}
+                    {!members.length ? <p className="text-xs text-slate-400">No additional members assigned.</p> : null}
                   </div>
                 </div>
               </div>

@@ -29,7 +29,7 @@ function initials(v = "C") { return String(v).split(" ").filter(Boolean).slice(0
 function field(form, key, val) { return { ...form, [key]: val }; }
 
 function createForm(companyId = "") {
-  return { company_id: companyId, name: "", company_name: "", email: "", phone: "", team_id: "", assigned_to: "", total_value: "", website: "", industry: "", business_summary: "", address_street: "", address_city: "", address_state: "", address_zip: "", country: "India", notes: "" };
+  return { company_id: companyId, name: "", company_name: "", email: "", phone: "", team_id: "", assigned_to: "", total_value: "", website: "", industry: "", business_summary: "", address_street: "", address_city: "", address_state: "", address_zip: "", country: "India", notes: "", onboarding_date: "", onboarding_status: "pending" };
 }
 
 function Section({ step, title, sub, children }) {
@@ -63,6 +63,7 @@ export default function NewCustomerPage() {
   const [teams, setTeams] = useState([]);
   const [users, setUsers] = useState([]);
   const [form, setForm] = useState(createForm());
+  const [members, setMembers] = useState([]);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [resourceLoading, setResourceLoading] = useState(true);
@@ -133,9 +134,14 @@ export default function NewCustomerPage() {
           team_id: form.team_id || undefined,
           assigned_to: canAssign ? form.assigned_to || undefined : undefined,
           total_value: Number(form.total_value || 0),
+          onboarding_date: form.onboarding_date || null,
+          onboarding_status: form.onboarding_status || "pending",
           notes: buildCustomerNotes({ website: form.website.trim(), industry: form.industry.trim(), business_summary: form.business_summary.trim(), address_street: form.address_street.trim(), address_city: form.address_city.trim(), address_state: form.address_state.trim(), address_zip: form.address_zip.trim(), country: form.country.trim() }, form.notes),
         },
       });
+      if (members.length) {
+        await Promise.all(members.map(uid => apiRequest(`/customers/${r.customer_id}/members`, { method: "POST", token: session.token, body: { user_id: uid } })));
+      }
       router.push(`/customers/${r.customer_id}`);
     } catch (err) { setError(formatScopedError(err, "Failed to create customer.")); }
     finally { setSaving(false); }
@@ -199,6 +205,27 @@ export default function NewCustomerPage() {
                 {ownerMsg ? <p className="text-xs text-amber-600 mt-1">{ownerMsg}</p> : null}
               </Label>
             ) : null}
+            {canAssign && users.length > 0 ? (
+              <div className="sm:col-span-2 space-y-2">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Add People to This Customer</span>
+                <div className="flex flex-wrap gap-2">
+                  {members.map(uid => {
+                    const u = users.find(x => x.user_id === uid);
+                    return u ? (
+                      <span key={uid} className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
+                        {u.name}
+                        <button type="button" className="text-emerald-500 hover:text-rose-500" onClick={() => setMembers(m => m.filter(id => id !== uid))}>&times;</button>
+                      </span>
+                    ) : null;
+                  })}
+                </div>
+                <select className={C.input} value="" onChange={e => { const v = e.target.value; if (v && !members.includes(v) && v !== form.assigned_to) setMembers(m => [...m, v]); }}>
+                  <option value="">+ Add team member…</option>
+                  {users.filter(u => u.user_id !== form.assigned_to && !members.includes(u.user_id)).map(u => <option key={u.user_id} value={u.user_id}>{u.name} · {u.role}</option>)}
+                </select>
+                <p className="text-xs text-slate-400">These people will have access to this customer for collaboration.</p>
+              </div>
+            ) : null}
             {selectedTeam ? (
               <div className="sm:col-span-2 rounded-xl bg-amber-50 border border-amber-100 px-4 py-2.5 text-xs text-amber-800">
                 Team scope: <strong>{teamBadgeLabel(selectedTeam)}</strong>
@@ -225,7 +252,15 @@ export default function NewCustomerPage() {
           </Section>
 
           {/* Section 4 — Value & Note */}
-          <Section step="04" title="Value & Opening Note" sub="Commercial value and first relationship note">
+          <Section step="04" title="Onboarding & Value" sub="Track onboarding status and commercial value">
+            <Label label="Onboarding Date"><input className={C.input} type="date" value={form.onboarding_date} onChange={set("onboarding_date")} /></Label>
+            <Label label="Onboarding Status">
+              <select className={C.input} value={form.onboarding_status} onChange={set("onboarding_status")}>
+                <option value="pending">Onboarding Pending</option>
+                <option value="training">Training</option>
+                <option value="done">Onboarding Done</option>
+              </select>
+            </Label>
             <Label label="Total Value (₹)"><input className={C.input} type="number" value={form.total_value} onChange={set("total_value")} placeholder="0" /></Label>
             <div />
             <Label label="Opening Note" span="sm:col-span-2">

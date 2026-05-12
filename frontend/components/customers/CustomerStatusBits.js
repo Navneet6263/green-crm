@@ -44,6 +44,20 @@ export function CustomerStatusBadge({ status }) {
   return <DotBadge state={customerStatusState(status)} />;
 }
 
+const ONBOARDING_STATES = {
+  training: { dot: "bg-blue-500", label: "Training", tone: "border-blue-200 bg-blue-100 text-blue-700" },
+  done: { dot: "bg-emerald-500", label: "Onboarding Done", tone: "border-emerald-200 bg-emerald-100 text-emerald-700" },
+  pending: { dot: "bg-amber-500", label: "Onboarding Pending", tone: "border-amber-200 bg-amber-100 text-amber-700" },
+};
+
+export function onboardingStatusState(status) {
+  return ONBOARDING_STATES[String(status || "pending").toLowerCase()] || ONBOARDING_STATES.pending;
+}
+
+export function OnboardingStatusBadge({ status }) {
+  return <DotBadge state={onboardingStatusState(status)} />;
+}
+
 export function FollowUpSummary({ onSchedule, value }) {
   const state = customerFollowUpState(value);
   const dueText = value ? formatIndiaDateTime(value, true) : "No follow-up scheduled";

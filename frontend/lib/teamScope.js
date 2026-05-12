@@ -17,6 +17,7 @@ export const TEAM_ASSIGNMENT_ROLES = [
   "platform-manager",
   "admin",
   "manager",
+  "sales",
 ];
 
 function normalizeQueryValue(value) {

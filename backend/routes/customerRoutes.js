@@ -16,5 +16,8 @@ router.patch("/:customerId", asyncHandler(customerController.update));
 router.delete("/:customerId", asyncHandler(customerController.remove));
 router.post("/:customerId/notes", asyncHandler(customerController.addNote));
 router.post("/:customerId/followups", asyncHandler(customerController.addFollowUp));
+router.get("/:customerId/members", asyncHandler(customerController.listMembers));
+router.post("/:customerId/members", asyncHandler(customerController.addMember));
+router.delete("/:customerId/members/:userId", asyncHandler(customerController.removeMember));
 
 module.exports = router;

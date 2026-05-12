@@ -1,4 +1,5 @@
 const customerRepository = require("../repositories/customerRepository");
+const customerMemberRepository = require("../repositories/customerMemberRepository");
 const userRepository = require("../repositories/userRepository");
 const auditRepository = require("../repositories/auditRepository");
 const { ROLES } = require("../constants/roles");
@@ -178,6 +179,8 @@ async function createCustomer(auth, payload) {
     assigned_to: assignee,
     last_interaction: payload.last_interaction || null,
     next_follow_up: payload.next_follow_up || null,
+    onboarding_date: payload.onboarding_date || null,
+    onboarding_status: payload.onboarding_status || "pending",
     notes: payload.notes || null,
   });
 
@@ -240,6 +243,8 @@ async function updateCustomer(auth, customerId, payload) {
     assigned_to: assignee !== undefined ? assignee : customer.assigned_to,
     last_interaction: payload.last_interaction !== undefined ? payload.last_interaction : customer.last_interaction,
     next_follow_up: payload.next_follow_up !== undefined ? payload.next_follow_up : customer.next_follow_up,
+    onboarding_date: payload.onboarding_date !== undefined ? payload.onboarding_date : customer.onboarding_date,
+    onboarding_status: payload.onboarding_status !== undefined ? payload.onboarding_status : customer.onboarding_status,
     notes: payload.notes !== undefined ? payload.notes : customer.notes,
   });
 
@@ -295,12 +300,41 @@ async function addCustomerFollowUp(auth, customerId, payload) {
   return updated;
 }
 
+async function listCustomerMembers(auth, customerId) {
+  const customer = await getCustomer(auth, customerId);
+  return customerMemberRepository.listMembers(customer.customer_id, customer.company_id);
+}
+
+async function addCustomerMember(auth, customerId, payload) {
+  const customer = await getCustomer(auth, customerId);
+  if (!payload.user_id) throw new AppError("user_id is required.");
+  const user = await userRepository.getUserInCompany(payload.user_id, customer.company_id);
+  if (!user) throw new AppError("User must belong to the same company.", 400);
+  await customerMemberRepository.addMember({
+    company_id: customer.company_id,
+    customer_id: customer.customer_id,
+    user_id: payload.user_id,
+    role: payload.role || "collaborator",
+    added_by: auth.userId,
+  });
+  return customerMemberRepository.listMembers(customer.customer_id, customer.company_id);
+}
+
+async function removeCustomerMember(auth, customerId, userId) {
+  const customer = await getCustomer(auth, customerId);
+  await customerMemberRepository.removeMember(customer.customer_id, userId);
+  return { removed: true };
+}
+
 module.exports = {
   addCustomerFollowUp,
+  addCustomerMember,
   addCustomerNote,
   createCustomer,
   deleteCustomer,
   getCustomer,
+  listCustomerMembers,
   listCustomers,
+  removeCustomerMember,
   updateCustomer,
 };

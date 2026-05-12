@@ -509,6 +509,8 @@ const schemaStatements = [
     assigned_to             VARCHAR(20)   NULL,
     last_interaction        DATETIME      NULL,
     next_follow_up          DATETIME      NULL,
+    onboarding_date         DATETIME      NULL,
+    onboarding_status       VARCHAR(30)   NOT NULL DEFAULT 'pending',
     notes                   LONGTEXT      NULL,
     is_active               TINYINT(1)    NOT NULL DEFAULT 1,
     created_at              DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -521,6 +523,22 @@ const schemaStatements = [
     KEY idx_cust_assigned (company_id, assigned_to),
     KEY idx_cust_status (company_id, status),
     CONSTRAINT fk_customers_team FOREIGN KEY (company_id, team_id) REFERENCES teams (company_id, team_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
+  // ── customer_members ───────────────────────────────────────
+  `CREATE TABLE IF NOT EXISTS customer_members (
+    id            BIGINT        NOT NULL AUTO_INCREMENT,
+    company_id    VARCHAR(20)   NOT NULL,
+    customer_id   VARCHAR(20)   NOT NULL,
+    user_id       VARCHAR(20)   NOT NULL,
+    role          VARCHAR(30)   NOT NULL DEFAULT 'collaborator',
+    added_by      VARCHAR(20)   NULL,
+    is_active     TINYINT(1)    NOT NULL DEFAULT 1,
+    created_at    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_customer_members_customer_user (customer_id, user_id),
+    KEY idx_customer_members_company_customer (company_id, customer_id, is_active),
+    KEY idx_customer_members_company_user (company_id, user_id, is_active)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
 
   // ── tasks ──────────────────────────────────────────────────

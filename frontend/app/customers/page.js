@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import DashboardShell from "../../components/dashboard/DashboardShell";
 import DashboardIcon from "../../components/dashboard/icons";
-import { CustomerFollowUpBadge, CustomerStatusBadge, isCustomerFollowUpOverdue } from "../../components/customers/CustomerStatusBits";
+import { CustomerFollowUpBadge, CustomerStatusBadge, OnboardingStatusBadge, isCustomerFollowUpOverdue } from "../../components/customers/CustomerStatusBits";
 import { apiRequest } from "../../lib/api";
 import { stripCustomerProfile } from "../../lib/customerProfile";
 import { loadSession } from "../../lib/session";
@@ -265,6 +265,7 @@ export default function CustomersPage() {
                     <span><span className={C.kicker}>Team</span><br /><strong className="text-slate-700">{teamBadgeLabel(customer)||"—"}</strong></span>
                     <span><span className={C.kicker}>Value</span><br /><strong className="text-slate-700">{money(customer.total_value)}</strong></span>
                     <span><span className={C.kicker}>Follow-up</span><br /><CustomerFollowUpBadge value={customer.next_follow_up} /></span>
+                    <span><span className={C.kicker}>Onboarding</span><br /><OnboardingStatusBadge status={customer.onboarding_status} /></span>
                   </div>
 
                   {/* Note preview */}

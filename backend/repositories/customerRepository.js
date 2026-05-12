@@ -112,8 +112,8 @@ async function createCustomer(customer, executor) {
   await active.query(
     `
       INSERT INTO customers
-        (customer_id, company_id, name, company_name, email, phone, converted_from_lead_id, total_value, status, team_id, assigned_to, last_interaction, next_follow_up, notes, is_active)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+        (customer_id, company_id, name, company_name, email, phone, converted_from_lead_id, total_value, status, team_id, assigned_to, last_interaction, next_follow_up, onboarding_date, onboarding_status, notes, is_active)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
     `,
     [
       customer.customer_id,
@@ -129,6 +129,8 @@ async function createCustomer(customer, executor) {
       customer.assigned_to || null,
       customer.last_interaction || null,
       customer.next_follow_up || null,
+      customer.onboarding_date || null,
+      customer.onboarding_status || "pending",
       customer.notes || null,
     ]
   );
@@ -153,6 +155,8 @@ async function updateCustomer(customerId, companyId, updates, executor) {
     "assigned_to",
     "last_interaction",
     "next_follow_up",
+    "onboarding_date",
+    "onboarding_status",
     "notes",
     "is_active",
   ].forEach((column) => {
