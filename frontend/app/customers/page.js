@@ -57,6 +57,7 @@ export default function CustomersPage() {
   const [companyFilter, setCompanyFilter] = useState("all");
   const [teamFilter, setTeamFilter] = useState("all");
   const [saving, setSaving] = useState("");
+  const [createdByFilter, setCreatedByFilter] = useState("all");
 
   const role = session?.user?.role || "viewer";
   const isPlatformConsole = isPlatformConsoleRole(role);
@@ -64,6 +65,8 @@ export default function CustomersPage() {
   const canDelete = ["super-admin","platform-admin","platform-manager","admin","manager"].includes(role);
   const teamCompanyId = isPlatformConsole ? (companyFilter !== "all" ? companyFilter : "") : resolveSessionCompanyId(session);
   const selectedTeam = useMemo(()=>teams.find(t=>t.team_id===teamFilter)||null,[teamFilter,teams]);
+
+  const createdByOptions = useMemo(()=>[...new Set(customers.map(c=>c.created_by_name).filter(Boolean))].sort(),[customers]);
 
   const filtered = useMemo(()=>{
     const q = search.trim().toLowerCase();
@@ -73,6 +76,7 @@ export default function CustomersPage() {
       const has = Boolean(c.next_follow_up);
       return (!q||txt.includes(q)) &&
         (statusFilter==="all"||c.status===statusFilter) &&
+        (createdByFilter==="all"||c.created_by_name===createdByFilter) &&
         (followUpFilter==="all"||(followUpFilter==="scheduled"&&has)||(followUpFilter==="upcoming"&&has&&!overdue)||(followUpFilter==="overdue"&&overdue)||(followUpFilter==="none"&&!has));
     });
     list.sort((a,b)=>{
@@ -86,7 +90,7 @@ export default function CustomersPage() {
       return new Date(b.updated_at||b.created_at||0)-new Date(a.updated_at||a.created_at||0);
     });
     return list;
-  },[customers,followUpFilter,search,sortBy,statusFilter]);
+  },[customers,createdByFilter,followUpFilter,search,sortBy,statusFilter]);
 
   const stats = useMemo(()=>({
     total: customers.length,
@@ -195,7 +199,7 @@ export default function CustomersPage() {
 
         {/* ── Filters ── */}
         <div className={`${C.panel} px-4 py-4`}>
-          <div className={`grid gap-3 ${isPlatformConsole||teams.length>1?"xl:grid-cols-6":"xl:grid-cols-4"}`}>
+          <div className={`grid gap-3 ${isPlatformConsole||teams.length>1?"xl:grid-cols-7":"xl:grid-cols-5"}`}>
             <div className="relative xl:col-span-2">
               <DashboardIcon name="leads" className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input className={`${C.input} pl-10`} value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search name, company, email, phone…" />
@@ -224,6 +228,12 @@ export default function CustomersPage() {
               <option value="overdue">Overdue</option>
               <option value="none">No follow-up</option>
             </select>
+            {canDelete && createdByOptions.length>1 ? (
+              <select className={C.input} value={createdByFilter} onChange={e=>setCreatedByFilter(e.target.value)}>
+                <option value="all">All creators</option>
+                {createdByOptions.map(n=><option key={n} value={n}>{n}</option>)}
+              </select>
+            ) : null}
             <select className={C.input} value={sortBy} onChange={e=>setSortBy(e.target.value)}>
               <option value="recent">Most recent</option>
               <option value="name">Company name</option>
