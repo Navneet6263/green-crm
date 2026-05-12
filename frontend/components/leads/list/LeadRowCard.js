@@ -47,7 +47,7 @@ export default function LeadRowCard({
   const avatarClass = productHex ? "" : avatarBg(primaryName);
 
   return (
-    <article className={`w-full overflow-hidden rounded-2xl border transition duration-200 hover:-translate-y-0.5 hover:border-slate-200 hover:shadow-[0_10px_26px_rgba(15,23,42,0.06)] ${selected ? "border-amber-300 bg-amber-50/45 shadow-[0_8px_22px_rgba(203,169,82,0.14)]" : "border-slate-100 bg-white shadow-sm"}`}>
+    <article className={`w-full rounded-2xl border transition duration-200 hover:-translate-y-0.5 hover:border-slate-200 hover:shadow-[0_10px_26px_rgba(15,23,42,0.06)] ${selected ? "border-amber-300 bg-amber-50/45 shadow-[0_8px_22px_rgba(203,169,82,0.14)]" : "border-slate-100 bg-white shadow-sm"}`}>
       <div className="space-y-3 px-3.5 py-3.5 sm:px-4">
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
           <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-start gap-3">
@@ -84,7 +84,7 @@ export default function LeadRowCard({
             </button>
           </div>
 
-          <div className="grid w-full gap-1.5 sm:grid-cols-[minmax(190px,1fr)_auto] sm:items-end lg:w-auto lg:min-w-[245px] lg:grid-cols-1">
+          <div className="grid w-full gap-1.5 sm:grid-cols-[minmax(190px,1fr)_auto] sm:items-end lg:w-auto lg:min-w-[260px] lg:grid-cols-1">
             {canEdit ? (
               <div className="min-w-0">
                 <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-slate-400">Lead Status</p>
@@ -98,10 +98,10 @@ export default function LeadRowCard({
                 />
               </div>
             ) : null}
-            <div className={`grid gap-1.5 ${canEdit ? "grid-cols-2 sm:w-[190px] lg:w-full" : "grid-cols-1 sm:w-[90px] lg:w-full"}`}>
+            <div className="flex flex-wrap gap-1.5">
               <Link prefetch={false} href={`/leads/${lead.lead_id}`} className={ACTION_BTN}>View</Link>
               {canEdit ? <Link prefetch={false} href={`/leads/${lead.lead_id}/edit`} className={ACTION_BTN}>Edit</Link> : null}
-              {canEdit ? <LeadFollowUpStatusButton className={`${FOLLOW_UP_BTN} col-span-2`} lead={lead} onSaved={onInlineNoteSaved} token={sessionToken} /> : null}
+              {canEdit ? <LeadFollowUpStatusButton className={FOLLOW_UP_BTN} lead={lead} onSaved={onInlineNoteSaved} token={sessionToken} /> : null}
             </div>
           </div>
         </div>

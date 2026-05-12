@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { apiRequest } from "../../lib/api";
 
 const FIELD = "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-amber-400 focus:ring-2 focus:ring-amber-50";
@@ -83,7 +84,7 @@ export default function LeadFollowUpStatusButton({ className = "", lead, onSaved
         Follow-up Status
       </button>
 
-      {open ? (
+      {open ? createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4 backdrop-blur-sm">
           <div className="w-full max-w-2xl rounded-2xl border border-slate-100 bg-white shadow-2xl">
             {/* Header */}
@@ -176,7 +177,7 @@ export default function LeadFollowUpStatusButton({ className = "", lead, onSaved
             </div>
           </div>
         </div>
-      ) : null}
+      , document.body) : null}
     </>
   );
 }
