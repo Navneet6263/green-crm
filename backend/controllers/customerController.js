@@ -50,6 +50,11 @@ async function removeMember(req, res) {
   res.json({ data });
 }
 
+async function listActivities(req, res) {
+  const data = await customerService.listCustomerActivities(req.auth, req.params.customerId, req.query);
+  res.json(data);
+}
+
 module.exports = {
   addFollowUp,
   addMember,
@@ -57,6 +62,7 @@ module.exports = {
   create,
   getOne,
   list,
+  listActivities,
   listMembers,
   remove,
   removeMember,

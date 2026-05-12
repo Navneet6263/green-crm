@@ -1,5 +1,6 @@
 const customerRepository = require("../repositories/customerRepository");
 const customerMemberRepository = require("../repositories/customerMemberRepository");
+const customerActivityRepository = require("../repositories/customerActivityRepository");
 const userRepository = require("../repositories/userRepository");
 const auditRepository = require("../repositories/auditRepository");
 const { ROLES } = require("../constants/roles");
@@ -183,6 +184,16 @@ async function createCustomer(auth, payload) {
     onboarding_status: payload.onboarding_status || "pending",
     product_id: payload.product_id || null,
     notes: payload.notes || null,
+    created_by: auth.userId,
+  });
+
+  // Log creation activity
+  await customerActivityRepository.createActivity({
+    company_id: companyId,
+    customer_id: customer.customer_id,
+    type: "created",
+    description: `Customer created for ${customer.company_name}`,
+    created_by: auth.userId,
   });
 
   await auditRepository.createLog({
@@ -263,6 +274,15 @@ async function updateCustomer(auth, customerId, payload) {
     },
   });
 
+  // Log update activity
+  await customerActivityRepository.createActivity({
+    company_id: customer.company_id,
+    customer_id: updated.customer_id,
+    type: "updated",
+    description: `Customer details updated by ${auth.name || auth.email}`,
+    created_by: auth.userId,
+  });
+
   return updated;
 }
 
@@ -278,11 +298,21 @@ async function addCustomerNote(auth, customerId, payload) {
     throw new AppError("Note content is required.");
   }
 
-  const entry = `[${new Date().toISOString()}] ${auth.name}: ${String(payload.content).trim()}`;
+  const content = String(payload.content).trim();
+  const entry = `[${new Date().toISOString()}] ${auth.name}: ${content}`;
   const notes = customer.notes ? `${customer.notes}\n${entry}` : entry;
   const updated = await customerRepository.updateCustomer(customer.customer_id, customer.company_id, {
     notes,
     last_interaction: new Date(),
+  });
+
+  // Log note activity
+  await customerActivityRepository.createActivity({
+    company_id: customer.company_id,
+    customer_id: customer.customer_id,
+    type: "note",
+    description: content,
+    created_by: auth.userId,
   });
 
   return updated;
@@ -299,6 +329,15 @@ async function addCustomerFollowUp(auth, customerId, payload) {
     last_interaction: new Date(),
   });
 
+  // Log follow-up activity
+  await customerActivityRepository.createActivity({
+    company_id: customer.company_id,
+    customer_id: customer.customer_id,
+    type: "follow_up",
+    description: `Follow-up scheduled for ${new Date(payload.next_follow_up).toLocaleDateString("en-IN")}`,
+    created_by: auth.userId,
+  });
+
   return updated;
 }
 
@@ -312,20 +351,55 @@ async function addCustomerMember(auth, customerId, payload) {
   if (!payload.user_id) throw new AppError("user_id is required.");
   const user = await userRepository.getUserInCompany(payload.user_id, customer.company_id);
   if (!user) throw new AppError("User must belong to the same company.", 400);
+
   await customerMemberRepository.addMember({
     company_id: customer.company_id,
     customer_id: customer.customer_id,
-    user_id: payload.user_id,
+    user_id: user.user_id,
     role: payload.role || "collaborator",
     added_by: auth.userId,
   });
+
+  // Log member-added activity
+  await customerActivityRepository.createActivity({
+    company_id: customer.company_id,
+    customer_id: customer.customer_id,
+    type: "member_added",
+    description: `${user.name || user.user_id} added as ${payload.role || "collaborator"}`,
+    created_by: auth.userId,
+  });
+
   return customerMemberRepository.listMembers(customer.customer_id, customer.company_id);
 }
 
 async function removeCustomerMember(auth, customerId, userId) {
   const customer = await getCustomer(auth, customerId);
+  const members = await customerMemberRepository.listMembers(customer.customer_id, customer.company_id);
+  const target = members.find((m) => m.user_id === userId);
+
   await customerMemberRepository.removeMember(customer.customer_id, userId);
+
+  // Log member-removed activity
+  await customerActivityRepository.createActivity({
+    company_id: customer.company_id,
+    customer_id: customer.customer_id,
+    type: "member_removed",
+    description: `${target?.user_name || userId} removed from customer`,
+    created_by: auth.userId,
+  });
+
   return { removed: true };
+}
+
+async function listCustomerActivities(auth, customerId, query = {}) {
+  const customer = await getCustomer(auth, customerId);
+  const pagination = parsePagination(query);
+  const { rows, total } = await customerActivityRepository.listActivities(
+    customer.customer_id,
+    customer.company_id,
+    pagination
+  );
+  return buildPaginatedResult(rows, total, pagination);
 }
 
 module.exports = {
@@ -335,6 +409,7 @@ module.exports = {
   createCustomer,
   deleteCustomer,
   getCustomer,
+  listCustomerActivities,
   listCustomerMembers,
   listCustomers,
   removeCustomerMember,

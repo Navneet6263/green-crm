@@ -62,11 +62,13 @@ async function listCustomers(filters, pagination, executor) {
       SELECT
         c.*,
         u.name AS assigned_to_name,
+        creator.name AS created_by_name,
         t.name AS team_name,
         t.code AS team_code,
         p.name AS product_name
       FROM customers c
       LEFT JOIN users u ON u.user_id = c.assigned_to
+      LEFT JOIN users creator ON creator.user_id = c.created_by
       LEFT JOIN teams t ON t.team_id = c.team_id
       LEFT JOIN products p ON p.product_id = c.product_id
       ${whereClause}
@@ -97,11 +99,13 @@ async function getCustomerById(customerId, companyId = null, executor) {
       SELECT TOP 1
         c.*,
         u.name AS assigned_to_name,
+        creator.name AS created_by_name,
         t.name AS team_name,
         t.code AS team_code,
         p.name AS product_name
       FROM customers c
       LEFT JOIN users u ON u.user_id = c.assigned_to
+      LEFT JOIN users creator ON creator.user_id = c.created_by
       LEFT JOIN teams t ON t.team_id = c.team_id
       LEFT JOIN products p ON p.product_id = c.product_id
       WHERE ${conditions.join(" AND ")}
@@ -116,8 +120,10 @@ async function createCustomer(customer, executor) {
   await active.query(
     `
       INSERT INTO customers
-        (customer_id, company_id, name, company_name, email, phone, converted_from_lead_id, total_value, status, team_id, assigned_to, last_interaction, next_follow_up, onboarding_date, onboarding_status, product_id, notes, is_active)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+        (customer_id, company_id, name, company_name, email, phone, converted_from_lead_id,
+         total_value, status, team_id, assigned_to, last_interaction, next_follow_up,
+         onboarding_date, onboarding_status, product_id, notes, created_by, is_active)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
     `,
     [
       customer.customer_id,
@@ -137,6 +143,7 @@ async function createCustomer(customer, executor) {
       customer.onboarding_status || "pending",
       customer.product_id || null,
       customer.notes || null,
+      customer.created_by || null,
     ]
   );
 

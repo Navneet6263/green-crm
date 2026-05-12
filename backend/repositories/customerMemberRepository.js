@@ -19,15 +19,26 @@ async function listMembers(customerId, companyId, executor) {
 
 async function addMember(data, executor) {
   const active = getExecutor(executor);
-  await active.query(
-    `MERGE INTO customer_members AS target
-     USING (SELECT ? AS customer_id, ? AS user_id) AS source
-     ON target.customer_id = source.customer_id AND target.user_id = source.user_id
-     WHEN MATCHED THEN UPDATE SET is_active = 1, role = ?
-     WHEN NOT MATCHED THEN INSERT (company_id, customer_id, user_id, role, added_by)
-       VALUES (?, ?, ?, ?, ?);`,
-    [data.customer_id, data.user_id, data.role || "collaborator", data.company_id, data.customer_id, data.user_id, data.role || "collaborator", data.added_by || null]
+  // Check if member already exists (active or inactive)
+  const [existing] = await active.query(
+    `SELECT TOP 1 id, is_active FROM customer_members WHERE customer_id = ? AND user_id = ?`,
+    [data.customer_id, data.user_id]
   );
+
+  if (existing.length) {
+    // Re-activate if previously removed
+    await active.query(
+      `UPDATE customer_members SET is_active = 1, role = ?, added_by = ? WHERE customer_id = ? AND user_id = ?`,
+      [data.role || "collaborator", data.added_by || null, data.customer_id, data.user_id]
+    );
+  } else {
+    await active.query(
+      `INSERT INTO customer_members (company_id, customer_id, user_id, role, added_by, is_active)
+       VALUES (?, ?, ?, ?, ?, 1)`,
+      [data.company_id, data.customer_id, data.user_id, data.role || "collaborator", data.added_by || null]
+    );
+  }
+
   return { added: true };
 }
 

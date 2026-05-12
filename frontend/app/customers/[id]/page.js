@@ -80,12 +80,22 @@ export default function CustomerDetailPage() {
   const [savingFollowUp, setSavingFollowUp] = useState(false);
   const [completingFollowUp, setCompletingFollowUp] = useState(false);
   const [members, setMembers] = useState([]);
+  const [activities, setActivities] = useState([]);
+  const [addingMember, setAddingMember] = useState(false);
+  const [availableUsers, setAvailableUsers] = useState([]);
+  const [pendingMember, setPendingMember] = useState("");
 
   async function load(s) {
-    const r = await apiRequest(`/customers/${params.id}`,{token:s.token});
+    const r = await apiRequest(`/customers/${params.id}`, { token: s.token });
     setCustomer(r);
-    setFollowUp(r.next_follow_up ? String(r.next_follow_up).slice(0,16) : "");
-    apiRequest(`/customers/${params.id}/members`,{token:s.token}).then(res => setMembers(res.data || [])).catch(() => {});
+    setFollowUp(r.next_follow_up ? String(r.next_follow_up).slice(0, 16) : "");
+    // Fix: response wrapper returns array directly for list endpoints
+    apiRequest(`/customers/${params.id}/members`, { token: s.token })
+      .then(res => setMembers(Array.isArray(res) ? res : (res?.data || res?.items || [])))
+      .catch(() => {});
+    apiRequest(`/customers/${params.id}/activities?page_size=20`, { token: s.token })
+      .then(res => setActivities(res?.items || res?.data || []))
+      .catch(() => {});
   }
 
   useEffect(()=>{
@@ -129,6 +139,38 @@ export default function CustomerDetailPage() {
       setNotice("Follow-up completed."); await load(session);
     } catch(err){ setError(formatScopedError(err,"Could not complete follow-up.")); }
     finally { setCompletingFollowUp(false); }
+  }
+
+  async function loadAvailableUsers() {
+    if (!session?.token || !customer) return;
+    try {
+      const res = await apiRequest(`/users?page_size=100&company_id=${customer.company_id}`, { token: session.token });
+      const all = res?.items || res?.data || [];
+      // Exclude owner and already-added members
+      const memberIds = new Set(members.map(m => m.user_id));
+      setAvailableUsers(all.filter(u => u.user_id !== customer.assigned_to && !memberIds.has(u.user_id)));
+    } catch (_) {}
+  }
+
+  async function addMemberInline(e) {
+    e.preventDefault();
+    if (!pendingMember) return;
+    setAddingMember(true); setError(""); setNotice("");
+    try {
+      await apiRequest(`/customers/${params.id}/members`, { method: "POST", token: session.token, body: { user_id: pendingMember } });
+      setPendingMember(""); setNotice("Person added.");
+      await load(session);
+    } catch (err) { setError(formatScopedError(err, "Could not add person.")); }
+    finally { setAddingMember(false); }
+  }
+
+  async function removeMemberInline(userId) {
+    setError(""); setNotice("");
+    try {
+      await apiRequest(`/customers/${params.id}/members/${userId}`, { method: "DELETE", token: session.token });
+      setNotice("Person removed.");
+      await load(session);
+    } catch (err) { setError(formatScopedError(err, "Could not remove person.")); }
   }
 
   return (
@@ -275,26 +317,99 @@ export default function CustomerDetailPage() {
 
                 {/* People on this customer */}
                 <div className={`${C.panel} px-5 py-5`}>
-                  <p className={C.kicker}>People</p>
-                  <h2 className="mt-1 mb-3 text-lg font-bold text-slate-900">Team Members</h2>
+                  <div className="mb-3 flex items-center justify-between gap-2">
+                    <div>
+                      <p className={C.kicker}>People</p>
+                      <h2 className="mt-0.5 text-lg font-bold text-slate-900">Team Members</h2>
+                    </div>
+                    <button
+                      className="inline-flex items-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 transition"
+                      type="button"
+                      onClick={() => { setAddingMember(v => !v); if (!availableUsers.length) loadAvailableUsers(); }}
+                    >
+                      <DashboardIcon name="customers" className="h-3.5 w-3.5" />
+                      {addingMember ? "Cancel" : "+ Add Person"}
+                    </button>
+                  </div>
+
+                  {addingMember ? (
+                    <form className="mb-3 flex gap-2" onSubmit={addMemberInline}>
+                      <select
+                        className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-50"
+                        value={pendingMember}
+                        onChange={e => setPendingMember(e.target.value)}
+                      >
+                        <option value="">Select team member…</option>
+                        {availableUsers.map(u => (
+                          <option key={u.user_id} value={u.user_id}>{u.name} · {u.role}</option>
+                        ))}
+                      </select>
+                      <button
+                        className="rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-800 hover:bg-emerald-100 disabled:opacity-50 transition"
+                        type="submit"
+                        disabled={!pendingMember || addingMember}
+                      >
+                        {addingMember ? "Adding…" : "Add"}
+                      </button>
+                    </form>
+                  ) : null}
+
                   <div className="space-y-2">
+                    {/* Owner — always shown first */}
                     <div className="flex items-center gap-3 rounded-xl bg-amber-50 border border-amber-100 px-3 py-2.5">
-                      <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-amber-200 text-xs font-bold text-amber-800">{initials(customer.assigned_to_name||"O")}</div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-slate-900">{customer.assigned_to_name||"Unassigned"}</p>
+                      <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-amber-200 text-xs font-bold text-amber-800">{initials(customer.assigned_to_name || "O")}</div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-slate-900">{customer.assigned_to_name || "Unassigned"}</p>
                         <p className="text-xs text-amber-700">Owner</p>
                       </div>
                     </div>
-                    {members.map(m=>(
+
+                    {/* Collaborators */}
+                    {members.map(m => (
                       <div key={m.user_id} className="flex items-center gap-3 rounded-xl bg-slate-50 border border-slate-100 px-3 py-2.5">
-                        <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-emerald-100 text-xs font-bold text-emerald-700">{initials(m.user_name||"M")}</div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold text-slate-900">{m.user_name}</p>
-                          <p className="text-xs text-slate-400">{m.user_role} · {m.role||"Collaborator"}</p>
+                        <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-emerald-100 text-xs font-bold text-emerald-700">{initials(m.user_name || "M")}</div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-slate-900">{m.user_name || "Unknown"}</p>
+                          <p className="text-xs text-slate-400">{m.user_role} · {m.role || "Collaborator"}</p>
                         </div>
+                        <button
+                          className="shrink-0 rounded-lg border border-rose-100 bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-500 hover:bg-rose-100 transition"
+                          type="button"
+                          onClick={() => removeMemberInline(m.user_id)}
+                          title="Remove"
+                        >
+                          ×
+                        </button>
                       </div>
                     ))}
-                    {!members.length ? <p className="text-xs text-slate-400">No additional members assigned.</p> : null}
+
+                    {!members.length ? (
+                      <p className="rounded-xl border border-dashed border-slate-200 px-4 py-5 text-center text-xs text-slate-400">
+                        No collaborators yet. Use "+ Add Person" to assign team members.
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+
+                {/* Activity Feed */}
+                <div className={`${C.panel} px-5 py-5`}>
+                  <p className={C.kicker}>Activity</p>
+                  <h2 className="mt-1 mb-4 text-lg font-bold text-slate-900">Timeline</h2>
+                  <div className="space-y-2">
+                    {activities.length ? activities.map((act, i) => (
+                      <div key={act.id || i} className="flex gap-3">
+                        <div className="mt-1 h-2 w-2 shrink-0 rounded-full bg-emerald-400 mt-2" />
+                        <div className="min-w-0 flex-1 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5">
+                          <div className="flex flex-wrap items-center justify-between gap-1">
+                            <span className="text-xs font-semibold text-slate-700">{act.created_by_name || "System"}</span>
+                            <span className="text-[10px] text-slate-400">{act.created_at ? when(act.created_at) : ""}</span>
+                          </div>
+                          <p className="mt-1 text-xs text-slate-600 leading-5">{act.description || act.type}</p>
+                        </div>
+                      </div>
+                    )) : (
+                      <p className="rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center text-xs text-slate-400">No activity recorded yet.</p>
+                    )}
                   </div>
                 </div>
               </div>

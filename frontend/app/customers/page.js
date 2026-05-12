@@ -58,6 +58,10 @@ export default function CustomersPage() {
   const [teamFilter, setTeamFilter] = useState("all");
   const [saving, setSaving] = useState("");
   const [createdByFilter, setCreatedByFilter] = useState("all");
+  // Quick-add-person state: { customerId, users, loading }
+  const [quickAdd, setQuickAdd] = useState(null);
+  const [quickAddUser, setQuickAddUser] = useState("");
+  const [quickAddSaving, setQuickAddSaving] = useState(false);
 
   const role = session?.user?.role || "viewer";
   const isPlatformConsole = isPlatformConsoleRole(role);
@@ -154,6 +158,32 @@ export default function CustomersPage() {
     const rows=[["Customer","Company","Email","Phone","Status","Owner","Team","Total Value","Next Follow-up","Latest Note"],...filtered.map(c=>[c.name||"",c.company_name||"",c.email||"",c.phone||"",c.status||"",c.assigned_to_name||"Unassigned",teamBadgeLabel(c)||"",Number(c.total_value||0),c.next_follow_up||"",latestNote(c.notes)||""])];
     const blob=new Blob([rows.map(r=>r.map(cell=>`"${String(cell).replace(/"/g,'""')}"`).join(",")).join("\n")],{type:"text/csv;charset=utf-8;"});
     const url=window.URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download=`customers-${new Date().toISOString().slice(0,10)}.csv`; a.click(); window.URL.revokeObjectURL(url);
+  }
+
+  async function openQuickAdd(customer) {
+    setQuickAdd({ customerId: customer.customer_id, users: [], loading: true });
+    setQuickAddUser("");
+    try {
+      const res = await apiRequest(`/users?page_size=100&company_id=${customer.company_id}`, { token: session.token });
+      const all = res?.items || res?.data || [];
+      // Fetch existing members to exclude them
+      const membersRes = await apiRequest(`/customers/${customer.customer_id}/members`, { token: session.token }).catch(() => []);
+      const memberIds = new Set((Array.isArray(membersRes) ? membersRes : (membersRes?.data || membersRes?.items || [])).map(m => m.user_id));
+      const available = all.filter(u => u.user_id !== customer.assigned_to && !memberIds.has(u.user_id));
+      setQuickAdd(q => ({ ...q, users: available, loading: false }));
+    } catch (_) {
+      setQuickAdd(q => ({ ...q, loading: false }));
+    }
+  }
+
+  async function submitQuickAdd(customerId) {
+    if (!quickAddUser) return;
+    setQuickAddSaving(true); setError("");
+    try {
+      await apiRequest(`/customers/${customerId}/members`, { method: "POST", token: session.token, body: { user_id: quickAddUser } });
+      setQuickAdd(null); setQuickAddUser("");
+    } catch (e) { setError(formatScopedError(e, "Could not add person.")); }
+    finally { setQuickAddSaving(false); }
   }
 
   function exportHtml() {
@@ -274,9 +304,52 @@ export default function CustomersPage() {
                     <div className="flex shrink-0 gap-2">
                       <Link className={Btn.ghost} href={`/customers/${customer.customer_id}`}><DashboardIcon name="message" className="h-3.5 w-3.5" />View</Link>
                       {canManage ? <Link className={Btn.ghost} href={`/customers/${customer.customer_id}/edit`}><DashboardIcon name="settings" className="h-3.5 w-3.5" />Edit</Link> : null}
+                      {canManage ? (
+                        <button
+                          className={Btn.ghost}
+                          type="button"
+                          title="Add person to this customer"
+                          onClick={() => quickAdd?.customerId === customer.customer_id ? setQuickAdd(null) : openQuickAdd(customer)}
+                        >
+                          <DashboardIcon name="customers" className="h-3.5 w-3.5" />
+                          People
+                        </button>
+                      ) : null}
                       {canDelete ? <button className={Btn.danger} type="button" onClick={()=>deleteCustomer(customer.customer_id,customer.company_name||customer.name||"customer")} disabled={saving===customer.customer_id}><DashboardIcon name="audit" className="h-3.5 w-3.5" /></button> : null}
                     </div>
                   </div>
+
+                  {/* Quick-add people inline panel */}
+                  {quickAdd?.customerId === customer.customer_id ? (
+                    <div className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3">
+                      <p className="mb-2 text-xs font-bold uppercase tracking-widest text-emerald-700">Add Person to This Customer</p>
+                      {quickAdd.loading ? (
+                        <p className="text-xs text-slate-400">Loading team members…</p>
+                      ) : quickAdd.users.length ? (
+                        <div className="flex gap-2">
+                          <select
+                            className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-400"
+                            value={quickAddUser}
+                            onChange={e => setQuickAddUser(e.target.value)}
+                          >
+                            <option value="">Select team member…</option>
+                            {quickAdd.users.map(u => <option key={u.user_id} value={u.user_id}>{u.name} · {u.role}</option>)}
+                          </select>
+                          <button
+                            className="rounded-xl border border-emerald-300 bg-emerald-100 px-4 py-2 text-sm font-semibold text-emerald-800 hover:bg-emerald-200 disabled:opacity-50 transition"
+                            type="button"
+                            disabled={!quickAddUser || quickAddSaving}
+                            onClick={() => submitQuickAdd(customer.customer_id)}
+                          >
+                            {quickAddSaving ? "Adding…" : "Add"}
+                          </button>
+                          <button className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-500 hover:text-slate-800 transition" type="button" onClick={() => setQuickAdd(null)}>✕</button>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-slate-400">No available team members to add.</p>
+                      )}
+                    </div>
+                  ) : null}
                   {/* Meta Grid */}
                   <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-slate-50 pt-3 sm:grid-cols-3 lg:grid-cols-5">
                     <div><p className={C.kicker}>Owner</p><p className="text-xs font-semibold text-slate-700 truncate">{customer.assigned_to_name||"Unassigned"}</p></div>

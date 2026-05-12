@@ -19,5 +19,6 @@ router.post("/:customerId/followups", asyncHandler(customerController.addFollowU
 router.get("/:customerId/members", asyncHandler(customerController.listMembers));
 router.post("/:customerId/members", asyncHandler(customerController.addMember));
 router.delete("/:customerId/members/:userId", asyncHandler(customerController.removeMember));
+router.get("/:customerId/activities", asyncHandler(customerController.listActivities));
 
 module.exports = router;
