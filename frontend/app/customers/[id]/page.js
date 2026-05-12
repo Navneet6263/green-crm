@@ -195,6 +195,7 @@ export default function CustomerDetailPage() {
                     <Field label="Phone" value={customer.phone} />
                     <Field label="Industry" value={profile.industry} />
                     <Field label="Website" value={profile.website} />
+                    <Field label="Product" value={customer.product_name||"—"} />
                     <Field label="Owner" value={customer.assigned_to_name||"Unassigned"} />
                     <Field label="Team" value={teamBadgeLabel(customer)||"Auto team"} />
                     <Field label="Status" value={customer.status||"active"} />

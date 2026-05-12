@@ -243,40 +243,39 @@ export default function CustomersPage() {
               const overdue = isCustomerFollowUpOverdue(customer.next_follow_up);
               const note = latestNote(customer.notes);
               return (
-                <article key={customer.customer_id} className={`${C.panel} flex flex-col gap-4 px-5 py-4 sm:flex-row sm:items-center`}>
-                  {/* Avatar + identity */}
-                  <div className="flex min-w-0 flex-1 items-center gap-3.5">
-                    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-600 text-sm font-bold text-white">
-                      {initials(customer.name||customer.company_name)}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="truncate text-sm font-bold text-slate-900">{customer.name||"Unnamed"}</h3>
-                        <CustomerStatusBadge status={customer.status} />
+                <article key={customer.customer_id} className={`${C.panel} px-5 py-4`}>
+                  <div className="flex items-start justify-between gap-4">
+                    {/* Left: Avatar + Identity */}
+                    <div className="flex min-w-0 items-center gap-3.5">
+                      <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-600 text-sm font-bold text-white">
+                        {initials(customer.name||customer.company_name)}
                       </div>
-                      <p className="truncate text-xs text-slate-500">{customer.company_name||"No company"}</p>
-                      <p className="truncate text-xs text-slate-400">{[customer.email,customer.phone].filter(Boolean).join(" · ")||"No contact"}</p>
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="truncate text-sm font-bold text-slate-900">{customer.name||"Unnamed"}</h3>
+                          <CustomerStatusBadge status={customer.status} />
+                          <OnboardingStatusBadge status={customer.onboarding_status} />
+                        </div>
+                        <p className="truncate text-xs text-slate-500">{customer.company_name||"No company"}{customer.product_name ? ` · ${customer.product_name}` : ""}</p>
+                        <p className="truncate text-xs text-slate-400">{[customer.email,customer.phone].filter(Boolean).join(" · ")||"No contact"}</p>
+                      </div>
+                    </div>
+                    {/* Right: Actions */}
+                    <div className="flex shrink-0 gap-2">
+                      <Link className={Btn.ghost} href={`/customers/${customer.customer_id}`}><DashboardIcon name="message" className="h-3.5 w-3.5" />View</Link>
+                      {canManage ? <Link className={Btn.ghost} href={`/customers/${customer.customer_id}/edit`}><DashboardIcon name="settings" className="h-3.5 w-3.5" />Edit</Link> : null}
+                      {canDelete ? <button className={Btn.danger} type="button" onClick={()=>deleteCustomer(customer.customer_id,customer.company_name||customer.name||"customer")} disabled={saving===customer.customer_id}><DashboardIcon name="audit" className="h-3.5 w-3.5" /></button> : null}
                     </div>
                   </div>
-
-                  {/* Meta */}
-                  <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-slate-500 sm:shrink-0">
-                    <span><span className={C.kicker}>Owner</span><br /><strong className="text-slate-700">{customer.assigned_to_name||"Unassigned"}</strong></span>
-                    <span><span className={C.kicker}>Team</span><br /><strong className="text-slate-700">{teamBadgeLabel(customer)||"—"}</strong></span>
-                    <span><span className={C.kicker}>Value</span><br /><strong className="text-slate-700">{money(customer.total_value)}</strong></span>
-                    <span><span className={C.kicker}>Follow-up</span><br /><CustomerFollowUpBadge value={customer.next_follow_up} /></span>
-                    <span><span className={C.kicker}>Onboarding</span><br /><OnboardingStatusBadge status={customer.onboarding_status} /></span>
+                  {/* Meta Grid */}
+                  <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-slate-50 pt-3 sm:grid-cols-3 lg:grid-cols-5">
+                    <div><p className={C.kicker}>Owner</p><p className="text-xs font-semibold text-slate-700 truncate">{customer.assigned_to_name||"Unassigned"}</p></div>
+                    <div><p className={C.kicker}>Team</p><p className="text-xs font-semibold text-slate-700 truncate">{teamBadgeLabel(customer)||"—"}</p></div>
+                    <div><p className={C.kicker}>Product</p><p className="text-xs font-semibold text-slate-700 truncate">{customer.product_name||"—"}</p></div>
+                    <div><p className={C.kicker}>Value</p><p className="text-xs font-semibold text-slate-700">{money(customer.total_value)}</p></div>
+                    <div><p className={C.kicker}>Follow-up</p><CustomerFollowUpBadge value={customer.next_follow_up} /></div>
                   </div>
-
-                  {/* Note preview */}
-                  {note ? <p className="hidden max-w-[220px] truncate text-xs text-slate-400 xl:block" title={note}>{note}</p> : null}
-
-                  {/* Actions */}
-                  <div className="flex shrink-0 gap-2">
-                    <Link className={Btn.ghost} href={`/customers/${customer.customer_id}`}><DashboardIcon name="message" className="h-3.5 w-3.5" />View</Link>
-                    {canManage ? <Link className={Btn.ghost} href={`/customers/${customer.customer_id}/edit`}><DashboardIcon name="settings" className="h-3.5 w-3.5" />Edit</Link> : null}
-                    {canDelete ? <button className={Btn.danger} type="button" onClick={()=>deleteCustomer(customer.customer_id,customer.company_name||customer.name||"customer")} disabled={saving===customer.customer_id}><DashboardIcon name="audit" className="h-3.5 w-3.5" /></button> : null}
-                  </div>
+                  {note ? <p className="mt-2 truncate text-xs text-slate-400" title={note}>💬 {note}</p> : null}
                 </article>
               );
             })}

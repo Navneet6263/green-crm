@@ -511,6 +511,7 @@ const schemaStatements = [
     next_follow_up          DATETIME      NULL,
     onboarding_date         DATETIME      NULL,
     onboarding_status       VARCHAR(30)   NOT NULL DEFAULT 'pending',
+    product_id              VARCHAR(20)   NULL,
     notes                   LONGTEXT      NULL,
     is_active               TINYINT(1)    NOT NULL DEFAULT 1,
     created_at              DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,

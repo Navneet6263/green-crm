@@ -9,7 +9,7 @@ import { buildCustomerNotes } from "../../../lib/customerProfile";
 import { loadSession } from "../../../lib/session";
 import {
   canManageScopedAssignments, formatScopedError, isPlatformConsoleRole,
-  loadTeamScopeResources, resolveScopedCompanyId, shouldShowTeamSelector,
+  loadTeamScopeResources, loadProductsForScope, resolveScopedCompanyId, shouldShowTeamSelector,
   scopedUsersEmptyMessage, teamBadgeLabel, teamSelectLabel, teamSelectionRequiredMessage,
 } from "../../../lib/teamScope";
 import { AlertError } from "../../../components/ui/Alert";
@@ -29,7 +29,7 @@ function initials(v = "C") { return String(v).split(" ").filter(Boolean).slice(0
 function field(form, key, val) { return { ...form, [key]: val }; }
 
 function createForm(companyId = "") {
-  return { company_id: companyId, name: "", company_name: "", email: "", phone: "", team_id: "", assigned_to: "", total_value: "", website: "", industry: "", business_summary: "", address_street: "", address_city: "", address_state: "", address_zip: "", country: "India", notes: "", onboarding_date: "", onboarding_status: "pending" };
+  return { company_id: companyId, name: "", company_name: "", email: "", phone: "", team_id: "", assigned_to: "", product_id: "", total_value: "", website: "", industry: "", business_summary: "", address_street: "", address_city: "", address_state: "", address_zip: "", country: "India", notes: "", onboarding_date: "", onboarding_status: "pending" };
 }
 
 function Section({ step, title, sub, children }) {
@@ -62,6 +62,7 @@ export default function NewCustomerPage() {
   const [companies, setCompanies] = useState([]);
   const [teams, setTeams] = useState([]);
   const [users, setUsers] = useState([]);
+  const [products, setProducts] = useState([]);
   const [form, setForm] = useState(createForm());
   const [members, setMembers] = useState([]);
   const [error, setError] = useState("");
@@ -111,6 +112,9 @@ export default function NewCustomerPage() {
         const r = await loadTeamScopeResources(session.token, { companyId, teamId: form.team_id, includeUsers: canAssign && !teamSelectionPending });
         if (ignore) return;
         setTeams(r.teams || []); setUsers(r.users || []);
+        const prods = await loadProductsForScope(session.token, { companyId, teamId: r.teamId });
+        if (ignore) return;
+        setProducts(prods || []);
         setForm(f => ({ ...f, team_id: r.teamId || "", assigned_to: (r.users || []).some(u => u.user_id === f.assigned_to) ? f.assigned_to : "" }));
       } catch (e) { if (!ignore) setError(formatScopedError(e, "Failed to load scope.")); }
       finally { if (!ignore) setResourceLoading(false); }
@@ -136,6 +140,7 @@ export default function NewCustomerPage() {
           total_value: Number(form.total_value || 0),
           onboarding_date: form.onboarding_date || null,
           onboarding_status: form.onboarding_status || "pending",
+          product_id: form.product_id || null,
           notes: buildCustomerNotes({ website: form.website.trim(), industry: form.industry.trim(), business_summary: form.business_summary.trim(), address_street: form.address_street.trim(), address_city: form.address_city.trim(), address_state: form.address_state.trim(), address_zip: form.address_zip.trim(), country: form.country.trim() }, form.notes),
         },
       });
@@ -253,7 +258,12 @@ export default function NewCustomerPage() {
 
           {/* Section 4 — Value & Note */}
           <Section step="04" title="Onboarding & Value" sub="Track onboarding status and commercial value">
-            <Label label="Onboarding Date"><input className={C.input} type="date" value={form.onboarding_date} onChange={set("onboarding_date")} /></Label>
+            <Label label="Product">
+              <select className={C.input} value={form.product_id} onChange={set("product_id")}>
+                <option value="">Select product…</option>
+                {products.map(p => <option key={p.product_id} value={p.product_id}>{p.name}</option>)}
+              </select>
+            </Label>
             <Label label="Onboarding Status">
               <select className={C.input} value={form.onboarding_status} onChange={set("onboarding_status")}>
                 <option value="pending">Onboarding Pending</option>
@@ -261,8 +271,8 @@ export default function NewCustomerPage() {
                 <option value="done">Onboarding Done</option>
               </select>
             </Label>
+            <Label label="Onboarding Date"><input className={C.input} type="date" value={form.onboarding_date} onChange={set("onboarding_date")} /></Label>
             <Label label="Total Value (₹)"><input className={C.input} type="number" value={form.total_value} onChange={set("total_value")} placeholder="0" /></Label>
-            <div />
             <Label label="Opening Note" span="sm:col-span-2">
               <textarea className={`${C.input} min-h-[110px] resize-y`} rows={4} value={form.notes} onChange={set("notes")} placeholder="Capture the first note, relationship context, or next action…" />
             </Label>

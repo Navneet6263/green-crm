@@ -15,6 +15,14 @@ BEGIN
   ALTER TABLE [dbo].[customers] ADD [onboarding_status] NVARCHAR(30) NOT NULL DEFAULT 'pending';
 END
 
+IF NOT EXISTS (
+  SELECT 1 FROM sys.columns
+  WHERE object_id = OBJECT_ID(N'dbo.customers') AND name = N'product_id'
+)
+BEGIN
+  ALTER TABLE [dbo].[customers] ADD [product_id] NVARCHAR(20) NULL;
+END
+
 -- Customer members table for multi-person assignment
 IF OBJECT_ID(N'dbo.customer_members', N'U') IS NULL
 BEGIN

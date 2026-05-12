@@ -8,7 +8,7 @@ import { apiRequest } from "../../../../lib/api";
 import { buildCustomerNotes, parseCustomerProfile, stripCustomerProfile } from "../../../../lib/customerProfile";
 import { loadSession } from "../../../../lib/session";
 import {
-  canManageScopedAssignments, formatScopedError, loadTeamScopeResources,
+  canManageScopedAssignments, formatScopedError, loadTeamScopeResources, loadProductsForScope,
   shouldShowTeamSelector, scopedUsersEmptyMessage, teamBadgeLabel,
   teamSelectLabel, teamSelectionRequiredMessage,
 } from "../../../../lib/teamScope";
@@ -31,7 +31,8 @@ function createForm(c = null) {
   return {
     name: c?.name || "", company_name: c?.company_name || "", email: c?.email || "", phone: c?.phone || "",
     status: c?.status || "active", total_value: String(c?.total_value || ""), team_id: c?.team_id || "",
-    assigned_to: c?.assigned_to || "", next_follow_up: c?.next_follow_up ? new Date(c.next_follow_up).toISOString().slice(0, 16) : "",
+    assigned_to: c?.assigned_to || "", product_id: c?.product_id || "",
+    next_follow_up: c?.next_follow_up ? new Date(c.next_follow_up).toISOString().slice(0, 16) : "",
     onboarding_date: c?.onboarding_date ? new Date(c.onboarding_date).toISOString().slice(0, 10) : "",
     onboarding_status: c?.onboarding_status || "pending",
     website: p.website || "", industry: p.industry || "", business_summary: p.business_summary || "",
@@ -71,6 +72,7 @@ export default function EditCustomerPage() {
   const [customer, setCustomer] = useState(null);
   const [users, setUsers] = useState([]);
   const [teams, setTeams] = useState([]);
+  const [products, setProducts] = useState([]);
   const [form, setForm] = useState(createForm());
   const [members, setMembers] = useState([]);
   const [error, setError] = useState("");
@@ -103,7 +105,8 @@ export default function EditCustomerPage() {
         const cid = c.company_id || s.user?.company_id || s.company?.company_id || "";
         const scope = await loadTeamScopeResources(s.token, { companyId: cid, teamId: c.team_id || "", includeUsers: allowAssign });
         const tms = scope.teams || [], urs = scope.users || [];
-        setCustomer(c); setTeams(tms); setUsers(urs);
+        const prods = await loadProductsForScope(s.token, { companyId: cid, teamId: scope.teamId });
+        setCustomer(c); setTeams(tms); setUsers(urs); setProducts(prods || []);
         setForm({ ...createForm(c), team_id: scope.teamId || "", assigned_to: urs.some(u => u.user_id === c.assigned_to) ? c.assigned_to : "" });
         apiRequest(`/customers/${params.id}/members`, { token: s.token }).then(r => setMembers((r.data || []).map(m => m.user_id))).catch(() => {});
       })
@@ -143,6 +146,7 @@ export default function EditCustomerPage() {
           next_follow_up: form.next_follow_up || null,
           onboarding_date: form.onboarding_date || null,
           onboarding_status: form.onboarding_status || "pending",
+          product_id: form.product_id || null,
           notes: buildCustomerNotes({ website: form.website.trim(), industry: form.industry.trim(), business_summary: form.business_summary.trim(), address_street: form.address_street.trim(), address_city: form.address_city.trim(), address_state: form.address_state.trim(), address_zip: form.address_zip.trim(), country: form.country.trim() }, stripCustomerProfile(customer?.notes), customer?.notes),
         },
       });
@@ -237,6 +241,12 @@ export default function EditCustomerPage() {
                   </select>
                 </Label>
                 <Label label="Onboarding Date"><input className={C.input} type="date" value={form.onboarding_date} onChange={set("onboarding_date")} /></Label>
+                <Label label="Product">
+                  <select className={C.input} value={form.product_id} onChange={set("product_id")}>
+                    <option value="">Select product…</option>
+                    {products.map(p => <option key={p.product_id} value={p.product_id}>{p.name}</option>)}
+                  </select>
+                </Label>
                 <Label label="Total Value (₹)"><input className={C.input} type="number" value={form.total_value} onChange={set("total_value")} /></Label>
                 <Label label="Next Follow-up"><input className={C.input} type="datetime-local" value={form.next_follow_up} onChange={set("next_follow_up")} /></Label>
                 {canAssign ? (

@@ -181,6 +181,7 @@ async function createCustomer(auth, payload) {
     next_follow_up: payload.next_follow_up || null,
     onboarding_date: payload.onboarding_date || null,
     onboarding_status: payload.onboarding_status || "pending",
+    product_id: payload.product_id || null,
     notes: payload.notes || null,
   });
 
@@ -245,6 +246,7 @@ async function updateCustomer(auth, customerId, payload) {
     next_follow_up: payload.next_follow_up !== undefined ? payload.next_follow_up : customer.next_follow_up,
     onboarding_date: payload.onboarding_date !== undefined ? payload.onboarding_date : customer.onboarding_date,
     onboarding_status: payload.onboarding_status !== undefined ? payload.onboarding_status : customer.onboarding_status,
+    product_id: payload.product_id !== undefined ? payload.product_id : customer.product_id,
     notes: payload.notes !== undefined ? payload.notes : customer.notes,
   });
 

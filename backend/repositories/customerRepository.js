@@ -63,10 +63,12 @@ async function listCustomers(filters, pagination, executor) {
         c.*,
         u.name AS assigned_to_name,
         t.name AS team_name,
-        t.code AS team_code
+        t.code AS team_code,
+        p.name AS product_name
       FROM customers c
       LEFT JOIN users u ON u.user_id = c.assigned_to
       LEFT JOIN teams t ON t.team_id = c.team_id
+      LEFT JOIN products p ON p.product_id = c.product_id
       ${whereClause}
       ORDER BY c.created_at DESC
       OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
@@ -96,10 +98,12 @@ async function getCustomerById(customerId, companyId = null, executor) {
         c.*,
         u.name AS assigned_to_name,
         t.name AS team_name,
-        t.code AS team_code
+        t.code AS team_code,
+        p.name AS product_name
       FROM customers c
       LEFT JOIN users u ON u.user_id = c.assigned_to
       LEFT JOIN teams t ON t.team_id = c.team_id
+      LEFT JOIN products p ON p.product_id = c.product_id
       WHERE ${conditions.join(" AND ")}
     `,
     params
@@ -112,8 +116,8 @@ async function createCustomer(customer, executor) {
   await active.query(
     `
       INSERT INTO customers
-        (customer_id, company_id, name, company_name, email, phone, converted_from_lead_id, total_value, status, team_id, assigned_to, last_interaction, next_follow_up, onboarding_date, onboarding_status, notes, is_active)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+        (customer_id, company_id, name, company_name, email, phone, converted_from_lead_id, total_value, status, team_id, assigned_to, last_interaction, next_follow_up, onboarding_date, onboarding_status, product_id, notes, is_active)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
     `,
     [
       customer.customer_id,
@@ -131,6 +135,7 @@ async function createCustomer(customer, executor) {
       customer.next_follow_up || null,
       customer.onboarding_date || null,
       customer.onboarding_status || "pending",
+      customer.product_id || null,
       customer.notes || null,
     ]
   );
@@ -157,6 +162,7 @@ async function updateCustomer(customerId, companyId, updates, executor) {
     "next_follow_up",
     "onboarding_date",
     "onboarding_status",
+    "product_id",
     "notes",
     "is_active",
   ].forEach((column) => {
