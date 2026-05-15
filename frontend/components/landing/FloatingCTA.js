@@ -7,7 +7,7 @@ export default function FloatingCTA() {
     <>
       {/* Floating WhatsApp */}
       <a
-        href="https://wa.me/919999999999?text=Hi%2C%20I%20want%20to%20know%20about%20GreenCRM"
+        href="https://wa.me/917004023078?text=Hi%2C%20I%20want%20to%20know%20about%20GreenCRM"
         target="_blank"
         rel="noopener noreferrer"
         className="fixed bottom-6 right-6 z-50 grid h-14 w-14 place-items-center rounded-full bg-[#25D366] text-white shadow-xl shadow-green-500/30 transition hover:scale-110"
