@@ -3,6 +3,7 @@ import LandingFeatureHighlights from "../components/landing/LandingFeatureHighli
 import LandingFooter from "../components/landing/LandingFooter";
 import LandingHero from "../components/landing/LandingHero";
 import LandingNavbar from "../components/landing/LandingNavbar";
+import LandingProblem from "../components/landing/LandingProblem";
 import LandingTestimonials from "../components/landing/LandingTestimonials";
 import LandingTrustSection from "../components/landing/LandingTrustSection";
 import LandingUseCases from "../components/landing/LandingUseCases";
@@ -175,14 +176,15 @@ export default function HomePage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[linear-gradient(180deg,#fbf8f0_0%,#f4fbf6_28%,#f7faf6_58%,#ffffff_100%)] text-slate-950">
+    <div className="min-h-screen bg-white text-slate-950">
       <LandingNavbar />
       <main>
         <LandingHero />
         <LandingTrustSection />
-        <LandingTestimonials />
+        <LandingProblem />
         <LandingFeatureHighlights />
         <LandingWorkflow />
+        <LandingTestimonials />
         <LandingUseCases />
         <LandingDemoCta />
       </main>

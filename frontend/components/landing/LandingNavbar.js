@@ -7,13 +7,13 @@ import AppLogo from "../branding/AppLogo";
 import { LANDING_NAV_ITEMS } from "./landing-data";
 import { btnPrimarySmall, btnSecondarySmall } from "./landing-styles";
 
-const linkClass = "text-sm font-medium text-[#48635a] transition hover:text-[#0f7a5f]";
+const linkClass = "text-sm font-medium text-slate-600 transition hover:text-emerald-600";
 
 export default function LandingNavbar() {
   const [open, setOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/50 bg-[rgba(250,248,241,0.82)] backdrop-blur-xl">
+    <header className="sticky top-0 z-50 border-b border-slate-100 bg-white/80 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
         <Link href="/" className="inline-flex items-center text-[#0d1f1b]">
           <AppLogo size="lg" variant="landing" priority />
