@@ -1,10 +1,10 @@
 import { sectionPadding, sectionTitle, sectionSub } from "./landing-styles";
 
 const TESTIMONIALS = [
-  { name: "Rajesh Sharma", role: "Sales Head", company: "TechVista Solutions, Noida", text: "Before GreenCRM, we were losing 40% of leads in Excel sheets. Now every follow-up is tracked and our conversion rate doubled in 3 months.", stars: 5 },
-  { name: "Priya Mehta", role: "Founder", company: "UrbanNest Interiors, Delhi", text: "My team of 8 sales reps now manages 500+ leads without missing a single callback. The WhatsApp integration is a game-changer.", stars: 5 },
-  { name: "Amit Verma", role: "Business Owner", company: "CloudServe IT, Gurugram", text: "Simple, fast, and affordable. We switched from Zoho because GreenCRM is built for how Indian sales teams actually work.", stars: 5 },
-  { name: "Sneha Patel", role: "Operations Manager", company: "GrowFast Marketing, Mumbai", text: "The attendance tracking with geo-fencing solved our field team management problem completely. Highly recommended for growing teams.", stars: 5 },
+  { name: "Rajesh S.", role: "Sales Head", company: "IT Solutions, Noida", text: "Before GreenCRM, we were losing 40% of leads in Excel sheets. Now every follow-up is tracked and our conversion rate doubled in 3 months.", stars: 5 },
+  { name: "Priya M.", role: "Founder", company: "Interior Design Studio, Delhi", text: "My team of 8 sales reps now manages 500+ leads without missing a single callback. The WhatsApp integration is a game-changer.", stars: 5 },
+  { name: "Amit V.", role: "Business Owner", company: "IT Services, Gurugram", text: "Simple, fast, and affordable. We switched from Zoho because GreenCRM is built for how Indian sales teams actually work.", stars: 5 },
+  { name: "Sneha P.", role: "Operations Manager", company: "Marketing Agency, Mumbai", text: "The attendance tracking with geo-fencing solved our field team management problem completely. Highly recommended for growing teams.", stars: 5 },
 ];
 
 function Stars({ count }) {
