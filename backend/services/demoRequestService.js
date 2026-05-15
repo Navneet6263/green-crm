@@ -13,6 +13,8 @@ async function createDemoRequest(payload) {
     email: String(payload.email).trim().toLowerCase(),
     phone: payload.phone ? String(payload.phone).trim() : null,
     company: payload.company ? String(payload.company).trim() : null,
+    company_size: payload.company_size || null,
+    demo_date: payload.demo_date || null,
     message: payload.message || payload.requirements || null,
     status: "pending",
   });
@@ -38,13 +40,12 @@ async function updateDemoRequest(auth, id, payload) {
     throw new AppError("Only super admins can update demo requests.", 403);
   }
 
-  return demoRequestRepository.updateDemoRequest(id, {
-    status: payload.status || "pending",
-  });
+  const updates = {};
+  if (payload.status !== undefined) updates.status = payload.status;
+  if (payload.notes !== undefined) updates.notes = payload.notes;
+  if (payload.demo_date !== undefined) updates.demo_date = payload.demo_date;
+
+  return demoRequestRepository.updateDemoRequest(id, updates);
 }
 
-module.exports = {
-  createDemoRequest,
-  listDemoRequests,
-  updateDemoRequest,
-};
+module.exports = { createDemoRequest, listDemoRequests, updateDemoRequest };

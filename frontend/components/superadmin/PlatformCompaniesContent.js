@@ -1,46 +1,41 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-
 import { apiRequest } from "../../lib/api";
 import CommunicationSettingsSection from "../integrations/CommunicationSettingsSection";
 import CompanyRoleControlPanel from "./company-roles/CompanyRoleControlPanel";
 import TenantCapabilityGuide from "./TenantCapabilityGuide";
-import { describeSmtp } from "../../app/super-admin/companies/company-utils";
-import { ACCESS_FEATURES, ACCESS_PRESETS } from "../../app/super-admin/companies/company-config";
-import {
-  buildAccessState,
-  buildCreateCompanyPayload,
-  buildSettingsDraft,
-  buildSettingsPayload,
-  countLimitRoles,
-  createCompanyForm,
-  getCompanyMetrics,
-  getEnabledFeatureCount,
-  getStatusClasses,
-  normalizeCompanies,
-} from "../../app/super-admin/companies/company-utils";
-import {
-  AccessSection,
-  CompanyDirectorySection,
-  ControlNotesCard,
-  CreateCompanySection,
-  NoticeBanner,
-  PageFrame,
-  TenantSettingsSection,
-} from "../../app/super-admin/companies/company-ui";
-import { Badge, MetricCard, MetricGrid, Notice, PageIntro } from "./ui";
+import { ACCESS_FEATURES } from "../../app/super-admin/companies/company-config";
+import { buildAccessState, buildCreateCompanyPayload, buildSettingsDraft, buildSettingsPayload, countLimitRoles, createCompanyForm, getCompanyMetrics, getEnabledFeatureCount, normalizeCompanies } from "../../app/super-admin/companies/company-utils";
+import { AccessSection, CompanyDirectorySection, ControlNotesCard, CreateCompanySection, NoticeBanner, TenantSettingsSection } from "../../app/super-admin/companies/company-ui";
+import { Badge, MetricCard, MetricGrid, Notice, PageIntro, SECONDARY_BUTTON_CLASS } from "./ui";
 import { formatNumber, titleize } from "./format";
+
+function Section({ title, badge, defaultOpen = false, children }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="rounded-2xl border border-slate-100 bg-white">
+      <button type="button" onClick={() => setOpen(!open)} className="flex w-full items-center justify-between px-5 py-3.5 text-left hover:bg-slate-50 transition rounded-2xl">
+        <div className="flex items-center gap-2.5">
+          <span className="text-sm font-bold text-slate-900">{title}</span>
+          {badge ? <Badge tone="slate">{badge}</Badge> : null}
+        </div>
+        <svg className={`h-4 w-4 text-slate-400 transition ${open ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+      </button>
+      {open ? <div className="border-t border-slate-100 px-5 py-4">{children}</div> : null}
+    </div>
+  );
+}
 
 export default function PlatformCompaniesContent({ session, data, error, loading, refresh }) {
   const role = session?.user?.role || "";
-  const canCreateCompany = role === "super-admin";
-  const canManageTenant = ["super-admin", "platform-admin"].includes(role);
-  const canManageRoles = role === "super-admin";
+  const canCreate = role === "super-admin";
+  const canManage = ["super-admin", "platform-admin"].includes(role);
+  const canRoles = role === "super-admin";
   const [form, setForm] = useState(createCompanyForm);
   const [createNotice, setCreateNotice] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-  const [selectedCompanyId, setSelectedCompanyId] = useState("");
+  const [selectedId, setSelectedId] = useState("");
   const [accessDraft, setAccessDraft] = useState(() => buildAccessState());
   const [settingsDraft, setSettingsDraft] = useState(() => buildSettingsDraft(null));
   const [accessNotice, setAccessNotice] = useState(null);
@@ -49,273 +44,89 @@ export default function PlatformCompaniesContent({ session, data, error, loading
   const [savingSettings, setSavingSettings] = useState(false);
   const [testingEmail, setTestingEmail] = useState(false);
 
-  const companies = data.companies?.items || [];
-  const normalizedCompanies = useMemo(() => normalizeCompanies(companies), [companies]);
-  const selectedCompany = useMemo(
-    () => normalizedCompanies.find((company) => company.company_id === selectedCompanyId) || normalizedCompanies[0] || null,
-    [normalizedCompanies, selectedCompanyId]
-  );
-  const companyMetrics = useMemo(() => getCompanyMetrics(normalizedCompanies), [normalizedCompanies]);
-  const activeCompanies = normalizedCompanies.filter((company) => company.status === "active").length;
-  const trialCompanies = normalizedCompanies.filter((company) => company.status === "trial").length;
-  const suspendedCompanies = normalizedCompanies.filter((company) => company.status === "suspended").length;
-  const selectedCompanyName = settingsDraft.name || selectedCompany?.name || "No tenant selected";
-  const selectedFeatureCount = selectedCompany ? getEnabledFeatureCount(accessDraft) : 0;
-  const selectedLimitCount = countLimitRoles(settingsDraft.staff_limits);
-  const selectedStatusStyle = getStatusClasses(settingsDraft.status || selectedCompany?.status);
-  const tenantSmtpCount = normalizedCompanies.filter((company) => describeSmtp(company) === "Tenant SMTP").length;
+  const companies = useMemo(() => normalizeCompanies(data.companies?.items || []), [data.companies]);
+  const selected = useMemo(() => companies.find(c => c.company_id === selectedId) || companies[0] || null, [companies, selectedId]);
+  const metrics = useMemo(() => getCompanyMetrics(companies), [companies]);
 
-  useEffect(() => {
-    if (!normalizedCompanies.length) {
-      setSelectedCompanyId("");
-      return;
-    }
-    if (!normalizedCompanies.some((company) => company.company_id === selectedCompanyId)) {
-      setSelectedCompanyId(normalizedCompanies[0].company_id);
-    }
-  }, [normalizedCompanies, selectedCompanyId]);
+  useEffect(() => { if (companies.length && !companies.some(c => c.company_id === selectedId)) setSelectedId(companies[0]?.company_id || ""); }, [companies, selectedId]);
+  useEffect(() => { if (!selected) { setAccessDraft(buildAccessState()); setSettingsDraft(buildSettingsDraft(null)); return; } setAccessDraft(buildAccessState(selected.service_access)); setSettingsDraft(buildSettingsDraft(selected)); setAccessNotice(null); setSettingsNotice(null); }, [selected]);
 
-  useEffect(() => {
-    if (!selectedCompany) {
-      setAccessDraft(buildAccessState());
-      setSettingsDraft(buildSettingsDraft(null));
-      setAccessNotice(null);
-      setSettingsNotice(null);
-      return;
-    }
-    setAccessDraft(buildAccessState(selectedCompany.service_access));
-    setSettingsDraft(buildSettingsDraft(selectedCompany));
-    setAccessNotice(null);
-    setSettingsNotice(null);
-  }, [selectedCompany]);
-
-  function updateCreateField(key, value) {
-    setForm((current) => ({ ...current, [key]: value }));
-    setCreateNotice(null);
-  }
-
-  async function handleCreateCompany(event) {
-    event.preventDefault();
-    if (!canCreateCompany) return;
-    setSubmitting(true);
-    setCreateNotice(null);
-
+  async function handleCreate(e) {
+    e.preventDefault(); if (!canCreate) return;
+    setSubmitting(true); setCreateNotice(null);
     try {
-      const response = await apiRequest("/companies", {
-        method: "POST",
-        token: session.token,
-        body: buildCreateCompanyPayload(form),
-      });
-
-      const deliveryHint =
-        response.credential_delivery?.delivery === "email"
-          ? " Admin credentials email sent."
-          : response.credential_delivery?.delivery === "queued"
-            ? " Admin credentials email is sending in background."
-            : response.credential_delivery?.preview_login_url
-              ? ` Preview login URL: ${response.credential_delivery.preview_login_url}`
-              : "";
-
-      setCreateNotice({
-        tone: "success",
-        text: response.admin_temporary_password
-          ? `Company created. Admin temporary password: ${response.admin_temporary_password}.${deliveryHint}`
-          : `Company created successfully.${deliveryHint}`,
-      });
-
-      if (response.company?.company_id) {
-        setSelectedCompanyId(response.company.company_id);
-      }
-
-      setForm(createCompanyForm());
-      await refresh();
-    } catch (requestError) {
-      setCreateNotice({ tone: "error", text: requestError.message });
-    } finally {
-      setSubmitting(false);
-    }
+      const r = await apiRequest("/companies", { method: "POST", token: session.token, body: buildCreateCompanyPayload(form) });
+      const hint = r.credential_delivery?.delivery === "email" ? " Credentials emailed." : r.admin_temporary_password ? ` Password: ${r.admin_temporary_password}` : "";
+      setCreateNotice({ tone: "success", text: `Company created.${hint}` });
+      if (r.company?.company_id) setSelectedId(r.company.company_id);
+      setForm(createCompanyForm()); await refresh();
+    } catch (err) { setCreateNotice({ tone: "error", text: err.message }); } finally { setSubmitting(false); }
   }
 
-  function toggleFeature(featureKey) {
-    const feature = ACCESS_FEATURES.find((item) => item.key === featureKey);
-    if (!canManageTenant || feature?.mandatory) return;
-    setAccessDraft((current) => ({ ...current, [featureKey]: !current[featureKey] }));
-    setAccessNotice(null);
+  function toggleFeature(k) { const f = ACCESS_FEATURES.find(i => i.key === k); if (!canManage || f?.mandatory) return; setAccessDraft(d => ({ ...d, [k]: !d[k] })); setAccessNotice(null); }
+  function applyPreset(p) { if (!canManage) return; const { ACCESS_PRESETS } = require("../../app/super-admin/companies/company-config"); setAccessDraft({ ...(ACCESS_PRESETS[p] || ACCESS_PRESETS.full) }); setAccessNotice(null); }
+
+  async function saveAccess() {
+    if (!selected || !canManage) return; setSavingAccess(true); setAccessNotice(null);
+    try { await apiRequest(`/companies/${selected.company_id}`, { method: "PUT", token: session.token, body: { service_access: accessDraft } }); setAccessNotice({ tone: "success", text: "Access updated." }); await refresh(); }
+    catch (err) { setAccessNotice({ tone: "error", text: err.message }); } finally { setSavingAccess(false); }
   }
 
-  function applyPreset(presetName) {
-    if (!canManageTenant) return;
-    setAccessDraft({ ...(ACCESS_PRESETS[presetName] || ACCESS_PRESETS.full) });
-    setAccessNotice(null);
+  async function saveSettings() {
+    if (!selected || !canManage) return; setSavingSettings(true); setSettingsNotice(null);
+    try { await apiRequest(`/companies/${selected.company_id}`, { method: "PUT", token: session.token, body: buildSettingsPayload(settingsDraft) }); setSettingsDraft(d => ({ ...d, smtp_password: "" })); setSettingsNotice({ tone: "success", text: "Settings saved." }); await refresh(); }
+    catch (err) { setSettingsNotice({ tone: "error", text: err.message }); } finally { setSavingSettings(false); }
   }
 
-  async function handleSaveAccess() {
-    if (!selectedCompany || !canManageTenant) return;
-    setSavingAccess(true);
-    setAccessNotice(null);
-
-    try {
-      await apiRequest(`/companies/${selectedCompany.company_id}`, {
-        method: "PUT",
-        token: session.token,
-        body: { service_access: accessDraft },
-      });
-      setAccessNotice({ tone: "success", text: "Access rules updated successfully." });
-      await refresh();
-    } catch (requestError) {
-      setAccessNotice({ tone: "error", text: requestError.message });
-    } finally {
-      setSavingAccess(false);
-    }
+  async function testEmail() {
+    if (!selected || !settingsDraft.test_email_to.trim() || !canManage) return; setTestingEmail(true); setSettingsNotice(null);
+    try { const r = await apiRequest("/communications/test-email", { method: "POST", token: session.token, body: { company_id: selected.company_id, to: settingsDraft.test_email_to.trim() } }); setSettingsNotice({ tone: r.delivery?.delivery === "email" ? "success" : "info", text: r.delivery?.delivery === "email" ? "Test email sent." : "Fell back to preview mode." }); }
+    catch (err) { setSettingsNotice({ tone: "error", text: err.message }); } finally { setTestingEmail(false); }
   }
 
-  function updateSettingsField(key, value) {
-    setSettingsDraft((current) => ({ ...current, [key]: value }));
-    setSettingsNotice(null);
-  }
-
-  function updateLimitField(limitRole, value) {
-    setSettingsDraft((current) => ({ ...current, staff_limits: { ...current.staff_limits, [limitRole]: value } }));
-    setSettingsNotice(null);
-  }
-
-  async function handleSaveCompanySettings() {
-    if (!selectedCompany || !canManageTenant) return;
-    setSavingSettings(true);
-    setSettingsNotice(null);
-
-    try {
-      await apiRequest(`/companies/${selectedCompany.company_id}`, {
-        method: "PUT",
-        token: session.token,
-        body: buildSettingsPayload(settingsDraft),
-      });
-      setSettingsDraft((current) => ({ ...current, smtp_password: "" }));
-      setSettingsNotice({ tone: "success", text: "Tenant email and staff settings updated." });
-      await refresh();
-    } catch (requestError) {
-      setSettingsNotice({ tone: "error", text: requestError.message });
-    } finally {
-      setSavingSettings(false);
-    }
-  }
-
-  async function handleSendTestEmail() {
-    if (!selectedCompany || !settingsDraft.test_email_to.trim() || !canManageTenant) return;
-    setTestingEmail(true);
-    setSettingsNotice(null);
-
-    try {
-      const response = await apiRequest("/communications/test-email", {
-        method: "POST",
-        token: session.token,
-        body: { company_id: selectedCompany.company_id, to: settingsDraft.test_email_to.trim() },
-      });
-
-      setSettingsNotice({
-        tone: response.delivery?.delivery === "email" ? "success" : "info",
-        text: response.delivery?.delivery === "email" ? "SMTP test email sent successfully." : "SMTP test fell back to preview mode. Check backend SMTP routing.",
-      });
-    } catch (requestError) {
-      setSettingsNotice({ tone: "error", text: requestError.message });
-    } finally {
-      setTestingEmail(false);
-    }
-  }
+  if (loading) return <Notice tone="info" text="Loading tenants…" />;
 
   return (
-    <>
-      <Notice tone="error" text={error} className="mb-4" />
-      {loading ? <Notice tone="info" text="Loading tenant directory..." className="mb-4" /> : null}
+    <div className="space-y-4">
+      <Notice tone="error" text={error} />
+      <PageIntro eyebrow="Tenants" title="Companies" meta={<><Badge tone="emerald">{formatNumber(metrics.active || 0)} active</Badge><Badge tone="amber">{formatNumber(metrics.trial || 0)} trial</Badge><Badge tone="rose">{formatNumber(metrics.suspended || 0)} suspended</Badge></>} />
 
-      {!loading ? (
-        <div className="space-y-6">
-          <PageIntro
-            eyebrow="Tenant Directory"
-            title="Platform oversight for every workspace"
-            description="Review workspace health, create new tenants, tune service access, and fix delivery or seat-limit issues without dropping into tenant views."
-            meta={
-              <>
-                <Badge tone="slate">{titleize(role)} view</Badge>
-                <Badge tone="emerald">{formatNumber(activeCompanies)} active</Badge>
-                <Badge tone="amber">{formatNumber(trialCompanies)} trial</Badge>
-                <Badge tone="rose">{formatNumber(suspendedCompanies)} suspended</Badge>
-              </>
-            }
-          />
+      <MetricGrid className="lg:grid-cols-4">
+        <MetricCard icon="company" label="Total" value={formatNumber(metrics.total)} tone="emerald" />
+        <MetricCard icon="settings" label="SMTP" value={formatNumber(metrics.smtpReady)} tone="blue" />
+        <MetricCard icon="security" label="Custom Login" value={formatNumber(metrics.customLogin)} tone="violet" />
+        <MetricCard icon="users" label="Seat Policies" value={formatNumber(metrics.seatPolicies)} tone="amber" />
+      </MetricGrid>
 
-          <MetricGrid className="2xl:grid-cols-4">
-            <MetricCard icon="company" label="Visible tenants" value={formatNumber(companyMetrics.total)} note="Every company visible from this platform seat." tone="emerald" />
-            <MetricCard icon="settings" label="Tenant SMTP" value={formatNumber(tenantSmtpCount)} note={`${formatNumber(companyMetrics.total - tenantSmtpCount)} still inherit platform delivery.`} tone="blue" />
-            <MetricCard icon="users" label="Enabled modules" value={formatNumber(normalizedCompanies.reduce((total, company) => total + getEnabledFeatureCount(company.access), 0))} note="Module footprint across currently loaded tenants." tone="violet" />
-            <MetricCard icon="security" label="Selected workspace" value={selectedCompanyName} note={selectedCompany ? `${selectedFeatureCount} modules on | ${selectedLimitCount || "Open"} seat limits` : "Select a workspace to review settings."} tone="amber" />
-          </MetricGrid>
+      {createNotice ? <NoticeBanner notice={createNotice} /> : null}
 
-          {createNotice ? <NoticeBanner notice={createNotice} /> : null}
+      {/* Directory — always open */}
+      <Section title="Workspace Directory" badge={`${companies.length}`} defaultOpen>
+        <CompanyDirectorySection companies={companies} metrics={metrics} selectedCompany={selected} selectedCompanyName={settingsDraft.name || selected?.name || "—"} selectedStatusStyle={require("../../app/super-admin/companies/company-utils").getStatusClasses(settingsDraft.status || selected?.status)} selectedFeatureCount={selected ? getEnabledFeatureCount(accessDraft) : 0} selectedLimitCount={countLimitRoles(settingsDraft.staff_limits)} settingsDraft={settingsDraft} onSelectCompany={setSelectedId} />
+      </Section>
 
-          <PageFrame>
-            <section className="grid gap-6 2xl:grid-cols-[minmax(0,1.25fr)_340px]">
-              <CompanyDirectorySection
-                companies={normalizedCompanies}
-                metrics={companyMetrics}
-                selectedCompany={selectedCompany}
-                selectedCompanyName={selectedCompanyName}
-                selectedStatusStyle={selectedStatusStyle}
-                selectedFeatureCount={selectedFeatureCount}
-                selectedLimitCount={selectedLimitCount}
-                settingsDraft={settingsDraft}
-                onSelectCompany={setSelectedCompanyId}
-              />
-              <ControlNotesCard />
-            </section>
+      <Section title="Create Company" badge={canCreate ? "Super Admin" : "Locked"}>
+        <CreateCompanySection canCreateCompany={canCreate} form={form} onFieldChange={(k, v) => { setForm(f => ({ ...f, [k]: v })); setCreateNotice(null); }} onSubmit={handleCreate} submitting={submitting} />
+      </Section>
 
-            <section className="grid gap-6 2xl:grid-cols-2">
-              <CreateCompanySection canCreateCompany={canCreateCompany} form={form} onFieldChange={updateCreateField} onSubmit={handleCreateCompany} submitting={submitting} />
-              <AccessSection
-                selectedCompany={selectedCompany}
-                selectedCompanyName={selectedCompanyName}
-                selectedFeatureCount={selectedFeatureCount}
-                canManageTenant={canManageTenant}
-                accessDraft={accessDraft}
-                accessNotice={accessNotice}
-                onApplyPreset={applyPreset}
-                onToggleFeature={toggleFeature}
-                onSave={handleSaveAccess}
-                savingAccess={savingAccess}
-              />
-            </section>
+      <Section title="Module Access" badge={selected ? `${getEnabledFeatureCount(accessDraft)}/${ACCESS_FEATURES.length}` : "—"}>
+        <AccessSection selectedCompany={selected} selectedCompanyName={settingsDraft.name || selected?.name || "—"} selectedFeatureCount={selected ? getEnabledFeatureCount(accessDraft) : 0} canManageTenant={canManage} accessDraft={accessDraft} accessNotice={accessNotice} onApplyPreset={applyPreset} onToggleFeature={toggleFeature} onSave={saveAccess} savingAccess={savingAccess} />
+      </Section>
 
-            {selectedCompany ? (
-              <>
-                <TenantCapabilityGuide />
-                <TenantSettingsSection
-                  selectedCompany={selectedCompany}
-                  selectedCompanyName={selectedCompanyName}
-                  canManageTenant={canManageTenant}
-                  settingsDraft={settingsDraft}
-                  settingsNotice={settingsNotice}
-                  onFieldChange={updateSettingsField}
-                  onLimitChange={updateLimitField}
-                  onSave={handleSaveCompanySettings}
-                  onSendTestEmail={handleSendTestEmail}
-                  savingSettings={savingSettings}
-                  testingEmail={testingEmail}
-                />
-                <CommunicationSettingsSection
-                  companyId={selectedCompany.company_id}
-                  token={session?.token}
-                  title="Managed services, provider routing, and capability resolution"
-                  description="Tenant modules can stay visible even when paid services are blocked. Backend rules resolve own credentials first and superadmin-approved platform services second."
-                  canEditIntegrations={canManageTenant}
-                  canEditPermissions={role === "super-admin" && selectedCompany.company_id !== "platform-root"}
-                  platformRoot={selectedCompany.company_id === "platform-root"}
-                />
-                <CompanyRoleControlPanel companyId={selectedCompany.company_id} companyName={selectedCompany.name} token={session?.token} canManage={canManageRoles} />
-              </>
-            ) : null}
-          </PageFrame>
-        </div>
+      {selected ? (
+        <>
+          <Section title="Capability Guide"><TenantCapabilityGuide /></Section>
+          <Section title="Tenant Settings">
+            <TenantSettingsSection selectedCompany={selected} selectedCompanyName={settingsDraft.name || selected?.name || "—"} canManageTenant={canManage} settingsDraft={settingsDraft} settingsNotice={settingsNotice} onFieldChange={(k, v) => { setSettingsDraft(d => ({ ...d, [k]: v })); setSettingsNotice(null); }} onLimitChange={(k, v) => { setSettingsDraft(d => ({ ...d, staff_limits: { ...d.staff_limits, [k]: v } })); setSettingsNotice(null); }} onSave={saveSettings} onSendTestEmail={testEmail} savingSettings={savingSettings} testingEmail={testingEmail} />
+          </Section>
+          <Section title="Communication & Channels">
+            <CommunicationSettingsSection companyId={selected.company_id} token={session?.token} title="Provider routing & capability" canEditIntegrations={canManage} canEditPermissions={role === "super-admin" && selected.company_id !== "platform-root"} platformRoot={selected.company_id === "platform-root"} />
+          </Section>
+          <Section title="Role Control">
+            <CompanyRoleControlPanel companyId={selected.company_id} companyName={selected.name} token={session?.token} canManage={canRoles} />
+          </Section>
+        </>
       ) : null}
-    </>
+    </div>
   );
 }

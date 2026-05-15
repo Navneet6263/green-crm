@@ -7,22 +7,19 @@ function getExecutor(executor) {
 async function createDemoRequest(request, executor) {
   const active = getExecutor(executor);
   const [result] = await active.query(
-    `
-      INSERT INTO demo_requests
-        (name, email, phone, company, message, status)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `,
+    `INSERT INTO demo_requests (name, email, phone, company, company_size, demo_date, message, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       request.name,
       request.email,
       request.phone || null,
       request.company || null,
+      request.company_size || null,
+      request.demo_date || null,
       request.message || null,
       request.status || "pending",
     ]
   );
-
-  const [rows] = await active.query("SELECT TOP 1 * FROM demo_requests WHERE id = ?", [result.insertId]);
+  const [rows] = await active.query("SELECT * FROM demo_requests WHERE id = ?", [result.insertId]);
   return rows[0] || null;
 }
 
@@ -31,49 +28,32 @@ async function listDemoRequests({ status, search, pagination }, executor) {
   const conditions = [];
   const params = [];
 
-  if (status) {
-    conditions.push("status = ?");
-    params.push(status);
-  }
+  if (status) { conditions.push("status = ?"); params.push(status); }
+  if (search) { conditions.push("(name LIKE ? OR email LIKE ? OR company LIKE ? OR notes LIKE ?)"); params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`); }
 
-  if (search) {
-    conditions.push("(name LIKE ? OR email LIKE ? OR company LIKE ?)");
-    params.push(`%${search}%`, `%${search}%`, `%${search}%`);
-  }
+  const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+  const [countRows] = await active.query(`SELECT COUNT(*) AS total FROM demo_requests ${where}`, params);
+  const [rows] = await active.query(`SELECT * FROM demo_requests ${where} ORDER BY created_at DESC OFFSET ? ROWS FETCH NEXT ? ROWS ONLY`, [...params, pagination.offset, pagination.limit]);
 
-  const whereClause = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
-  const [countRows] = await active.query(
-    `SELECT COUNT(*) AS total FROM demo_requests ${whereClause}`,
-    params
-  );
-  const [rows] = await active.query(
-    `
-      SELECT *
-      FROM demo_requests
-      ${whereClause}
-      ORDER BY created_at DESC
-      OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
-    `,
-    [...params, pagination.offset, pagination.limit]
-  );
-
-  return {
-    rows,
-    total: countRows[0].total,
-  };
+  return { rows, total: countRows[0].total };
 }
 
 async function updateDemoRequest(id, updates, executor) {
   const active = getExecutor(executor);
-  if (Object.prototype.hasOwnProperty.call(updates, "status")) {
-    await active.query("UPDATE demo_requests SET status = ? WHERE id = ?", [updates.status, id]);
+  const sets = [];
+  const params = [];
+
+  if (updates.status !== undefined) { sets.push("status = ?"); params.push(updates.status); }
+  if (updates.notes !== undefined) { sets.push("notes = ?"); params.push(updates.notes); }
+  if (updates.demo_date !== undefined) { sets.push("demo_date = ?"); params.push(updates.demo_date || null); }
+
+  if (sets.length) {
+    params.push(id);
+    await active.query(`UPDATE demo_requests SET ${sets.join(", ")} WHERE id = ?`, params);
   }
-  const [rows] = await active.query("SELECT TOP 1 * FROM demo_requests WHERE id = ?", [id]);
+
+  const [rows] = await active.query("SELECT * FROM demo_requests WHERE id = ?", [id]);
   return rows[0] || null;
 }
 
-module.exports = {
-  createDemoRequest,
-  listDemoRequests,
-  updateDemoRequest,
-};
+module.exports = { createDemoRequest, listDemoRequests, updateDemoRequest };

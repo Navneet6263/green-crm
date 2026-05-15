@@ -1,99 +1,70 @@
 "use client";
 
 import Link from "next/link";
-
 import DashboardIcon from "../dashboard/icons";
 import { cn, initials } from "./format";
 
-export const PANEL_CLASS =
-  "rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_14px_32px_rgba(15,23,42,0.05)]";
-export const SUB_PANEL_CLASS = "rounded-[22px] border border-slate-200 bg-slate-50/80 p-4";
-export const INPUT_CLASS =
-  "w-full rounded-[16px] border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-300 focus:ring-4 focus:ring-emerald-100";
-export const TEXTAREA_CLASS = `${INPUT_CLASS} min-h-[120px] resize-y`;
-export const PRIMARY_BUTTON_CLASS =
-  "inline-flex min-h-[44px] cursor-pointer items-center justify-center gap-2 rounded-[14px] border border-emerald-600 bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(22,163,74,0.18)] transition hover:border-emerald-700 hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60";
-export const SECONDARY_BUTTON_CLASS =
-  "inline-flex min-h-[44px] cursor-pointer items-center justify-center gap-2 rounded-[14px] border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60";
-export const GHOST_BUTTON_CLASS =
-  "inline-flex min-h-[40px] cursor-pointer items-center justify-center gap-2 rounded-[12px] border border-transparent bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60";
+export const PANEL_CLASS = "rounded-2xl border border-slate-100 bg-white p-5";
+export const SUB_PANEL_CLASS = "rounded-xl border border-slate-100 bg-slate-50 p-3.5";
+export const INPUT_CLASS = "w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-100";
+export const TEXTAREA_CLASS = `${INPUT_CLASS} min-h-[100px] resize-y`;
+export const PRIMARY_BUTTON_CLASS = "inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg bg-slate-900 px-3.5 text-[13px] font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50";
+export const SECONDARY_BUTTON_CLASS = "inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 text-[13px] font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50";
+export const GHOST_BUTTON_CLASS = "inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg bg-slate-100 px-3 text-[13px] font-medium text-slate-600 transition hover:bg-slate-200 disabled:opacity-50";
 
-const BADGE_STYLES = {
-  slate: "border-slate-200 bg-slate-50 text-slate-700",
-  emerald: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  blue: "border-blue-200 bg-blue-50 text-blue-700",
-  amber: "border-amber-200 bg-amber-50 text-amber-700",
-  rose: "border-rose-200 bg-rose-50 text-rose-700",
-  violet: "border-violet-200 bg-violet-50 text-violet-700",
+const BADGE_TONE = {
+  slate: "bg-slate-100 text-slate-600",
+  emerald: "bg-emerald-50 text-emerald-700",
+  blue: "bg-blue-50 text-blue-700",
+  amber: "bg-amber-50 text-amber-700",
+  rose: "bg-rose-50 text-rose-700",
+  violet: "bg-violet-50 text-violet-700",
 };
 
-const METRIC_TONES = {
-  slate: { chip: "bg-slate-100 text-slate-700", icon: "bg-slate-900 text-white" },
-  emerald: { chip: "bg-emerald-100 text-emerald-700", icon: "bg-emerald-600 text-white" },
-  blue: { chip: "bg-blue-100 text-blue-700", icon: "bg-blue-600 text-white" },
-  amber: { chip: "bg-amber-100 text-amber-700", icon: "bg-amber-500 text-white" },
-  rose: { chip: "bg-rose-100 text-rose-700", icon: "bg-rose-600 text-white" },
-  violet: { chip: "bg-violet-100 text-violet-700", icon: "bg-violet-600 text-white" },
+const ICON_TONE = {
+  slate: "bg-slate-900 text-white",
+  emerald: "bg-emerald-600 text-white",
+  blue: "bg-blue-600 text-white",
+  amber: "bg-amber-500 text-white",
+  rose: "bg-rose-600 text-white",
+  violet: "bg-violet-600 text-white",
 };
 
 export function Badge({ children, tone = "slate", className = "" }) {
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold",
-        BADGE_STYLES[tone] || BADGE_STYLES.slate,
-        className
-      )}
-    >
-      {children}
-    </span>
-  );
+  return <span className={cn("inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold", BADGE_TONE[tone] || BADGE_TONE.slate, className)}>{children}</span>;
 }
 
 export function Notice({ tone = "info", text, className = "" }) {
-  if (!text) {
-    return null;
-  }
-
-  const palette =
-    tone === "error"
-      ? "border-rose-200 bg-rose-50 text-rose-700"
-      : tone === "success"
-        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-        : "border-slate-200 bg-slate-50 text-slate-600";
-
-  return <div className={cn("rounded-[18px] border px-4 py-3 text-sm font-medium", palette, className)}>{text}</div>;
+  if (!text) return null;
+  const c = tone === "error" ? "bg-rose-50 text-rose-700" : tone === "success" ? "bg-emerald-50 text-emerald-700" : "bg-slate-50 text-slate-600";
+  return <div className={cn("rounded-lg px-4 py-2.5 text-sm", c, className)}>{text}</div>;
 }
 
 export function PageIntro({ eyebrow, title, description, actions, meta }) {
   return (
-    <section className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
-      <div className="max-w-3xl">
-        {eyebrow ? (
-          <span className="text-[11px] font-black uppercase tracking-[0.22em] text-emerald-700/80">{eyebrow}</span>
-        ) : null}
-        <h1 className="mt-2 text-[clamp(1.7rem,2.6vw,2.45rem)] font-black leading-tight text-slate-900">{title}</h1>
-        <p className="mt-3 text-sm leading-6 text-slate-500">{description}</p>
-        {meta ? <div className="mt-4 flex flex-wrap gap-2">{meta}</div> : null}
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        {eyebrow ? <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">{eyebrow}</p> : null}
+        <h1 className="mt-1 text-xl font-bold text-slate-900">{title}</h1>
+        {description ? <p className="mt-1 text-sm text-slate-500 max-w-xl">{description}</p> : null}
+        {meta ? <div className="mt-2.5 flex flex-wrap gap-1.5">{meta}</div> : null}
       </div>
-      {actions ? <div className="flex flex-wrap gap-3">{actions}</div> : null}
-    </section>
+      {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
+    </div>
   );
 }
 
 export function Panel({ eyebrow, title, description, action, className = "", children }) {
   return (
     <section className={cn(PANEL_CLASS, className)}>
-      {(eyebrow || title || description || action) ? (
-        <div className="mb-5 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-          <div className="max-w-2xl">
-            {eyebrow ? (
-              <span className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-500">{eyebrow}</span>
-            ) : null}
-            {title ? <h2 className="mt-2 text-xl font-black text-slate-900">{title}</h2> : null}
-            {description ? <p className="mt-2 text-sm leading-6 text-slate-500">{description}</p> : null}
+      {(eyebrow || title || action) ? (
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div>
+            {eyebrow ? <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{eyebrow}</p> : null}
+            {title ? <h2 className="mt-0.5 text-[15px] font-bold text-slate-900">{title}</h2> : null}
+            {description ? <p className="mt-0.5 text-xs text-slate-500">{description}</p> : null}
           </div>
-          {action ? <div className="flex flex-wrap gap-2">{action}</div> : null}
+          {action ? <div className="flex shrink-0 gap-2">{action}</div> : null}
         </div>
       ) : null}
       {children}
@@ -102,65 +73,41 @@ export function Panel({ eyebrow, title, description, action, className = "", chi
 }
 
 export function MetricGrid({ children, className = "" }) {
-  return <section className={cn("grid gap-4 md:grid-cols-2 2xl:grid-cols-4", className)}>{children}</section>;
+  return <div className={cn("grid gap-3 grid-cols-2 lg:grid-cols-3", className)}>{children}</div>;
 }
 
 export function MetricCard({ icon, label, value, note, tone = "slate" }) {
-  const style = METRIC_TONES[tone] || METRIC_TONES.slate;
-
   return (
-    <article className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-[0_8px_20px_rgba(15,23,42,0.04)]">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <span className={cn("inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em]", style.chip)}>
-            {label}
-          </span>
-          <strong className="mt-3 block text-[clamp(1.45rem,2vw,2rem)] font-black leading-none text-slate-900">{value}</strong>
-          {note ? <p className="mt-2 text-sm leading-6 text-slate-500">{note}</p> : null}
-        </div>
-        {icon ? (
-          <span className={cn("grid h-11 w-11 place-items-center rounded-[16px]", style.icon)}>
-            <DashboardIcon name={icon} className="h-5 w-5" />
-          </span>
-        ) : null}
+    <div className="rounded-xl border border-slate-100 bg-white px-4 py-3.5">
+      <div className="flex items-center justify-between">
+        <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">{label}</p>
+        {icon ? <span className={cn("grid h-8 w-8 place-items-center rounded-lg", ICON_TONE[tone] || ICON_TONE.slate)}><DashboardIcon name={icon} className="h-3.5 w-3.5" /></span> : null}
       </div>
-    </article>
+      <p className="mt-1.5 text-2xl font-bold text-slate-900">{value}</p>
+      {note ? <p className="mt-1 text-[12px] text-slate-400">{note}</p> : null}
+    </div>
   );
 }
 
 export function EmptyState({ icon = "dashboard", title, description, action }) {
   return (
-    <div className="flex min-h-[220px] flex-col items-center justify-center rounded-[24px] border border-dashed border-slate-200 bg-slate-50/70 px-6 py-10 text-center">
-      <span className="grid h-14 w-14 place-items-center rounded-[18px] bg-white text-slate-500 shadow-sm">
-        <DashboardIcon name={icon} className="h-6 w-6" />
-      </span>
-      <h3 className="mt-4 text-lg font-bold text-slate-900">{title}</h3>
-      <p className="mt-2 max-w-xl text-sm leading-6 text-slate-500">{description}</p>
-      {action ? <div className="mt-5">{action}</div> : null}
+    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/50 px-4 py-10 text-center">
+      <span className="grid h-10 w-10 place-items-center rounded-lg bg-white text-slate-400 shadow-sm"><DashboardIcon name={icon} className="h-5 w-5" /></span>
+      <p className="mt-3 text-sm font-semibold text-slate-700">{title}</p>
+      <p className="mt-1 max-w-sm text-xs text-slate-500">{description}</p>
+      {action ? <div className="mt-4">{action}</div> : null}
     </div>
   );
 }
 
 export function AvatarLabel({ label, sublabel, tone = "slate" }) {
+  const bg = tone === "emerald" ? "bg-emerald-600" : tone === "blue" ? "bg-blue-600" : tone === "violet" ? "bg-violet-600" : "bg-slate-800";
   return (
-    <div className="flex min-w-0 items-center gap-3">
-      <span
-        className={cn(
-          "grid h-11 w-11 flex-shrink-0 place-items-center rounded-[16px] text-sm font-black",
-          tone === "emerald"
-            ? "bg-emerald-600 text-white"
-            : tone === "blue"
-              ? "bg-blue-600 text-white"
-              : tone === "violet"
-                ? "bg-violet-600 text-white"
-                : "bg-slate-900 text-white"
-        )}
-      >
-        {initials(label)}
-      </span>
+    <div className="flex min-w-0 items-center gap-2.5">
+      <span className={cn("grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[11px] font-bold text-white", bg)}>{initials(label)}</span>
       <div className="min-w-0">
-        <strong className="block truncate text-sm text-slate-900">{label}</strong>
-        {sublabel ? <span className="mt-1 block truncate text-xs text-slate-500">{sublabel}</span> : null}
+        <p className="truncate text-sm font-semibold text-slate-900">{label}</p>
+        {sublabel ? <p className="truncate text-[11px] text-slate-500">{sublabel}</p> : null}
       </div>
     </div>
   );
@@ -168,18 +115,11 @@ export function AvatarLabel({ label, sublabel, tone = "slate" }) {
 
 export function ActionLink({ href, icon, label, description }) {
   return (
-    <Link
-      href={href}
-      className="group rounded-[20px] border border-slate-200 bg-white p-4 transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-[0_12px_24px_rgba(15,23,42,0.06)]"
-    >
-      <div className="flex items-center gap-3">
-        <span className="grid h-10 w-10 place-items-center rounded-[14px] bg-slate-900 text-white">
-          <DashboardIcon name={icon} className="h-4 w-4" />
-        </span>
-        <div className="min-w-0">
-          <strong className="block text-sm text-slate-900">{label}</strong>
-          <span className="mt-1 block text-xs text-slate-500">{description}</span>
-        </div>
+    <Link href={href} className="flex items-center gap-2.5 rounded-xl border border-slate-100 bg-white p-3 transition hover:border-slate-200 hover:bg-slate-50">
+      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-slate-900 text-white"><DashboardIcon name={icon} className="h-3.5 w-3.5" /></span>
+      <div className="min-w-0">
+        <p className="text-[13px] font-semibold text-slate-900">{label}</p>
+        <p className="truncate text-[11px] text-slate-500">{description}</p>
       </div>
     </Link>
   );
@@ -187,18 +127,16 @@ export function ActionLink({ href, icon, label, description }) {
 
 export function Modal({ title, description, children, onClose }) {
   return (
-    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/35 px-4 py-6">
-      <div className="w-full max-w-lg rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_28px_60px_rgba(15,23,42,0.18)]">
+    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/30 px-4 backdrop-blur-sm">
+      <div className="w-full max-w-lg rounded-2xl border border-slate-100 bg-white p-5 shadow-xl">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h3 className="text-xl font-black text-slate-900">{title}</h3>
-            {description ? <p className="mt-2 text-sm leading-6 text-slate-500">{description}</p> : null}
+            <h3 className="text-lg font-bold text-slate-900">{title}</h3>
+            {description ? <p className="mt-1 text-sm text-slate-500">{description}</p> : null}
           </div>
-          <button type="button" onClick={onClose} className={GHOST_BUTTON_CLASS} aria-label="Close">
-            Close
-          </button>
+          <button type="button" onClick={onClose} className={GHOST_BUTTON_CLASS}>Close</button>
         </div>
-        <div className="mt-5">{children}</div>
+        <div className="mt-4">{children}</div>
       </div>
     </div>
   );
