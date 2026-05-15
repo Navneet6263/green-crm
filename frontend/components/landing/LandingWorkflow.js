@@ -1,26 +1,37 @@
-import SectionIntro from "./SectionIntro";
-import { WORKFLOW_STEPS } from "./landing-data";
+import { sectionPadding, sectionTitle, sectionSub } from "./landing-styles";
+
+const STEPS = [
+  { num: "01", title: "New Lead Captured", desc: "From website, call, or referral — every enquiry enters the system.", color: "bg-blue-600" },
+  { num: "02", title: "Call Connected", desc: "One-click calling with auto-logged outcomes and duration.", color: "bg-indigo-600" },
+  { num: "03", title: "Notes Added", desc: "Record what was discussed, customer pain points, and requirements.", color: "bg-violet-600" },
+  { num: "04", title: "Follow-up Scheduled", desc: "Set the next action with date, time, and auto-reminder.", color: "bg-amber-500" },
+  { num: "05", title: "Deal Closed ✓", desc: "Lead converts to customer. Full history preserved forever.", color: "bg-emerald-600" },
+];
 
 export default function LandingWorkflow() {
   return (
-    <section id="workflow" className="mx-auto max-w-7xl px-4 py-18 sm:px-6 lg:px-8">
-      <div className="overflow-hidden rounded-[2.2rem] border border-white/70 bg-[linear-gradient(180deg,rgba(248,251,247,0.96),rgba(255,255,255,0.92))] p-6 shadow-[0_26px_70px_rgba(13,31,27,0.06)] md:p-8">
-        <SectionIntro
-          eyebrow="Workflow"
-          title="Capture lead, assign owner, add follow-up, track history, close cleanly."
-          description="The workflow keeps every step visible so teams can move faster without losing context."
-        />
+    <section id="workflow" className={`${sectionPadding} bg-slate-900`}>
+      <div className="mx-auto max-w-7xl">
+        <div className="text-center">
+          <p className="text-[12px] font-bold uppercase tracking-widest text-emerald-400">How It Works</p>
+          <h2 className="mt-2 text-3xl font-bold tracking-tight text-white sm:text-4xl">From lead to deal in 5 simple steps</h2>
+          <p className="mt-4 mx-auto max-w-2xl text-base leading-relaxed text-slate-400">No complexity. No training needed. Your team starts closing deals from day one.</p>
+        </div>
 
-        <div className="mt-10 grid gap-4 lg:grid-cols-5">
-          {WORKFLOW_STEPS.map((item) => (
-            <article key={item.step} className="relative rounded-[1.7rem] border border-[#e5ece3] bg-white/88 p-5">
-              <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#edf8f2] text-sm font-semibold text-[#0f7a5f]">
-                {item.step}
-              </span>
-              <h3 className="mt-5 text-lg font-semibold text-[#0d1f1b]">{item.title}</h3>
-              <p className="mt-3 text-sm leading-7 text-[#5c6f68]">{item.note}</p>
-            </article>
-          ))}
+        <div className="mt-14 relative">
+          {/* Connection line */}
+          <div className="absolute left-1/2 top-0 bottom-0 w-px bg-gradient-to-b from-blue-600 via-violet-600 to-emerald-600 hidden lg:block" />
+
+          <div className="grid gap-6 lg:grid-cols-5">
+            {STEPS.map((s, i) => (
+              <div key={s.num} className="relative flex flex-col items-center text-center">
+                <span className={`grid h-12 w-12 place-items-center rounded-full ${s.color} text-sm font-bold text-white shadow-lg`}>{s.num}</span>
+                {i < STEPS.length - 1 ? <div className="h-6 w-px bg-slate-700 lg:hidden" /> : null}
+                <h3 className="mt-4 text-sm font-bold text-white">{s.title}</h3>
+                <p className="mt-2 text-xs leading-relaxed text-slate-400 max-w-[180px]">{s.desc}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </section>

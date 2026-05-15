@@ -8,6 +8,7 @@ import LandingTestimonials from "../components/landing/LandingTestimonials";
 import LandingTrustSection from "../components/landing/LandingTrustSection";
 import LandingUseCases from "../components/landing/LandingUseCases";
 import LandingWorkflow from "../components/landing/LandingWorkflow";
+import FloatingCTA from "../components/landing/FloatingCTA";
 import { BRAND_ICONS, BRAND_NAME } from "../components/branding/brandConfig";
 import { absoluteUrl, buildMetadata } from "../lib/seo";
 
@@ -189,6 +190,7 @@ export default function HomePage() {
         <LandingDemoCta />
       </main>
       <LandingFooter />
+      <FloatingCTA />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
