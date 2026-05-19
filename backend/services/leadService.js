@@ -544,6 +544,7 @@ async function buildLeadFilters(auth, query) {
     priority: query.priority || null,
     leadSource: query.lead_source || query.source || null,
     search: query.search || "",
+    notesSearch: query.notes_search || "",
     workflowStage: query.workflow_stage || null,
     productId: query.product_id || null,
     createdFrom,

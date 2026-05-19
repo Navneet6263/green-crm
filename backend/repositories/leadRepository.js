@@ -150,6 +150,16 @@ function buildWhere(filters) {
     );
   }
 
+  if (filters.notesSearch) {
+    conditions.push(`EXISTS (
+      SELECT 1 FROM lead_notes ln
+      WHERE ln.lead_id = l.lead_id
+        AND ln.company_id = l.company_id
+        AND ln.content LIKE ?
+    )`);
+    params.push(`%${filters.notesSearch}%`);
+  }
+
   return {
     whereClause: `WHERE ${conditions.join(" AND ")}`,
     params,

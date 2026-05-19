@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { isPlatformConsoleRole } from "../../../lib/teamScope";
 import { LEAD_DATE_PRESET_OPTIONS } from "../filters/leadFilterOptions";
@@ -15,6 +15,8 @@ export function useLeadFilterState({ role, session }) {
   const [fromDate, setFromDate] = useState("");
   const [priority, setPriority] = useState("all");
   const [notesSearch, setNotesSearch] = useState("");
+  const [debouncedNotesSearch, setDebouncedNotesSearch] = useState("");
+  const notesSearchTimerRef = useRef(null);
   const [product, setProduct] = useState("all");
   const [search, setSearch] = useState("");
   const [source, setSource] = useState("all");
@@ -40,7 +42,7 @@ export function useLeadFilterState({ role, session }) {
       company_id: scopedCompanyId,
       team_ids: teamFilter !== "all" ? teamFilter : undefined,
       search: search.trim() || undefined,
-      notes_search: notesSearch.trim() || undefined,
+      notes_search: debouncedNotesSearch.trim() || undefined,
       product_id: product !== "all" ? product : undefined,
       priority: priority !== "all" ? priority : undefined,
       lead_source: source !== "all" ? source : undefined,
@@ -52,7 +54,7 @@ export function useLeadFilterState({ role, session }) {
       status: quickFilter ? undefined : status,
       quick_filter: quickFilter,
     }),
-    [assignedTo, createdBy, fromDate, notesSearch, priority, product, quickFilter, scopedCompanyId, search, source, status, teamFilter, toDate, workflowStage]
+    [assignedTo, createdBy, debouncedNotesSearch, fromDate, priority, product, quickFilter, scopedCompanyId, search, source, status, teamFilter, toDate, workflowStage]
   );
 
   const activeFilterCount = useMemo(
@@ -74,9 +76,16 @@ export function useLeadFilterState({ role, session }) {
     [assignedTo, canManage, company, createdBy, fromDate, hasFixedAssigneeScope, isPlatformConsole, notesSearch, priority, product, search, source, status, teamFilter, toDate, workflowStage]
   );
 
+  function handleNotesSearchChange(value) {
+    setNotesSearch(value);
+    if (notesSearchTimerRef.current) clearTimeout(notesSearchTimerRef.current);
+    notesSearchTimerRef.current = setTimeout(() => setDebouncedNotesSearch(value), 500);
+  }
+
   function resetLeadFilters() {
     setSearch("");
     setNotesSearch("");
+    setDebouncedNotesSearch("");
     setStatus("all");
     setProduct("all");
     setPriority("all");
@@ -115,6 +124,7 @@ export function useLeadFilterState({ role, session }) {
   const applyQueryFilters = useCallback((query = {}) => {
     setSearch(query.search || "");
     setNotesSearch(query.notesSearch || "");
+    setDebouncedNotesSearch(query.notesSearch || "");
     setStatus(query.status || "all");
     setProduct(query.product || "all");
     setPriority(query.priority || "all");
@@ -163,7 +173,7 @@ export function useLeadFilterState({ role, session }) {
     setCreatedBy,
     setPriority,
     setProduct,
-    setNotesSearch,
+    setNotesSearch: handleNotesSearchChange,
     setSearch,
     setSource,
     setStatus,
