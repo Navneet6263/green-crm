@@ -20,9 +20,10 @@ function buildWhere(filters) {
     }
   }
 
+  // User-specific filter: Include customers where user is assigned OR is a member
   if (filters.assignedTo) {
-    conditions.push("c.assigned_to = ?");
-    params.push(filters.assignedTo);
+    conditions.push("(c.assigned_to = ? OR cm.user_id = ?)");
+    params.push(filters.assignedTo, filters.assignedTo);
   }
 
   if (filters.teamIds) {
@@ -54,12 +55,15 @@ async function listCustomers(filters, pagination, executor) {
   const active = getExecutor(executor);
   const { whereClause, params } = buildWhere(filters);
   const [countRows] = await active.query(
-    `SELECT COUNT(*) AS total FROM customers c ${whereClause}`,
+    `SELECT COUNT(DISTINCT c.customer_id) AS total 
+     FROM customers c 
+     LEFT JOIN customer_members cm ON cm.customer_id = c.customer_id AND cm.is_active = 1
+     ${whereClause}`,
     params
   );
   const [rows] = await active.query(
     `
-      SELECT
+      SELECT DISTINCT
         c.*,
         u.name AS assigned_to_name,
         creator.name AS created_by_name,
@@ -67,6 +71,7 @@ async function listCustomers(filters, pagination, executor) {
         t.code AS team_code,
         p.name AS product_name
       FROM customers c
+      LEFT JOIN customer_members cm ON cm.customer_id = c.customer_id AND cm.is_active = 1
       LEFT JOIN users u ON u.user_id = c.assigned_to
       LEFT JOIN users creator ON creator.user_id = c.created_by
       LEFT JOIN teams t ON t.team_id = c.team_id
@@ -190,9 +195,32 @@ async function updateCustomer(customerId, companyId, updates, executor) {
   return getCustomerById(customerId, companyId, active);
 }
 
+async function findDuplicateCustomer(companyId, email, companyName, executor) {
+  const active = getExecutor(executor);
+  const [rows] = await active.query(
+    `
+      SELECT TOP 1
+        c.customer_id,
+        c.company_name,
+        c.email,
+        u.name AS assigned_to_name,
+        u.email AS assigned_to_email
+      FROM customers c
+      LEFT JOIN users u ON u.user_id = c.assigned_to
+      WHERE c.company_id = ? 
+        AND c.is_active = 1
+        AND (LOWER(c.email) = LOWER(?) OR LOWER(c.company_name) = LOWER(?))
+      ORDER BY c.created_at DESC
+    `,
+    [companyId, email, companyName]
+  );
+  return rows[0] || null;
+}
+
 module.exports = {
   createCustomer,
   getCustomerById,
   listCustomers,
   updateCustomer,
+  findDuplicateCustomer,
 };

@@ -67,7 +67,14 @@ export default function LeadRowCard({
       });
       router.push(`/customers/${response.customer.customer_id}`);
     } catch (error) {
-      alert(error.message || "Failed to convert lead to customer.");
+      // Enhanced error message for duplicate customers
+      if (error.statusCode === 409 && error.details?.duplicate) {
+        const ownerName = error.details.assigned_to_name || 'the assigned owner';
+        const ownerEmail = error.details.assigned_to_email ? ` (${error.details.assigned_to_email})` : '';
+        alert(`⚠️ Customer Already Exists\n\nA customer with this email or company name already exists.\n\nPlease contact ${ownerName}${ownerEmail} to view this customer.`);
+      } else {
+        alert(error.message || "Failed to convert lead to customer.");
+      }
       setConverting(false);
     }
   }

@@ -51,4 +51,13 @@ async function removeMember(customerId, userId, executor) {
   return { removed: true };
 }
 
-module.exports = { listMembers, addMember, removeMember };
+async function isMember(customerId, userId, executor) {
+  const active = getExecutor(executor);
+  const [rows] = await active.query(
+    `SELECT TOP 1 1 FROM customer_members WHERE customer_id = ? AND user_id = ? AND is_active = 1`,
+    [customerId, userId]
+  );
+  return rows.length > 0;
+}
+
+module.exports = { listMembers, addMember, removeMember, isMember };

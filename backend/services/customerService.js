@@ -122,9 +122,19 @@ async function getCustomer(auth, customerId) {
     includeMembership: true,
   });
 
-  if (![ROLES.ADMIN, ROLES.MANAGER, ROLES.SUPER_ADMIN, ROLES.PLATFORM_ADMIN, ROLES.PLATFORM_MANAGER].includes(auth.role) && customer.assigned_to !== auth.userId) {
-    throw new AppError("You can only access customers assigned to you.", 403);
+  // Allow access if user is admin/manager/super_admin OR assigned owner OR is a member
+  const isAdminRole = [ROLES.ADMIN, ROLES.MANAGER, ROLES.SUPER_ADMIN, ROLES.PLATFORM_ADMIN, ROLES.PLATFORM_MANAGER].includes(auth.role);
+  const isOwner = customer.assigned_to === auth.userId;
+  
+  if (!isAdminRole && !isOwner) {
+    // Check if user is a member (efficient single query)
+    const isMember = await customerMemberRepository.isMember(customer.customer_id, auth.userId);
+    
+    if (!isMember) {
+      throw new AppError("You do not have access to this customer.", 403);
+    }
   }
+  
   return customer;
 }
 
@@ -214,6 +224,8 @@ async function createCustomer(auth, payload) {
 
 async function updateCustomer(auth, customerId, payload) {
   const customer = await getCustomer(auth, customerId);
+  // Members have full edit access - no additional check needed
+  
   let assignee = payload.assigned_to;
 
   if (assignee) {
@@ -288,12 +300,16 @@ async function updateCustomer(auth, customerId, payload) {
 
 async function deleteCustomer(auth, customerId) {
   const customer = await getCustomer(auth, customerId);
+  // Members have full access - no additional check needed
+  
   await customerRepository.updateCustomer(customer.customer_id, customer.company_id, { is_active: 0 });
   return { deleted: true };
 }
 
 async function addCustomerNote(auth, customerId, payload) {
   const customer = await getCustomer(auth, customerId);
+  // Members have full access - no additional check needed
+  
   if (!payload.content) {
     throw new AppError("Note content is required.");
   }
@@ -320,6 +336,8 @@ async function addCustomerNote(auth, customerId, payload) {
 
 async function addCustomerFollowUp(auth, customerId, payload) {
   const customer = await getCustomer(auth, customerId);
+  // Members have full access - no additional check needed
+  
   if (!payload.next_follow_up) {
     throw new AppError("next_follow_up is required.");
   }
@@ -348,6 +366,8 @@ async function listCustomerMembers(auth, customerId) {
 
 async function addCustomerMember(auth, customerId, payload) {
   const customer = await getCustomer(auth, customerId);
+  // Members have full access - no additional check needed
+  
   if (!payload.user_id) throw new AppError("user_id is required.");
   const user = await userRepository.getUserInCompany(payload.user_id, customer.company_id);
   if (!user) throw new AppError("User must belong to the same company.", 400);
@@ -374,6 +394,12 @@ async function addCustomerMember(auth, customerId, payload) {
 
 async function removeCustomerMember(auth, customerId, userId) {
   const customer = await getCustomer(auth, customerId);
+  
+  // User cannot remove themselves
+  if (auth.userId === userId) {
+    throw new AppError("You cannot remove yourself from the customer. Ask another member or the owner to remove you.", 403);
+  }
+  
   const members = await customerMemberRepository.listMembers(customer.customer_id, customer.company_id);
   const target = members.find((m) => m.user_id === userId);
 

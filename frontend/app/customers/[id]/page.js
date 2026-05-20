@@ -6,6 +6,8 @@ import { useParams, useRouter } from "next/navigation";
 import DashboardShell from "../../../components/dashboard/DashboardShell";
 import DashboardIcon from "../../../components/dashboard/icons";
 import { CustomerStatusBadge, OnboardingStatusBadge, isCustomerFollowUpOverdue } from "../../../components/customers/CustomerStatusBits";
+import FollowUpActivityModal from "../../../components/customers/FollowUpActivityModal";
+import FollowUpHistorySection from "../../../components/customers/FollowUpHistorySection";
 import { apiRequest } from "../../../lib/api";
 import { buildCustomerNotes, parseCustomerProfile, stripCustomerProfile } from "../../../lib/customerProfile";
 import { formatIndiaDateTime } from "../../../lib/dateTime";
@@ -81,10 +83,12 @@ export default function CustomerDetailPage() {
   const [completingFollowUp, setCompletingFollowUp] = useState(false);
   const [members, setMembers] = useState([]);
   const [activities, setActivities] = useState([]);
-  const [showAddForm, setShowAddForm] = useState(false);   // controls panel open/close
-  const [savingMember, setSavingMember] = useState(false); // controls submit spinner
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [savingMember, setSavingMember] = useState(false);
   const [availableUsers, setAvailableUsers] = useState([]);
   const [pendingMember, setPendingMember] = useState("");
+  const [showActivityModal, setShowActivityModal] = useState(false);
+  const [savingActivity, setSavingActivity] = useState(false);
 
   async function load(s) {
     const r = await apiRequest(`/customers/${params.id}`, { token: s.token });
@@ -190,6 +194,36 @@ export default function CustomerDetailPage() {
     } catch (err) { setError(formatScopedError(err, "Could not remove person.")); }
   }
 
+  async function saveFollowUpActivity({ activityType, remarks }) {
+    setSavingActivity(true);
+    setError("");
+    setNotice("");
+    try {
+      const existing = stripCustomerProfile(customer.notes);
+      const timestamp = new Date().toISOString();
+      const author = session?.user?.name || "Team";
+      const entry = `[${timestamp}] ${author}: [${activityType.toUpperCase()}] ${remarks}`;
+      const updatedNotes = existing ? `${existing}\n${entry}` : entry;
+      
+      await apiRequest(`/customers/${params.id}`, {
+        method: "PATCH",
+        token: session.token,
+        body: {
+          notes: buildCustomerNotes(parseCustomerProfile(customer.notes), updatedNotes),
+          last_interaction: timestamp,
+        },
+      });
+      
+      setNotice("Follow-up activity saved.");
+      setShowActivityModal(false);
+      await load(session);
+    } catch (err) {
+      setError(formatScopedError(err, "Could not save activity."));
+    } finally {
+      setSavingActivity(false);
+    }
+  }
+
   return (
     <DashboardShell session={session} title={customer?.company_name||"Customer"} hideTitle heroStats={[]}>
       <div className="mx-auto max-w-[1280px] space-y-5 px-1">
@@ -236,7 +270,7 @@ export default function CustomerDetailPage() {
                 {customer.phone ? <a className={Btn.ghost} href={`tel:${String(customer.phone).replace(/[^\d+]/g,"")}`}><DashboardIcon name="phone" className="h-4 w-4" />Call</a> : null}
                 {customer.email ? <a className={Btn.ghost} href={`mailto:${customer.email}`}><DashboardIcon name="mail" className="h-4 w-4" />Email</a> : null}
                 <button className={Btn.ghost} type="button" onClick={()=>scrollTo("follow-up-desk")}><DashboardIcon name="calendar" className="h-4 w-4" />Schedule Follow-up</button>
-                <button className={Btn.ghost} type="button" onClick={()=>scrollTo("notes-desk")}><DashboardIcon name="documents" className="h-4 w-4" />Add Note</button>
+                <button className={Btn.gold} type="button" onClick={()=>setShowActivityModal(true)}><DashboardIcon name="plus" className="h-4 w-4" />Add Follow-up</button>
               </div>
             </div>
 
@@ -266,26 +300,11 @@ export default function CustomerDetailPage() {
                   {profile.business_summary ? <p className="mt-4 rounded-xl bg-slate-50 px-4 py-3 text-sm leading-7 text-slate-600">{profile.business_summary}</p> : null}
                 </div>
 
-                {/* Notes */}
-                <div className={`${C.panel} px-5 py-5`} id="notes-desk">
-                  <p className={C.kicker}>Notes</p>
-                  <h2 className="mt-1 mb-4 text-lg font-bold text-slate-900">Account Notes</h2>
-                  <form className="space-y-3" onSubmit={addNote}>
-                    <textarea className={`${C.input} min-h-[120px] resize-y`} rows={4} value={note} onChange={e=>setNote(e.target.value)} placeholder="Add context, update the relationship, or capture a commercial note…" />
-                    <button className={Btn.gold} type="submit" disabled={savingNote}>{savingNote?"Saving…":"Save Note"}</button>
-                  </form>
-                  <div className="mt-5 space-y-3">
-                    {notes.length ? notes.map(item=>(
-                      <div key={item.id} className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <strong className="text-sm text-slate-800">{item.author}</strong>
-                          <span className="text-xs text-slate-400">{item.at ? when(item.at) : "Manual note"}</span>
-                        </div>
-                        <p className="mt-2 text-sm leading-6 text-slate-600">{item.content}</p>
-                      </div>
-                    )) : <p className="rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-400">No notes yet.</p>}
-                  </div>
-                </div>
+                {/* Follow-up History */}
+                <FollowUpHistorySection 
+                  notes={customer.notes} 
+                  onAddActivity={() => setShowActivityModal(true)} 
+                />
 
                 {/* History */}
                 <div className={`${C.panel} px-5 py-5`}>
@@ -440,6 +459,14 @@ export default function CustomerDetailPage() {
           </>
         ) : null}
       </div>
+
+      {/* Follow-up Activity Modal */}
+      <FollowUpActivityModal
+        isOpen={showActivityModal}
+        onClose={() => setShowActivityModal(false)}
+        onSave={saveFollowUpActivity}
+        saving={savingActivity}
+      />
     </DashboardShell>
   );
 }

@@ -6,11 +6,12 @@ import { useRouter } from "next/navigation";
 import DashboardShell from "../../components/dashboard/DashboardShell";
 import DashboardIcon from "../../components/dashboard/icons";
 import { CustomerFollowUpBadge, CustomerStatusBadge, OnboardingStatusBadge, isCustomerFollowUpOverdue } from "../../components/customers/CustomerStatusBits";
+import FollowUpActivityModal from "../../components/customers/FollowUpActivityModal";
 import { apiRequest } from "../../lib/api";
-import { stripCustomerProfile } from "../../lib/customerProfile";
+import { buildCustomerNotes, parseCustomerProfile, stripCustomerProfile } from "../../lib/customerProfile";
 import { loadSession } from "../../lib/session";
 import { formatScopedError, isPlatformConsoleRole, loadTeamScopeResources, resolveSessionCompanyId, teamBadgeLabel, teamSelectLabel } from "../../lib/teamScope";
-import { AlertError } from "../../components/ui/Alert";
+import { AlertError, AlertSuccess } from "../../components/ui/Alert";
 
 const ALLOWED_ROLES = ["super-admin","platform-admin","platform-manager","admin","manager","sales","marketing","support","viewer"];
 const C = {
@@ -50,6 +51,7 @@ export default function CustomersPage() {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [followUpFilter, setFollowUpFilter] = useState("all");
@@ -58,10 +60,12 @@ export default function CustomersPage() {
   const [teamFilter, setTeamFilter] = useState("all");
   const [saving, setSaving] = useState("");
   const [createdByFilter, setCreatedByFilter] = useState("all");
-  // Quick-add-person state: { customerId, users, loading }
   const [quickAdd, setQuickAdd] = useState(null);
   const [quickAddUser, setQuickAddUser] = useState("");
   const [quickAddSaving, setQuickAddSaving] = useState(false);
+  const [showActivityModal, setShowActivityModal] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [savingActivity, setSavingActivity] = useState(false);
 
   const role = session?.user?.role || "viewer";
   const isPlatformConsole = isPlatformConsoleRole(role);
@@ -186,6 +190,43 @@ export default function CustomersPage() {
     finally { setQuickAddSaving(false); }
   }
 
+  function openFollowUpModal(customer) {
+    setSelectedCustomer(customer);
+    setShowActivityModal(true);
+  }
+
+  async function saveFollowUpActivity({ activityType, remarks }) {
+    if (!selectedCustomer) return;
+    setSavingActivity(true);
+    setError("");
+    setNotice("");
+    try {
+      const existing = stripCustomerProfile(selectedCustomer.notes);
+      const timestamp = new Date().toISOString();
+      const author = session?.user?.name || "Team";
+      const entry = `[${timestamp}] ${author}: [${activityType.toUpperCase()}] ${remarks}`;
+      const updatedNotes = existing ? `${existing}\n${entry}` : entry;
+      
+      await apiRequest(`/customers/${selectedCustomer.customer_id}`, {
+        method: "PATCH",
+        token: session.token,
+        body: {
+          notes: buildCustomerNotes(parseCustomerProfile(selectedCustomer.notes), updatedNotes),
+          last_interaction: timestamp,
+        },
+      });
+      
+      setNotice(`Follow-up activity saved for ${selectedCustomer.company_name || selectedCustomer.name}.`);
+      setShowActivityModal(false);
+      setSelectedCustomer(null);
+      await loadCustomers(session, companyFilter, teamFilter);
+    } catch (err) {
+      setError(formatScopedError(err, "Could not save activity."));
+    } finally {
+      setSavingActivity(false);
+    }
+  }
+
   function exportHtml() {
     if(!filtered.length){ setError("No data to export."); return; }
     const esc=v=>String(v??"").replace(/[&<>"']/g,c=({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -198,6 +239,7 @@ export default function CustomersPage() {
     <DashboardShell session={session} title="Customers" hideTitle heroStats={[]}>
       <div className="mx-auto max-w-[1320px] space-y-5 px-1">
         {error ? <AlertError message={error} onDismiss={()=>setError("")} /> : null}
+        {!error && notice ? <AlertSuccess message={notice} onDismiss={()=>setNotice("")} /> : null}
 
         {/* ── Header ── */}
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -302,6 +344,15 @@ export default function CustomersPage() {
                     </div>
                     {/* Right: Actions */}
                     <div className="flex shrink-0 gap-2">
+                      <button 
+                        className={`${Btn.gold} text-xs`}
+                        type="button" 
+                        onClick={() => openFollowUpModal(customer)}
+                        title="Add follow-up activity"
+                      >
+                        <DashboardIcon name="plus" className="h-3.5 w-3.5" />
+                        Follow-up
+                      </button>
                       <Link className={Btn.ghost} href={`/customers/${customer.customer_id}`}><DashboardIcon name="message" className="h-3.5 w-3.5" />View</Link>
                       {canManage ? <Link className={Btn.ghost} href={`/customers/${customer.customer_id}/edit`}><DashboardIcon name="settings" className="h-3.5 w-3.5" />Edit</Link> : null}
                       {canManage ? (
@@ -373,6 +424,17 @@ export default function CustomersPage() {
           </div>
         )}
       </div>
+
+      {/* Follow-up Activity Modal */}
+      <FollowUpActivityModal
+        isOpen={showActivityModal}
+        onClose={() => {
+          setShowActivityModal(false);
+          setSelectedCustomer(null);
+        }}
+        onSave={saveFollowUpActivity}
+        saving={savingActivity}
+      />
     </DashboardShell>
   );
 }

@@ -1662,6 +1662,7 @@ async function bulkUpload(auth, payload) {
 
 async function convertLeadToCustomer(auth, leadId) {
   const customerService = require("./customerService");
+  const customerRepository = require("../repositories/customerRepository");
   const lead = await getLeadRecord(auth, leadId);
 
   if (lead.status !== "closed-won") {
@@ -1670,6 +1671,30 @@ async function convertLeadToCustomer(auth, leadId) {
 
   if (lead.converted_to_customer_id) {
     throw new AppError("This lead has already been converted to a customer.", 400);
+  }
+
+  // Check for duplicate customer by email or company name
+  const existingCustomer = await customerRepository.findDuplicateCustomer(
+    lead.company_id,
+    lead.email,
+    lead.company_name
+  );
+
+  if (existingCustomer) {
+    const ownerInfo = existingCustomer.assigned_to_name 
+      ? `${existingCustomer.assigned_to_name} (${existingCustomer.assigned_to_email || 'No email'})`
+      : 'the assigned owner';
+    
+    throw new AppError(
+      `A customer with this email or company name already exists. Please contact ${ownerInfo} to view this customer.`,
+      409,
+      {
+        duplicate: true,
+        existing_customer_id: existingCustomer.customer_id,
+        assigned_to_name: existingCustomer.assigned_to_name,
+        assigned_to_email: existingCustomer.assigned_to_email,
+      }
+    );
   }
 
   return db.withTransaction(async (transaction) => {
