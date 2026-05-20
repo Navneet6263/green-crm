@@ -6,6 +6,7 @@ import {
   buildLeadExportFilename,
   downloadLeadCsv,
   downloadLeadExcel,
+  downloadLeadHtmlSheet,
   fetchLeadExportRows,
 } from "./leadExportUtils";
 
@@ -29,11 +30,13 @@ export function useLeadExport({ allMatchedLeads, leadQueryBase, setError, setNot
 
       if (format === "csv") {
         downloadLeadCsv(leads, buildLeadExportFilename("csv"));
+      } else if (format === "html") {
+        downloadLeadHtmlSheet(leads, buildLeadExportFilename("html"));
       } else {
         downloadLeadExcel(leads, buildLeadExportFilename("xls"));
       }
 
-      setNotice(`${leads.length} filtered leads exported as ${format === "csv" ? "CSV" : "Excel"}.`);
+      setNotice(`${leads.length} filtered leads exported as ${format === "csv" ? "CSV" : format === "html" ? "HTML Sheet" : "Excel"}.`);
     } catch (requestError) {
       setError(requestError.message || "Could not export the current filtered leads.");
     } finally {
@@ -44,7 +47,9 @@ export function useLeadExport({ allMatchedLeads, leadQueryBase, setError, setNot
   return {
     exportCsv: () => runLeadExport("csv"),
     exportExcel: () => runLeadExport("excel"),
+    exportHtml: () => runLeadExport("html"),
     exportingCsv: exportingFormat === "csv",
     exportingExcel: exportingFormat === "excel",
+    exportingHtml: exportingFormat === "html",
   };
 }

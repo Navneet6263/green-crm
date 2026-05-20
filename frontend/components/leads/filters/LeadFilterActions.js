@@ -7,10 +7,13 @@ export default function LeadFilterActions({
   exportDisabled,
   exportingCsv,
   exportingExcel,
+  exportingHtml,
   onExportCsv,
   onExportExcel,
+  onExportHtml,
   onReset,
 }) {
+  const busy = exportingCsv || exportingExcel || exportingHtml;
   return (
     <div className="rounded-[24px] border border-[#efe6d8] bg-[#fffaf1] p-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -21,11 +24,14 @@ export default function LeadFilterActions({
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button className={buttonClassName} type="button" onClick={onExportCsv} disabled={exportDisabled || exportingCsv || exportingExcel}>
-            {exportingCsv ? "Exporting CSV..." : "Export CSV"}
+          <button className={buttonClassName} type="button" onClick={onExportCsv} disabled={exportDisabled || busy}>
+            {exportingCsv ? "Exporting..." : "Export CSV"}
           </button>
-          <button className={buttonClassName} type="button" onClick={onExportExcel} disabled={exportDisabled || exportingCsv || exportingExcel}>
-            {exportingExcel ? "Exporting Excel..." : "Export Excel"}
+          <button className={buttonClassName} type="button" onClick={onExportExcel} disabled={exportDisabled || busy}>
+            {exportingExcel ? "Exporting..." : "Export XLS"}
+          </button>
+          <button className={buttonClassName} type="button" onClick={onExportHtml} disabled={exportDisabled || busy}>
+            {exportingHtml ? "Exporting..." : "Export HTML Sheet"}
           </button>
           <button className={buttonClassName} type="button" onClick={onReset} disabled={disabled}>
             Reset Filters

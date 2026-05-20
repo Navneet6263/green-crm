@@ -8,8 +8,8 @@ import LeadSearchInput from "./LeadSearchInput";
 
 export default function LeadFiltersSection({
   search, onSearchChange, searchPlaceholder, filters, dateFilters,
-  activeCount, onReset, resetDisabled, onExportCsv, onExportExcel,
-  exportDisabled, exportingCsv, exportingExcel, kickerClassName, inputClassName, buttonClassName,
+  activeCount, onReset, resetDisabled, onExportCsv, onExportExcel, onExportHtml,
+  exportDisabled, exportingCsv, exportingExcel, exportingHtml, kickerClassName, inputClassName, buttonClassName,
 }) {
   const [open, setOpen] = useState(false);
 
@@ -80,9 +80,11 @@ export default function LeadFiltersSection({
                 disabled={resetDisabled}
                 onExportCsv={onExportCsv}
                 onExportExcel={onExportExcel}
+                onExportHtml={onExportHtml}
                 exportDisabled={exportDisabled}
                 exportingCsv={exportingCsv}
                 exportingExcel={exportingExcel}
+                exportingHtml={exportingHtml}
                 buttonClassName={buttonClassName}
               />
             </div>
