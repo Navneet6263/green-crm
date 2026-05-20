@@ -12,6 +12,18 @@ function resolveNotesList(lead) {
   return [];
 }
 
+// Splits a raw note into { userText, changes[] }
+// Note format from backend: "<user text>\n\nChanges:\n<field>: <before> -> <after>\n..."
+function parseNoteContent(raw) {
+  const text = String(raw || "").trim();
+  const changesSplit = text.split(/\n\nChanges:\n/i);
+  const userText = changesSplit[0].trim();
+  const changes = changesSplit[1]
+    ? changesSplit[1].split("\n").map((l) => l.trim()).filter(Boolean)
+    : [];
+  return { userText, changes };
+}
+
 function resolveLeadNotesText(lead) {
   return resolveNotesList(lead).join(" | ");
 }
@@ -154,7 +166,13 @@ export function downloadLeadCsv(leads = [], filename = buildLeadExportFilename("
   const rows = leads.map((lead) => {
     const notes = resolveNotesList(lead);
     const baseCells = baseColumns.map((c) => esc(c.resolve(lead)));
-    const noteCells = Array.from({ length: maxNotes }, (_, i) => esc(notes[i] || ""));
+    const noteCells = Array.from({ length: maxNotes }, (_, i) => {
+      const raw = notes[i] || "";
+      if (!raw) return esc("");
+      const { userText, changes } = parseNoteContent(raw);
+      const parts = [userText, ...(changes.length ? ["Changes:", ...changes] : [])].filter(Boolean);
+      return esc(parts.join("\n"));
+    });
     return [...baseCells, ...noteCells].join(",");
   });
 
@@ -251,11 +269,22 @@ function buildLeadHtmlReport(leads = []) {
     ];
 
     const noteCells = Array.from({ length: maxNotes }, (_, i) => {
-      const text = notes[i] || "";
-      const s = text
-        ? `${tdBase}max-width:260px;background:#fefce8;border-left:3px solid #fbbf24;color:#1e293b;line-height:1.55;`
-        : `${tdBase}color:#e2e8f0;`;
-      return `<td style="${s}">${escapeHtml(text)}</td>`;
+      const raw = notes[i] || "";
+      if (!raw) return `<td style="${tdBase}color:#e2e8f0;"></td>`;
+      const { userText, changes } = parseNoteContent(raw);
+      const userHtml = userText
+        ? `<div style="font-weight:600;color:#1e293b;line-height:1.55;margin-bottom:${changes.length ? "8px" : "0"}">${escapeHtml(userText).replace(/\n/g, "<br/>")}</div>`
+        : "";
+      const changesHtml = changes.length
+        ? `<div style="font-size:10px;color:#78350f;background:#fef3c7;border-radius:6px;padding:5px 8px;line-height:1.7;">${changes.map((c) => {
+            const arrow = c.replace(" -> ", " → ");
+            const parts = arrow.split(": ");
+            const label = parts[0];
+            const val = parts.slice(1).join(": ");
+            return `<span style="font-weight:700;">${escapeHtml(label)}:</span> ${escapeHtml(val)}`;
+          }).join("<br/>")}</div>`
+        : "";
+      return `<td style="${tdBase}max-width:280px;background:#fefce8;border-left:3px solid #fbbf24;vertical-align:top;">${userHtml}${changesHtml}</td>`;
     });
 
     return `<tr style="background:${rowBg};">${[...baseCells, ...noteCells].join("")}</tr>`;
@@ -314,11 +343,22 @@ function buildLeadHtmlSheet(leads = []) {
     ];
 
     const noteCells = Array.from({ length: maxNotes }, (_, i) => {
-      const text = notes[i] || "";
-      const noteStyle = text
-        ? `${tdBase}max-width:260px;background:#fefce8;border-left:3px solid #fbbf24;color:#1e293b;font-size:12px;line-height:1.5;`
-        : `${tdBase}color:#cbd5e1;`;
-      return `<td style="${noteStyle}">${escapeHtml(text)}</td>`;
+      const raw = notes[i] || "";
+      if (!raw) return `<td style="${tdBase}color:#e2e8f0;"></td>`;
+      const { userText, changes } = parseNoteContent(raw);
+      const userHtml = userText
+        ? `<div style="font-weight:600;color:#1e293b;line-height:1.55;margin-bottom:${changes.length ? "8px" : "0"}">${escapeHtml(userText).replace(/\n/g, "<br/>")}</div>`
+        : "";
+      const changesHtml = changes.length
+        ? `<div style="font-size:10px;color:#78350f;background:#fef3c7;border-radius:6px;padding:5px 8px;line-height:1.7;">${changes.map((c) => {
+            const arrow = c.replace(" -> ", " → ");
+            const parts = arrow.split(": ");
+            const label = parts[0];
+            const val = parts.slice(1).join(": ");
+            return `<span style="font-weight:700;">${escapeHtml(label)}:</span> ${escapeHtml(val)}`;
+          }).join("<br/>")}</div>`
+        : "";
+      return `<td style="${tdBase}max-width:280px;background:#fefce8;border-left:3px solid #fbbf24;vertical-align:top;">${userHtml}${changesHtml}</td>`;
     });
 
     return `<tr style="background:${rowBg};">${[...baseCells, ...noteCells].join("")}</tr>`;
