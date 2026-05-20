@@ -15,6 +15,7 @@ export function EditPipelineSection({ form, productChoices, teamSelectionPending
           <span className={T.kicker}>Status</span>
           <select className={T.input} value={form.status} onChange={(e) => onChange("status", e.target.value)}>
             <option value="new">New</option>
+            <option value="pending">Pending</option>
             <option value="contacted">Contacted</option>
             <option value="qualified">Qualified</option>
             <option value="proposal">Proposal</option>
@@ -63,9 +64,16 @@ export function EditPipelineSection({ form, productChoices, teamSelectionPending
           <span className={T.kicker}>Number of Units</span>
           <input className={T.input} type="number" min="0" step="1" value={form.number_of_units} onChange={(e) => onChange("number_of_units", e.target.value)} placeholder="0" />
         </label>
-        <label className="space-y-2 sm:col-span-2">
+        <label className="space-y-2">
           <span className={T.kicker}>Follow-up Date</span>
-          <input className={T.input} type="datetime-local" value={form.follow_up_date} onChange={(e) => onChange("follow_up_date", e.target.value)} />
+          <input className={T.input} type="date" value={form.follow_up_date?.split('T')[0] || ''} onChange={(e) => onChange("follow_up_date", e.target.value)} />
+        </label>
+        <label className="space-y-2">
+          <span className={T.kicker}>Follow-up Time (Optional)</span>
+          <input className={T.input} type="time" value={form.follow_up_date?.split('T')[1]?.substring(0, 5) || ''} onChange={(e) => {
+            const date = form.follow_up_date?.split('T')[0] || '';
+            onChange("follow_up_date", date && e.target.value ? `${date}T${e.target.value}` : date);
+          }} />
         </label>
       </div>
     </article>

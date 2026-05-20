@@ -48,14 +48,13 @@ export default function LeadFollowUpStatusButton({ className = "", lead, onSaved
 
   function save() {
     if (!note.trim()) { setError("Follow-up note is required."); return; }
-    if ((nextDate && !nextTime) || (!nextDate && nextTime)) { setError("Add both date and time for next follow-up."); return; }
     if (saveLockRef.current) return;
     setSaving(true); setError("");
     const content = buildNote({ callStatus, emailStatus, mode, nextDate, nextTime, note, response });
-    const taskPayload = nextDate && nextTime ? {
+    const taskPayload = nextDate ? {
       assigned_to: lead.assigned_to || undefined,
       company_id: lead.company_id || undefined,
-      due_date: `${nextDate} ${nextTime}:00`,
+      due_date: `${nextDate} ${nextTime || '09:00'}:00`,
       priority: lead.priority || "medium",
       related_id: lead.lead_id,
       related_to: "lead",

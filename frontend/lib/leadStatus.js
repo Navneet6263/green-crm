@@ -1,5 +1,6 @@
 export const LEAD_STATUS_ORDER = [
   "new",
+  "pending",
   "contacted",
   "qualified",
   "proposal",
@@ -13,6 +14,7 @@ export const LEAD_STATUS_ORDER = [
 
 export const LEAD_OPEN_STATUSES = [
   "new",
+  "pending",
   "contacted",
   "qualified",
   "proposal",
@@ -24,6 +26,7 @@ export const LEAD_OPEN_STATUSES = [
 
 export const LEAD_STATUS_LABELS = {
   new: "New",
+  pending: "Pending",
   contacted: "Contacted",
   qualified: "Qualified",
   proposal: "Proposal",
@@ -37,6 +40,7 @@ export const LEAD_STATUS_LABELS = {
 
 export const LEAD_STATUS_BADGES = {
   new: "bg-[#eef5ff] text-[#2563eb] ring-[#cfe0ff]",
+  pending: "bg-[#fff4d9] text-[#8d6e27] ring-[#ecdcae]",
   contacted: "bg-[#ecfbff] text-[#0f8da8] ring-[#c8eef4]",
   qualified: "bg-[#f5efff] text-[#7c3aed] ring-[#e4d8ff]",
   proposal: "bg-[#fff4d9] text-[#8d6e27] ring-[#ecdcae]",
@@ -50,6 +54,7 @@ export const LEAD_STATUS_BADGES = {
 
 export const LEAD_STATUS_ACCENTS = {
   new: ["rgba(79,140,255,.12)", "#2f6fdd"],
+  pending: ["rgba(245,164,45,.14)", "#b96a00"],
   contacted: ["rgba(56,189,248,.14)", "#0077b8"],
   qualified: ["rgba(167,139,250,.14)", "#6d46d6"],
   proposal: ["rgba(245,164,45,.14)", "#b96a00"],
@@ -59,11 +64,11 @@ export const LEAD_STATUS_ACCENTS = {
   "trial-started": ["rgba(59,130,246,.14)", "#2d64dd"],
   "closed-won": ["rgba(31,199,120,.16)", "#0f8c53"],
   "closed-lost": ["rgba(224,82,82,.14)", "#b63b3b"],
-  pending: ["rgba(245,164,45,.14)", "#b96a00"],
 };
 
 export const LEAD_STATUS_COLORS = {
   new: "#4f8cff",
+  pending: "#d7a13d",
   contacted: "#33c5dc",
   qualified: "#9b7df4",
   proposal: "#d7a13d",

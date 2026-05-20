@@ -7,6 +7,7 @@ export const LEAD_STATUS_OPTIONS = [
   { value: "unassigned", label: "Unassigned" },
   { value: "transferred", label: "Transferred" },
   { value: "new", label: "New" },
+  { value: "pending", label: "Pending" },
   { value: "contacted", label: "Contacted" },
   { value: "qualified", label: "Qualified" },
   { value: "proposal", label: "Proposal" },

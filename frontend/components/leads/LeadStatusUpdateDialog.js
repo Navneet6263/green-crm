@@ -57,7 +57,7 @@ export default function LeadStatusUpdateDialog({
     () => buildStatusNote({ customerResponse, followUp, nextStatus, note, previousStatus: currentStatus }),
     [currentStatus, customerResponse, followUp, nextStatus, note]
   );
-  const followUpMissing = followUp.required && (!followUp.date || !followUp.time);
+  const followUpMissing = followUp.required && !followUp.date;
   const demoMissing = isDemoStatus && (!demo.requirement.trim() || !demo.date || !demo.time || !demo.assignee);
   const cannotSave = disabled || saving || (!isDemoStatus && !note.trim()) || followUpMissing || demoMissing || nextStatus === currentStatus;
 
