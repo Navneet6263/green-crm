@@ -47,16 +47,15 @@ export const LEAD_EXPORT_COLUMNS = [
 ];
 
 export function formatLeadExportDate(value) {
-  if (!value) {
-    return "";
-  }
-
+  if (!value) return "";
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return "";
-  }
-
-  return date.toISOString();
+  if (Number.isNaN(date.getTime())) return "";
+  const dd = String(date.getDate()).padStart(2, "0");
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const yyyy = date.getFullYear();
+  const hh = String(date.getHours()).padStart(2, "0");
+  const min = String(date.getMinutes()).padStart(2, "0");
+  return `${dd}/${mm}/${yyyy} ${hh}:${min}`;
 }
 
 export async function fetchLeadExportRows({ token, leadQueryBase, totalMatched = 0 }) {
@@ -135,17 +134,31 @@ export function downloadLeadHtml(leads = [], filename = buildLeadExportFilename(
 }
 
 export function downloadLeadCsv(leads = [], filename = buildLeadExportFilename("csv")) {
-  function escapeCsv(value) {
+  function esc(value) {
     const text = String(value ?? "");
-    return /[",\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+    return /[",\n\r]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
   }
-  const header = LEAD_EXPORT_COLUMNS.map((column) => escapeCsv(column.label)).join(",");
-  const rows = leads
-    .map((lead) =>
-      LEAD_EXPORT_COLUMNS.map((column) => escapeCsv(column.resolve(lead))).join(",")
-    )
-    .join("\n");
-  downloadBlob(filename, new Blob([`\uFEFF${header}\n${rows}`], { type: "text/csv;charset=utf-8;" }));
+
+  const maxNotes = Math.min(
+    leads.reduce((max, lead) => Math.max(max, resolveNotesList(lead).length), 0),
+    MAX_NOTE_COLS
+  );
+  const noteLabels = Array.from({ length: maxNotes }, (_, i) => `Note ${i + 1}`);
+
+  const baseColumns = LEAD_EXPORT_COLUMNS.filter(
+    (c) => c.key !== "latest_note" && c.key !== "notes_text" && c.key !== "notes_count"
+  );
+
+  const headerRow = [...baseColumns.map((c) => esc(c.label)), ...noteLabels.map(esc)].join(",");
+
+  const rows = leads.map((lead) => {
+    const notes = resolveNotesList(lead);
+    const baseCells = baseColumns.map((c) => esc(c.resolve(lead)));
+    const noteCells = Array.from({ length: maxNotes }, (_, i) => esc(notes[i] || ""));
+    return [...baseCells, ...noteCells].join(",");
+  });
+
+  downloadBlob(filename, new Blob([`\uFEFF${headerRow}\n${rows.join("\n")}`], { type: "text/csv;charset=utf-8;" }));
 }
 
 export function downloadLeadExcel(leads = [], filename = buildLeadExportFilename("html")) {
@@ -188,37 +201,37 @@ function getBadgeStyle(colorMap, key) {
 function buildLeadHtmlReport(leads = []) {
   const now = new Date();
   const generatedAt = now.toLocaleString("en-IN", { dateStyle: "long", timeStyle: "short" });
-  const totalValue = leads.reduce((sum, l) => sum + Number(l.estimated_value || 0), 0);
-  const wonCount = leads.filter((l) => l.status === "closed-won").length;
-  const lostCount = leads.filter((l) => l.status === "closed-lost").length;
-  const activeCount = leads.filter((l) => l.status !== "closed-won" && l.status !== "closed-lost").length;
 
-  const statCards = [
-    { label: "Total Leads", value: leads.length, color: "#2563eb" },
-    { label: "Active", value: activeCount, color: "#0891b2" },
-    { label: "Closed Won", value: wonCount, color: "#16a34a" },
-    { label: "Closed Lost", value: lostCount, color: "#dc2626" },
-    { label: "Total Value", value: `INR ${totalValue.toLocaleString("en-IN")}`, color: "#7c3aed" },
-  ]
-    .map((s) => `<div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:18px 22px;min-width:140px;flex:1;"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#9ca3af;margin-bottom:8px;">${escapeHtml(s.label)}</div><div style="font-size:26px;font-weight:800;color:${s.color};">${escapeHtml(String(s.value))}</div></div>`)
-    .join("");
+  const maxNotes = Math.min(
+    leads.reduce((max, lead) => Math.max(max, resolveNotesList(lead).length), 0),
+    MAX_NOTE_COLS
+  );
+  const noteHeaders = Array.from({ length: maxNotes }, (_, i) => `Note ${i + 1}`);
 
-  const headerCells = [
+  const baseHeaders = [
     "#", "Contact Person", "Company", "Email", "Phone",
     "Product", "Status", "Priority", "Source", "Assigned To",
-    "Workflow Stage", "Estimated Value", "Units", "Created At",
-    "Follow-up Date", "Created By", "Latest Note", "All Notes", "Notes Count",
-    "Requirements", "Industry", "Last Updated",
-  ].map((h) => `<th style="background:#1e293b;color:#f8fafc;padding:11px 14px;text-align:left;font-size:12px;font-weight:700;white-space:nowrap;border:1px solid #334155;">${escapeHtml(h)}</th>`).join("");
+    "Workflow Stage", "Est. Value (INR)", "Units",
+    "Created At", "Follow-up Date", "Created By", "Requirements", "Industry", "Last Updated",
+  ];
+
+  const thS = `background:#0f172a;color:#f8fafc;padding:10px 14px;text-align:left;font-size:11px;font-weight:700;white-space:nowrap;border:1px solid #1e293b;letter-spacing:.05em;`;
+  const thNote = `background:#78350f;color:#fef3c7;padding:10px 14px;text-align:left;font-size:11px;font-weight:700;white-space:nowrap;border:1px solid #92400e;letter-spacing:.05em;`;
+  const headerRow = [
+    ...baseHeaders.map((h) => `<th style="${thS}">${escapeHtml(h)}</th>`),
+    ...noteHeaders.map((h) => `<th style="${thNote}">${escapeHtml(h)}</th>`),
+  ].join("");
 
   const bodyRows = leads.map((lead, idx) => {
     const statusKey = String(lead.status || "new").toLowerCase();
     const priorityKey = String(lead.priority || "medium").toLowerCase();
     const rowBg = idx % 2 === 0 ? "#ffffff" : "#f8fafc";
-    const cells = [
-      `<td style="${tdBase}font-weight:700;color:#374151;">${idx + 1}</td>`,
-      `<td style="${tdBase}font-weight:600;color:#111827;">${escapeHtml(lead.contact_person || "")}</td>`,
-      `<td style="${tdBase}font-weight:600;color:#111827;">${escapeHtml(lead.company_name || "")}</td>`,
+    const notes = resolveNotesList(lead);
+
+    const baseCells = [
+      `<td style="${tdBase}font-weight:700;color:#94a3b8;">${idx + 1}</td>`,
+      `<td style="${tdBase}font-weight:700;color:#0f172a;">${escapeHtml(lead.contact_person || "")}</td>`,
+      `<td style="${tdBase}font-weight:600;color:#1e293b;">${escapeHtml(lead.company_name || "")}</td>`,
       `<td style="${tdBase}color:#2563eb;">${escapeHtml(lead.email || "")}</td>`,
       `<td style="${tdBase}">${escapeHtml(lead.phone || "")}</td>`,
       `<td style="${tdBase}">${escapeHtml(lead.product_name || lead.product_id || "")}</td>`,
@@ -227,22 +240,28 @@ function buildLeadHtmlReport(leads = []) {
       `<td style="${tdBase}">${escapeHtml(titleizeLeadValue(lead.lead_source || ""))}</td>`,
       `<td style="${tdBase}">${escapeHtml(lead.assigned_to_name || lead.assigned_to || "")}</td>`,
       `<td style="${tdBase}">${escapeHtml(titleizeLeadValue(lead.workflow_stage || "sales"))}</td>`,
-      `<td style="${tdBase}font-weight:700;color:#16a34a;">INR ${Number(lead.estimated_value || 0).toLocaleString("en-IN")}</td>`,
-      `<td style="${tdBase}">${escapeHtml(String(lead.number_of_units ?? ""))}</td>`,
-      `<td style="${tdBase}color:#6b7280;">${escapeHtml(formatLeadExportDate(lead.created_at))}</td>`,
-      `<td style="${tdBase}color:#6b7280;">${escapeHtml(formatLeadExportDate(lead.follow_up_date))}</td>`,
+      `<td style="${tdBase}font-weight:700;color:#16a34a;">${Number(lead.estimated_value || 0).toLocaleString("en-IN")}</td>`,
+      `<td style="${tdBase}text-align:center;">${escapeHtml(String(lead.number_of_units ?? ""))}</td>`,
+      `<td style="${tdBase}color:#64748b;">${escapeHtml(formatLeadExportDate(lead.created_at))}</td>`,
+      `<td style="${tdBase}color:#64748b;">${escapeHtml(formatLeadExportDate(lead.follow_up_date))}</td>`,
       `<td style="${tdBase}">${escapeHtml(lead.created_by_name || lead.created_by || "")}</td>`,
-      `<td style="${tdBase}max-width:220px;">${escapeHtml(lead.latest_note || "")}</td>`,
-      `<td style="${tdBase}max-width:280px;color:#4b5563;">${escapeHtml(resolveLeadNotesText(lead))}</td>`,
-      `<td style="${tdBase}text-align:center;font-weight:700;color:#7c3aed;">${resolveLeadNotesCount(lead)}</td>`,
-      `<td style="${tdBase}max-width:220px;">${escapeHtml(lead.requirements || "")}</td>`,
+      `<td style="${tdBase}max-width:200px;">${escapeHtml(lead.requirements || "")}</td>`,
       `<td style="${tdBase}">${escapeHtml(lead.industry || "")}</td>`,
-      `<td style="${tdBase}color:#6b7280;">${escapeHtml(formatLeadExportDate(lead.updated_at))}</td>`,
-    ].join("");
-    return `<tr style="background:${rowBg};">${cells}</tr>`;
+      `<td style="${tdBase}color:#64748b;">${escapeHtml(formatLeadExportDate(lead.updated_at))}</td>`,
+    ];
+
+    const noteCells = Array.from({ length: maxNotes }, (_, i) => {
+      const text = notes[i] || "";
+      const s = text
+        ? `${tdBase}max-width:260px;background:#fefce8;border-left:3px solid #fbbf24;color:#1e293b;line-height:1.55;`
+        : `${tdBase}color:#e2e8f0;`;
+      return `<td style="${s}">${escapeHtml(text)}</td>`;
+    });
+
+    return `<tr style="background:${rowBg};">${[...baseCells, ...noteCells].join("")}</tr>`;
   }).join("");
 
-  return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/><title>GreenCRM — Lead Export</title><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f1f5f9;color:#1e293b;}.page{max-width:100%;padding:32px 28px;}.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;flex-wrap:wrap;gap:12px;}.brand{font-size:22px;font-weight:800;color:#166534;letter-spacing:-.02em;}.brand span{color:#1e293b;}.meta{font-size:12px;color:#64748b;text-align:right;}.stats{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:28px;}.table-wrap{overflow-x:auto;border-radius:14px;box-shadow:0 4px 24px rgba(0,0,0,.08);border:1px solid #e2e8f0;}table{width:100%;border-collapse:collapse;font-size:13px;}tr:hover td{background:#eff6ff!important;}.footer{margin-top:24px;text-align:center;font-size:11px;color:#94a3b8;}@media print{body{background:#fff;}.page{padding:16px;}}</style></head><body><div class="page"><div class="header"><div><div class="brand">Green<span>CRM</span></div><div style="font-size:13px;color:#64748b;margin-top:4px;">Lead Export Report</div></div><div class="meta"><div>Generated: ${escapeHtml(generatedAt)}</div><div style="margin-top:4px;">${leads.length} lead${leads.length !== 1 ? "s" : ""} exported</div></div></div><div class="stats">${statCards}</div><div class="table-wrap"><table><thead><tr>${headerCells}</tr></thead><tbody>${bodyRows}</tbody></table></div><div class="footer">GreenCRM &mdash; Exported on ${escapeHtml(generatedAt)}</div></div></body></html>`;
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/><title>GreenCRM — Lead Export</title><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f8fafc;color:#1e293b;}.wrap{padding:24px 20px;}.table-wrap{overflow-x:auto;border-radius:12px;box-shadow:0 2px 16px rgba(0,0,0,.07);border:1px solid #e2e8f0;}table{width:100%;border-collapse:collapse;font-size:12px;}tr:hover td{background:#eff6ff!important;}.foot{margin-top:16px;text-align:right;font-size:10px;color:#94a3b8;}@media print{body{background:#fff;}.wrap{padding:8px;}}</style></head><body><div class="wrap"><div class="table-wrap"><table><thead><tr>${headerRow}</tr></thead><tbody>${bodyRows}</tbody></table></div><div class="foot">GreenCRM — ${escapeHtml(generatedAt)} — ${leads.length} leads</div></div></body></html>`;
 }
 
 function buildLeadHtmlSheet(leads = []) {
