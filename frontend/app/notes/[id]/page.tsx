@@ -13,6 +13,8 @@ export default function NoteViewPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!params?.id) return;
+    
     const fetchNote = async () => {
       try {
         const response = await fetch(`/api/notes/${params.id}`, {
@@ -32,10 +34,8 @@ export default function NoteViewPage() {
       }
     };
 
-    if (params.id) {
-      fetchNote();
-    }
-  }, [params.id]);
+    fetchNote();
+  }, [params?.id]);
 
   const handleUpdate = async (noteId: string, data: Partial<Note>) => {
     try {
