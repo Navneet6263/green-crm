@@ -27,7 +27,7 @@ export interface CreateNoteDto {
 export interface UpdateNoteDto {
   title?: string;
   content?: string;
-  color?: string;
+  color?: string | null;
   isPinned?: boolean;
   tags?: string[];
 }
