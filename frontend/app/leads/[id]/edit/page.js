@@ -1,11 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 
 import DashboardShell from "../../../../components/dashboard/DashboardShell";
-import DashboardIcon from "../../../../components/dashboard/icons";
 import { apiRequest } from "../../../../lib/api";
 import { loadSession } from "../../../../lib/session";
 import {
@@ -22,106 +20,47 @@ import {
   teamSelectionRequiredMessage,
 } from "../../../../lib/teamScope";
 import { AlertError } from "../../../../components/ui/Alert";
-
-const PANEL_CLASS = "rounded-[30px] border border-[#eadfcd] bg-white/82 p-5 shadow-[0_14px_36px_rgba(79,58,22,0.06)] md:p-6";
-const SOFT_PANEL_CLASS = "rounded-[24px] border border-[#eadfcd] bg-[#fffaf1] p-4";
-const INPUT_CLASS = "w-full rounded-[18px] border border-[#eadfcd] bg-white px-4 py-3 text-sm text-[#060710] outline-none transition placeholder:text-[#9c8e76] focus:border-[#d7b258] focus:ring-4 focus:ring-[#f6ead0]";
-const PRIMARY_BUTTON_CLASS = "inline-flex min-h-[46px] items-center justify-center gap-2 rounded-[18px] border border-[#d7b258] bg-[#f3dfab] px-4 py-2.5 text-sm font-semibold text-[#060710] shadow-[0_16px_30px_rgba(203,169,82,0.18)] transition hover:-translate-y-0.5 hover:bg-[#efd48f] disabled:cursor-not-allowed disabled:opacity-60";
-const GHOST_BUTTON_CLASS = "inline-flex min-h-[46px] items-center justify-center gap-2 rounded-[18px] border border-[#eadfcd] bg-white px-4 py-2.5 text-sm font-semibold text-[#5d503c] transition hover:-translate-y-0.5 hover:text-[#060710] disabled:cursor-not-allowed disabled:opacity-60";
-const ACTION_CARD_PRIMARY = "flex min-h-[74px] items-center gap-3 rounded-[22px] border border-[#d7b258] bg-[#f3dfab] px-4 py-4 text-left text-[#060710] shadow-[0_16px_30px_rgba(203,169,82,0.18)] transition hover:-translate-y-0.5 hover:bg-[#efd48f]";
-const ACTION_CARD_GHOST = "flex min-h-[74px] items-center gap-3 rounded-[22px] border border-white/10 bg-white px-4 py-4 text-left text-[#060710] transition hover:-translate-y-0.5 hover:bg-[#f8f3e7]";
-const KICKER_CLASS = "text-[10px] font-black uppercase tracking-[0.28em] text-[#9a886d]";
-const HERO_PANEL_CLASS = "rounded-[36px] border border-[#eadfcd] bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.98),_rgba(250,241,221,0.98)_44%,_rgba(245,231,193,0.98)_100%)] p-6 shadow-[0_24px_70px_rgba(79,58,22,0.08)] md:p-8";
-const DARK_PANEL_CLASS = "rounded-[34px] border border-[#1d1a12] bg-[linear-gradient(155deg,#10111d_0%,#171a28_56%,#25212d_100%)] p-6 text-white shadow-[0_24px_80px_rgba(6,7,16,0.3)] md:p-7";
+import { EditLeadHeader, EditIdentitySection } from "./EditLeadFormSections";
+import { EditPipelineSection } from "./EditLeadPipelineSection";
+import { EditContextSection } from "./EditLeadContextSection";
 
 function blank(value) {
   return value === undefined || value === null || value === "";
 }
 
 function printable(value) {
-  if (blank(value)) {
-    return "--";
-  }
+  if (blank(value)) return "--";
   return String(value);
 }
 
 function comparable(value) {
-  if (blank(value)) {
-    return "";
-  }
+  if (blank(value)) return "";
   return String(value).trim();
 }
 
 function normalizeEstimatedValue(value) {
-  if (blank(value)) {
-    return 0;
-  }
-
+  if (blank(value)) return 0;
   const directNumeric = Number(value);
-  if (Number.isFinite(directNumeric)) {
-    return directNumeric;
-  }
-
+  if (Number.isFinite(directNumeric)) return directNumeric;
   const cleaned = String(value).replace(/[^\d.-]/g, "").trim();
   const parsed = Number(cleaned);
   return Number.isFinite(parsed) ? parsed : NaN;
 }
 
 function normalizeUnitCount(value) {
-  if (blank(value)) {
-    return null;
-  }
-
+  if (blank(value)) return null;
   const directNumeric = Number(value);
   if (Number.isFinite(directNumeric)) {
     return Number.isInteger(directNumeric) ? directNumeric : NaN;
   }
-
   const cleaned = String(value).replace(/[^\d-]/g, "").trim();
-  if (!cleaned) {
-    return null;
-  }
-
+  if (!cleaned) return null;
   const parsed = Number(cleaned);
   return Number.isInteger(parsed) ? parsed : NaN;
 }
 
 function toApiDateTime(value) {
   return value ? String(value).replace("T", " ") : null;
-}
-
-function initials(value = "Lead") {
-  return String(value)
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() || "")
-    .join("") || "L";
-}
-
-function EditActionCard({ href, onClick, title, copy, primary = false, children }) {
-  const className = primary ? ACTION_CARD_PRIMARY : ACTION_CARD_GHOST;
-  const content = (
-    <>
-      <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl ${primary ? "bg-[#10111d] text-white" : "bg-[#f6efe2] text-[#8d6e27]"}`}>
-        {children}
-      </span>
-      <span className="min-w-0 flex-1">
-        <strong className="block text-sm font-semibold">{title}</strong>
-        <span className="mt-1 block text-xs text-[#6f614c]">{copy}</span>
-      </span>
-    </>
-  );
-
-  if (href) {
-    return <Link href={href} className={className}>{content}</Link>;
-  }
-
-  return (
-    <button className={className} type="button" onClick={onClick}>
-      {content}
-    </button>
-  );
 }
 
 export default function EditLeadPage() {
@@ -150,35 +89,78 @@ export default function EditLeadPage() {
   );
   const selectedOwner = useMemo(() => users.find((user) => user.user_id === form?.assigned_to) || null, [form?.assigned_to, users]);
   const ownerEmptyMessage = useMemo(() => {
-    if (!canManageAssignment || resourceLoading) {
-      return "";
-    }
-
-    if (teamSelectionPending) {
-      return "Choose a team to load available owners.";
-    }
-
-    if (!users.length) {
-      return scopedUsersEmptyMessage(selectedTeam);
-    }
-
+    if (!canManageAssignment || resourceLoading) return "";
+    if (teamSelectionPending) return "Choose a team to load available owners.";
+    if (!users.length) return scopedUsersEmptyMessage(selectedTeam);
     return "";
   }, [canManageAssignment, resourceLoading, selectedTeam, teamSelectionPending, users.length]);
+  
   const productEmptyMessage = useMemo(() => {
-    if (resourceLoading) {
-      return "";
-    }
-
-    if (teamSelectionPending) {
-      return "Choose a team to load products for this lead.";
-    }
-
-    if (!filteredProducts.length) {
-      return scopedProductsEmptyMessage(selectedTeam);
-    }
-
+    if (resourceLoading) return "";
+    if (teamSelectionPending) return "Choose a team to load products for this lead.";
+    if (!filteredProducts.length) return scopedProductsEmptyMessage(selectedTeam);
     return "";
   }, [filteredProducts.length, resourceLoading, selectedTeam, teamSelectionPending]);
+
+  const productChoices = useMemo(() => {
+    const list = [...filteredProducts];
+    if (originalLead?.product_id && !list.some((product) => product.product_id === originalLead.product_id)) {
+      list.unshift({
+        product_id: originalLead.product_id,
+        name: originalLead.product_name || `${originalLead.product_id} (Current product)`,
+      });
+    }
+    return list;
+  }, [filteredProducts, originalLead]);
+
+  const productLookup = useMemo(
+    () => new Map(productChoices.map((product) => [product.product_id, product.name])),
+    [productChoices]
+  );
+
+  const changeItems = useMemo(() => {
+    if (!form || !originalLead) return [];
+
+    const nextPayload = {
+      ...form,
+      estimated_value: normalizeEstimatedValue(form.estimated_value),
+      number_of_units: normalizeUnitCount(form.number_of_units),
+      follow_up_date: toApiDateTime(form.follow_up_date) || "",
+    };
+
+    const tracked = [
+      ["contact_person", "Contact Person", originalLead.contact_person, nextPayload.contact_person],
+      ["company_name", "Company Name", originalLead.company_name, nextPayload.company_name],
+      ["email", "Email", originalLead.email, nextPayload.email],
+      ["phone", "Phone", originalLead.phone, nextPayload.phone],
+      ["status", "Status", originalLead.status, nextPayload.status],
+      ["priority", "Priority", originalLead.priority, nextPayload.priority],
+      ["workflow_stage", "Workflow Stage", originalLead.workflow_stage, nextPayload.workflow_stage],
+      ["estimated_value", "Estimated Value", originalLead.estimated_value, nextPayload.estimated_value],
+      ["number_of_units", "Number of Units", originalLead.number_of_units, nextPayload.number_of_units],
+      ["team_id", "Team", originalLead.team_name || originalLead.team_id, selectedTeam?.name || selectedTeam?.team_id || nextPayload.team_id],
+      ["assigned_to", "Lead Owner", originalLead.assigned_to_name || originalLead.assigned_to, selectedOwner?.name || nextPayload.assigned_to],
+      ["requirements", "Requirements", originalLead.requirements, nextPayload.requirements],
+      ["follow_up_date", "Follow-up Date", originalLead.follow_up_date ? String(originalLead.follow_up_date).slice(0, 16) : "", nextPayload.follow_up_date],
+      ["product_id", "Product", productLookup.get(originalLead.product_id) || originalLead.product_name || originalLead.product_id, productLookup.get(nextPayload.product_id) || nextPayload.product_id],
+    ];
+
+    return tracked
+      .filter(([, , previous, next]) => comparable(previous) !== comparable(next))
+      .map(([field, label, previous, next]) => ({
+        field,
+        label,
+        previous: printable(previous),
+        next: printable(next),
+      }));
+  }, [form, originalLead, productLookup, selectedOwner?.name, selectedTeam?.name, selectedTeam?.team_id]);
+
+  const requiresChangeNote = changeItems.length > 0;
+  const hideTitle = ["sales", "marketing", "admin", "manager"].includes(role);
+
+  function onChange(field, value) {
+    setForm((current) => ({ ...current, [field]: value }));
+  }
 
   useEffect(() => {
     const activeSession = loadSession();
@@ -216,6 +198,7 @@ export default function EditLeadPage() {
           company_name: leadResponse.company_name || "",
           email: leadResponse.email || "",
           phone: leadResponse.phone || "",
+          lead_source: leadResponse.lead_source || "website",
           priority: leadResponse.priority || "medium",
           status: leadResponse.status || "new",
           workflow_stage: leadResponse.workflow_stage || "sales",
@@ -261,9 +244,7 @@ export default function EditLeadPage() {
         });
         const scopedUsers = scopedResponse.users || [];
 
-        if (ignore) {
-          return;
-        }
+        if (ignore) return;
 
         setUsers(scopedUsers);
         setForm((current) =>
@@ -275,13 +256,9 @@ export default function EditLeadPage() {
             : current
         );
       } catch (_error) {
-        if (!ignore) {
-          setUsers([]);
-        }
+        if (!ignore) setUsers([]);
       } finally {
-        if (!ignore) {
-          setResourceLoading(false);
-        }
+        if (!ignore) setResourceLoading(false);
       }
     }
 
@@ -291,64 +268,6 @@ export default function EditLeadPage() {
       ignore = true;
     };
   }, [canManageAssignment, form?.team_id, originalLead?.company_id, session, teamSelectionPending]);
-
-  const productChoices = useMemo(() => {
-    const list = [...filteredProducts];
-    if (originalLead?.product_id && !list.some((product) => product.product_id === originalLead.product_id)) {
-      list.unshift({
-        product_id: originalLead.product_id,
-        name: originalLead.product_name || `${originalLead.product_id} (Current product)`,
-      });
-    }
-    return list;
-  }, [filteredProducts, originalLead]);
-
-  const productLookup = useMemo(
-    () => new Map(productChoices.map((product) => [product.product_id, product.name])),
-    [productChoices]
-  );
-
-  const changeItems = useMemo(() => {
-    if (!form || !originalLead) {
-      return [];
-    }
-
-    const nextPayload = {
-      ...form,
-      estimated_value: normalizeEstimatedValue(form.estimated_value),
-      number_of_units: normalizeUnitCount(form.number_of_units),
-      follow_up_date: toApiDateTime(form.follow_up_date) || "",
-    };
-
-    const tracked = [
-      ["contact_person", "Contact Person", originalLead.contact_person, nextPayload.contact_person],
-      ["company_name", "Company Name", originalLead.company_name, nextPayload.company_name],
-      ["email", "Email", originalLead.email, nextPayload.email],
-      ["phone", "Phone", originalLead.phone, nextPayload.phone],
-      ["status", "Status", originalLead.status, nextPayload.status],
-      ["priority", "Priority", originalLead.priority, nextPayload.priority],
-      ["workflow_stage", "Workflow Stage", originalLead.workflow_stage, nextPayload.workflow_stage],
-      ["estimated_value", "Estimated Value", originalLead.estimated_value, nextPayload.estimated_value],
-      ["number_of_units", "Number of Units", originalLead.number_of_units, nextPayload.number_of_units],
-      ["team_id", "Team", originalLead.team_name || originalLead.team_id, selectedTeam?.name || selectedTeam?.team_id || nextPayload.team_id],
-      ["assigned_to", "Lead Owner", originalLead.assigned_to_name || originalLead.assigned_to, selectedOwner?.name || nextPayload.assigned_to],
-      ["requirements", "Requirements", originalLead.requirements, nextPayload.requirements],
-      ["follow_up_date", "Follow-up Date", originalLead.follow_up_date ? String(originalLead.follow_up_date).slice(0, 16) : "", nextPayload.follow_up_date],
-      ["product_id", "Product", productLookup.get(originalLead.product_id) || originalLead.product_name || originalLead.product_id, productLookup.get(nextPayload.product_id) || nextPayload.product_id],
-    ];
-
-    return tracked
-      .filter(([, , previous, next]) => comparable(previous) !== comparable(next))
-      .map(([field, label, previous, next]) => ({
-        field,
-        label,
-        previous: printable(previous),
-        next: printable(next),
-      }));
-  }, [form, originalLead, productLookup, selectedOwner?.name, selectedTeam?.name, selectedTeam?.team_id]);
-
-  const requiresChangeNote = changeItems.length > 0;
-  const hideTitle = ["sales", "marketing", "admin", "manager"].includes(role);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -413,320 +332,47 @@ export default function EditLeadPage() {
 
   return (
     <DashboardShell session={session} title="Edit Lead" hideTitle={hideTitle} heroStats={[]}>
-      <AlertError message={error} onDismiss={() => setError("")} />
-      {loading ? <div className="rounded-[20px] border border-[#eadfcd] bg-white px-4 py-3 text-sm font-medium text-[#6f614c]">Loading lead...</div> : null}
-      {!loading && form ? (
-        <section className="space-y-5">
-          <div className="grid gap-5 xl:grid-cols-[1.08fr_0.92fr]">
-            <article className={HERO_PANEL_CLASS}>
-              <button className={GHOST_BUTTON_CLASS} type="button" onClick={() => router.push("/leads")}>
-                Back to Leads
-              </button>
+      <div className="mx-auto max-w-5xl space-y-4 px-3 py-4 sm:px-4 sm:py-5">
+        <AlertError message={error} onDismiss={() => setError("")} />
+        {loading ? <div className="rounded-xl border border-slate-100 bg-white px-4 py-3 text-sm text-slate-600">Loading lead...</div> : null}
+        {!loading && form ? (
+          <section className="space-y-4">
+            <EditLeadHeader originalLead={originalLead} selectedTeam={selectedTeam} params={params} router={router} />
 
-              <div className="mt-5 flex items-start gap-4">
-                <div className="grid h-16 w-16 shrink-0 place-items-center rounded-[22px] bg-[#10111d] text-xl font-bold text-white shadow-[0_18px_32px_rgba(6,7,16,0.18)]">
-                  {initials(originalLead?.contact_person || originalLead?.company_name || "Lead")}
-                </div>
-                <div className="space-y-4">
-                  <span className="inline-flex rounded-full border border-[#ddd3c2] bg-white/85 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.24em] text-[#7c6d55]">
-                    Edit Workspace
-                  </span>
-                  <div>
-                    <h2 className="text-3xl font-semibold tracking-tight text-[#060710] md:text-[2.2rem] md:leading-[1.08]">
-                      Edit: {originalLead?.contact_person || originalLead?.company_name || "Lead"}
-                    </h2>
-                    <p className="mt-3 max-w-3xl text-sm leading-7 text-[#746853]">
-                      Update commercial details and keep the workflow trail readable.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-8 grid gap-4 md:grid-cols-3">
-                <div className={SOFT_PANEL_CLASS}>
-                  <p className={KICKER_CLASS}>Lead</p>
-                  <strong className="mt-3 block text-2xl font-black tracking-tight text-[#060710]">{originalLead?.lead_id || "--"}</strong>
-                </div>
-                <div className={SOFT_PANEL_CLASS}>
-                    <p className={KICKER_CLASS}>Company</p>
-                    <strong className="mt-3 block text-2xl font-black tracking-tight text-[#060710]">{originalLead?.company_name || "--"}</strong>
-                  </div>
-                  <div className="rounded-[24px] border border-[#eadfcd] bg-[#fff7e8] p-4">
-                    <p className={KICKER_CLASS}>Pending Changes</p>
-                    <strong className="mt-3 block text-2xl font-black tracking-tight text-[#060710]">{changeItems.length}</strong>
-                  </div>
-                  <div className={SOFT_PANEL_CLASS}>
-                    <p className={KICKER_CLASS}>Team</p>
-                    <strong className="mt-3 block text-2xl font-black tracking-tight text-[#060710]">{selectedTeam?.name || originalLead?.team_name || "Auto team"}</strong>
-                  </div>
-                </div>
-              </article>
-
-            <article className={DARK_PANEL_CLASS}>
-              <div className="space-y-4">
-                <span className="inline-flex rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.24em] text-white/70">
-                  Edit Summary
-                </span>
-                <h3 className="text-[2rem] font-semibold leading-[1.08] tracking-tight text-white">
-                  Keep the edit pass deliberate so the next owner understands exactly what changed.
-                </h3>
-              </div>
-
-              <div className="mt-8 grid gap-3 sm:grid-cols-2">
-                {[
-                  { label: "Current Status", value: originalLead?.status || "--" },
-                  { label: "Priority", value: originalLead?.priority || "--" },
-                  { label: "Workflow", value: originalLead?.workflow_stage || "--" },
-                  { label: "Team", value: selectedTeam?.name || originalLead?.team_name || "Auto team" },
-                  { label: "Product", value: productLookup.get(form.product_id) || originalLead?.product_name || "--" },
-                  { label: "Units", value: form.number_of_units || "--" },
-                ].map((item) => (
-                  <div key={item.label} className="rounded-[24px] border border-white/10 bg-white/6 p-4">
-                    <p className="text-[10px] font-black uppercase tracking-[0.24em] text-white/55">{item.label}</p>
-                    <strong className="mt-3 block text-xl font-black text-white">{item.value}</strong>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-8 grid gap-3 sm:grid-cols-2">
-                <EditActionCard
-                  primary
-                  href={`/leads/${params.id}`}
-                  title="View Current Lead"
-                  copy="Open the live detail page before saving."
-                >
-                  <DashboardIcon name="leads" className="h-5 w-5" />
-                </EditActionCard>
-                <EditActionCard
-                  onClick={() => router.push("/leads")}
-                  title="Back to Leads"
-                  copy="Return to the lead list."
-                >
-                  <DashboardIcon name="tasks" className="h-5 w-5" />
-                </EditActionCard>
-              </div>
-            </article>
-          </div>
-
-          <div className="grid gap-5 xl:grid-cols-[1.06fr_0.94fr] xl:items-start">
-            <form className="grid gap-5" onSubmit={handleSubmit}>
-              <article className={PANEL_CLASS}>
-                <div className="mb-5">
-                  <p className={KICKER_CLASS}>Identity</p>
-                  <h3 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Contact and company details</h3>
-                </div>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <label className="space-y-2">
-                    <span className={KICKER_CLASS}>Contact Person</span>
-                    <input className={INPUT_CLASS} value={form.contact_person} onChange={(event) => setForm((current) => ({ ...current, contact_person: event.target.value }))} required />
-                  </label>
-                  <label className="space-y-2">
-                    <span className={KICKER_CLASS}>Company Name</span>
-                    <input className={INPUT_CLASS} value={form.company_name} onChange={(event) => setForm((current) => ({ ...current, company_name: event.target.value }))} required />
-                  </label>
-                  <label className="space-y-2">
-                    <span className={KICKER_CLASS}>Email</span>
-                    <input className={INPUT_CLASS} type="email" value={form.email} onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))} />
-                  </label>
-                  <label className="space-y-2">
-                    <span className={KICKER_CLASS}>Phone</span>
-                    <input className={INPUT_CLASS} value={form.phone} onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))} required />
-                  </label>
-                  {teamSelectorVisible ? (
-                    <label className="space-y-2">
-                      <span className={KICKER_CLASS}>Team</span>
-                      <select className={INPUT_CLASS} value={form.team_id} onChange={(event) => setForm((current) => ({ ...current, team_id: event.target.value }))}>
-                        <option value="">Select team</option>
-                        {teams.map((team) => (
-                          <option key={team.team_id} value={team.team_id}>
-                            {teamSelectLabel(team)}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  ) : null}
-                  {canManageAssignment ? (
-                    <label className="space-y-2">
-                      <span className={KICKER_CLASS}>Lead Owner</span>
-                      <select className={INPUT_CLASS} value={form.assigned_to} onChange={(event) => setForm((current) => ({ ...current, assigned_to: event.target.value }))} disabled={resourceLoading || teamSelectionPending}>
-                        <option value="">Keep current owner</option>
-                        {users.map((user) => (
-                          <option key={user.user_id} value={user.user_id}>
-                            {user.name} | {user.role}
-                          </option>
-                        ))}
-                      </select>
-                      {ownerEmptyMessage ? <small className="text-xs font-semibold text-[#8f816a]">{ownerEmptyMessage}</small> : null}
-                    </label>
-                  ) : null}
-                </div>
-                {selectedTeam ? (
-                  <div className="mt-4 rounded-[22px] border border-[#eadfcd] bg-[#fffaf1] px-4 py-4 text-sm leading-7 text-[#6f614c]">
-                    <strong className="text-[#060710]">Team scope:</strong> {teamBadgeLabel(selectedTeam)}
-                  </div>
-                ) : null}
-              </article>
-
-              <article className={PANEL_CLASS}>
-                <div className="mb-5">
-                  <p className={KICKER_CLASS}>Pipeline</p>
-                  <h3 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Status, workflow, value, and timing</h3>
-                </div>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <label className="space-y-2">
-                    <span className={KICKER_CLASS}>Status</span>
-                    <select className={INPUT_CLASS} value={form.status} onChange={(event) => setForm((current) => ({ ...current, status: event.target.value }))}>
-                      <option value="new">new</option>
-                      <option value="contacted">contacted</option>
-                      <option value="qualified">qualified</option>
-                      <option value="proposal">proposal</option>
-                      <option value="negotiation">negotiation</option>
-                      <option value="booked-demo">booked-demo</option>
-                      <option value="demo-done">demo-done</option>
-                      <option value="trial-started">trial-started</option>
-                      <option value="closed-won">closed-won</option>
-                      <option value="closed-lost">closed-lost</option>
-                    </select>
-                  </label>
-                  <label className="space-y-2">
-                    <span className={KICKER_CLASS}>Priority</span>
-                    <select className={INPUT_CLASS} value={form.priority} onChange={(event) => setForm((current) => ({ ...current, priority: event.target.value }))}>
-                      <option value="low">low</option>
-                      <option value="medium">medium</option>
-                      <option value="high">high</option>
-                    </select>
-                  </label>
-                  <label className="space-y-2">
-                    <span className={KICKER_CLASS}>Workflow</span>
-                    <select className={INPUT_CLASS} value={form.workflow_stage} onChange={(event) => setForm((current) => ({ ...current, workflow_stage: event.target.value }))}>
-                      <option value="sales">sales</option>
-                      <option value="legal">legal</option>
-                      <option value="finance">finance</option>
-                      <option value="completed">completed</option>
-                    </select>
-                  </label>
-                  <label className="space-y-2">
-                    <span className={KICKER_CLASS}>Estimated Value</span>
-                    <input className={INPUT_CLASS} type="number" value={form.estimated_value} onChange={(event) => setForm((current) => ({ ...current, estimated_value: event.target.value }))} />
-                  </label>
-                  <label className="space-y-2">
-                    <span className={KICKER_CLASS}>Number of Units</span>
-                    <input className={INPUT_CLASS} type="number" min="0" step="1" value={form.number_of_units} onChange={(event) => setForm((current) => ({ ...current, number_of_units: event.target.value }))} />
-                  </label>
-                  <label className="space-y-2">
-                    <span className={KICKER_CLASS}>Product</span>
-                    <select className={INPUT_CLASS} value={form.product_id} onChange={(event) => setForm((current) => ({ ...current, product_id: event.target.value }))} disabled={teamSelectionPending} required>
-                      <option value="">Select product</option>
-                      {productChoices.map((product) => (
-                        <option key={product.product_id} value={product.product_id}>
-                          {product.name}
-                        </option>
-                      ))}
-                    </select>
-                    {productEmptyMessage ? <small className="text-xs font-semibold text-[#8f816a]">{productEmptyMessage}</small> : null}
-                  </label>
-                  <label className="space-y-2">
-                    <span className={KICKER_CLASS}>Follow-up</span>
-                    <input className={INPUT_CLASS} type="datetime-local" value={form.follow_up_date} onChange={(event) => setForm((current) => ({ ...current, follow_up_date: event.target.value }))} />
-                  </label>
-                </div>
-              </article>
-
-              <article className={PANEL_CLASS}>
-                <div className="mb-5">
-                  <p className={KICKER_CLASS}>Context</p>
-                  <h3 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Requirements and change note</h3>
-                </div>
-                <div className="grid gap-4">
-                  <label className="space-y-2">
-                    <span className={KICKER_CLASS}>Requirements</span>
-                    <textarea className={`${INPUT_CLASS} min-h-[170px] resize-y`} rows="6" value={form.requirements} onChange={(event) => setForm((current) => ({ ...current, requirements: event.target.value }))} />
-                  </label>
-                  <label className="space-y-2">
-                    <span className={KICKER_CLASS}>{requiresChangeNote ? "Change Note *" : "Change Note"}</span>
-                    <textarea
-                      className={`${INPUT_CLASS} min-h-[170px] resize-y`}
-                      rows="6"
-                      value={changeNote}
-                      onChange={(event) => setChangeNote(event.target.value)}
-                      placeholder={requiresChangeNote ? "Explain why these lead details are changing. This will be stored in the note history." : "Optional note if you want to add extra context."}
-                    />
-                  </label>
-                </div>
-
-                <div className="mt-5 flex flex-wrap justify-end gap-3">
-                  <button className={GHOST_BUTTON_CLASS} type="button" onClick={() => router.push(`/leads/${params.id}`)}>
-                    <DashboardIcon name="workflow" className="h-4 w-4" />
-                    Cancel
-                  </button>
-                  <button className={PRIMARY_BUTTON_CLASS} type="submit" disabled={saving || (requiresChangeNote && !changeNote.trim())}>
-                    <DashboardIcon name="settings" className="h-4 w-4" />
-                    {saving ? "Saving..." : "Save Changes"}
-                  </button>
-                </div>
-              </article>
+            <form className="space-y-4" onSubmit={handleSubmit}>
+              <EditIdentitySection
+                form={form}
+                teams={teams}
+                users={users}
+                selectedTeam={selectedTeam}
+                teamSelectorVisible={teamSelectorVisible}
+                canManageAssignment={canManageAssignment}
+                resourceLoading={resourceLoading}
+                teamSelectionPending={teamSelectionPending}
+                ownerEmptyMessage={ownerEmptyMessage}
+                onChange={onChange}
+              />
+              <EditPipelineSection
+                form={form}
+                productChoices={productChoices}
+                teamSelectionPending={teamSelectionPending}
+                productEmptyMessage={productEmptyMessage}
+                onChange={onChange}
+              />
+              <EditContextSection
+                form={form}
+                changeNote={changeNote}
+                requiresChangeNote={requiresChangeNote}
+                saving={saving}
+                router={router}
+                params={params}
+                onChange={onChange}
+                onChangeNoteChange={setChangeNote}
+              />
             </form>
-
-            <div className="space-y-5 xl:sticky xl:top-6">
-              <article className={PANEL_CLASS}>
-                <div className="mb-5">
-                  <p className={KICKER_CLASS}>Audit Preview</p>
-                  <h3 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Pending log entry</h3>
-                </div>
-
-                {changeItems.length ? (
-                  <div className="space-y-3">
-                    {changeItems.map((item) => (
-                      <div key={item.field} className={SOFT_PANEL_CLASS}>
-                        <p className={KICKER_CLASS}>{item.label}</p>
-                        <div className="mt-3 grid gap-3">
-                          <div className="rounded-[18px] border border-[#eadfcd] bg-white px-4 py-3">
-                            <span className="block text-xs font-bold uppercase tracking-[0.16em] text-[#8f816a]">Current</span>
-                            <strong className="mt-2 block text-sm text-[#060710]">{item.previous}</strong>
-                          </div>
-                          <div className="flex justify-center text-[#b2871f]">
-                            <DashboardIcon name="analytics" className="h-5 w-5" />
-                          </div>
-                          <div className="rounded-[18px] border border-[#d7b258] bg-[#fff6e4] px-4 py-3">
-                            <span className="block text-xs font-bold uppercase tracking-[0.16em] text-[#8f816a]">Next</span>
-                            <strong className="mt-2 block text-sm text-[#060710]">{item.next}</strong>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="rounded-[24px] border border-dashed border-[#ddd0bb] bg-[#fffaf1] px-5 py-14 text-center">
-                    <div className="mx-auto grid h-14 w-14 place-items-center rounded-[20px] bg-white text-[#8d6e27] shadow-[0_12px_24px_rgba(79,58,22,0.08)]">
-                      <DashboardIcon name="documents" className="h-6 w-6" />
-                    </div>
-                    <h3 className="mt-5 text-xl font-semibold text-[#060710]">No pending edits yet</h3>
-                    <p className="mt-2 text-sm text-[#7a6b57]">Update any field and the audit preview will appear here before saving.</p>
-                  </div>
-                )}
-              </article>
-
-              <article className={PANEL_CLASS}>
-                <p className={KICKER_CLASS}>Save Rules</p>
-                <div className="mt-4 space-y-3">
-                  {[
-                    "Select a product before saving the lead.",
-                    "Estimated value must remain a valid number.",
-                    "If details change, add a clear change note.",
-                  ].map((item) => (
-                    <div key={item} className="flex items-center gap-3 rounded-[20px] border border-[#eadfcd] bg-[#fffaf1] px-4 py-4">
-                      <span className="grid h-9 w-9 place-items-center rounded-full bg-[#fff0c8] text-[#8d6e27]">
-                        <DashboardIcon name="documents" className="h-4 w-4" />
-                      </span>
-                      <strong className="text-sm text-[#060710]">{item}</strong>
-                    </div>
-                  ))}
-                </div>
-              </article>
-            </div>
-          </div>
-        </section>
-      ) : null}
+          </section>
+        ) : null}
+      </div>
     </DashboardShell>
   );
 }
