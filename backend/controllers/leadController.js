@@ -127,6 +127,11 @@ async function bulkUpload(req, res) {
   res.status(201).json({ data });
 }
 
+async function convertToCustomer(req, res) {
+  const data = await leadService.convertLeadToCustomer(req.auth, req.params.leadId);
+  res.status(201).json({ data });
+}
+
 module.exports = {
   activities,
   addActivity,
@@ -134,6 +139,7 @@ module.exports = {
   assign,
   assignments,
   bulkUpload,
+  convertToCustomer,
   create,
   documents,
   getOne,

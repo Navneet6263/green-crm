@@ -23,6 +23,7 @@ router.get("/:leadId", asyncHandler(leadController.getOne));
 router.put("/:leadId", asyncHandler(leadController.update));
 router.patch("/:leadId", asyncHandler(leadController.update));
 router.delete("/:leadId", asyncHandler(leadController.remove));
+router.post("/:leadId/convert-to-customer", asyncHandler(leadController.convertToCustomer));
 router.post("/:leadId/assign", asyncHandler(leadController.assign));
 router.get("/:leadId/assignments", asyncHandler(leadController.assignments));
 router.put("/:leadId/assignments", asyncHandler(leadController.updateAssignments));

@@ -17,6 +17,7 @@ const notificationRoutes = require("./notificationRoutes");
 const demoRequestRoutes = require("./demoRequestRoutes");
 const superAdminRoutes = require("./superAdminRoutes");
 const dashboardRoutes = require("./dashboardRoutes");
+const noteRoutes = require("./noteRoutes");
 
 const router = express.Router();
 
@@ -37,5 +38,6 @@ router.use("/notifications", notificationRoutes);
 router.use("/demo-requests", demoRequestRoutes);
 router.use("/super-admin", superAdminRoutes);
 router.use("/dashboard", dashboardRoutes);
+router.use("/notes", noteRoutes);
 
 module.exports = router;

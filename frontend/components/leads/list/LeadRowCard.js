@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import LeadExpandedDetails from "../details/LeadExpandedDetails";
 import LeadFollowUpStatusButton from "../LeadFollowUpStatusButton";
@@ -9,10 +11,12 @@ import {
   formatLeadDate, formatLeadMoney,
   leadInitials, leadPrimaryName, leadSecondaryName, titleizeLeadValue,
 } from "../shared/leadPageFormatters";
+import { apiRequest } from "../../../lib/api";
 
 const AVATAR_PALETTE = ["bg-emerald-600", "bg-amber-600", "bg-sky-600", "bg-violet-600", "bg-orange-600", "bg-cyan-600", "bg-rose-600", "bg-blue-600"];
 const ACTION_BTN = "inline-flex min-h-[32px] items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-amber-300 hover:bg-amber-50 hover:text-amber-800";
 const FOLLOW_UP_BTN = "inline-flex min-h-[32px] items-center justify-center rounded-lg border border-sky-200 bg-sky-50 px-3 py-1.5 text-xs font-semibold text-sky-700 transition hover:border-sky-300 hover:bg-sky-100";
+const CREATE_CUSTOMER_BTN = "inline-flex min-h-[32px] items-center justify-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed";
 const META_CHIP = "inline-flex min-h-[27px] max-w-full items-center gap-1.5 rounded-full bg-slate-50 px-2.5 text-xs text-slate-500 ring-1 ring-slate-100";
 const BADGE = "inline-flex min-h-[22px] items-center rounded-full border px-2.5 text-[10px] leading-none";
 
@@ -36,6 +40,8 @@ export default function LeadRowCard({
   setLegalTransferNote, setLegalTransferOwner, teamBadgeLabel, teamUsers,
   transferLeadToLegal, transferring,
 }) {
+  const router = useRouter();
+  const [converting, setConverting] = useState(false);
   const primaryName = leadPrimaryName(lead);
   const secondaryName = leadSecondaryName(lead);
   const noteCount = Number(lead.note_count || 0);
@@ -45,6 +51,26 @@ export default function LeadRowCard({
   const productHex = validHex(lead.product_color);
   const teamLabel = teamBadgeLabel(lead);
   const avatarClass = productHex ? "" : avatarBg(primaryName);
+  const isClosedWon = lead.status === "closed-won";
+  const isConverted = !!lead.converted_to_customer_id;
+
+  async function handleConvertToCustomer() {
+    if (!window.confirm(`Convert "${primaryName}" to customer? Lead data will be used to create the customer.`)) {
+      return;
+    }
+
+    setConverting(true);
+    try {
+      const response = await apiRequest(`/leads/${lead.lead_id}/convert-to-customer`, {
+        method: "POST",
+        token: sessionToken,
+      });
+      router.push(`/customers/${response.customer.customer_id}`);
+    } catch (error) {
+      alert(error.message || "Failed to convert lead to customer.");
+      setConverting(false);
+    }
+  }
 
   return (
     <article className={`w-full rounded-2xl border transition duration-200 hover:-translate-y-0.5 hover:border-slate-200 hover:shadow-[0_10px_26px_rgba(15,23,42,0.06)] ${selected ? "border-amber-300 bg-amber-50/45 shadow-[0_8px_22px_rgba(203,169,82,0.14)]" : "border-slate-100 bg-white shadow-sm"}`}>
@@ -99,6 +125,16 @@ export default function LeadRowCard({
               </div>
             ) : null}
             <div className="flex flex-wrap gap-1.5">
+              {isClosedWon && !isConverted ? (
+                <button type="button" onClick={handleConvertToCustomer} disabled={converting} className={CREATE_CUSTOMER_BTN}>
+                  {converting ? "Converting..." : "🎉 Create Customer"}
+                </button>
+              ) : null}
+              {isConverted ? (
+                <span className="inline-flex min-h-[32px] items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700">
+                  ✓ Converted
+                </span>
+              ) : null}
               <Link prefetch={false} href={`/leads/${lead.lead_id}`} className={ACTION_BTN}>View</Link>
               {canEdit ? <Link prefetch={false} href={`/leads/${lead.lead_id}/edit`} className={ACTION_BTN}>Edit</Link> : null}
               {canEdit ? <LeadFollowUpStatusButton className={FOLLOW_UP_BTN} lead={lead} onSaved={onInlineNoteSaved} token={sessionToken} /> : null}

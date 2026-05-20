@@ -1660,12 +1660,87 @@ async function bulkUpload(auth, payload) {
   };
 }
 
+async function convertLeadToCustomer(auth, leadId) {
+  const customerService = require("./customerService");
+  const lead = await getLeadRecord(auth, leadId);
+
+  if (lead.status !== "closed-won") {
+    throw new AppError("Only closed-won leads can be converted to customers.", 400);
+  }
+
+  if (lead.converted_to_customer_id) {
+    throw new AppError("This lead has already been converted to a customer.", 400);
+  }
+
+  return db.withTransaction(async (transaction) => {
+    const customerPayload = {
+      company_id: lead.company_id,
+      name: lead.contact_person,
+      company_name: lead.company_name,
+      email: lead.email,
+      phone: lead.phone,
+      team_id: lead.team_id,
+      assigned_to: lead.assigned_to,
+      product_id: lead.product_id,
+      total_value: lead.estimated_value || 0,
+      converted_from_lead_id: lead.lead_id,
+      onboarding_status: "pending",
+      status: "active",
+      notes: lead.requirements || null,
+    };
+
+    const customer = await customerService.createCustomer(auth, customerPayload);
+
+    await leadRepository.updateLead(
+      lead.lead_id,
+      lead.company_id,
+      { converted_to_customer_id: customer.customer_id },
+      transaction
+    );
+
+    await leadRepository.createActivity(
+      {
+        activity_id: await createPrefixedId("act"),
+        company_id: lead.company_id,
+        lead_id: lead.lead_id,
+        type: "converted",
+        description: `Lead converted to customer: ${customer.company_name}`,
+        created_by: auth.userId,
+      },
+      transaction
+    );
+
+    await auditRepository.createLog(
+      {
+        audit_id: await createPrefixedId("aud"),
+        company_id: lead.company_id,
+        entity_type: "lead",
+        entity_id: lead.lead_id,
+        action: "lead.converted_to_customer",
+        performed_by: auth.userId,
+        details: {
+          customer_id: customer.customer_id,
+          customer_name: customer.company_name,
+        },
+      },
+      transaction
+    );
+
+    return {
+      customer,
+      lead_id: lead.lead_id,
+      message: "Lead successfully converted to customer",
+    };
+  });
+}
+
 module.exports = {
   addLeadActivity,
   addLeadNote,
   assignLead,
   bulkAssignLeads,
   bulkUpload,
+  convertLeadToCustomer,
   createLead,
   deleteLead,
   getLead,
