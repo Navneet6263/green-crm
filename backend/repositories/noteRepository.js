@@ -105,8 +105,10 @@ class NoteRepository {
    * Create a new note
    */
   async create(noteData) {
-    const queryText = `
+    // First insert the note
+    const insertQuery = `
       INSERT INTO notes (user_id, title, content, color, word_count)
+      OUTPUT INSERTED.id
       VALUES (?, ?, ?, ?, ?)
     `;
 
@@ -118,11 +120,23 @@ class NoteRepository {
       noteData.wordCount || 0
     ];
 
-    const [result] = await query(queryText, params);
+    const [insertResult] = await query(insertQuery, params);
     
-    // Get the created note
-    const [rows] = await query('SELECT TOP 1 * FROM notes WHERE id = CAST(? AS UNIQUEIDENTIFIER)', [result.insertId]);
-    return rows[0];
+    if (!Array.isArray(insertResult) || insertResult.length === 0) {
+      throw new Error('Failed to create note - no ID returned');
+    }
+    
+    const noteId = insertResult[0].id;
+    
+    // Then fetch the complete note
+    const selectQuery = `SELECT * FROM notes WHERE id = ?`;
+    const [selectResult] = await query(selectQuery, [noteId]);
+    
+    if (!Array.isArray(selectResult) || selectResult.length === 0) {
+      throw new Error('Failed to fetch created note');
+    }
+    
+    return selectResult[0];
   }
 
   /**

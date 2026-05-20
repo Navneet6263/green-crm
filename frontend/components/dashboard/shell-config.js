@@ -68,7 +68,7 @@ export const PAGE_SUMMARY = {
 };
 
 const SECTION = (title, items) => ({ title, items });
-const ITEM = (label, href, icon, accessKey = null) => ({ label, href, icon, accessKey });
+const ITEM = (label, href, icon, accessKey = null, target = null) => ({ label, href, icon, accessKey, target });
 
 export const SIDEBAR_SECTIONS = {
   "super-admin": [
@@ -111,7 +111,7 @@ export const SIDEBAR_SECTIONS = {
       ITEM("Products", "/settings/products", "products", "products"),
       ITEM("Teams", "/settings/teams", "users", "team_management"),
       ITEM("Tasks", "/tasks", "tasks", "tasks"),
-      ITEM("Notes", "/notes", "notes"),
+      ITEM("Notes", "/notes", "notes", null, "_blank"),
       ITEM("Communications", "/communications", "message", "communications"),
       ITEM("Attendance", "/attendance", "attendance", "attendance"),
     ]),
@@ -126,7 +126,7 @@ export const SIDEBAR_SECTIONS = {
       ITEM("Dashboard", ROLE_HOME_ROUTE.manager, "dashboard"),
       ITEM("Leads", "/leads", "leads", "leads"),
       ITEM("Tasks", "/tasks", "tasks", "tasks"),
-      ITEM("Notes", "/notes", "notes"),
+      ITEM("Notes", "/notes", "notes", null, "_blank"),
       ITEM("Attendance", "/attendance", "attendance", "attendance"),
     ]),
     SECTION("Team", [
@@ -143,7 +143,7 @@ export const SIDEBAR_SECTIONS = {
       ITEM("Dashboard", ROLE_HOME_ROUTE.sales, "dashboard"),
       ITEM("My Leads", "/leads", "leads", "leads"),
       ITEM("Tasks", "/tasks", "tasks", "tasks"),
-      ITEM("Notes", "/notes", "notes"),
+      ITEM("Notes", "/notes", "notes", null, "_blank"),
     ]),
     SECTION("Activity", [
       ITEM("Customers", "/customers", "customers", "customers"),

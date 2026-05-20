@@ -112,12 +112,21 @@ function getBlockedFeature(pathname, role, companyAccess) {
 }
 
 function SidebarNavItem({ item, active, exactActive }) {
+  const handleClick = (e) => {
+    if (item.target === '_blank') {
+      e.preventDefault();
+      window.open(item.href, '_blank');
+    } else if (exactActive) {
+      e.preventDefault();
+    }
+  };
+
   return (
     <Link
       href={item.href}
       prefetch={false}
       scroll={false}
-      onClick={exactActive ? (event) => event.preventDefault() : undefined}
+      onClick={handleClick}
       className={cn(
         "group flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-semibold transition",
         active

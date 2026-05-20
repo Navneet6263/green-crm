@@ -52,6 +52,10 @@ class NoteService {
       wordCount
     });
 
+    if (!note) {
+      throw new Error('Failed to create note');
+    }
+
     // Add tags if provided
     if (tags && tags.length > 0) {
       await noteTagRepository.addTags(note.id, tags);

@@ -16,13 +16,7 @@ interface NoteCardProps {
 }
 
 export default function NoteCard({
-  note,
-  isActive,
-  onClick,
-  onPin,
-  onArchive,
-  onDelete,
-  onColorChange,
+  note, isActive, onClick, onPin, onArchive, onDelete, onColorChange,
 }: NoteCardProps) {
   const [showContextMenu, setShowContextMenu] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
@@ -33,58 +27,49 @@ export default function NoteCard({
   const getPreview = (content: string) => {
     try {
       const parsed = JSON.parse(content);
-      const extractText = (node: any): string => {
+      const extract = (node: any): string => {
         if (node.text) return node.text;
-        if (node.content) {
-          return node.content.map(extractText).join(' ');
-        }
+        if (node.content) return node.content.map(extract).join(' ');
         return '';
       };
-      const text = extractText(parsed);
+      const text = extract(parsed).trim();
       return text.slice(0, 100) + (text.length > 100 ? '...' : '');
-    } catch {
-      return '';
-    }
+    } catch { return ''; }
   };
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setShowContextMenu(false);
         setShowColorPicker(false);
       }
     };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
   }, []);
 
   return (
     <div
-      className={`relative p-4 rounded-lg border-2 cursor-pointer transition-all ${colorClass} ${
-        isActive ? 'border-blue-500 shadow-md' : 'border-gray-200 hover:border-gray-300'
-      }`}
+      className={`relative p-4 rounded-lg border-2 cursor-pointer transition-all ${colorClass} ${isActive ? 'border-blue-500 shadow-md' : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'}`}
       onClick={onClick}
-      onContextMenu={(e) => {
-        e.preventDefault();
-        setShowContextMenu(true);
-      }}
+      onContextMenu={e => { e.preventDefault(); setShowContextMenu(true); }}
     >
       {note.is_pinned && (
-        <Pin size={14} className="absolute top-2 right-2 text-blue-500 fill-blue-500" />
+        <Pin size={13} className="absolute top-2 right-2 text-blue-500 fill-blue-500" />
       )}
 
-      <h3 className="font-semibold text-gray-900 mb-1 pr-6 truncate">{note.title}</h3>
-      
-      <p className="text-sm text-gray-600 mb-2 line-clamp-2">{getPreview(note.content)}</p>
+      <h3 className="font-semibold text-gray-900 mb-1 pr-6 truncate text-sm">
+        {note.title || 'Untitled Note'}
+      </h3>
+
+      <p className="text-sm text-gray-600 mb-2 line-clamp-2">
+        {getPreview(note.content)}
+      </p>
 
       {note.tags.length > 0 && (
         <div className="flex flex-wrap gap-1 mb-2">
-          {note.tags.slice(0, 3).map((tag) => (
-            <span
-              key={tag}
-              className="text-xs bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full"
-            >
+          {note.tags.slice(0, 3).map(tag => (
+            <span key={tag} className="text-xs bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full">
               {tag}
             </span>
           ))}
@@ -94,7 +79,7 @@ export default function NoteCard({
         </div>
       )}
 
-      <div className="text-xs text-gray-500">
+      <div className="text-xs text-gray-400">
         {formatDistanceToNow(new Date(note.updated_at), { addSuffix: true })}
       </div>
 
@@ -102,40 +87,29 @@ export default function NoteCard({
         <div
           ref={menuRef}
           className="absolute right-2 top-12 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1 min-w-[160px]"
-          onClick={(e) => e.stopPropagation()}
+          onClick={e => e.stopPropagation()}
         >
           <button
-            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
-            onClick={() => {
-              onPin();
-              setShowContextMenu(false);
-            }}
+            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2"
+            onClick={() => { onPin(); setShowContextMenu(false); }}
           >
-            <Pin size={14} />
-            {note.is_pinned ? 'Unpin' : 'Pin'}
+            <Pin size={13} /> {note.is_pinned ? 'Unpin' : 'Pin'}
           </button>
 
           <button
-            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
-            onClick={() => setShowColorPicker(!showColorPicker)}
+            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2"
+            onClick={() => setShowColorPicker(p => !p)}
           >
-            <Palette size={14} />
-            Change Color
+            <Palette size={13} /> Change color
           </button>
 
           {showColorPicker && (
-            <div className="px-4 py-2 flex gap-2">
-              {NOTE_COLORS.map((color) => (
+            <div className="px-4 py-2 flex gap-2 border-t border-gray-100">
+              {NOTE_COLORS.map(color => (
                 <button
-                  key={color.value || 'default'}
-                  className={`w-6 h-6 rounded-full border-2 ${color.class} ${
-                    note.color === color.value ? 'border-blue-500' : 'border-gray-300'
-                  }`}
-                  onClick={() => {
-                    onColorChange(color.value);
-                    setShowColorPicker(false);
-                    setShowContextMenu(false);
-                  }}
+                  key={color.value || 'none'}
+                  className={`w-5 h-5 rounded-full border-2 ${color.class} ${note.color === color.value ? 'border-blue-500' : 'border-gray-300'}`}
+                  onClick={() => { onColorChange(color.value); setShowColorPicker(false); setShowContextMenu(false); }}
                   title={color.name}
                 />
               ))}
@@ -143,27 +117,17 @@ export default function NoteCard({
           )}
 
           <button
-            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
-            onClick={() => {
-              onArchive();
-              setShowContextMenu(false);
-            }}
+            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2"
+            onClick={() => { onArchive(); setShowContextMenu(false); }}
           >
-            <Archive size={14} />
-            Archive
+            <Archive size={13} /> Archive
           </button>
 
           <button
-            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2 text-red-600"
-            onClick={() => {
-              if (confirm('Are you sure you want to delete this note?')) {
-                onDelete();
-                setShowContextMenu(false);
-              }
-            }}
+            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 text-red-500"
+            onClick={() => { if (confirm('Delete this note?')) { onDelete(); setShowContextMenu(false); } }}
           >
-            <Trash2 size={14} />
-            Delete
+            <Trash2 size={13} /> Delete
           </button>
         </div>
       )}

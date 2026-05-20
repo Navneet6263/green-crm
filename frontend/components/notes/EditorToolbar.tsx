@@ -2,22 +2,9 @@
 
 import { Editor } from '@tiptap/react';
 import {
-  Bold,
-  Italic,
-  Underline,
-  Strikethrough,
-  Highlighter,
-  Heading1,
-  Heading2,
-  Heading3,
-  List,
-  ListOrdered,
-  CheckSquare,
-  Quote,
-  Code,
-  Table,
-  Minus,
-  Image as ImageIcon,
+  Bold, Italic, Underline, Strikethrough,
+  Heading1, Heading2, List, ListOrdered,
+  CheckSquare, Quote, Code, Undo, Redo, Highlighter,
 } from 'lucide-react';
 
 interface EditorToolbarProps {
@@ -25,162 +12,59 @@ interface EditorToolbarProps {
 }
 
 export default function EditorToolbar({ editor }: EditorToolbarProps) {
-  if (!editor) {
-    return null;
-  }
+  if (!editor) return null;
 
-  const ToolbarButton = ({ 
-    onClick, 
-    isActive = false, 
-    children, 
-    title 
-  }: { 
-    onClick: () => void; 
-    isActive?: boolean; 
-    children: React.ReactNode; 
-    title: string;
-  }) => (
+  const btn = (
+    onClick: () => void,
+    icon: React.ReactNode,
+    title: string,
+    isActive = false,
+  ) => (
     <button
       onClick={onClick}
-      className={`p-2 rounded hover:bg-gray-100 ${isActive ? 'bg-gray-200' : ''}`}
       title={title}
-      type="button"
+      className={`p-1.5 rounded-md transition-colors text-sm ${
+        isActive
+          ? 'bg-blue-100 text-blue-600'
+          : 'text-gray-500 hover:bg-gray-100 hover:text-gray-800'
+      }`}
     >
-      {children}
+      {icon}
     </button>
   );
 
+  const sep = () => (
+    <div className="w-px h-5 bg-gray-200 mx-0.5 self-center" />
+  );
+
   return (
-    <div className="border-b border-gray-200 p-2 flex flex-wrap gap-1 bg-white sticky top-0 z-10">
-      <ToolbarButton
-        onClick={() => editor.chain().focus().toggleBold().run()}
-        isActive={editor.isActive('bold')}
-        title="Bold"
-      >
-        <Bold size={18} />
-      </ToolbarButton>
+    <div className="flex items-center flex-wrap gap-0.5 px-4 py-2 border-b border-gray-100 bg-gray-50/60">
+      {btn(() => editor.chain().focus().toggleBold().run(), <Bold size={15} />, 'Bold', editor.isActive('bold'))}
+      {btn(() => editor.chain().focus().toggleItalic().run(), <Italic size={15} />, 'Italic', editor.isActive('italic'))}
+      {btn(() => editor.chain().focus().toggleUnderline().run(), <Underline size={15} />, 'Underline', editor.isActive('underline'))}
+      {btn(() => editor.chain().focus().toggleStrike().run(), <Strikethrough size={15} />, 'Strikethrough', editor.isActive('strike'))}
+      {btn(() => editor.chain().focus().toggleHighlight().run(), <Highlighter size={15} />, 'Highlight', editor.isActive('highlight'))}
 
-      <ToolbarButton
-        onClick={() => editor.chain().focus().toggleItalic().run()}
-        isActive={editor.isActive('italic')}
-        title="Italic"
-      >
-        <Italic size={18} />
-      </ToolbarButton>
+      {sep()}
 
-      <ToolbarButton
-        onClick={() => editor.chain().focus().toggleStrike().run()}
-        isActive={editor.isActive('strike')}
-        title="Strikethrough"
-      >
-        <Strikethrough size={18} />
-      </ToolbarButton>
+      {btn(() => editor.chain().focus().toggleHeading({ level: 1 }).run(), <Heading1 size={15} />, 'Heading 1', editor.isActive('heading', { level: 1 }))}
+      {btn(() => editor.chain().focus().toggleHeading({ level: 2 }).run(), <Heading2 size={15} />, 'Heading 2', editor.isActive('heading', { level: 2 }))}
 
-      <ToolbarButton
-        onClick={() => editor.chain().focus().toggleHighlight().run()}
-        isActive={editor.isActive('highlight')}
-        title="Highlight"
-      >
-        <Highlighter size={18} />
-      </ToolbarButton>
+      {sep()}
 
-      <div className="w-px h-6 bg-gray-300 mx-1" />
+      {btn(() => editor.chain().focus().toggleBulletList().run(), <List size={15} />, 'Bullet list', editor.isActive('bulletList'))}
+      {btn(() => editor.chain().focus().toggleOrderedList().run(), <ListOrdered size={15} />, 'Numbered list', editor.isActive('orderedList'))}
+      {btn(() => editor.chain().focus().toggleTaskList().run(), <CheckSquare size={15} />, 'Checklist', editor.isActive('taskList'))}
 
-      <ToolbarButton
-        onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-        isActive={editor.isActive('heading', { level: 1 })}
-        title="Heading 1"
-      >
-        <Heading1 size={18} />
-      </ToolbarButton>
+      {sep()}
 
-      <ToolbarButton
-        onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-        isActive={editor.isActive('heading', { level: 2 })}
-        title="Heading 2"
-      >
-        <Heading2 size={18} />
-      </ToolbarButton>
+      {btn(() => editor.chain().focus().toggleBlockquote().run(), <Quote size={15} />, 'Quote', editor.isActive('blockquote'))}
+      {btn(() => editor.chain().focus().toggleCode().run(), <Code size={15} />, 'Code', editor.isActive('code'))}
 
-      <ToolbarButton
-        onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
-        isActive={editor.isActive('heading', { level: 3 })}
-        title="Heading 3"
-      >
-        <Heading3 size={18} />
-      </ToolbarButton>
+      {sep()}
 
-      <div className="w-px h-6 bg-gray-300 mx-1" />
-
-      <ToolbarButton
-        onClick={() => editor.chain().focus().toggleBulletList().run()}
-        isActive={editor.isActive('bulletList')}
-        title="Bullet List"
-      >
-        <List size={18} />
-      </ToolbarButton>
-
-      <ToolbarButton
-        onClick={() => editor.chain().focus().toggleOrderedList().run()}
-        isActive={editor.isActive('orderedList')}
-        title="Numbered List"
-      >
-        <ListOrdered size={18} />
-      </ToolbarButton>
-
-      <ToolbarButton
-        onClick={() => editor.chain().focus().toggleTaskList().run()}
-        isActive={editor.isActive('taskList')}
-        title="Checklist"
-      >
-        <CheckSquare size={18} />
-      </ToolbarButton>
-
-      <div className="w-px h-6 bg-gray-300 mx-1" />
-
-      <ToolbarButton
-        onClick={() => editor.chain().focus().toggleBlockquote().run()}
-        isActive={editor.isActive('blockquote')}
-        title="Blockquote"
-      >
-        <Quote size={18} />
-      </ToolbarButton>
-
-      <ToolbarButton
-        onClick={() => editor.chain().focus().toggleCodeBlock().run()}
-        isActive={editor.isActive('codeBlock')}
-        title="Code Block"
-      >
-        <Code size={18} />
-      </ToolbarButton>
-
-      <div className="w-px h-6 bg-gray-300 mx-1" />
-
-      <ToolbarButton
-        onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
-        title="Insert Table"
-      >
-        <Table size={18} />
-      </ToolbarButton>
-
-      <ToolbarButton
-        onClick={() => editor.chain().focus().setHorizontalRule().run()}
-        title="Divider"
-      >
-        <Minus size={18} />
-      </ToolbarButton>
-
-      <ToolbarButton
-        onClick={() => {
-          const url = window.prompt('Enter image URL:');
-          if (url) {
-            editor.chain().focus().setImage({ src: url }).run();
-          }
-        }}
-        title="Insert Image"
-      >
-        <ImageIcon size={18} />
-      </ToolbarButton>
+      {btn(() => editor.chain().focus().undo().run(), <Undo size={15} />, 'Undo')}
+      {btn(() => editor.chain().focus().redo().run(), <Redo size={15} />, 'Redo')}
     </div>
   );
 }
