@@ -558,6 +558,21 @@ const schemaStatements = [
     KEY idx_cust_act_created_by (company_id, created_by, created_at)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
 
+  // ── customer_notes ─────────────────────────────────────────
+  `CREATE TABLE IF NOT EXISTS customer_notes (
+    id          BIGINT        NOT NULL AUTO_INCREMENT,
+    company_id  VARCHAR(20)   NOT NULL,
+    customer_id VARCHAR(20)   NOT NULL,
+    content     LONGTEXT      NOT NULL,
+    created_by  VARCHAR(20)   NOT NULL,
+    created_at  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_cn_customer_created (customer_id, created_at),
+    KEY idx_cn_company (company_id, created_at),
+    KEY idx_cn_created_by (created_by, created_at)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
   // ── tasks ──────────────────────────────────────────────────
   `CREATE TABLE IF NOT EXISTS tasks (
     id          BIGINT        NOT NULL AUTO_INCREMENT,

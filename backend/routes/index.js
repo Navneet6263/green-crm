@@ -18,6 +18,7 @@ const demoRequestRoutes = require("./demoRequestRoutes");
 const superAdminRoutes = require("./superAdminRoutes");
 const dashboardRoutes = require("./dashboardRoutes");
 const noteRoutes = require("./noteRoutes");
+const recentActivityRoutes = require("./recentActivityRoutes");
 
 const router = express.Router();
 
@@ -39,5 +40,6 @@ router.use("/demo-requests", demoRequestRoutes);
 router.use("/super-admin", superAdminRoutes);
 router.use("/dashboard", dashboardRoutes);
 router.use("/notes", noteRoutes);
+router.use("/recent-activity", recentActivityRoutes);
 
 module.exports = router;

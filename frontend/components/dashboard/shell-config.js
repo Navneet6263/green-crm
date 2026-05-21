@@ -103,6 +103,7 @@ export const SIDEBAR_SECTIONS = {
   admin: [
     SECTION("Control Room", [
       ITEM("Dashboard", ROLE_HOME_ROUTE.admin, "dashboard"),
+      ITEM("Recent Updates", "/recent-updates", "notes"),
       ITEM("Leads", "/leads", "leads", "leads"),
       ITEM("Customers", "/customers", "customers", "customers"),
       ITEM("Workflow", "/workflow", "workflow", "workflow"),
@@ -124,6 +125,7 @@ export const SIDEBAR_SECTIONS = {
   manager: [
     SECTION("Execution", [
       ITEM("Dashboard", ROLE_HOME_ROUTE.manager, "dashboard"),
+      ITEM("Recent Updates", "/recent-updates", "notes"),
       ITEM("Leads", "/leads", "leads", "leads"),
       ITEM("Tasks", "/tasks", "tasks", "tasks"),
       ITEM("Notes", "/notes", "notes", null, "_blank"),
@@ -141,6 +143,7 @@ export const SIDEBAR_SECTIONS = {
   sales: [
     SECTION("Selling", [
       ITEM("Dashboard", ROLE_HOME_ROUTE.sales, "dashboard"),
+      ITEM("Recent Updates", "/recent-updates", "notes"),
       ITEM("My Leads", "/leads", "leads", "leads"),
       ITEM("Tasks", "/tasks", "tasks", "tasks"),
       ITEM("Notes", "/notes", "notes", null, "_blank"),
@@ -155,6 +158,7 @@ export const SIDEBAR_SECTIONS = {
   marketing: [
     SECTION("Growth", [
       ITEM("Dashboard", ROLE_HOME_ROUTE.marketing, "dashboard"),
+      ITEM("Recent Updates", "/recent-updates", "notes"),
       ITEM("Leads", "/leads", "leads", "leads"),
       ITEM("Analytics", "/analytics", "analytics", "analytics"),
     ]),
@@ -169,6 +173,7 @@ export const SIDEBAR_SECTIONS = {
   "legal-team": [
     SECTION("Workflow", [
       ITEM("Dashboard", ROLE_HOME_ROUTE["legal-team"], "dashboard"),
+      ITEM("Recent Updates", "/recent-updates", "notes"),
       ITEM("Legal Queue", "/workflow/legal", "workflow", "workflow"),
       ITEM("Documents", "/documents", "documents", "documents"),
       ITEM("Tasks", "/tasks", "tasks", "tasks"),
@@ -179,6 +184,7 @@ export const SIDEBAR_SECTIONS = {
   "finance-team": [
     SECTION("Workflow", [
       ITEM("Dashboard", ROLE_HOME_ROUTE["finance-team"], "dashboard"),
+      ITEM("Recent Updates", "/recent-updates", "notes"),
       ITEM("Finance Queue", "/workflow/finance", "finance", "workflow"),
       ITEM("Documents", "/documents", "documents", "documents"),
       ITEM("Tasks", "/tasks", "tasks", "tasks"),
@@ -189,6 +195,7 @@ export const SIDEBAR_SECTIONS = {
   support: [
     SECTION("Support", [
       ITEM("Dashboard", ROLE_HOME_ROUTE.support, "dashboard"),
+      ITEM("Recent Updates", "/recent-updates", "notes"),
       ITEM("Support Center", "/support", "support", "support"),
       ITEM("Tasks", "/tasks", "tasks", "tasks"),
       ITEM("Notes", "/notes", "notes"),
@@ -199,6 +206,7 @@ export const SIDEBAR_SECTIONS = {
   viewer: [
     SECTION("Overview", [
       ITEM("Dashboard", ROLE_HOME_ROUTE.viewer, "dashboard"),
+      ITEM("Recent Updates", "/recent-updates", "notes"),
       ITEM("Leads", "/leads", "leads", "leads"),
       ITEM("Customers", "/customers", "customers", "customers"),
       ITEM("Notes", "/notes", "notes"),

@@ -30,10 +30,5 @@
     "react-is": "^18.3.0",
     "recharts": "^3.8.1",
     "tailwindcss": "^4.2.2"
-  },
-  "devDependencies": {
-    "@types/node": "25.8.0",
-    "@types/react": "19.2.14",
-    "typescript": "6.0.3"
   }
 }
