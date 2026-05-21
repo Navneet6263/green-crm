@@ -40,6 +40,7 @@ async function resolveAuthState(payload, cacheKey) {
 
   return {
     userId: user.user_id,
+    id: user.id,
     companyId: user.company_id,
     email: user.email,
     name: user.name,

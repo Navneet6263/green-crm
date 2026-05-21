@@ -1,130 +1,57 @@
 "use client";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { loadSession } from "../../../lib/session";
+import { notesApi } from "../../../lib/api/notes";
+import { chatApi } from "../../../lib/api/chat";
+import NotesView from "./NotesView";
+import ChatView from "./ChatView";
+import { FileText, MessageCircle } from "lucide-react";
 
-import { useState, useEffect, useCallback } from "react";
-import { notesApi } from "@/lib/api/notes";
-import CompactNotesPanel from "@/components/notes/CompactNotesPanel";
-import EditorPanel from "@/components/notes/EditorPanel";
-import { toast } from "react-hot-toast";
-import { FileText, Sparkles, Pin, Tag } from "lucide-react";
-
-export default function NotesPage() {
+export default function WorkspacePage() {
+  const router = useRouter();
+  const [session, setSession] = useState(null);
+  const [tab, setTab] = useState("notes");
   const [notes, setNotes] = useState([]);
-  const [tags, setTags] = useState([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedTag, setSelectedTag] = useState(null);
-  const [selectedNote, setSelectedNote] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  const fetchNotes = useCallback(async () => {
-    try {
-      const fetched = await notesApi.list({ search: searchQuery || undefined, tag: selectedTag || undefined });
-      setNotes(fetched);
-    } catch {
-      toast.error("Failed to load notes");
-    }
-  }, [searchQuery, selectedTag]);
-
-  const fetchTags = useCallback(async () => {
-    try { setTags(await notesApi.getTags()); } catch {}
-  }, []);
+  const [allUsers, setAllUsers] = useState([]);
+  const [chats, setChats] = useState({ groups: [], directs: [] });
 
   useEffect(() => {
-    const load = async () => { setLoading(true); await Promise.all([fetchNotes(), fetchTags()]); setLoading(false); };
-    load();
-  }, [fetchNotes, fetchTags]);
+    const s = loadSession();
+    if (!s) { router.replace("/login"); return; }
+    setSession(s);
+  }, [router]);
 
-  const handleCreateNote = async () => {
-    try {
-      const newNote = await notesApi.create({ title: "Untitled Note", content: JSON.stringify({ type: "doc", content: [] }) });
-      setNotes((prev) => [newNote, ...prev]);
-      setSelectedNote(newNote);
-      toast.success("Note created");
-    } catch { toast.error("Failed to create note"); }
-  };
+  useEffect(() => {
+    if (!session) return;
+    notesApi.list().then(r => setNotes(Array.isArray(r) ? r : r?.data || [])).catch(console.error);
+    chatApi.listChats().then(r => setChats(r?.groups || r?.data?.groups ? r : r?.data || r || { groups: [], directs: [] })).catch(console.error);
+    chatApi.getUsers().then(r => setAllUsers(Array.isArray(r) ? r : r?.data || [])).catch(console.error);
+  }, [session]);
 
-  const handleUpdateNote = async (noteId, data) => {
-    try {
-      const updated = await notesApi.update(noteId, data);
-      setNotes((prev) => prev.map((n) => (n.id === noteId ? updated : n)));
-      setSelectedNote(updated);
-    } catch { toast.error("Failed to save"); }
-  };
-
-  const handlePinNote = async (noteId) => {
-    try {
-      const updated = await notesApi.togglePin(noteId);
-      setNotes((prev) => prev.map((n) => (n.id === noteId ? updated : n)));
-      if (selectedNote?.id === noteId) setSelectedNote(updated);
-      toast.success(updated.is_pinned ? "Pinned" : "Unpinned");
-    } catch { toast.error("Failed to pin"); }
-  };
-
-  const handleDeleteNote = async (noteId) => {
-    try {
-      await notesApi.delete(noteId);
-      setNotes((prev) => prev.filter((n) => n.id !== noteId));
-      if (selectedNote?.id === noteId) setSelectedNote(null);
-      toast.success("Deleted");
-    } catch { toast.error("Failed to delete"); }
-  };
-
-  const handleColorChange = async (noteId, color) => {
-    try {
-      const updated = await notesApi.update(noteId, { color });
-      setNotes((prev) => prev.map((n) => (n.id === noteId ? updated : n)));
-      if (selectedNote?.id === noteId) setSelectedNote(updated);
-    } catch { toast.error("Failed to change color"); }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500 mx-auto mb-3" />
-          <p className="text-gray-500 text-sm">Loading notes...</p>
-        </div>
-      </div>
-    );
-  }
+  const NAV = [{ id: "notes", Icon: FileText }, { id: "chat", Icon: MessageCircle }];
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50">
-      <CompactNotesPanel
-        notes={notes} tags={tags} searchQuery={searchQuery}
-        selectedTag={selectedTag} selectedNoteId={selectedNote?.id ?? null}
-        onSearchChange={setSearchQuery} onTagSelect={setSelectedTag}
-        onNoteSelect={setSelectedNote} onNotePin={handlePinNote}
-        onNoteDelete={handleDeleteNote} onNoteColorChange={handleColorChange}
-        onCreateNote={handleCreateNote}
-      />
-      {selectedNote ? (
-        <EditorPanel note={selectedNote} onUpdate={handleUpdateNote} onClose={() => setSelectedNote(null)} />
-      ) : (
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center max-w-sm px-6">
-            <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <FileText className="text-blue-400" size={28} />
-            </div>
-            <h2 className="text-lg font-semibold text-gray-800 mb-1">
-              {notes.length === 0 ? "No notes yet" : "Select a note"}
-            </h2>
-            <p className="text-sm text-gray-500 mb-5">
-              {notes.length === 0 ? "Create your first note to get started" : "Click any note on the left to open it here"}
-            </p>
-            {notes.length === 0 ? (
-              <button onClick={handleCreateNote} className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm font-medium transition-colors">
-                <Sparkles size={15} /> Create first note
-              </button>
-            ) : (
-              <div className="space-y-2.5 text-xs text-gray-400 text-left bg-white border border-gray-100 rounded-xl p-4">
-                <div className="flex items-center gap-2"><Pin size={13} /> Pin important notes to top</div>
-                <div className="flex items-center gap-2"><Tag size={13} /> Use tags to organize</div>
-                <div className="flex items-center gap-2"><Sparkles size={13} /> Auto-saves as you type</div>
-              </div>
-            )}
-          </div>
+    <div style={{ fontFamily: "'Inter', sans-serif" }} className="flex h-screen w-full overflow-hidden bg-white">
+      <aside className="flex w-16 shrink-0 flex-col items-center gap-3 border-r border-gray-100 py-5 bg-gray-50">
+        <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 text-xs font-black text-white shadow-md shadow-green-200">
+          G
         </div>
-      )}
+        {NAV.map(({ id, Icon }) => (
+          <button key={id} onClick={() => setTab(id)}
+            className={`flex h-11 w-11 items-center justify-center rounded-2xl transition-all duration-200 ${tab === id ? "bg-green-100 text-green-600 shadow-sm" : "text-gray-400 hover:bg-gray-200 hover:text-gray-600"}`}>
+            <Icon size={20} />
+          </button>
+        ))}
+        <div className="mt-auto flex h-8 w-8 items-center justify-center rounded-full bg-green-500 text-xs font-bold text-white shadow">
+          {session?.user?.name?.[0]?.toUpperCase() || "U"}
+        </div>
+      </aside>
+
+      {tab === "notes"
+        ? <NotesView session={session} notes={notes} setNotes={setNotes} />
+        : <ChatView session={session} allUsers={allUsers} chats={chats} setChats={setChats} />
+      }
     </div>
   );
 }

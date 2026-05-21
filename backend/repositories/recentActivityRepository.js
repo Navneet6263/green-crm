@@ -14,7 +14,7 @@ class RecentActivityRepository {
     // Lead notes query
     if (type === 'all' || type === 'leads') {
       unionQuery += `
-        SELECT TOP ${limit}
+        SELECT
           'lead' as note_type,
           ln.id,
           ln.company_id,
@@ -48,7 +48,7 @@ class RecentActivityRepository {
       }
 
       unionQuery += `
-        SELECT TOP ${limit}
+        SELECT
           'customer' as note_type,
           cn.id,
           cn.company_id,

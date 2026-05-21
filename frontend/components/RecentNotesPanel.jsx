@@ -30,7 +30,7 @@ export default function RecentNotesPanel({
         type: filterType,
         myNotesOnly,
       });
-      setNotes(response.data || []);
+      setNotes(response.items || response.data || response || []);
     } catch (err) {
       setError(err.message || 'Failed to load recent notes');
       console.error('Error loading recent notes:', err);

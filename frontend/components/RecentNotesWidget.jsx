@@ -18,7 +18,7 @@ export default function RecentNotesWidget({ limit = 10, type = 'all' }) {
     try {
       setLoading(true);
       const response = await recentActivityApi.getRecentNotes({ limit, type });
-      setNotes(response.data || []);
+      setNotes(response.items || response.data || response || []);
     } catch (err) {
       console.error('Error loading recent notes:', err);
       setNotes([]);

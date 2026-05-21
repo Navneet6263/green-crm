@@ -195,6 +195,47 @@ async function ensureLeadCompatibilityColumns(pool) {
   `);
 }
 
+async function ensureChatTables(pool) {
+  await pool.request().query(`
+    IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'chat_groups')
+    BEGIN
+      CREATE TABLE chat_groups (
+        id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+        name NVARCHAR(255) NOT NULL,
+        created_by BIGINT NOT NULL,
+        created_at DATETIME2 DEFAULT GETDATE(),
+        CONSTRAINT FK_chat_groups_creator FOREIGN KEY (created_by) REFERENCES users(id)
+      );
+    END;
+
+    IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'chat_group_members')
+    BEGIN
+      CREATE TABLE chat_group_members (
+        group_id UNIQUEIDENTIFIER NOT NULL,
+        user_id BIGINT NOT NULL,
+        CONSTRAINT PK_chat_group_members PRIMARY KEY (group_id, user_id),
+        CONSTRAINT FK_chat_group_members_group FOREIGN KEY (group_id) REFERENCES chat_groups(id) ON DELETE CASCADE,
+        CONSTRAINT FK_chat_group_members_user FOREIGN KEY (user_id) REFERENCES users(id)
+      );
+    END;
+
+    IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'chat_messages')
+    BEGIN
+      CREATE TABLE chat_messages (
+        id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+        group_id UNIQUEIDENTIFIER NULL,
+        sender_id BIGINT NOT NULL,
+        recipient_id BIGINT NULL,
+        text NVARCHAR(MAX) NOT NULL,
+        created_at DATETIME2 DEFAULT GETDATE(),
+        CONSTRAINT FK_chat_messages_group FOREIGN KEY (group_id) REFERENCES chat_groups(id) ON DELETE CASCADE,
+        CONSTRAINT FK_chat_messages_sender FOREIGN KEY (sender_id) REFERENCES users(id),
+        CONSTRAINT FK_chat_messages_recipient FOREIGN KEY (recipient_id) REFERENCES users(id)
+      );
+    END;
+  `);
+}
+
 async function initializeDatabase() {
   if (!poolPromise) {
     poolPromise = (async () => {
@@ -206,6 +247,9 @@ async function initializeDatabase() {
       });
       await ensureDocumentUploadColumns(pool).catch((error) => {
         console.warn("Document upload column check skipped:", error.message);
+      });
+      await ensureChatTables(pool).catch((error) => {
+        console.warn("Chat tables check skipped:", error.message);
       });
       return pool;
     })().catch((error) => {
