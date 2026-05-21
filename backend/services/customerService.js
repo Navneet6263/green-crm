@@ -206,6 +206,30 @@ async function createCustomer(auth, payload) {
     created_by: auth.userId,
   });
 
+  // Auto-add creator as member for lead conversions
+  if (payload.converted_from_lead_id) {
+    const isCreatorOwner = customer.assigned_to === auth.userId;
+    const isCreatorAdmin = [ROLES.ADMIN, ROLES.MANAGER, ROLES.SUPER_ADMIN, ROLES.PLATFORM_ADMIN, ROLES.PLATFORM_MANAGER].includes(auth.role);
+    
+    if (!isCreatorOwner && !isCreatorAdmin) {
+      await customerMemberRepository.addMember({
+        company_id: customer.company_id,
+        customer_id: customer.customer_id,
+        user_id: auth.userId,
+        role: "collaborator",
+        added_by: auth.userId,
+      });
+      
+      await customerActivityRepository.createActivity({
+        company_id: customer.company_id,
+        customer_id: customer.customer_id,
+        type: "member_added",
+        description: `${auth.name || auth.email} automatically added as collaborator (lead conversion)`,
+        created_by: auth.userId,
+      });
+    }
+  }
+
   await auditRepository.createLog({
     audit_id: await createPrefixedId("aud"),
     company_id: companyId,
