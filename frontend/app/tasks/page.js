@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import WorkspacePage from "../../components/dashboard/WorkspacePage";
 import DashboardIcon from "../../components/dashboard/icons";
 import { apiRequest } from "../../lib/api";
@@ -46,6 +46,37 @@ function TasksContent({ tasks, loadError, loading, session, refresh }) {
   const [groupBy, setGroupBy] = useState("status");
   const [view, setView] = useState("board"); // board | timeline
 
+  // User list for task assignment
+  const [users, setUsers] = useState([]);
+
+  // Quick task creation modal state
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [formTitle, setFormTitle] = useState("");
+  const [formDueDate, setFormDueDate] = useState("");
+  const [formType, setFormType] = useState("call");
+  const [formPriority, setFormPriority] = useState("medium");
+  const [formAssignee, setFormAssignee] = useState("");
+  const [formNotes, setFormNotes] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Load CRM users on mount for assignee selector
+  useEffect(() => {
+    if (!session?.token) return;
+    apiRequest("/chat/users", { token: session.token })
+      .then(r => {
+        const list = Array.isArray(r) ? r : r?.data || [];
+        setUsers(list);
+      })
+      .catch(e => console.error("Failed to load users for assignment:", e));
+  }, [session]);
+
+  // Set default assignee to current logged-in user when modal opens
+  useEffect(() => {
+    if (session?.user?.id && isCreateOpen) {
+      setFormAssignee(String(session.user.id));
+    }
+  }, [session, isCreateOpen]);
+
   async function toggleTaskStatus(task) {
     if (!session?.token || !task?.task_id) return;
     const next = task.status === "done" ? "pending" : "done";
@@ -57,6 +88,41 @@ function TasksContent({ tasks, loadError, loading, session, refresh }) {
     } catch(e) { setActionError(e.message || "Could not update task."); }
     finally { setUpdatingId(""); }
   }
+
+  const handleCreateTask = async (e) => {
+    e.preventDefault();
+    if (!formTitle.trim() || !formDueDate) return;
+    setIsSubmitting(true);
+    setActionError("");
+    setActionNotice("");
+    try {
+      await apiRequest("/tasks", {
+        method: "POST",
+        token: session.token,
+        body: {
+          title: formTitle.trim(),
+          due_date: new Date(formDueDate).toISOString(),
+          type: formType,
+          priority: formPriority,
+          assigned_to: Number(formAssignee) || Number(session?.user?.id),
+          notes: formNotes.trim() || null
+        }
+      });
+      setActionNotice("Task created successfully!");
+      setIsCreateOpen(false);
+      // Reset form
+      setFormTitle("");
+      setFormDueDate("");
+      setFormType("call");
+      setFormPriority("medium");
+      setFormNotes("");
+      if (refresh) await refresh();
+    } catch (err) {
+      setActionError(err.message || "Failed to create task");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -108,6 +174,7 @@ function TasksContent({ tasks, loadError, loading, session, refresh }) {
             statusFilter={statusFilter} search={search}
             onType={setTypeFilter} onPriority={setPriorityFilter}
             onStatus={setStatusFilter} onSearch={setSearch}
+            onCreateTrigger={() => setIsCreateOpen(true)}
           />
 
           {/* View toggle + group by */}
@@ -149,18 +216,37 @@ function TasksContent({ tasks, loadError, loading, session, refresh }) {
           {/* Board view */}
           {view === "board" ? (
             groups.length ? (
-              <div className="space-y-6">
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 items-start">
                 {groups.map(group => (
-                  <div key={group.key}>
-                    <div className="mb-3 flex items-center gap-2">
-                      <span className="text-sm font-bold text-slate-700">{group.label}</span>
-                      <span className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-500">{group.tasks.length}</span>
-                      <div className="h-px flex-1 bg-slate-100" />
+                  <div key={group.key} className="flex flex-col rounded-2xl border border-slate-200/60 bg-slate-50/50 p-4 min-h-[450px]">
+                    <div className="mb-4 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-slate-850">{group.label}</span>
+                        <span className="rounded-full bg-slate-200/60 px-2 py-0.5 text-xs font-bold text-slate-600">
+                          {group.tasks.length}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => {
+                          if (groupBy === "type") setFormType(group.key);
+                          setIsCreateOpen(true);
+                        }}
+                        className="rounded-lg p-1 text-slate-400 hover:bg-slate-200/60 hover:text-slate-600 transition"
+                      >
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"/></svg>
+                      </button>
                     </div>
-                    <div className="space-y-2.5">
-                      {group.tasks.map(task => (
-                        <TaskCard key={task.task_id} task={task} updatingId={updatingId} onToggle={toggleTaskStatus} when={when} />
-                      ))}
+
+                    <div className="flex flex-1 flex-col gap-3">
+                      {group.tasks.length > 0 ? (
+                        group.tasks.map(task => (
+                          <TaskCard key={task.task_id} task={task} updatingId={updatingId} onToggle={toggleTaskStatus} when={when} />
+                        ))
+                      ) : (
+                        <div className="flex flex-1 flex-col items-center justify-center py-16 text-center">
+                          <p className="text-xs text-slate-400 font-medium">No tasks found</p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -182,6 +268,118 @@ function TasksContent({ tasks, loadError, loading, session, refresh }) {
           ) : null}
         </div>
       ) : null}
+
+      {/* Quick Task Creation Modal */}
+      {isCreateOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl overflow-hidden border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-6 py-4">
+              <h3 className="text-base font-bold text-slate-800">Create New Task</h3>
+              <button onClick={() => setIsCreateOpen(false)} className="text-slate-400 hover:text-slate-600 transition">
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleCreateTask} className="p-6 space-y-4">
+              {/* Title */}
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Task Title *</label>
+                <input
+                  type="text" required value={formTitle} onChange={e => setFormTitle(e.target.value)}
+                  placeholder="Review lead presentation, schedule follow-up..."
+                  className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-slate-700 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-250 transition-colors"
+                />
+              </div>
+
+              {/* Grid 2 Columns */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Due Date */}
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Due Date & Time *</label>
+                  <input
+                    type="datetime-local" required value={formDueDate} onChange={e => setFormDueDate(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-slate-700 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-250 transition-colors"
+                  />
+                </div>
+
+                {/* Assignee */}
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Assignee</label>
+                  <select
+                    value={formAssignee} onChange={e => setFormAssignee(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-slate-700 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-250 transition-colors bg-white"
+                  >
+                    {users.map(u => (
+                      <option key={u.id} value={u.id}>{u.name} ({u.email})</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Type */}
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Task Type</label>
+                  <select
+                    value={formType} onChange={e => setFormType(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-slate-700 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-250 transition-colors bg-white"
+                  >
+                    {["call","whatsapp","email","meeting","demo","reminder","task","note"].map(t => (
+                      <option key={t} value={t}>{nice(t)}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Priority */}
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Priority</label>
+                  <select
+                    value={formPriority} onChange={e => setFormPriority(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-slate-700 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-250 transition-colors bg-white"
+                  >
+                    {["low","medium","high","urgent"].map(p => (
+                      <option key={p} value={p}>{nice(p)}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Notes / Description</label>
+                <textarea
+                  value={formNotes} onChange={e => setFormNotes(e.target.value)} rows={3}
+                  placeholder="Add additional context, call topics, or meeting details here..."
+                  className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-slate-700 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-250 transition-colors"
+                />
+              </div>
+
+              {/* Footer */}
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button" onClick={() => setIsCreateOpen(false)}
+                  className="flex-1 rounded-xl bg-slate-100 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit" disabled={isSubmitting}
+                  className="flex-1 rounded-xl bg-amber-500 py-3 text-sm font-bold text-white hover:bg-amber-600 disabled:bg-slate-350 transition-colors shadow shadow-amber-200 flex items-center justify-center gap-1.5"
+                >
+                  {isSubmitting ? "Creating..." : (
+                    <>
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7"/></svg>
+                      Create Task
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </>
   );
 }

@@ -25,5 +25,6 @@ router.get("/messages/:id", asyncHandler(chatController.getMessages));
 router.get("/users", asyncHandler(chatController.listUsers));
 router.post("/send", asyncHandler(chatController.sendMessage));
 router.post("/group", asyncHandler(chatController.createGroup));
+router.post("/typing", asyncHandler(chatController.sendTypingStatus));
 
 module.exports = router;

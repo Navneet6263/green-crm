@@ -226,6 +226,34 @@ class ChatController {
       next(error);
     }
   }
+
+  /**
+   * Broadcast typing status
+   */
+  async sendTypingStatus(req, res, next) {
+    try {
+      const senderId = req.auth.id;
+      const { recipientId, groupId, isTyping } = req.body;
+      const [userRes] = await query("SELECT name FROM users WHERE id = ?", [senderId]);
+      const senderName = userRes[0]?.name || "Anonymous";
+
+      const payload = {
+        type: "typing",
+        sender_id: senderId,
+        sender_name: senderName,
+        recipient_id: recipientId ? Number(recipientId) : null,
+        group_id: groupId || null,
+        isTyping: !!isTyping
+      };
+
+      // Broadcast real-time typing status
+      new ChatController().broadcast(payload);
+
+      res.json({ success: true });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 module.exports = new ChatController();

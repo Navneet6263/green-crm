@@ -35,4 +35,11 @@ export const chatApi = {
   async createGroup(data) {
     return apiClient.post("/chat/group", data);
   },
+
+  /**
+   * Send typing status
+   */
+  async sendTyping(data) {
+    return apiClient.post("/chat/typing", data);
+  },
 };

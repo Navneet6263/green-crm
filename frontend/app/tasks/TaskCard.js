@@ -14,9 +14,15 @@ export function TaskCard({ task, updatingId, onToggle, when }) {
   const pCls = PRIORITY_CFG[task.priority?.toLowerCase()] || PRIORITY_CFG.medium;
   const sCls = STATUS_CFG[task.status?.toLowerCase()] || STATUS_CFG.pending;
   const teamLabel = teamBadgeLabel(task);
+  const priorityBorderCls = {
+    urgent: "border-l-[4px] border-l-rose-500",
+    high: "border-l-[4px] border-l-amber-500",
+    medium: "border-l-[4px] border-l-indigo-400",
+    low: "border-l-[4px] border-l-slate-300",
+  }[task.priority?.toLowerCase()] || "border-l-[4px] border-l-slate-300";
 
   return (
-    <article className={`group relative overflow-hidden rounded-2xl border bg-white transition hover:-translate-y-0.5 hover:shadow-md ${
+    <article className={`group relative overflow-hidden rounded-2xl border bg-white transition hover:-translate-y-0.5 hover:shadow-md ${priorityBorderCls} ${
       overdue ? "border-rose-200 shadow-sm" : task.status === "done" ? "border-slate-100 opacity-75" : "border-slate-100 shadow-sm"
     }`}>
       {/* shimmer */}

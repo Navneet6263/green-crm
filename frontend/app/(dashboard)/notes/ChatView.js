@@ -28,6 +28,18 @@ export default function ChatView({ session, allUsers: propUsers, chats, setChats
   const [localUsers, setLocalUsers] = useState([]);
   const bottomRef = useRef(null);
 
+  // Typing status states
+  const [typingUser, setTypingUser] = useState(null);
+  const typingTimeoutRef = useRef(null);
+  const isTypingRef = useRef(false);
+
+  // Reset typing states on chat selection change
+  useEffect(() => {
+    setTypingUser(null);
+    isTypingRef.current = false;
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+  }, [sel]);
+
   // Load users directly inside ChatView so search always has fresh data
   useEffect(() => {
     if (!session) return;
@@ -64,9 +76,26 @@ export default function ChatView({ session, allUsers: propUsers, chats, setChats
     es.onmessage = (e) => {
       try {
         const msg = JSON.parse(e.data);
+        if (msg.type === "typing") {
+          const match = (sel?.type === "group" && msg.group_id === sel?.id) ||
+            (sel?.type === "direct" && !msg.group_id && msg.sender_id === sel?.id);
+          if (match) {
+            if (msg.isTyping) {
+              setTypingUser({ name: msg.sender_name, id: msg.sender_id });
+            } else {
+              setTypingUser(null);
+            }
+          }
+          return;
+        }
+
         const match = (sel?.type === "group" && msg.group_id === sel?.id) ||
           (sel?.type === "direct" && !msg.group_id && (msg.sender_id === sel?.id || msg.recipient_id === sel?.id));
-        if (match) { setMessages(p => [...p, msg]); setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 60); }
+        if (match) {
+          setMessages(p => [...p, msg]);
+          setTypingUser(null);
+          setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 60);
+        }
       } catch {}
     };
     return () => es.close();
@@ -75,7 +104,45 @@ export default function ChatView({ session, allUsers: propUsers, chats, setChats
   const send = async () => {
     if (!input.trim() || !sel) return;
     const payload = sel.type === "group" ? { text: input, groupId: sel.id } : { text: input, recipientId: sel.id };
+
+    // Clear typing status immediately on message send
+    if (isTypingRef.current) {
+      isTypingRef.current = false;
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      chatApi.sendTyping({
+        recipientId: sel.type === "direct" ? sel.id : undefined,
+        groupId: sel.type === "group" ? sel.id : undefined,
+        isTyping: false
+      }).catch(console.error);
+    }
+
     try { await chatApi.sendMessage(payload); setInput(""); } catch(e) { console.error(e); }
+  };
+
+  const handleInputChange = (e) => {
+    setInput(e.target.value);
+    
+    if (!sel || !session) return;
+    
+    if (!isTypingRef.current) {
+      isTypingRef.current = true;
+      chatApi.sendTyping({
+        recipientId: sel.type === "direct" ? sel.id : undefined,
+        groupId: sel.type === "group" ? sel.id : undefined,
+        isTyping: true
+      }).catch(console.error);
+    }
+
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    
+    typingTimeoutRef.current = setTimeout(() => {
+      isTypingRef.current = false;
+      chatApi.sendTyping({
+        recipientId: sel.type === "direct" ? sel.id : undefined,
+        groupId: sel.type === "group" ? sel.id : undefined,
+        isTyping: false
+      }).catch(console.error);
+    }, 3000);
   };
 
   const createGroup = async () => {
@@ -212,15 +279,31 @@ export default function ChatView({ session, allUsers: propUsers, chats, setChats
                 </div>
               );
             })}
+            
+            {typingUser && (
+              <div className="flex justify-start mt-2 animate-pulse">
+                <div className="bg-white rounded-2xl px-4 py-2 shadow-sm rounded-tl-sm flex items-center gap-2 border border-gray-100">
+                  {sel.type === "group" && (
+                    <span className="text-[10px] font-bold text-green-600 mr-1">{typingUser.name}</span>
+                  )}
+                  <span className="text-xs text-gray-500 italic">typing</span>
+                  <span className="flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <span className="h-1.5 w-1.5 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <span className="h-1.5 w-1.5 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+                  </span>
+                </div>
+              </div>
+            )}
             <div ref={bottomRef} />
           </div>
-
+ 
           {/* Input bar */}
           <div className="flex items-center gap-2 bg-[#f0f2f5] px-4 py-3 border-t border-gray-200">
             <button className="flex h-10 w-10 items-center justify-center rounded-full text-gray-500 hover:bg-gray-200 transition-colors"><Smile size={22} /></button>
             <button className="flex h-10 w-10 items-center justify-center rounded-full text-gray-500 hover:bg-gray-200 transition-colors"><Paperclip size={20} /></button>
             <div className="flex-1 rounded-full bg-white shadow-sm px-5 py-2.5 border border-gray-100">
-              <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === "Enter" && !e.shiftKey && send()}
+              <input value={input} onChange={handleInputChange} onKeyDown={e => e.key === "Enter" && !e.shiftKey && send()}
                 placeholder="Type a message" className="w-full bg-transparent text-sm text-gray-700 outline-none placeholder:text-gray-400" />
             </div>
             <button onClick={send} disabled={!input.trim()}

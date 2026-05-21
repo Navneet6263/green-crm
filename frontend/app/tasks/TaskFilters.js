@@ -15,7 +15,7 @@ const TYPE_OPTS = ["all","call","whatsapp","email","meeting","demo","reminder","
 const PRIORITY_OPTS = ["all","low","medium","high","urgent"];
 const STATUS_OPTS = ["all","pending","in-progress","done","cancelled"];
 
-export function TaskFilters({ stats, typeFilter, priorityFilter, statusFilter, search, onType, onPriority, onStatus, onSearch }) {
+export function TaskFilters({ stats, typeFilter, priorityFilter, statusFilter, search, onType, onPriority, onStatus, onSearch, onCreateTrigger }) {
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -25,10 +25,19 @@ export function TaskFilters({ stats, typeFilter, priorityFilter, statusFilter, s
           <h1 className="mt-0.5 text-2xl font-bold tracking-tight text-slate-900">Task Board</h1>
           <p className="mt-0.5 text-sm text-slate-400">Team-scoped tasks from leads, customers, and manual scheduling.</p>
         </div>
-        <Link href="/leads" prefetch={false} className={T.ghost}>
-          <DashboardIcon name="leads" className="h-4 w-4" />
-          Create from Lead
-        </Link>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onCreateTrigger}
+            className="flex items-center gap-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 px-4 py-2.5 text-xs font-bold text-white shadow shadow-amber-200 transition active:scale-95"
+          >
+            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4"/></svg>
+            Create New Task
+          </button>
+          <Link href="/leads" prefetch={false} className={T.ghost}>
+            <DashboardIcon name="leads" className="h-4 w-4" />
+            Create from Lead
+          </Link>
+        </div>
       </div>
 
       {/* Stats */}
