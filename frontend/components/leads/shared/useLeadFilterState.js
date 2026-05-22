@@ -19,6 +19,8 @@ export function useLeadFilterState({ role, session }) {
   const notesSearchTimerRef = useRef(null);
   const [product, setProduct] = useState("all");
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const searchTimerRef = useRef(null);
   const [source, setSource] = useState("all");
   const [status, setStatus] = useState("all");
   const [teamFilter, setTeamFilter] = useState("all");
@@ -41,7 +43,7 @@ export function useLeadFilterState({ role, session }) {
     () => ({
       company_id: scopedCompanyId,
       team_ids: teamFilter !== "all" ? teamFilter : undefined,
-      search: search.trim() || undefined,
+      search: debouncedSearch.trim() || undefined,
       notes_search: debouncedNotesSearch.trim() || undefined,
       product_id: product !== "all" ? product : undefined,
       priority: priority !== "all" ? priority : undefined,
@@ -54,7 +56,7 @@ export function useLeadFilterState({ role, session }) {
       status: quickFilter ? undefined : status,
       quick_filter: quickFilter,
     }),
-    [assignedTo, createdBy, debouncedNotesSearch, fromDate, priority, product, quickFilter, scopedCompanyId, search, source, status, teamFilter, toDate, workflowStage]
+    [assignedTo, createdBy, debouncedNotesSearch, debouncedSearch, fromDate, priority, product, quickFilter, scopedCompanyId, source, status, teamFilter, toDate, workflowStage]
   );
 
   const activeFilterCount = useMemo(
@@ -82,8 +84,15 @@ export function useLeadFilterState({ role, session }) {
     notesSearchTimerRef.current = setTimeout(() => setDebouncedNotesSearch(value), 500);
   }
 
+  function handleSearchChange(value) {
+    setSearch(value);
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => setDebouncedSearch(value), 300);
+  }
+
   function resetLeadFilters() {
     setSearch("");
+    setDebouncedSearch("");
     setNotesSearch("");
     setDebouncedNotesSearch("");
     setStatus("all");
@@ -123,6 +132,7 @@ export function useLeadFilterState({ role, session }) {
 
   const applyQueryFilters = useCallback((query = {}) => {
     setSearch(query.search || "");
+    setDebouncedSearch(query.search || "");
     setNotesSearch(query.notesSearch || "");
     setDebouncedNotesSearch(query.notesSearch || "");
     setStatus(query.status || "all");
@@ -174,7 +184,7 @@ export function useLeadFilterState({ role, session }) {
     setPriority,
     setProduct,
     setNotesSearch: handleNotesSearchChange,
-    setSearch,
+    setSearch: handleSearchChange,
     setSource,
     setStatus,
     setTeamFilter,
