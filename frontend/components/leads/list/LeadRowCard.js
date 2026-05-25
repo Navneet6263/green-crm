@@ -6,6 +6,7 @@ import Link from "next/link";
 import LeadExpandedDetails from "../details/LeadExpandedDetails";
 import LeadFollowUpStatusButton from "../LeadFollowUpStatusButton";
 import LeadQuickStatusControl from "../LeadQuickStatusControl";
+import TransferLeadButton from "../TransferLeadButton";
 import { PRIORITY_TONE, STATUS_TONE } from "../shared/leadPageConstants";
 import {
   formatLeadDate, formatLeadMoney,
@@ -120,6 +121,7 @@ export default function LeadRowCard({
           <div className="grid w-full gap-1.5 sm:grid-cols-[minmax(190px,1fr)_auto] sm:items-end lg:w-auto lg:min-w-[260px] lg:grid-cols-1">
             {canEdit ? (
               <div className="min-w-0">
+                <TransferLeadButton leadId={lead.id} leadName={primaryName} />
                 <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-slate-400">Lead Status</p>
                 <LeadQuickStatusControl
                   assigneeOptions={teamUsers}

@@ -555,11 +555,19 @@ async function listUsersByRole(auth, role, companyId) {
   return rows.map(sanitizeUser);
 }
 
+async function searchActiveUsers(auth, queryText) {
+  const companyId = auth.companyId;
+  assertCompanyAccess(auth, companyId);
+  const rows = await userRepository.listActiveUsersInCompany(companyId, { search: queryText });
+  return rows.map(sanitizeUser);
+}
+
 module.exports = {
   createUser,
   deleteUser,
   listUsers,
   listUsersByRole,
+  searchActiveUsers,
   toggleUser,
   updateUser,
 };

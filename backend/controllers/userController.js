@@ -25,10 +25,16 @@ async function remove(req, res) {
   res.json({ data });
 }
 
+async function search(req, res) {
+  const data = await userService.searchActiveUsers(req.auth, req.query.q || "");
+  res.json({ success: true, data });
+}
+
 module.exports = {
   create,
   list,
   remove,
+  search,
   toggle,
   update,
 };

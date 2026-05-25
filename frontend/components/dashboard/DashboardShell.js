@@ -11,6 +11,8 @@ import { useLiveSessionProfile } from "../../lib/useLiveSessionProfile";
 import AppLogo from "../branding/AppLogo";
 import DashboardIcon from "./icons";
 import { getRoleMeta } from "./shell-config";
+import { useLeadTransfers } from "../leads/useLeadTransfers";
+import LeadTransferModal from "../leads/LeadTransferModal";
 
 function getInitials(name = "Preview User") {
   return name
@@ -156,6 +158,7 @@ export default function DashboardShell({ session: initialSession, children, titl
   const session = useLiveSessionProfile(initialSession);
   const router = useRouter();
   const pathname = usePathname();
+  const { showModal, currentTransfer, totalPending, acknowledgeTransfer } = useLeadTransfers();
   const [navOpen, setNavOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [loadingNotifications, setLoadingNotifications] = useState(false);
@@ -702,6 +705,13 @@ export default function DashboardShell({ session: initialSession, children, titl
           </div>
         </div>
       </div>
+      {showModal && currentTransfer && (
+        <LeadTransferModal
+          transfer={currentTransfer}
+          totalPending={totalPending}
+          onAcknowledge={acknowledgeTransfer}
+        />
+      )}
     </div>
   );
 }

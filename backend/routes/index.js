@@ -20,6 +20,7 @@ const dashboardRoutes = require("./dashboardRoutes");
 const noteRoutes = require("./noteRoutes");
 const recentActivityRoutes = require("./recentActivityRoutes");
 const chatRoutes = require("./chatRoutes");
+const leadTransferRoutes = require("./leadTransfer");
 
 const router = express.Router();
 
@@ -43,5 +44,6 @@ router.use("/dashboard", dashboardRoutes);
 router.use("/notes", noteRoutes);
 router.use("/recent-activity", recentActivityRoutes);
 router.use("/chat", chatRoutes);
+router.use("/", leadTransferRoutes);
 
 module.exports = router;

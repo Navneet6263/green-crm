@@ -8,6 +8,7 @@ const router = express.Router();
 
 router.use(asyncHandler(authenticate));
 
+router.get("/search", asyncHandler(userController.search));
 router.get("/", asyncHandler(userController.list));
 router.post("/", asyncHandler(userController.create));
 router.put("/:userId", asyncHandler(userController.update));

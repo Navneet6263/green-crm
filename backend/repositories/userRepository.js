@@ -197,6 +197,7 @@ async function listActiveUsersInCompany(companyId, options = {}, executor) {
   const [rows] = await active.query(
     `
       SELECT
+        u.id,
         u.user_id,
         u.company_id,
         u.role,

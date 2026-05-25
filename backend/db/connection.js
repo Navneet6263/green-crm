@@ -236,6 +236,27 @@ async function ensureChatTables(pool) {
   `);
 }
 
+async function ensureLeadTransferTable(pool) {
+  await pool.request().query(`
+    IF OBJECT_ID('lead_transfers', 'U') IS NULL
+    BEGIN
+      CREATE TABLE lead_transfers (
+        id                UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+        lead_id           INT NOT NULL,
+        lead_name         NVARCHAR(255) NOT NULL,
+        from_user_id      INT NOT NULL,
+        from_user_name    NVARCHAR(255) NOT NULL,
+        to_user_id        INT NOT NULL,
+        transfer_note     NVARCHAR(MAX),
+        is_acknowledged   BIT DEFAULT 0,
+        ack_note          NVARCHAR(MAX),
+        acknowledged_at   DATETIME2 NULL,
+        created_at        DATETIME2 DEFAULT GETDATE()
+      );
+    END;
+  `);
+}
+
 async function initializeDatabase() {
   if (!poolPromise) {
     poolPromise = (async () => {
@@ -250,6 +271,9 @@ async function initializeDatabase() {
       });
       await ensureChatTables(pool).catch((error) => {
         console.warn("Chat tables check skipped:", error.message);
+      });
+      await ensureLeadTransferTable(pool).catch((error) => {
+        console.warn("Lead transfer table bootstrapping failed:", error.message);
       });
       return pool;
     })().catch((error) => {
