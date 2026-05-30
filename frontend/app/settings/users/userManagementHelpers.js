@@ -6,6 +6,7 @@ export const LIMITS_MAP = [
   ["support", "Support"],
   ["legal-team", "Legal Team"],
   ["finance-team", "Finance Team"],
+  ["expert", "Expert Users"],
   ["viewer", "Viewer"],
 ];
 
@@ -16,6 +17,7 @@ export const BASE_ROLES = [
   ["support", "Support"],
   ["legal-team", "Legal Team"],
   ["finance-team", "Finance Team"],
+  ["expert", "Expert"],
   ["viewer", "Viewer"],
 ];
 

@@ -34,7 +34,7 @@ function buildScopeCacheKey(companyId, includeManaged, includeMembership) {
 }
 
 function isCompanyWideRole(role) {
-  return [ROLES.SUPER_ADMIN, ROLES.PLATFORM_ADMIN, ROLES.PLATFORM_MANAGER, ROLES.ADMIN].includes(role);
+  return [ROLES.SUPER_ADMIN, ROLES.PLATFORM_ADMIN, ROLES.PLATFORM_MANAGER, ROLES.ADMIN, ROLES.EXPERT].includes(role);
 }
 
 async function getAccessibleTeamIds(

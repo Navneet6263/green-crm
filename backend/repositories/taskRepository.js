@@ -44,6 +44,16 @@ function buildWhere(filters) {
     params.push(filters.priority);
   }
 
+  if (filters.relatedTo) {
+    conditions.push("t.related_to = ?");
+    params.push(filters.relatedTo);
+  }
+
+  if (filters.relatedId) {
+    conditions.push("t.related_id = ?");
+    params.push(filters.relatedId);
+  }
+
   if (filters.search) {
     conditions.push("(t.title LIKE ? OR t.type LIKE ? OR t.notes LIKE ?)");
     params.push(`%${filters.search}%`, `%${filters.search}%`, `%${filters.search}%`);

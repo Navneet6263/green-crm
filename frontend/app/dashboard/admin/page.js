@@ -243,6 +243,48 @@ export default function AdminDashboard() {
               </div>
             </section>
 
+            {summary.workflow_summary && summary.workflow_summary.total_workflow_leads > 0 ? (
+              <section className={PAGE_SURFACE}>
+                <div className="mb-5">
+                  <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#93816a]">Workflow Overview</p>
+                  <h3 className="mt-2 text-2xl font-semibold tracking-tight text-[#0f172a]">Expert Workflow Financials</h3>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-[#64748b]">
+                    Real-time metrics for leads routed to external experts. Shows advance collections and pending payouts.
+                  </p>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className={HERO_STAT_CARD}>
+                    <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#93816a]">Total Received (Advance)</p>
+                    <strong className="mt-4 block text-3xl font-black tracking-tight text-[#0f8c53]">
+                      ₹{Number(summary.workflow_summary.total_advance_received || 0).toLocaleString("en-IN")}
+                    </strong>
+                    <p className="mt-3 text-xs text-[#64748b]">Advance amount processed from workflow leads.</p>
+                  </div>
+                  <div className={HERO_STAT_CARD}>
+                    <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#93816a]">Total Pending</p>
+                    <strong className="mt-4 block text-3xl font-black tracking-tight text-orange-600">
+                      ₹{Number(summary.workflow_summary.total_remaining_payment || 0).toLocaleString("en-IN")}
+                    </strong>
+                    <p className="mt-3 text-xs text-[#64748b]">Remaining values to be recovered.</p>
+                  </div>
+                  <div className={HERO_STAT_CARD}>
+                    <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#93816a]">Active Workflows</p>
+                    <strong className="mt-4 block text-3xl font-black tracking-tight text-blue-600">
+                      {summary.workflow_summary.active_workflow_leads || 0}
+                    </strong>
+                    <p className="mt-3 text-xs text-[#64748b]">Leads currently in progress, review or revisions.</p>
+                  </div>
+                  <div className={HERO_STAT_CARD}>
+                    <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#93816a]">Completed Deliverables</p>
+                    <strong className="mt-4 block text-3xl font-black tracking-tight text-[#0f8c53]">
+                      {summary.workflow_summary.completed_workflow_leads || 0}
+                    </strong>
+                    <p className="mt-3 text-xs text-[#64748b]">Approved or delivered expert projects.</p>
+                  </div>
+                </div>
+              </section>
+            ) : null}
+
             <div className="grid gap-5 xl:grid-cols-2">
               <AdminChartPanel
                 eyebrow="Growth Trend"

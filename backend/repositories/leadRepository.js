@@ -97,6 +97,11 @@ function buildWhere(filters) {
     params.push(filters.leadSource);
   }
 
+  if (filters.isWorkflow !== undefined && filters.isWorkflow !== null) {
+    conditions.push("l.is_workflow = ?");
+    params.push(filters.isWorkflow ? 1 : 0);
+  }
+
   if (filters.productId) {
     conditions.push("l.product_id = ?");
     params.push(filters.productId);
@@ -367,9 +372,17 @@ async function createLead(lead, executor) {
         workflow_stage,
         is_active,
         last_contacted_at,
+        is_workflow,
+        workflow_status,
+        completed_files,
+        quality,
+        expert_notes,
+        admin_comments,
+        total_lead_value,
+        advance_received,
         created_at,
         updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ${SQL_NOW}, ${SQL_NOW})
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${SQL_NOW}, ${SQL_NOW})
     `,
     [
       lead.lead_id,
@@ -399,6 +412,14 @@ async function createLead(lead, executor) {
       lead.requirements || null,
       lead.workflow_stage || "sales",
       lead.last_contacted_at || null,
+      lead.is_workflow || 0,
+      lead.workflow_status || null,
+      lead.completed_files || null,
+      lead.quality || null,
+      lead.expert_notes || null,
+      lead.admin_comments || null,
+      lead.estimated_value || lead.total_lead_value || 0,
+      lead.advance_received || 0,
     ]
   );
 

@@ -133,6 +133,7 @@ export default function EditLeadPage() {
       estimated_value: normalizeEstimatedValue(form.estimated_value),
       number_of_units: normalizeUnitCount(form.number_of_units),
       follow_up_date: toApiDateTime(form.follow_up_date) || "",
+      advance_received: form.advance_received === "" ? 0 : Number(form.advance_received),
     };
 
     const tracked = [
@@ -150,6 +151,7 @@ export default function EditLeadPage() {
       ["requirements", "Requirements", originalLead.requirements, nextPayload.requirements],
       ["follow_up_date", "Follow-up Date", originalLead.follow_up_date ? String(originalLead.follow_up_date).slice(0, 16) : "", nextPayload.follow_up_date],
       ["product_id", "Product", productLookup.get(originalLead.product_id) || originalLead.product_name || originalLead.product_id, productLookup.get(nextPayload.product_id) || nextPayload.product_id],
+      ["advance_received", "Advance Received", originalLead.advance_received, nextPayload.advance_received],
     ];
 
     return tracked
@@ -216,6 +218,7 @@ export default function EditLeadPage() {
           product_id: leadResponse.product_id || "",
           requirements: leadResponse.requirements || "",
           follow_up_date: leadResponse.follow_up_date ? String(leadResponse.follow_up_date).slice(0, 16) : "",
+          advance_received: leadResponse.advance_received || "",
         });
         if (leadResponse.product_id && !scopedProducts.some((product) => product.product_id === leadResponse.product_id)) {
           setForm((current) => current ? { ...current, product_id: "" } : current);
@@ -321,6 +324,7 @@ export default function EditLeadPage() {
         team_id: form.team_id || undefined,
         assigned_to: canManageAssignment ? form.assigned_to || undefined : undefined,
         change_note: changeNote.trim(),
+        advance_received: form.advance_received === "" ? 0 : Number(form.advance_received),
       };
 
       await apiRequest(`/leads/${params.id}`, {

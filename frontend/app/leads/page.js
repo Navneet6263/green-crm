@@ -158,7 +158,25 @@ function LeadsPageContent() {
   const ownershipLabel = ["sales", "marketing"].includes(role) ? "Assigned to you" : isPlatformConsole ? filters.company === "all" ? isSuper ? "Cross-tenant" : "Assigned companies" : "Single tenant" : "Tenant-wide";
   const closedWonCount = filters.status === "closed-won" ? records.totalMatched : records.leads.filter((lead) => lead.status === "closed-won").length;
   const transferredCount = filters.status === "transferred" ? records.totalMatched : records.leads.filter((lead) => ["legal", "finance", "completed"].includes(lead.workflow_stage || "sales")).length;
-  const heroStats = useMemo(() => [{ label: "Total Team Leads", value: records.totalMatched }, { label: "Page Value", value: formatLeadMoney(records.leads.reduce((sum, lead) => sum + Number(lead.estimated_value || 0), 0)), color: "#0f8c53" }, { label: "Loaded", value: records.leads.length, color: "#2f6fdd" }, { label: "Closed Won", value: closedWonCount, color: "#0f8c53" }], [closedWonCount, records.leads, records.totalMatched]);
+  const heroStats = useMemo(() => {
+    const stats = [
+      { label: "Total Team Leads", value: records.totalMatched },
+      { label: "Page Value", value: formatLeadMoney(records.leads.reduce((sum, lead) => sum + Number(lead.estimated_value || 0), 0)), color: "#0f8c53" },
+      { label: "Loaded", value: records.leads.length, color: "#2f6fdd" },
+      { label: "Closed Won", value: closedWonCount, color: "#0f8c53" }
+    ];
+
+    const wf = records.leadMeta?.workflow_summary;
+    if (wf && wf.total_workflow_leads > 0) {
+      stats.unshift(
+        { label: "Total Received", value: formatLeadMoney(wf.total_advance_received), color: "#0f8c53" },
+        { label: "Total Pending", value: formatLeadMoney(wf.total_remaining_payment), color: "#ea580c" },
+        { label: "Active Workflows", value: wf.active_workflow_leads, color: "#2f6fdd" },
+        { label: "Completed Workflows", value: wf.completed_workflow_leads, color: "#0f8c53" }
+      );
+    }
+    return stats;
+  }, [closedWonCount, records.leads, records.totalMatched, records.leadMeta?.workflow_summary]);
   const emptyLeadsMessage = filters.teamFilter !== "all" && selectedScopeTeam ? `No leads matched ${teamSelectLabel(selectedScopeTeam)}.` : "Adjust the search or filters to widen the result set.";
   const bulkUsersMessage = pickedTeamIds.length > 1 ? "Select leads from one team at a time before bulk assignment." : scopedUsersEmptyMessage(bulkScopeTeam);
   const allPicked = !!records.leads.length && records.leads.every((lead) => picked.includes(lead.lead_id));

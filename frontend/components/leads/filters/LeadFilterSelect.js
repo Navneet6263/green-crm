@@ -31,8 +31,8 @@ export default function LeadFilterSelect({
           onChange={(event) => onChange(event.target.value)}
           disabled={disabled}
         >
-          {options.map((option) => (
-            <option key={`${label}-${option.value}`} value={option.value} disabled={option.disabled}>
+          {options.map((option, idx) => (
+            <option key={`${label}-${option.value}-${idx}`} value={option.value} disabled={option.disabled}>
               {option.label}
             </option>
           ))}

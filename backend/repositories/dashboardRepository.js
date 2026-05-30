@@ -103,6 +103,7 @@ async function getCompanySummary(companyId, teamIds = null) {
     recentLeads,
     recentProducts,
     leadAnalytics,
+    workflowRows,
   ] = await Promise.all([
     queryRows(
       `SELECT COUNT(DISTINCT u.user_id) AS total
@@ -168,8 +169,20 @@ async function getCompanySummary(companyId, teamIds = null) {
       [companyId, ...teamScope.params]
     ),
     dashboardLeadAnalyticsRepository.getCompanyLeadAnalytics(companyId, teamIds),
+    queryRows(
+      `SELECT
+         COUNT(*) AS total_workflow_leads,
+         SUM(CASE WHEN workflow_status IN ('in_progress', 'pending_qa', 'revisions_needed') THEN 1 ELSE 0 END) AS active_workflow_leads,
+         SUM(CASE WHEN workflow_status IN ('approved', 'completed') THEN 1 ELSE 0 END) AS completed_workflow_leads,
+         COALESCE(SUM(advance_received), 0) AS total_advance_received,
+         COALESCE(SUM(remaining_payment), 0) AS total_remaining_payment
+       FROM leads
+       WHERE company_id = ? AND is_active = 1 AND is_workflow = 1${teamScope.clause}`,
+      [companyId, ...teamScope.params]
+    ),
   ]);
   const taskSummary = taskSummaryRows[0] || {};
+  const workflowRow = workflowRows[0] || {};
 
   return {
     team_size: teamRows[0].total,
@@ -183,6 +196,13 @@ async function getCompanySummary(companyId, teamIds = null) {
     kpis: leadAnalytics.kpis,
     charts: leadAnalytics.charts,
     insights: leadAnalytics.insights,
+    workflow_summary: {
+      total_workflow_leads: workflowRow.total_workflow_leads || 0,
+      active_workflow_leads: workflowRow.active_workflow_leads || 0,
+      completed_workflow_leads: workflowRow.completed_workflow_leads || 0,
+      total_advance_received: workflowRow.total_advance_received || 0,
+      total_remaining_payment: workflowRow.total_remaining_payment || 0,
+    },
   };
 }
 

@@ -12,6 +12,7 @@ export const ROLE_HOME_ROUTE = {
   "finance-team": "/dashboard/finance",
   support: "/dashboard/support",
   viewer: "/dashboard/viewer",
+  expert: "/dashboard/expert",
 };
 
 export const ROLE_LABEL = {
@@ -26,4 +27,5 @@ export const ROLE_LABEL = {
   "finance-team": "Finance Team",
   support: "Support",
   viewer: "Viewer",
+  expert: "Expert",
 };

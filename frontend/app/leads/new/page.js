@@ -14,7 +14,8 @@ import {
   shouldShowTeamSelector, teamSelectionRequiredMessage,
 } from "../../../lib/teamScope";
 import { AlertError, AlertSuccess } from "../../../components/ui/Alert";
-import { LeadFormHeader, LeadPreviewStrip, LeadFormSection1, LeadFormSection2, LeadFormSection3 } from "./LeadFormSections";
+import { LeadFormHeader, LeadPreviewStrip, LeadFormSection1 } from "./LeadFormSections";
+import { LeadFormSection2, LeadFormSection3 } from "./LeadFormSectionsMore";
 import { LeadFormSidebar } from "./LeadFormSidebar";
 import { T } from "./lead-form-tokens";
 
@@ -41,7 +42,7 @@ const PRIORITY_OPTIONS = [
 ];
 
 function createForm(cid = "") {
-  return { company_id:cid, team_id:"", product_id:"", contact_person:"", company_name:"", email:"", phone:"", industry:"", lead_source:"website", custom_lead_source:"", follow_up_date:"", estimated_value:"", number_of_units:"", priority:"medium", requirements:"", assigned_to:"", address_street:"", address_city:"", address_state:"", address_zip:"", address_country:"India" };
+  return { company_id:cid, team_id:"", product_id:"", contact_person:"", company_name:"", email:"", phone:"", industry:"", lead_source:"website", custom_lead_source:"", follow_up_date:"", estimated_value:"", number_of_units:"", priority:"medium", requirements:"", assigned_to:"", address_street:"", address_city:"", address_state:"", address_zip:"", address_country:"India", advance_received:"" };
 }
 
 function formatDateTimeMin() {
@@ -212,6 +213,7 @@ export default function NewLeadPage() {
       address_street: source.address_street.trim() || null, address_city: source.address_city.trim() || null,
       address_state: source.address_state.trim() || null, address_zip: source.address_zip.trim() || null,
       address_country: source.address_country.trim() || "India",
+      advance_received: source.advance_received === "" ? 0 : Number(source.advance_received),
     };
   }
 

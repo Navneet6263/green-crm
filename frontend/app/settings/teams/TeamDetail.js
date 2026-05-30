@@ -5,7 +5,7 @@ import { T, Avatar, StatCard, prettyRole } from "./teams-tokens";
 import { formatIndiaDateTime } from "../../../lib/dateTime";
 
 const MANAGER_CAPABLE_ROLES = new Set(["super-admin", "platform-admin", "platform-manager", "admin", "manager"]);
-const ROLE_FILTERS = [["all","All roles"],["manager","Managers"],["sales","Sales"],["marketing","Marketing"],["support","Support"],["legal-team","Legal"],["finance-team","Finance"],["viewer","Viewer"]];
+const ROLE_FILTERS = [["all","All roles"],["manager","Managers"],["sales","Sales"],["marketing","Marketing"],["support","Support"],["legal-team","Legal"],["finance-team","Finance"],["expert","Experts"],["viewer","Viewer"]];
 
 function when(v) { return formatIndiaDateTime(v, false); }
 

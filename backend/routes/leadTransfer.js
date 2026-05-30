@@ -44,6 +44,8 @@ router.post("/leads/:id/transfer", asyncHandler(async (req, res) => {
 
   const toUserName = toUser.name || "Unknown User";
 
+  console.log(`[TRANSFER DEBUG] Transfer initiated for lead ${lead.id} (${leadName}) to user ${toUserId} (${toUserName}) by ${fromUserName}`);
+
   // INSERT into lead_transfers
   await db.query(
     `INSERT INTO lead_transfers (lead_id, lead_name, from_user_id, from_user_name, to_user_id, transfer_note, is_acknowledged)
@@ -108,6 +110,8 @@ router.post("/lead-transfers/:id/acknowledge", asyncHandler(async (req, res) => 
     return res.status(403).json({ success: false, error: "You are not authorized to acknowledge this transfer" });
   }
 
+  console.log(`[TRANSFER DEBUG] Acknowledging transfer ${transferId} for lead ${transfer.lead_id}. Recipient user DB ID: ${transfer.to_user_id}`);
+
   // UPDATE lead_transfers SET is_acknowledged = 1, ack_note = :note, acknowledged_at = GETDATE()
   await db.query(
     `UPDATE lead_transfers
@@ -117,6 +121,38 @@ router.post("/lead-transfers/:id/acknowledge", asyncHandler(async (req, res) => 
      WHERE id = ?`,
     [note || "", transferId]
   );
+
+  // Get recipient user's user_id string and role
+  const [recipientUserRows] = await db.query(
+    "SELECT user_id, role FROM users WHERE id = ?",
+    [transfer.to_user_id]
+  );
+  const recipientUser = recipientUserRows[0];
+
+  if (recipientUser) {
+    let isWorkflow = 0;
+    let workflowStatus = null;
+    if (recipientUser.role === "expert") {
+      isWorkflow = 1;
+      workflowStatus = "in_progress";
+    }
+
+    console.log(`[TRANSFER DEBUG] Recipient user ID: ${recipientUser.user_id}, role: ${recipientUser.role}. Setting is_workflow = ${isWorkflow}, workflow_status = ${workflowStatus}`);
+
+    // Update the lead's assigned_to and workflow flags
+    await db.query(
+      `UPDATE leads 
+       SET assigned_to = ?,
+           is_workflow = ?,
+           workflow_status = ?
+       WHERE id = ?`,
+      [recipientUser.user_id, isWorkflow, workflowStatus, transfer.lead_id]
+    );
+
+    console.log(`[TRANSFER DEBUG] Successfully updated assignment for lead ${transfer.lead_id} in leads table`);
+  } else {
+    console.warn(`[TRANSFER DEBUG] Recipient user with DB ID ${transfer.to_user_id} not found`);
+  }
 
   // Fetch lead details to obtain company_id and lead_id (string)
   const [leadRows] = await db.query(

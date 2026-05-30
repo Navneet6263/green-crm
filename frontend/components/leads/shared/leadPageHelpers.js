@@ -8,6 +8,7 @@ export function normalizeLeadMeta(meta = {}, pageNumber = 1) {
     page_size: Number(meta.page_size || LEADS_PAGE_SIZE),
     total: Number(meta.total || 0),
     total_pages: Math.max(Number(meta.total_pages || 1), 1),
+    workflow_summary: meta.workflow_summary || null,
   };
 }
 

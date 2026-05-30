@@ -14,6 +14,7 @@ import { formatIndiaDateTime } from "../../../lib/dateTime";
 import { loadSession } from "../../../lib/session";
 import { formatScopedError, teamBadgeLabel } from "../../../lib/teamScope";
 import { AlertError, AlertSuccess } from "../../../components/ui/Alert";
+import CustomerServiceHistory from "../../../components/customers/CustomerServiceHistory";
 
 const C = {
   panel: "rounded-2xl border border-slate-100 bg-white shadow-sm",
@@ -90,6 +91,16 @@ export default function CustomerDetailPage() {
   const [showActivityModal, setShowActivityModal] = useState(false);
   const [savingActivity, setSavingActivity] = useState(false);
 
+  // Service History & Task Pre-fill states
+  const [activeTab, setActiveTab] = useState("profile");
+  const [prevLeads, setPrevLeads] = useState([]);
+  const [relatedTasks, setRelatedTasks] = useState([]);
+  const [taskFormOpen, setTaskFormOpen] = useState(false);
+  const [taskTitle, setTaskTitle] = useState("");
+  const [taskDueDate, setTaskDueDate] = useState("");
+  const [taskType, setTaskType] = useState("call");
+  const [taskNotes, setTaskNotes] = useState("");
+
   async function load(s) {
     const r = await apiRequest(`/customers/${params.id}`, { token: s.token });
     setCustomer(r);
@@ -116,6 +127,20 @@ export default function CustomerDetailPage() {
         setActivities(list);
       })
       .catch(() => setActivities([]));
+
+    // Fetch previous leads (search by company name)
+    apiRequest(`/leads?search=${encodeURIComponent(r.company_name)}`, { token: s.token })
+      .then(res => {
+        setPrevLeads(res?.items || []);
+      })
+      .catch(() => setPrevLeads([]));
+
+    // Fetch related tasks for this customer
+    apiRequest(`/tasks?related_to=customer&related_id=${r.customer_id}`, { token: s.token })
+      .then(res => {
+        setRelatedTasks(res?.items || []);
+      })
+      .catch(() => setRelatedTasks([]));
   }
 
   useEffect(()=>{
@@ -213,7 +238,6 @@ export default function CustomerDetailPage() {
           last_interaction: timestamp,
         },
       });
-      
       setNotice("Follow-up activity saved.");
       setShowActivityModal(false);
       await load(session);
@@ -221,6 +245,32 @@ export default function CustomerDetailPage() {
       setError(formatScopedError(err, "Could not save activity."));
     } finally {
       setSavingActivity(false);
+    }
+  }
+
+  async function handleCreateTask(taskData) {
+    if (!taskData?.title || !taskData?.due_date || !session?.token) return;
+    setError("");
+    setNotice("");
+    try {
+      await apiRequest("/tasks", {
+        method: "POST",
+        token: session.token,
+        body: {
+          title: taskData.title.trim(),
+          type: taskData.type,
+          due_date: taskData.due_date,
+          related_to: "customer",
+          related_id: customer.customer_id,
+          notes: taskData.notes?.trim() || undefined,
+          assigned_to: customer.assigned_to || undefined,
+        },
+      });
+      setNotice("New task created for this customer!");
+      await load(session);
+    } catch (err) {
+      setError(err.message || "Failed to create task");
+      throw err;
     }
   }
 
@@ -274,9 +324,34 @@ export default function CustomerDetailPage() {
               </div>
             </div>
 
+            {/* ── Tabs ── */}
+            <div className="flex gap-2 border-b border-slate-100 pb-px">
+              <button
+                onClick={() => setActiveTab("profile")}
+                className={`px-4 py-2.5 text-sm font-bold border-b-2 transition ${
+                  activeTab === "profile"
+                    ? "border-emerald-600 text-emerald-700"
+                    : "border-transparent text-slate-400 hover:text-slate-600 hover:border-slate-200"
+                }`}
+              >
+                Profile
+              </button>
+              <button
+                onClick={() => setActiveTab("history")}
+                className={`px-4 py-2.5 text-sm font-bold border-b-2 transition ${
+                  activeTab === "history"
+                    ? "border-emerald-600 text-emerald-700"
+                    : "border-transparent text-slate-400 hover:text-slate-600 hover:border-slate-200"
+                }`}
+              >
+                Service History & Tasks
+              </button>
+            </div>
+
             {/* ── Body ── */}
-            <div className="grid gap-5 xl:grid-cols-[1fr_380px] xl:items-start">
-              {/* Left column */}
+            {activeTab === "profile" ? (
+              <div className="grid gap-5 xl:grid-cols-[1fr_380px] xl:items-start">
+                {/* Left column */}
               <div className="space-y-5">
                 {/* Account details */}
                 <div className={`${C.panel} px-5 py-5`}>
@@ -456,6 +531,14 @@ export default function CustomerDetailPage() {
                 </div>
               </div>
             </div>
+            ) : (
+              <CustomerServiceHistory
+                customer={customer}
+                prevLeads={prevLeads}
+                relatedTasks={relatedTasks}
+                onSubmitTask={handleCreateTask}
+              />
+            )}
           </>
         ) : null}
       </div>

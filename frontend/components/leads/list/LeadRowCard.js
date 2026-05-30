@@ -7,6 +7,7 @@ import LeadExpandedDetails from "../details/LeadExpandedDetails";
 import LeadFollowUpStatusButton from "../LeadFollowUpStatusButton";
 import LeadQuickStatusControl from "../LeadQuickStatusControl";
 import TransferLeadButton from "../TransferLeadButton";
+import WorkflowBadge from "../WorkflowBadge";
 import { PRIORITY_TONE, STATUS_TONE } from "../shared/leadPageConstants";
 import {
   formatLeadDate, formatLeadMoney,
@@ -123,15 +124,31 @@ export default function LeadRowCard({
               <div className="min-w-0">
                 <TransferLeadButton leadId={lead.id} leadName={primaryName} />
                 <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-slate-400">Lead Status</p>
-                <LeadQuickStatusControl
-                  assigneeOptions={teamUsers}
-                  enabledStatuses={enabledStatuses}
-                  lead={lead}
-                  token={sessionToken}
-                  onUpdated={handleInlineStatusUpdate}
-                  hideLabel
-                  selectClassName="min-h-[34px] w-full bg-white border border-slate-200 rounded-lg pr-8 text-xs font-semibold text-slate-700 shadow-none focus:border-amber-400"
-                />
+                {lead.is_workflow ? (
+                  <WorkflowBadge
+                    status={lead.workflow_status}
+                    leadId={lead.lead_id}
+                    lead={lead}
+                    onAction={(updatedLead) => {
+                      if (updatedLead) {
+                        handleInlineStatusUpdate(updatedLead);
+                      } else {
+                        router.refresh();
+                        if (onInlineNoteSaved) onInlineNoteSaved();
+                      }
+                    }}
+                  />
+                ) : (
+                  <LeadQuickStatusControl
+                    assigneeOptions={teamUsers}
+                    enabledStatuses={enabledStatuses}
+                    lead={lead}
+                    token={sessionToken}
+                    onUpdated={handleInlineStatusUpdate}
+                    hideLabel
+                    selectClassName="min-h-[34px] w-full bg-white border border-slate-200 rounded-lg pr-8 text-xs font-semibold text-slate-700 shadow-none focus:border-amber-400"
+                  />
+                )}
               </div>
             ) : null}
             <div className="flex flex-wrap gap-1.5">

@@ -12,6 +12,7 @@ import LeadHistoryTimeline from "../../../components/leads/details/LeadHistoryTi
 import LeadNotesPanel from "../../../components/leads/details/LeadNotesPanel";
 import LeadFollowUpStatusButton from "../../../components/leads/LeadFollowUpStatusButton";
 import LeadQuickStatusControl from "../../../components/leads/LeadQuickStatusControl";
+import WorkflowBadge from "../../../components/leads/WorkflowBadge";
 import { useLeadCollaboratorActions } from "../../../components/leads/shared/useLeadCollaboratorActions";
 import { API_BASE, apiRequest } from "../../../lib/api";
 import { formatIndiaDateTime } from "../../../lib/dateTime";
@@ -35,7 +36,7 @@ const STATUS_ACCENT = { new: ["rgba(79,140,255,.12)", "#2f6fdd"], contacted: ["r
 const PRIORITY_ACCENT = { low: ["rgba(56,189,248,.12)", "#0077b8"], medium: ["rgba(245,164,45,.14)", "#b96a00"], high: ["rgba(255,108,156,.14)", "#c4356b"], urgent: ["rgba(224,82,82,.14)", "#b63b3b"] };
 const WORKFLOW = ["sales", "legal", "finance", "completed"];
 const WORKFLOW_DOC_VIEW_ROLES = ["super-admin", "platform-admin", "platform-manager", "admin", "manager"];
-const DOCUMENT_UPLOAD_ROLES = ["super-admin", "platform-admin", "platform-manager", "admin", "manager", "sales", "marketing", "legal-team", "finance-team", "support"];
+const DOCUMENT_UPLOAD_ROLES = ["super-admin", "platform-admin", "platform-manager", "admin", "manager", "sales", "marketing", "legal-team", "finance-team", "support", "expert"];
 const LEGAL_TRANSFER_ROLES = ["super-admin", "platform-admin", "platform-manager", "admin", "manager", "sales"];
 const ACTIVITY_OPTIONS = ["call", "email", "meeting", "note", "task", "comment"];
 const PANEL_CLASS = "rounded-2xl border border-slate-100 bg-white p-5 shadow-sm md:p-6";
@@ -428,21 +429,36 @@ export default function LeadDetailPage() {
                 </div>
 
                 <div className="space-y-3">
-                  <div className="rounded-xl border border-amber-100 bg-amber-50 p-4">
-                    <span className={KICKER_CLASS}>Quick Status Update</span>
-                    <div className="mt-3">
-                      <LeadQuickStatusControl
-                        assigneeOptions={users}
-                        enabledStatuses={enabledStatuses}
-                        lead={lead}
-                        token={session?.token}
-                        onUpdated={handleStatusUpdated}
-                        hideLabel
-                        className="w-full"
-                        selectClassName="min-h-[40px] w-full bg-white pr-8 text-[11px] shadow-none"
-                      />
+                  {lead.is_workflow ? (
+                    <div className="rounded-xl border border-blue-100 bg-blue-50 p-4">
+                      <span className={KICKER_CLASS}>Workflow Status</span>
+                      <div className="mt-3">
+                        <WorkflowBadge
+                          status={lead.workflow_status}
+                          leadId={lead.lead_id}
+                          role={session?.user?.role}
+                          lead={lead}
+                          onAction={refreshLead}
+                        />
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="rounded-xl border border-amber-100 bg-amber-50 p-4">
+                      <span className={KICKER_CLASS}>Quick Status Update</span>
+                      <div className="mt-3">
+                        <LeadQuickStatusControl
+                          assigneeOptions={users}
+                          enabledStatuses={enabledStatuses}
+                          lead={lead}
+                          token={session?.token}
+                          onUpdated={handleStatusUpdated}
+                          hideLabel
+                          className="w-full"
+                          selectClassName="min-h-[40px] w-full bg-white pr-8 text-[11px] shadow-none"
+                        />
+                      </div>
+                    </div>
+                  )}
 
                   <div className="rounded-xl border border-sky-100 bg-sky-50 p-4">
                     <span className={KICKER_CLASS}>Follow-up Status</span>

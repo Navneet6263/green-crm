@@ -52,6 +52,7 @@ const LEAD_DOCUMENT_UPLOAD_ROLES = [
   ROLES.LEGAL_TEAM,
   ROLES.FINANCE_TEAM,
   ROLES.SUPPORT,
+  ROLES.EXPERT,
 ];
 
 function normalizeLeadNumber(value) {
@@ -128,6 +129,25 @@ function normalizeLeadFilterDate(value, { endOfDay = false } = {}) {
   return date;
 }
 
+function maskLeadForRole(lead, role) {
+  if (!lead) return lead;
+  if (role === 'expert') {
+    return {
+      ...lead,
+      phone: null,
+      email: null,
+      whatsapp: null,
+      customer_phone: null,
+      customer_email: null,
+      customer_whatsapp: null,
+      total_lead_value: null,
+      advance_received: null,
+      remaining_payment: null,
+    };
+  }
+  return lead;
+}
+
 function normalizeLeadPayload(payload) {
   return {
     contact_person: String(payload.contact_person || payload.contact_person_name || "").trim(),
@@ -152,6 +172,8 @@ function normalizeLeadPayload(payload) {
     requirements: payload.requirements || payload.notes || null,
     workflow_stage: String(payload.workflow_stage || "sales").toLowerCase(),
     assigned_to: payload.assigned_to || null,
+    total_lead_value: normalizeLeadNumber(payload.estimated_value ?? payload.total_lead_value ?? 0),
+    advance_received: normalizeLeadNumber(payload.advance_received ?? 0),
   };
 }
 
@@ -578,7 +600,16 @@ async function buildLeadFilters(auth, query) {
 
   filters.companyId = auth.companyId;
 
-  if (auth.role === ROLES.SALES) {
+  if (query.is_workflow !== undefined) {
+    filters.isWorkflow = query.is_workflow === "true" || query.is_workflow === "1" || query.is_workflow === true;
+  } else if (query.isWorkflow !== undefined) {
+    filters.isWorkflow = query.isWorkflow === "true" || query.isWorkflow === "1" || query.isWorkflow === true;
+  }
+
+  if (auth.role === "expert") {
+    filters.assignedTo = auth.userId;
+    filters.isWorkflow = 1;
+  } else if (auth.role === ROLES.SALES) {
     filters.viewerUserId = auth.userId;
     filters.viewerAccessColumns = getRestrictedLeadAccessColumns(auth.role);
   } else if (auth.role === ROLES.MARKETING) {
@@ -596,7 +627,7 @@ async function buildLeadFilters(auth, query) {
     filters.viewerUserId = auth.userId;
     filters.viewerAccessColumns = getRestrictedLeadAccessColumns(auth.role);
   } else {
-    filters.assignedTo = query.assigned_to || null;
+    filters.assignedTo = query.assigned_to === "me" ? auth.userId : (query.assigned_to || null);
     filters.createdBy = query.created_by || null;
   }
 
@@ -619,8 +650,42 @@ async function listLeads(auth, query) {
   }
 
   const { rows, total, pageInfo } = await leadRepository.listLeads(filters, pagination);
+  const maskedRows = rows.map((row) => maskLeadForRole(row, auth.role));
 
-  return buildPaginatedResult(rows, total, pagination, pageInfo);
+  const result = buildPaginatedResult(maskedRows, total, pagination, pageInfo);
+
+  if (filters.companyId) {
+    let teamClause = "";
+    const params = [filters.companyId];
+    if (Array.isArray(filters.teamIds) && filters.teamIds.length > 0) {
+      teamClause = ` AND team_id IN (${filters.teamIds.map(() => "?").join(", ")})`;
+      params.push(...filters.teamIds);
+    } else if (Array.isArray(filters.teamIds) && filters.teamIds.length === 0) {
+      teamClause = " AND 1 = 0";
+    }
+
+    const [sumRows] = await db.query(
+      `SELECT
+         COUNT(*) AS total_workflow_leads,
+         SUM(CASE WHEN workflow_status IN ('in_progress', 'pending_qa', 'revisions_needed') THEN 1 ELSE 0 END) AS active_workflow_leads,
+         SUM(CASE WHEN workflow_status IN ('approved', 'completed') THEN 1 ELSE 0 END) AS completed_workflow_leads,
+         COALESCE(SUM(advance_received), 0) AS total_advance_received,
+         COALESCE(SUM(remaining_payment), 0) AS total_remaining_payment
+       FROM leads
+       WHERE company_id = ? AND is_active = 1 AND is_workflow = 1${teamClause}`,
+      params
+    );
+    const row = sumRows[0] || {};
+    result.meta.workflow_summary = {
+      total_workflow_leads: row.total_workflow_leads || 0,
+      active_workflow_leads: row.active_workflow_leads || 0,
+      completed_workflow_leads: row.completed_workflow_leads || 0,
+      total_advance_received: row.total_advance_received || 0,
+      total_remaining_payment: row.total_remaining_payment || 0,
+    };
+  }
+
+  return result;
 }
 
 async function getLead(auth, leadId) {
@@ -635,7 +700,7 @@ async function getLead(auth, leadId) {
   ]);
   const assignmentPayload = buildLeadAssignmentPayload(lead, sharedUsers);
 
-  return {
+  const leadObj = {
     ...lead,
     ...assignmentPayload,
     documents,
@@ -648,6 +713,7 @@ async function getLead(auth, leadId) {
       lead.status === "closed-won" &&
       (lead.workflow_stage || "sales") === "sales",
   };
+  return maskLeadForRole(leadObj, auth.role);
 }
 
 async function listLeadDocuments(auth, leadId) {
@@ -779,6 +845,16 @@ async function createLead(auth, payload) {
   );
   await ensureUserBelongsToTeam(companyId, assignedTo, teamId, "Lead owner");
 
+  let is_workflow = 0;
+  let workflow_status = null;
+  if (assignedTo) {
+    const assignedUser = await userRepository.getUserInCompany(assignedTo, companyId);
+    if (assignedUser && assignedUser.role === 'expert') {
+      is_workflow = 1;
+      workflow_status = 'in_progress';
+    }
+  }
+
   return db.withTransaction(async (transaction) => {
     const createdLead = await leadRepository.createLead(
       {
@@ -807,6 +883,10 @@ async function createLead(auth, payload) {
         product_id: lead.product_id,
         requirements: lead.requirements,
         workflow_stage: lead.workflow_stage,
+        is_workflow,
+        workflow_status,
+        total_lead_value: lead.estimated_value || lead.total_lead_value,
+        advance_received: lead.advance_received,
       },
       transaction
     );
@@ -840,7 +920,7 @@ async function createLead(auth, payload) {
       transaction
     );
 
-    return createdLead;
+    return maskLeadForRole(createdLead, auth.role);
   });
 }
 
@@ -881,6 +961,8 @@ async function updateLead(auth, leadId, payload) {
     product_id: normalized.product_id,
     requirements: normalized.requirements,
     workflow_stage: normalized.workflow_stage,
+    total_lead_value: normalized.estimated_value || normalized.total_lead_value,
+    advance_received: normalized.advance_received,
   };
 
   let assignedToOverride;
@@ -899,6 +981,22 @@ async function updateLead(auth, leadId, payload) {
     assignedToOverride = updates.assigned_to;
     updates.assigned_by = auth.userId;
     updates.assigned_at = new Date();
+  }
+
+  if (assignedToOverride !== undefined) {
+    if (assignedToOverride) {
+      const assignedUser = await userRepository.getUserInCompany(assignedToOverride, lead.company_id);
+      if (assignedUser && assignedUser.role === 'expert') {
+        updates.is_workflow = 1;
+        updates.workflow_status = 'in_progress';
+      } else {
+        updates.is_workflow = 0;
+        updates.workflow_status = null;
+      }
+    } else {
+      updates.is_workflow = 0;
+      updates.workflow_status = null;
+    }
   }
 
   updates.team_id = await ensureTeamIdWhenTeamsConfigured(
@@ -971,10 +1069,10 @@ async function updateLead(auth, leadId, payload) {
     updatedLead.lead_id,
     updatedLead.company_id
   );
-  return {
+  return maskLeadForRole({
     ...updatedLead,
     ...buildLeadAssignmentPayload(updatedLead, sharedUsers),
-  };
+  }, auth.role);
 }
 
 async function deleteLead(auth, leadId, payload = {}) {

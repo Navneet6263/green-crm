@@ -19,6 +19,14 @@ async function startServer() {
   } catch (error) {
     console.error("DB connection failed (server still running):", error.message);
   }
+
+  // Start files cleanup job
+  try {
+    const { startCleanupJob } = require("./jobs/cleanupJob");
+    startCleanupJob();
+  } catch (cleanupError) {
+    console.error("Failed to start cleanup job:", cleanupError.message);
+  }
 }
 
 startServer().catch((error) => {

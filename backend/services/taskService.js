@@ -72,6 +72,8 @@ async function buildTaskFilters(auth, query) {
     search: query.search || "",
     assignedTo: null,
     teamIds: null,
+    relatedTo: query.related_to || null,
+    relatedId: query.related_id || null,
   };
 
   if (auth.role === ROLES.SUPER_ADMIN) {

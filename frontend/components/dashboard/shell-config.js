@@ -12,6 +12,7 @@ export const ROLE_COLOR = {
   "finance-team": "#ff8b4d",
   support: "#ff6b5e",
   viewer: "#94a3b8",
+  expert: "#8b5cf6",
 };
 
 export const ROLE_DESCRIPTIONS = {
@@ -26,6 +27,7 @@ export const ROLE_DESCRIPTIONS = {
   "finance-team": "Finance control surface for invoicing, payout, and revenue completion.",
   support: "Support queue for tickets, escalations, and customer issues.",
   viewer: "Read-only summary across the visible company funnel.",
+  expert: "Expert workflow workspace for assignments, tasks, and deliverables.",
 };
 
 export const PAGE_SUMMARY = {
@@ -213,6 +215,11 @@ export const SIDEBAR_SECTIONS = {
       ITEM("Attendance", "/attendance", "attendance", "attendance"),
     ]),
   ],
+  expert: [
+    SECTION("My Work", [
+      ITEM("Assigned Tasks", "/dashboard/expert", "tasks"),
+    ]),
+  ],
 };
 
 export const ROLE_SHORTCUTS = {
@@ -276,6 +283,9 @@ export const ROLE_SHORTCUTS = {
     ITEM("Leads", "/leads", "leads"),
     ITEM("Customers", "/customers", "customers"),
     ITEM("Attendance", "/attendance", "attendance"),
+  ],
+  expert: [
+    ITEM("Assigned Tasks", "/dashboard/expert", "tasks"),
   ],
 };
 

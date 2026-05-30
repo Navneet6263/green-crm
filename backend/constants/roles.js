@@ -9,6 +9,7 @@ const ROLES = {
   FINANCE_TEAM: "finance-team",
   SUPPORT:      "support",
   MARKETING:    "marketing",
+  EXPERT:       "expert",
   VIEWER:       "viewer",
 };
 
@@ -82,6 +83,9 @@ const SIDEBAR_MAP = {
   ],
   [ROLES.MARKETING]: [
     "dashboard", "leads", "tasks", "calendar",
+  ],
+  [ROLES.EXPERT]: [
+    "dashboard", "my-leads", "tasks",
   ],
   [ROLES.VIEWER]: [
     "dashboard", "leads",

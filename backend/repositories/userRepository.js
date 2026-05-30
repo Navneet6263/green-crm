@@ -351,4 +351,5 @@ module.exports = {
   setUserActive,
   updateUser,
   updateLastLogin,
+  findByUserId: getUserInCompany,
 };
