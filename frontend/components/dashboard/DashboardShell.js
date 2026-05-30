@@ -617,6 +617,7 @@ export default function DashboardShell({ session: initialSession, children, titl
                 </div>
 
                   <div className="relative flex items-center gap-2" ref={accountRef}>
+                  {role !== "expert" && (
                   <Link
                     href="/communications"
                     prefetch={false}
@@ -625,6 +626,7 @@ export default function DashboardShell({ session: initialSession, children, titl
                   >
                     <DashboardIcon name="mail" className="h-5 w-5" />
                   </Link>
+                  )}
 
                   <button
                     type="button"

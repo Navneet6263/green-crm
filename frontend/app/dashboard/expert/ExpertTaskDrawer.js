@@ -110,6 +110,50 @@ export default function ExpertTaskDrawer({ lead, onClose, onSuccess }) {
                 {error && <div className="rounded-lg bg-rose-50 p-3 text-xs font-semibold text-rose-700">{error}</div>}
                 {success && <div className="rounded-lg bg-green-50 p-3 text-xs font-semibold text-green-700">✓ Submitted successfully!</div>}
 
+                {/* Admin feedback banner — shown only when revisions are needed */}
+                {leadDetail?.workflow_status === "revisions_needed" && (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-amber-600 mb-1">⚠️ Admin Feedback</p>
+                    <p className="text-sm text-amber-800 leading-relaxed">
+                      {leadDetail?.admin_comments || "No specific comments provided. Please review and resubmit."}
+                    </p>
+                  </div>
+                )}
+
+                {/* Previously uploaded files — shown when revisions needed */}
+                {leadDetail?.workflow_status === "revisions_needed" && (() => {
+                  let prevFiles = [];
+                  try {
+                    prevFiles = typeof leadDetail.completed_files === "string"
+                      ? JSON.parse(leadDetail.completed_files)
+                      : (leadDetail.completed_files || []);
+                    if (!Array.isArray(prevFiles)) prevFiles = [];
+                  } catch (_) { prevFiles = []; }
+                  return prevFiles.length > 0 ? (
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Your Previous Submission</span>
+                      <div className="space-y-1.5">
+                        {prevFiles.map((file, idx) => {
+                          const href = file.url && /^https?:\/\//i.test(file.url) ? file.url : `${file.url || "#"}`;
+                          return (
+                            <a
+                              key={idx}
+                              href={href}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="flex items-center gap-2 p-2 rounded-lg border border-slate-100 bg-slate-50 hover:bg-slate-100 transition text-xs"
+                            >
+                              <span>📎</span>
+                              <span className="flex-1 truncate font-semibold text-slate-700">{file.name || "File"}</span>
+                              <span className="text-blue-600 font-bold text-[10px] uppercase">View</span>
+                            </a>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : null;
+                })()}
+
                 <div>
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Description / Requirements</span>
                   <p className="mt-1 text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">

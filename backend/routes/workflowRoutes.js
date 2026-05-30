@@ -142,7 +142,7 @@ router.post("/:leadId/submit", asyncHandler(async (req, res) => {
     remaining_payment: null,
   };
 
-  res.json({ success: true, lead: masked });
+  res.json({ success: true, data: masked });
 }));
 
 router.post("/:leadId/review", asyncHandler(async (req, res) => {
@@ -202,7 +202,7 @@ router.post("/:leadId/review", asyncHandler(async (req, res) => {
     "SELECT * FROM leads WHERE lead_id = ? AND company_id = ?",
     [lead.lead_id, req.auth.companyId]
   );
-  res.json({ success: true, lead: updatedLeads[0] });
+  res.json({ success: true, data: updatedLeads[0] });
 }));
 
 router.post("/:leadId/deliver", asyncHandler(async (req, res) => {
@@ -238,7 +238,7 @@ router.post("/:leadId/deliver", asyncHandler(async (req, res) => {
     "SELECT * FROM leads WHERE lead_id = ? AND company_id = ?",
     [lead.lead_id, req.auth.companyId]
   );
-  res.json({ success: true, lead: updatedLeads[0] });
+  res.json({ success: true, data: updatedLeads[0] });
 }));
 
 module.exports = router;
