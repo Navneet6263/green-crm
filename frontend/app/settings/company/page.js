@@ -4,9 +4,10 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import CompanyLeadershipPanel from "../../../components/company-settings/CompanyLeadershipPanel";
-import CompanySettingsForm from "../../../components/company-settings/CompanySettingsForm";
-import CompanySettingsHero from "../../../components/company-settings/CompanySettingsHero";
 import CompanySnapshotPanel from "../../../components/company-settings/CompanySnapshotPanel";
+import CompactCompanySettingsForm from "../../../components/company-settings/CompactCompanySettingsForm";
+import CompactHero from "../../../components/company-settings/CompactHero";
+import CollapsibleSection from "../../../components/company-settings/CollapsibleSection";
 import { buildDraft } from "../../../components/company-settings/utils";
 import DashboardShell from "../../../components/dashboard/DashboardShell";
 import CommunicationSettingsSection from "../../../components/integrations/CommunicationSettingsSection";
@@ -135,38 +136,64 @@ export default function CompanySettingsPage() {
 
   return (
     <DashboardShell session={session} title="Company Settings" hideTitle heroStats={[]}>
-      {error ? <div className="rounded-[20px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div> : null}
-      {message ? <div className="rounded-[20px] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">{message}</div> : null}
-      {!company ? (
-        <div className="rounded-[20px] border border-[#eadfcd] bg-white px-4 py-3 text-sm font-medium text-[#6f614c]">Loading company settings...</div>
-      ) : (
-        <section className="space-y-5">
-          <CompanySettingsHero company={company} draft={draft} />
-
-          <div className="grid gap-5 xl:grid-cols-[1.04fr_0.96fr] xl:items-start">
-            <CompanySettingsForm draft={draft} setDraft={setDraft} saving={saving} testing={testing} onSubmit={handleSubmit} onSendTestEmail={handleSendTestEmail} />
-
-            <div className="space-y-5">
-              <CompanyLeadershipPanel people={people} />
-              <CompanySnapshotPanel company={company} draft={draft} />
-            </div>
+      <div className="mx-auto max-w-[1400px] space-y-4 px-1">
+        {error && (
+          <div className="rounded-[20px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+            {error}
           </div>
+        )}
+        {message && (
+          <div className="rounded-[20px] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
+            {message}
+          </div>
+        )}
+        
+        {!company ? (
+          <div className="rounded-[20px] border border-[#eadfcd] bg-white px-4 py-3 text-sm font-medium text-[#6f614c]">
+            Loading company settings...
+          </div>
+        ) : (
+          <>
+            <CompactHero company={company} draft={draft} />
 
-          <CommunicationSettingsSection
-            companyId={company.company_id}
-            token={session?.token}
-            title={isPlatformRoot ? "Platform shared communication providers" : "Tenant communication providers"}
-            description={
-              isPlatformRoot
-                ? "Define the shared provider credentials and office attendance IP policy used when companies are approved for platform-managed channels."
-                : "Manage tenant credentials, review managed paid service status, and see the backend-resolved capability for each communication channel."
-            }
-            canEditIntegrations={["super-admin", "admin"].includes(session?.user?.role)}
-            canEditPermissions={canEditPermissions}
-            platformRoot={isPlatformRoot}
-          />
-        </section>
-      )}
+            <div className="grid gap-4 lg:grid-cols-[1fr_380px] lg:items-start">
+              <CompactCompanySettingsForm
+                draft={draft}
+                setDraft={setDraft}
+                saving={saving}
+                testing={testing}
+                onSubmit={handleSubmit}
+                onSendTestEmail={handleSendTestEmail}
+              />
+
+              <div className="space-y-4">
+                <CompanyLeadershipPanel people={people} />
+                <CompanySnapshotPanel company={company} draft={draft} />
+              </div>
+            </div>
+
+            <CollapsibleSection
+              title={isPlatformRoot ? "Platform Communication Providers" : "Communication Providers"}
+              subtitle="Manage call, SMS, and WhatsApp integrations"
+              defaultOpen={false}
+            >
+              <CommunicationSettingsSection
+                companyId={company.company_id}
+                token={session?.token}
+                title=""
+                description={
+                  isPlatformRoot
+                    ? "Define the shared provider credentials and office attendance IP policy used when companies are approved for platform-managed channels."
+                    : "Manage tenant credentials, review managed paid service status, and see the backend-resolved capability for each communication channel."
+                }
+                canEditIntegrations={["super-admin", "admin"].includes(session?.user?.role)}
+                canEditPermissions={canEditPermissions}
+                platformRoot={isPlatformRoot}
+              />
+            </CollapsibleSection>
+          </>
+        )}
+      </div>
     </DashboardShell>
   );
 }

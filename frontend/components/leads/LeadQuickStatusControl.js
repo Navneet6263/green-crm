@@ -12,6 +12,7 @@ const SELECT_CLASS =
 export default function LeadQuickStatusControl({
   assigneeOptions = [],
   disabled = false,
+  enabledStatuses = [],
   lead,
   token,
   onUpdated,
@@ -25,6 +26,9 @@ export default function LeadQuickStatusControl({
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const saveLockRef = useRef(false);
+
+  // Use enabled statuses or fall back to all statuses
+  const statusOptions = enabledStatuses.length > 0 ? enabledStatuses : LEAD_STATUS_ORDER;
 
   useEffect(() => {
     setNextStatus(currentStatus);
@@ -132,7 +136,7 @@ export default function LeadQuickStatusControl({
           }}
           disabled={disabled || saving}
         >
-          {LEAD_STATUS_ORDER.map((status) => <option key={status} value={status}>{getLeadStatusLabel(status)}</option>)}
+          {statusOptions.map((status) => <option key={status} value={status}>{getLeadStatusLabel(status)}</option>)}
         </select>
       </div>
 
@@ -141,6 +145,7 @@ export default function LeadQuickStatusControl({
           assigneeOptions={assigneeOptions}
           currentStatus={currentStatus}
           disabled={disabled}
+          enabledStatuses={enabledStatuses}
           error={error}
           lead={lead}
           nextStatus={nextStatus}

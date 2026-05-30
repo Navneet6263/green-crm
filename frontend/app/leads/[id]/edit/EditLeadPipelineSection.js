@@ -1,6 +1,13 @@
 import { T } from "./edit-lead-tokens";
+import { getStatusLabel } from "../../../../lib/leadStatusHelper";
 
-export function EditPipelineSection({ form, productChoices, teamSelectionPending, productEmptyMessage, onChange }) {
+export function EditPipelineSection({ form, productChoices, teamSelectionPending, productEmptyMessage, onChange, enabledStatuses = [] }) {
+  // Use provided enabled statuses or fall back to all statuses
+  const statuses = enabledStatuses.length > 0 ? enabledStatuses : [
+    "new", "pending", "contacted", "qualified", "proposal", "negotiation",
+    "booked-demo", "demo-done", "trial-started", "closed-won", "closed-lost"
+  ];
+
   return (
     <article className={T.panel}>
       <div className="mb-5 flex items-center gap-3 border-b border-slate-100 pb-4">
@@ -14,17 +21,11 @@ export function EditPipelineSection({ form, productChoices, teamSelectionPending
         <label className="space-y-2">
           <span className={T.kicker}>Status</span>
           <select className={T.input} value={form.status} onChange={(e) => onChange("status", e.target.value)}>
-            <option value="new">New</option>
-            <option value="pending">Pending</option>
-            <option value="contacted">Contacted</option>
-            <option value="qualified">Qualified</option>
-            <option value="proposal">Proposal</option>
-            <option value="negotiation">Negotiation</option>
-            <option value="booked-demo">Booked Demo</option>
-            <option value="demo-done">Demo Done</option>
-            <option value="trial-started">Trial Started</option>
-            <option value="closed-won">Closed Won</option>
-            <option value="closed-lost">Closed Lost</option>
+            {statuses.map((status) => (
+              <option key={status} value={status}>
+                {getStatusLabel(status)}
+              </option>
+            ))}
           </select>
         </label>
         <label className="space-y-2">

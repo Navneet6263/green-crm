@@ -5,7 +5,7 @@ import LeadRowCard from "./LeadRowCard";
 import { LEAD_GHOST_BUTTON_CLASS, LEAD_KICKER_CLASS, LEAD_PRIMARY_BUTTON_CLASS, LEAD_PANEL_CLASS } from "../shared/leadPageConstants";
 
 export default function LeadListSection({
-  allPicked, canEdit, canManage, emptyLeadsMessage,
+  allPicked, canEdit, canManage, emptyLeadsMessage, enabledStatuses,
   leadMeta, page, picked, rows, rowActions, teamBadgeLabel, totalMatched, totalPages,
 }) {
   const from = totalMatched ? (page - 1) * leadMeta.page_size + 1 : 0;
@@ -71,6 +71,7 @@ export default function LeadListSection({
               canTransferRow={rowActions.canTransferActiveLead && rowActions.selectedId === lead.lead_id}
               canEdit={canEdit}
               canManage={canManage}
+              enabledStatuses={enabledStatuses}
               picked={picked.includes(lead.lead_id)}
               selected={rowActions.selectedId === lead.lead_id}
               teamBadgeLabel={teamBadgeLabel}

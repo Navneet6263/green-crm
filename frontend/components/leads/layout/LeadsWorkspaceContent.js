@@ -8,7 +8,7 @@ import LeadsWorkspaceShell from "./LeadsWorkspaceShell";
 
 export default function LeadsWorkspaceContent({
   allPicked, bulkUpload, bulkUsersMessage, canCreate, canEdit, canManage,
-  emptyLeadsMessage, filterWorkspaceProps, filters, heroStats, isPlatformConsole,
+  emptyLeadsMessage, enabledStatuses, filterWorkspaceProps, filters, heroStats, isPlatformConsole,
   isSuper, listRowActions, ownershipActions, ownershipLabel, picked, pickedTeamIds,
   records, resources, setPicked, setSelectedLeadPool, showBulkUpload, setShowBulkUpload, teamBadgeLabel,
 }) {
@@ -75,6 +75,7 @@ export default function LeadsWorkspaceContent({
         canEdit={canEdit}
         canManage={canManage}
         emptyLeadsMessage={emptyLeadsMessage}
+        enabledStatuses={enabledStatuses}
         leadMeta={records.leadMeta}
         page={records.page}
         picked={picked}

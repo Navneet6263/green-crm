@@ -5,6 +5,8 @@ import { useSearchParams } from "next/navigation";
 
 import DashboardShell from "../../components/dashboard/DashboardShell";
 import LeadsWorkspaceContent from "../../components/leads/layout/LeadsWorkspaceContent";
+import { useCustomization } from "../../lib/useCustomization";
+import { getEnabledStatuses } from "../../lib/leadStatusHelper";
 import {
   CREATE_ROLES,
   LEAD_GHOST_BUTTON_CLASS,
@@ -50,6 +52,11 @@ function LeadsPageContent() {
   const [selectedLeadPool, setSelectedLeadPool] = useState([]);
   const [selectingAllFiltered, setSelectingAllFiltered] = useState(false);
   const { accessError, booting, companies, session } = useLeadSessionAccess();
+  
+  // Load customization settings
+  const { customization } = useCustomization(session?.token);
+  const enabledStatuses = customization ? getEnabledStatuses(customization) : [];
+  
   const role = session?.user?.role || "";
   const isPlatformConsole = isPlatformConsoleRole(role);
   const isSuper = role === "super-admin";
@@ -294,6 +301,7 @@ function LeadsPageContent() {
           canEdit={canEdit}
           canManage={canManage}
           emptyLeadsMessage={emptyLeadsMessage}
+          enabledStatuses={enabledStatuses}
           filterWorkspaceProps={filterWorkspaceProps}
           filters={filters}
           heroStats={heroStats}

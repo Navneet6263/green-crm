@@ -1,4 +1,7 @@
-export const LEAD_STATUS_OPTIONS = [
+import { getStatusLabel } from "../../../lib/leadStatusHelper";
+
+// Quick filters (always available)
+const QUICK_FILTERS = [
   { value: "all", label: "All statuses" },
   { value: "active", label: "Open pipeline" },
   { value: "working", label: "Contacted + working" },
@@ -6,6 +9,21 @@ export const LEAD_STATUS_OPTIONS = [
   { value: "assigned", label: "Assigned" },
   { value: "unassigned", label: "Unassigned" },
   { value: "transferred", label: "Transferred" },
+];
+
+// Generate status options from enabled statuses
+export function getLeadStatusOptions(enabledStatuses = []) {
+  const statusOptions = enabledStatuses.map(status => ({
+    value: status,
+    label: getStatusLabel(status),
+  }));
+
+  return [...QUICK_FILTERS, ...statusOptions];
+}
+
+// Default status options (fallback)
+export const LEAD_STATUS_OPTIONS = [
+  ...QUICK_FILTERS,
   { value: "new", label: "New" },
   { value: "pending", label: "Pending" },
   { value: "contacted", label: "Contacted" },

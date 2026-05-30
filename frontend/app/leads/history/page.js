@@ -9,6 +9,8 @@ import { formatIndiaDateTime } from "../../../lib/dateTime";
 import { ROLE_HOME_ROUTE } from "../../../lib/roles";
 import { loadSession } from "../../../lib/session";
 import { teamBadgeLabel } from "../../../lib/teamScope";
+import { useCustomization } from "../../../lib/useCustomization";
+import { getEnabledStatuses, getStatusLabel } from "../../../lib/leadStatusHelper";
 import { LeadHistoryCard } from "./LeadHistoryCard";
 import { LeadHistorySidebar } from "./LeadHistorySidebar";
 
@@ -42,6 +44,10 @@ export default function LeadHistoryPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [workflowFilter, setWorkflowFilter] = useState("all");
   const [sortBy, setSortBy] = useState("recent");
+
+  // Load customization settings
+  const { customization } = useCustomization(session?.token);
+  const enabledStatuses = customization ? getEnabledStatuses(customization) : [];
 
   async function load(s, pg=page) {
     setLoading(true); setError("");
@@ -114,8 +120,8 @@ export default function LeadHistoryPage() {
             </div>
             <select className={INPUT} value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}>
               <option value="all">All statuses</option>
-              {["new","contacted","qualified","proposal","negotiation","booked-demo","demo-done","trial-started","closed-won","closed-lost"].map(s=>(
-                <option key={s} value={s}>{s.replace(/-/g," ").replace(/\b\w/g,l=>l.toUpperCase())}</option>
+              {enabledStatuses.map(s=>(
+                <option key={s} value={s}>{getStatusLabel(s)}</option>
               ))}
             </select>
             <select className={INPUT} value={workflowFilter} onChange={e=>setWorkflowFilter(e.target.value)}>

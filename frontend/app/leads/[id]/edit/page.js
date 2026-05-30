@@ -6,6 +6,8 @@ import { useParams, useRouter } from "next/navigation";
 import DashboardShell from "../../../../components/dashboard/DashboardShell";
 import { apiRequest } from "../../../../lib/api";
 import { loadSession } from "../../../../lib/session";
+import { useCustomization } from "../../../../lib/useCustomization";
+import { getEnabledStatuses } from "../../../../lib/leadStatusHelper";
 import {
   canManageScopedAssignments,
   formatScopedError,
@@ -20,6 +22,7 @@ import {
   teamSelectionRequiredMessage,
 } from "../../../../lib/teamScope";
 import { AlertError } from "../../../../components/ui/Alert";
+import { CustomizationDebug } from "../../../../components/debug/CustomizationDebug";
 import { EditLeadHeader, EditIdentitySection } from "./EditLeadFormSections";
 import { EditPipelineSection } from "./EditLeadPipelineSection";
 import { EditContextSection } from "./EditLeadContextSection";
@@ -77,6 +80,10 @@ export default function EditLeadPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [resourceLoading, setResourceLoading] = useState(false);
+
+  // Load customization settings
+  const { customization } = useCustomization(session?.token);
+  const enabledStatuses = customization ? getEnabledStatuses(customization) : [];
 
   const role = session?.user?.role || "";
   const canManageAssignment = canManageScopedAssignments(role);
@@ -358,6 +365,7 @@ export default function EditLeadPage() {
                 teamSelectionPending={teamSelectionPending}
                 productEmptyMessage={productEmptyMessage}
                 onChange={onChange}
+                enabledStatuses={enabledStatuses}
               />
               <EditContextSection
                 form={form}

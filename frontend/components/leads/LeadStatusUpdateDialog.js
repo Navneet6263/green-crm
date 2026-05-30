@@ -32,6 +32,7 @@ export default function LeadStatusUpdateDialog({
   assigneeOptions = [],
   currentStatus,
   disabled = false,
+  enabledStatuses = [],
   error = "",
   lead,
   nextStatus,
@@ -52,6 +53,9 @@ export default function LeadStatusUpdateDialog({
     required: false,
     time: "",
   });
+
+  // Use enabled statuses or fall back to all statuses
+  const statusOptions = enabledStatuses.length > 0 ? enabledStatuses : LEAD_STATUS_ORDER;
 
   const notePayload = useMemo(
     () => buildStatusNote({ customerResponse, followUp, nextStatus, note, previousStatus: currentStatus }),
@@ -85,7 +89,7 @@ export default function LeadStatusUpdateDialog({
             <label className="space-y-2">
               <span className={LABEL}>New status</span>
               <select className={INPUT} value={nextStatus} onChange={(event) => setNextStatus(event.target.value)} disabled={saving}>
-                {LEAD_STATUS_ORDER.map((status) => <option key={status} value={status}>{getLeadStatusLabel(status)}</option>)}
+                {statusOptions.map((status) => <option key={status} value={status}>{getLeadStatusLabel(status)}</option>)}
               </select>
             </label>
             <label className="space-y-2">

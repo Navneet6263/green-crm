@@ -16,6 +16,8 @@ import { useLeadCollaboratorActions } from "../../../components/leads/shared/use
 import { API_BASE, apiRequest } from "../../../lib/api";
 import { formatIndiaDateTime } from "../../../lib/dateTime";
 import { loadSession } from "../../../lib/session";
+import { useCustomization } from "../../../lib/useCustomization";
+import { getEnabledStatuses } from "../../../lib/leadStatusHelper";
 import {
   formatScopedError,
   loadUsersForScope,
@@ -114,6 +116,8 @@ export default function LeadDetailPage() {
   const [loading, setLoading] = useState(true), [savingActivity, setSavingActivity] = useState(false), [savingTask, setSavingTask] = useState(false), [transferring, setTransferring] = useState(false), [uploadingDocuments, setUploadingDocuments] = useState(false);
   const [error, setError] = useState(""), [notice, setNotice] = useState(""), [activityType, setActivityType] = useState("call"), [activityText, setActivityText] = useState(""), [transferOwner, setTransferOwner] = useState(""), [transferNote, setTransferNote] = useState("");
   const [task, setTask] = useState({ title: "", type: "call", priority: "medium", due_date: "", due_time: "", assigned_to: "", notes: "" });
+  const { customization } = useCustomization(session?.token);
+  const enabledStatuses = getEnabledStatuses(customization);
   const role = session?.user?.role || "";
   const canReviewWorkflowDocs = WORKFLOW_DOC_VIEW_ROLES.includes(role);
   const canUploadDocuments = DOCUMENT_UPLOAD_ROLES.includes(role);
@@ -429,6 +433,7 @@ export default function LeadDetailPage() {
                     <div className="mt-3">
                       <LeadQuickStatusControl
                         assigneeOptions={users}
+                        enabledStatuses={enabledStatuses}
                         lead={lead}
                         token={session?.token}
                         onUpdated={handleStatusUpdated}

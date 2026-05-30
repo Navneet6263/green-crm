@@ -31,7 +31,7 @@ function MiniAvatar({ name, bg = "bg-slate-300" }) {
 
 export default function LeadRowCard({
   activeLead, archiveLead, assigning, canTransferRow, canEdit, canManage,
-  collaboratorUsersMessage, company, deleting, detailLoading,
+  collaboratorUsersMessage, company, deleting, detailLoading, enabledStatuses,
   handleInlineStatusUpdate, isPlatformConsole, legalTeam, legalTransferNote,
   legalTransferOwner, legalUsersMessage, lead, onInlineNoteSaved, onOwnerChange,
   onOwnerNoteChange, onPickToggle, onSelectToggle, owner, ownerNote,
@@ -125,6 +125,7 @@ export default function LeadRowCard({
                 <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-slate-400">Lead Status</p>
                 <LeadQuickStatusControl
                   assigneeOptions={teamUsers}
+                  enabledStatuses={enabledStatuses}
                   lead={lead}
                   token={sessionToken}
                   onUpdated={handleInlineStatusUpdate}
