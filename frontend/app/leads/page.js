@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import DashboardShell from "../../components/dashboard/DashboardShell";
@@ -65,9 +65,11 @@ function LeadsPageContent() {
   const canEdit = role !== "viewer";
   const filters = useLeadFilterState({ role, session });
   const { applyQueryFilters } = filters;
+  const searchParamsKey = searchParams?.toString?.() || "";
   const parsedQueryFilters = useMemo(
     () => parseLeadFilterSearchParams(searchParams),
-    [searchParams]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [searchParamsKey]
   );
   const records = useLeadListData({ leadQueryBase: filters.leadQueryBase, refreshSeed, session });
   const selection = useLeadSelection({
@@ -93,10 +95,14 @@ function LeadsPageContent() {
   useEffect(() => { if (accessError) setError(accessError); }, [accessError]);
   useEffect(() => { if (records.listError) setError(records.listError); }, [records.listError]);
   useEffect(() => { if (selection.detailError) setError(selection.detailError); }, [selection.detailError]);
+  const appliedSyncKeyRef = useRef("");
   useEffect(() => {
-    if (session?.user?.user_id) {
-      applyQueryFilters(parsedQueryFilters);
-    }
+    if (!session?.user?.user_id) return;
+    const incomingKey = parsedQueryFilters.syncKey || "";
+    if (appliedSyncKeyRef.current === incomingKey && incomingKey === "") return;
+    if (appliedSyncKeyRef.current === incomingKey) return;
+    appliedSyncKeyRef.current = incomingKey;
+    applyQueryFilters(parsedQueryFilters);
   }, [applyQueryFilters, parsedQueryFilters, session?.user?.user_id]);
   useEffect(() => { records.setPage(1); setSelectedLeadPool([]); setPicked([]); }, [filters.leadQueryBase]);
   useEffect(() => {
