@@ -12,11 +12,15 @@ class RecentActivityController {
       const { limit = 20, type = 'all', myNotesOnly = 'false', users, products } = req.query;
 
       const options = {
-        limit: Math.min(parseInt(limit) || 20, 100), // Max 100
+        limit: Math.min(parseInt(limit) || 20, 10000), // Max 10,000 for exports
         type: ['all', 'leads', 'customers'].includes(type) ? type : 'all',
         userId: myNotesOnly === 'true' ? req.auth.userId : null,
         userIds: users ? users.split(',').filter(Boolean) : [],
-        productIds: products ? products.split(',').filter(Boolean) : []
+        productIds: products ? products.split(',').filter(Boolean) : [],
+        fromDate: req.query.fromDate ? `${req.query.fromDate} 00:00:00` : null,
+        toDate: req.query.toDate ? `${req.query.toDate} 23:59:59` : null,
+        search: req.query.search || '',
+        sort: req.query.sort || 'recent'
       };
 
       const notes = await recentActivityRepository.getRecentNotes(companyId, options);

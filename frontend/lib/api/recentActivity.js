@@ -15,6 +15,10 @@ export const recentActivityApi = {
     if (params.myNotesOnly) queryParams.append('myNotesOnly', 'true');
     if (params.users && params.users.length > 0) queryParams.append('users', params.users.join(','));
     if (params.products && params.products.length > 0) queryParams.append('products', params.products.join(','));
+    if (params.fromDate) queryParams.append('fromDate', params.fromDate);
+    if (params.toDate) queryParams.append('toDate', params.toDate);
+    if (params.search) queryParams.append('search', params.search);
+    if (params.sort) queryParams.append('sort', params.sort);
 
     const response = await apiClient.get(
       `/recent-activity/notes${queryParams.toString() ? `?${queryParams.toString()}` : ''}`

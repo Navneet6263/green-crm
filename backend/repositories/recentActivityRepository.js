@@ -7,7 +7,7 @@ class RecentActivityRepository {
    * @param {object} options - { limit, type: 'all'|'leads'|'customers', userId, userIds, productIds }
    */
   async getRecentNotes(companyId, options = {}) {
-    const { limit = 20, type = 'all', userId = null, userIds = [], productIds = [] } = options;
+    const { limit = 20, type = 'all', userId = null, userIds = [], productIds = [], fromDate, toDate, search = '', sort = 'recent' } = options;
 
     let unionQuery = '';
     const params = [];
@@ -55,6 +55,18 @@ class RecentActivityRepository {
         leadQuery += ` AND l.product_id IN (${productIds.map(() => '?').join(',')})`;
         params.push(...productIds);
       }
+      if (fromDate) {
+        leadQuery += ` AND ln.created_at >= ?`;
+        params.push(fromDate);
+      }
+      if (toDate) {
+        leadQuery += ` AND ln.created_at <= ?`;
+        params.push(toDate);
+      }
+      if (search) {
+        leadQuery += ` AND (ln.content LIKE ? OR l.company_name LIKE ? OR l.contact_person LIKE ?)`;
+        params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+      }
       
       unionQuery += leadQuery;
     }
@@ -100,17 +112,32 @@ class RecentActivityRepository {
         customerQuery += ` AND c.product_id IN (${productIds.map(() => '?').join(',')})`;
         params.push(...productIds);
       }
+      if (fromDate) {
+        customerQuery += ` AND cn.created_at >= ?`;
+        params.push(fromDate);
+      }
+      if (toDate) {
+        customerQuery += ` AND cn.created_at <= ?`;
+        params.push(toDate);
+      }
+      if (search) {
+        customerQuery += ` AND (cn.content LIKE ? OR c.company_name LIKE ? OR c.name LIKE ?)`;
+        params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+      }
 
       unionQuery += customerQuery;
     }
 
     // Wrap in outer query to order and limit
+    const sortOrder = sort === 'oldest' ? 'ASC' : 'DESC';
+    const limitClause = limit > 0 ? `TOP ${limit}` : '';
+
     const finalQuery = `
-      SELECT TOP ${limit} *
+      SELECT ${limitClause} *
       FROM (
         ${unionQuery}
       ) combined
-      ORDER BY created_at DESC
+      ORDER BY created_at ${sortOrder}
     `;
 
     const [rows] = await query(finalQuery, params);
