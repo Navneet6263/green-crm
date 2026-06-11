@@ -461,15 +461,61 @@ async function listCustomerActivities(auth, customerId, query = {}) {
   return buildPaginatedResult(rows, total, pagination);
 }
 
+const customerSubscriptionRepository = require("../repositories/customerSubscriptionRepository");
+
+async function listCustomerSubscriptions(auth, customerId) {
+  const customer = await getCustomer(auth, customerId);
+  return customerSubscriptionRepository.listSubscriptions(customer.customer_id, customer.company_id);
+}
+
+async function addCustomerSubscription(auth, customerId, payload) {
+  const customer = await getCustomer(auth, customerId);
+  
+  if (!payload.product_id || !payload.start_date || !payload.end_date) {
+    throw new AppError("product_id, start_date, and end_date are required.");
+  }
+
+  const subscription = await customerSubscriptionRepository.createSubscription({
+    company_id: customer.company_id,
+    customer_id: customer.customer_id,
+    product_id: payload.product_id,
+    amount: payload.amount || 0,
+    duration_months: payload.duration_months || 1,
+    start_date: payload.start_date,
+    end_date: payload.end_date,
+    status: payload.status || 'active',
+    created_by: auth.userId
+  });
+
+  // Update customer's total_value
+  const newTotal = Number(customer.total_value || 0) + Number(payload.amount || 0);
+  await customerRepository.updateCustomer(customer.customer_id, customer.company_id, {
+    total_value: newTotal
+  });
+
+  // Log activity
+  await customerActivityRepository.createActivity({
+    company_id: customer.company_id,
+    customer_id: customer.customer_id,
+    type: "subscription_added",
+    description: `Added subscription for ${subscription.product_name} (₹${payload.amount})`,
+    created_by: auth.userId,
+  });
+
+  return subscription;
+}
+
 module.exports = {
   addCustomerFollowUp,
   addCustomerMember,
   addCustomerNote,
+  addCustomerSubscription,
   createCustomer,
   deleteCustomer,
   getCustomer,
   listCustomerActivities,
   listCustomerMembers,
+  listCustomerSubscriptions,
   listCustomers,
   removeCustomerMember,
   updateCustomer,

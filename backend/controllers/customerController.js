@@ -55,15 +55,27 @@ async function listActivities(req, res) {
   res.json(data);
 }
 
+async function listSubscriptions(req, res) {
+  const data = await customerService.listCustomerSubscriptions(req.auth, req.params.customerId);
+  res.json({ data });
+}
+
+async function addSubscription(req, res) {
+  const data = await customerService.addCustomerSubscription(req.auth, req.params.customerId, req.body);
+  res.status(201).json({ data });
+}
+
 module.exports = {
   addFollowUp,
   addMember,
   addNote,
+  addSubscription,
   create,
   getOne,
   list,
   listActivities,
   listMembers,
+  listSubscriptions,
   remove,
   removeMember,
   update,

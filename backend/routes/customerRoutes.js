@@ -20,5 +20,7 @@ router.get("/:customerId/members", asyncHandler(customerController.listMembers))
 router.post("/:customerId/members", asyncHandler(customerController.addMember));
 router.delete("/:customerId/members/:userId", asyncHandler(customerController.removeMember));
 router.get("/:customerId/activities", asyncHandler(customerController.listActivities));
+router.get("/:customerId/subscriptions", asyncHandler(customerController.listSubscriptions));
+router.post("/:customerId/subscriptions", asyncHandler(customerController.addSubscription));
 
 module.exports = router;

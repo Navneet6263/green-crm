@@ -20,12 +20,14 @@ async function startServer() {
     console.error("DB connection failed (server still running):", error.message);
   }
 
-  // Start files cleanup job
+  // Start background jobs
   try {
     const { startCleanupJob } = require("./jobs/cleanupJob");
+    const { startSubscriptionExpiryJob } = require("./jobs/subscriptionExpiryJob");
     startCleanupJob();
-  } catch (cleanupError) {
-    console.error("Failed to start cleanup job:", cleanupError.message);
+    startSubscriptionExpiryJob();
+  } catch (jobError) {
+    console.error("Failed to start background jobs:", jobError.message);
   }
 }
 
