@@ -4,16 +4,23 @@ class RecentActivityRepository {
   /**
    * Get recent notes across leads and customers
    * @param {string} companyId 
-   * @param {object} options - { limit, type: 'all'|'leads'|'customers', userId }
+   * @param {object} options - { limit, type: 'all'|'leads'|'customers', userId, userIds, productIds }
    */
   async getRecentNotes(companyId, options = {}) {
-    const { limit = 20, type = 'all', userId = null } = options;
+    const { limit = 20, type = 'all', userId = null, userIds = [], productIds = [] } = options;
 
     let unionQuery = '';
+    const params = [];
+    
+    // Normalize user filters
+    const usersToFilter = [];
+    if (userId) usersToFilter.push(userId);
+    if (Array.isArray(userIds)) usersToFilter.push(...userIds);
+    const uniqueUsers = [...new Set(usersToFilter)];
 
     // Lead notes query
     if (type === 'all' || type === 'leads') {
-      unionQuery += `
+      let leadQuery = `
         SELECT
           'lead' as note_type,
           ln.id,
@@ -28,17 +35,28 @@ class RecentActivityRepository {
           u.role as created_by_role,
           l.contact_person as entity_name,
           l.company_name as entity_company_name,
-          l.status as entity_status
+          l.status as entity_status,
+          p.product_id,
+          p.name as product_name
         FROM lead_notes ln
         LEFT JOIN users u ON ln.created_by = u.user_id
         LEFT JOIN leads l ON ln.lead_id = l.lead_id
+        LEFT JOIN products p ON l.product_id = p.product_id
         WHERE ln.company_id = ?
           AND l.is_active = 1
       `;
+      params.push(companyId);
 
-      if (userId) {
-        unionQuery += ` AND ln.created_by = ?`;
+      if (uniqueUsers.length > 0) {
+        leadQuery += ` AND ln.created_by IN (${uniqueUsers.map(() => '?').join(',')})`;
+        params.push(...uniqueUsers);
       }
+      if (Array.isArray(productIds) && productIds.length > 0) {
+        leadQuery += ` AND l.product_id IN (${productIds.map(() => '?').join(',')})`;
+        params.push(...productIds);
+      }
+      
+      unionQuery += leadQuery;
     }
 
     // Customer notes query
@@ -47,7 +65,7 @@ class RecentActivityRepository {
         unionQuery += ' UNION ALL ';
       }
 
-      unionQuery += `
+      let customerQuery = `
         SELECT
           'customer' as note_type,
           cn.id,
@@ -62,17 +80,28 @@ class RecentActivityRepository {
           u.role as created_by_role,
           c.name as entity_name,
           c.company_name as entity_company_name,
-          c.status as entity_status
+          c.status as entity_status,
+          p.product_id,
+          p.name as product_name
         FROM customer_notes cn
         LEFT JOIN users u ON cn.created_by = u.user_id
         LEFT JOIN customers c ON cn.customer_id = c.customer_id
+        LEFT JOIN products p ON c.product_id = p.product_id
         WHERE cn.company_id = ?
           AND c.is_active = 1
       `;
+      params.push(companyId);
 
-      if (userId) {
-        unionQuery += ` AND cn.created_by = ?`;
+      if (uniqueUsers.length > 0) {
+        customerQuery += ` AND cn.created_by IN (${uniqueUsers.map(() => '?').join(',')})`;
+        params.push(...uniqueUsers);
       }
+      if (Array.isArray(productIds) && productIds.length > 0) {
+        customerQuery += ` AND c.product_id IN (${productIds.map(() => '?').join(',')})`;
+        params.push(...productIds);
+      }
+
+      unionQuery += customerQuery;
     }
 
     // Wrap in outer query to order and limit
@@ -83,21 +112,6 @@ class RecentActivityRepository {
       ) combined
       ORDER BY created_at DESC
     `;
-
-    // Build params array
-    const params = [];
-    if (type === 'all') {
-      params.push(companyId);
-      if (userId) params.push(userId);
-      params.push(companyId);
-      if (userId) params.push(userId);
-    } else if (type === 'leads') {
-      params.push(companyId);
-      if (userId) params.push(userId);
-    } else if (type === 'customers') {
-      params.push(companyId);
-      if (userId) params.push(userId);
-    }
 
     const [rows] = await query(finalQuery, params);
     return rows;

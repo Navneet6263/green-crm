@@ -9,12 +9,14 @@ class RecentActivityController {
   async getRecentNotes(req, res, next) {
     try {
       const companyId = req.auth.companyId;
-      const { limit = 20, type = 'all', myNotesOnly = 'false' } = req.query;
+      const { limit = 20, type = 'all', myNotesOnly = 'false', users, products } = req.query;
 
       const options = {
         limit: Math.min(parseInt(limit) || 20, 100), // Max 100
         type: ['all', 'leads', 'customers'].includes(type) ? type : 'all',
-        userId: myNotesOnly === 'true' ? req.auth.userId : null
+        userId: myNotesOnly === 'true' ? req.auth.userId : null,
+        userIds: users ? users.split(',').filter(Boolean) : [],
+        productIds: products ? products.split(',').filter(Boolean) : []
       };
 
       const notes = await recentActivityRepository.getRecentNotes(companyId, options);
@@ -26,7 +28,9 @@ class RecentActivityController {
           count: notes.length,
           limit: options.limit,
           type: options.type,
-          myNotesOnly: myNotesOnly === 'true'
+          myNotesOnly: myNotesOnly === 'true',
+          userIds: options.userIds,
+          productIds: options.productIds
         }
       });
     } catch (error) {

@@ -187,7 +187,7 @@ function LeadsPageContent() {
   const bulkUsersMessage = pickedTeamIds.length > 1 ? "Select leads from one team at a time before bulk assignment." : scopedUsersEmptyMessage(bulkScopeTeam);
   const allPicked = !!records.leads.length && records.leads.every((lead) => picked.includes(lead.lead_id));
   const allFilteredPicked = !!records.totalMatched && picked.length === records.totalMatched;
-  const showBlockingLoader = booting || (records.loading && !records.leads.length && !records.totalMatched);
+  const showBlockingLoader = booting;
   const handleSelectAllFiltered = async () => {
     if (!session?.token || !records.totalMatched) return;
     setSelectingAllFiltered(true);
@@ -316,7 +316,7 @@ function LeadsPageContent() {
       <AlertError message={error} onDismiss={() => setError("")} />
       {!error ? <AlertSuccess message={notice} onDismiss={() => setNotice("")} /> : null}
       {showBlockingLoader ? <div className="alert">Loading leads workspace...</div> : null}
-      {!booting && (!records.loading || records.leads.length || records.totalMatched) ? (
+      {!booting ? (
         <LeadsWorkspaceContent
           allPicked={allPicked}
           bulkUpload={bulkUpload}

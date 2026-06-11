@@ -457,34 +457,32 @@ export default function DashboardShell({ session: initialSession, children, titl
           ))}
         </nav>
 
-        {hideTitle ? (
-          <div className="mt-6 shrink-0 space-y-4 border-t border-slate-100 pt-5">
-            <Link
-              href="/settings/profile"
-              prefetch={false}
-              className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-3 shadow-[0_14px_35px_rgba(15,23,42,0.06)] transition hover:border-amber-200"
-            >
-              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-slate-100 text-sm font-black text-slate-700">
-                {getInitials(session?.user?.name || session?.user?.full_name || "Preview User")}
-              </span>
-              <span className="min-w-0 flex-1">
-                <strong className="block truncate text-sm font-bold text-slate-950">{session?.user?.name || session?.user?.full_name || "Preview User"}</strong>
-                <span className="block truncate text-xs font-medium text-slate-500">{session?.user?.talent_id || roleMeta.label}</span>
-              </span>
-              <DashboardIcon name="settings" className="h-4 w-4 shrink-0 text-slate-400" />
-            </Link>
-            <div className={cn("grid gap-2", showSeparateSettingsLink ? "grid-cols-2" : "grid-cols-1")}>
-              {showSeparateSettingsLink ? (
-                <Link href={settingsHref} prefetch={false} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-center text-xs font-bold text-slate-600 transition hover:bg-[#fef3c7] hover:text-[#b45309]">
-                  Settings
-                </Link>
-              ) : null}
-              <button type="button" className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-100" onClick={logout}>
-                Logout
-              </button>
-            </div>
+        <div className="mt-6 shrink-0 space-y-4 border-t border-slate-100 pt-5">
+          <Link
+            href="/settings/profile"
+            prefetch={false}
+            className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-3 shadow-[0_14px_35px_rgba(15,23,42,0.06)] transition hover:border-amber-200"
+          >
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-slate-100 text-sm font-black text-slate-700">
+              {getInitials(session?.user?.name || session?.user?.full_name || "Preview User")}
+            </span>
+            <span className="min-w-0 flex-1">
+              <strong className="block truncate text-sm font-bold text-slate-950">{session?.user?.name || session?.user?.full_name || "Preview User"}</strong>
+              <span className="block truncate text-xs font-medium text-slate-500">{session?.user?.talent_id || roleMeta.label}</span>
+            </span>
+            <DashboardIcon name="settings" className="h-4 w-4 shrink-0 text-slate-400" />
+          </Link>
+          <div className={cn("grid gap-2", showSeparateSettingsLink ? "grid-cols-2" : "grid-cols-1")}>
+            {showSeparateSettingsLink ? (
+              <Link href={settingsHref} prefetch={false} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-center text-xs font-bold text-slate-600 transition hover:bg-[#fef3c7] hover:text-[#b45309]">
+                Settings
+              </Link>
+            ) : null}
+            <button type="button" className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-100" onClick={logout}>
+              Logout
+            </button>
           </div>
-        ) : null}
+        </div>
       </aside>
 
       <div className="min-h-screen py-0 lg:pl-[268px]">
