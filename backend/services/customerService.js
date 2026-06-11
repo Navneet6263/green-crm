@@ -346,6 +346,15 @@ async function addCustomerNote(auth, customerId, payload) {
     last_interaction: new Date(),
   });
 
+  // Create the actual note in customer_notes table for Recent Updates Feed
+  const customerNoteRepository = require("../repositories/customerNoteRepository");
+  await customerNoteRepository.create({
+    companyId: customer.company_id,
+    customerId: customer.customer_id,
+    content: content,
+    createdBy: auth.userId
+  });
+
   // Log note activity
   await customerActivityRepository.createActivity({
     company_id: customer.company_id,
