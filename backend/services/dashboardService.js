@@ -60,30 +60,35 @@ function buildScopeKey(teamIds) {
   return teamIds.slice().sort().join(",");
 }
 
-function buildCacheKey(auth, scopeKey = "all") {
+function buildCacheKey(auth, scopeKey = "all", query = {}) {
+  // Sort query keys to ensure consistent cache keys
+  const filterKey = Object.keys(query)
+    .filter(k => ['from_date', 'to_date', 'status', 'priority', 'lead_source', 'product_id', 'assigned_to'].includes(k))
+    .sort()
+    .map(k => `${k}=${query[k]}`)
+    .join('&');
+    
+  const suffix = filterKey ? `:${filterKey}` : '';
+
   if (auth.role === ROLES.SUPER_ADMIN) {
-    return "dashboard:platform";
+    return `dashboard:platform${suffix}`;
   }
 
   if (isPlatformOperatorRole(auth.role)) {
     const companyKey = (getAccessibleCompanyIds(auth) || []).slice().sort().join(",");
-    return `dashboard:platform:${auth.role}:${auth.userId}:${companyKey}`;
+    return `dashboard:platform:${auth.role}:${auth.userId}:${companyKey}${suffix}`;
   }
 
   if ([ROLES.ADMIN, ROLES.MANAGER].includes(auth.role)) {
     const identityKey = auth.role === ROLES.MANAGER ? `:${auth.userId}` : "";
-    return `dashboard:company:${auth.companyId}:${auth.role}${identityKey}:${scopeKey}`;
+    return `dashboard:company:${auth.companyId}:${auth.role}${identityKey}:${scopeKey}${suffix}`;
   }
 
-  if (auth.role === ROLES.SALES) {
-    return `dashboard:user:${auth.companyId}:${auth.role}:${auth.userId}:assigned:${scopeKey}`;
+  if (auth.role === ROLES.SALES || auth.role === ROLES.MARKETING) {
+    return `dashboard:user:${auth.companyId}:${auth.role}:${auth.userId}:assigned:${scopeKey}${suffix}`;
   }
 
-  if (auth.role === ROLES.MARKETING) {
-    return `dashboard:user:${auth.companyId}:${auth.role}:${auth.userId}:assigned:${scopeKey}`;
-  }
-
-  return `dashboard:user:${auth.companyId}:${auth.role}:${auth.userId}:company:${scopeKey}`;
+  return `dashboard:user:${auth.companyId}:${auth.role}:${auth.userId}:company:${scopeKey}${suffix}`;
 }
 
 async function resolveDashboardTeamScope(auth, query = {}) {
@@ -101,16 +106,16 @@ async function resolveDashboardTeamScope(auth, query = {}) {
 
 async function loadSummary(auth, query = {}) {
   if (auth.role === ROLES.SUPER_ADMIN) {
-    return dashboardRepository.getPlatformSummary();
+    return dashboardRepository.getPlatformSummary(null, query);
   }
 
   if (isPlatformOperatorRole(auth.role)) {
-    return dashboardRepository.getPlatformSummary(getAccessibleCompanyIds(auth));
+    return dashboardRepository.getPlatformSummary(getAccessibleCompanyIds(auth), query);
   }
 
   if ([ROLES.ADMIN, ROLES.MANAGER].includes(auth.role)) {
     const teamIds = await resolveDashboardTeamScope(auth, query);
-    return dashboardRepository.getCompanySummary(auth.companyId, teamIds);
+    return dashboardRepository.getCompanySummary(auth.companyId, teamIds, query);
   }
 
   if ([ROLES.SALES, ROLES.MARKETING, ROLES.LEGAL_TEAM, ROLES.FINANCE_TEAM, ROLES.SUPPORT, ROLES.VIEWER].includes(auth.role)) {
@@ -121,6 +126,7 @@ async function loadSummary(auth, query = {}) {
       scope: "assigned",
       teamIds,
       viewerAccessColumns: getAssignedViewerColumns(auth.role),
+      query,
     });
   }
 
@@ -130,6 +136,7 @@ async function loadSummary(auth, query = {}) {
     userId: auth.userId,
     scope: "company",
     teamIds,
+    query,
   });
 }
 
@@ -143,7 +150,7 @@ async function getSummary(auth, query = {}) {
     return loadSummary(auth, query);
   }
 
-  const cacheKey = buildCacheKey(auth, scopeKey);
+  const cacheKey = buildCacheKey(auth, scopeKey, query);
   const cached = readCache(cacheKey);
 
   if (cached) {

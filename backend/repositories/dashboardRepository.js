@@ -1,4 +1,5 @@
 const db = require("../db/connection");
+const { buildAdvancedFilterScope } = require("./dashboardQueryUtils");
 const { PLATFORM_COMPANY_ID } = require("../db/schema");
 const { buildLeadUserAccessPredicate } = require("./leadAssignmentRepository");
 const dashboardLeadAnalyticsRepository = require("./dashboardLeadAnalyticsRepository");
@@ -93,8 +94,11 @@ async function getPlatformSummary(companyIds = null) {
   };
 }
 
-async function getCompanySummary(companyId, teamIds = null) {
+async function getCompanySummary(companyId, teamIds = null, query = {}) {
   const teamScope = buildScopedTeamClause(teamIds, "team_id");
+  const advancedScope = buildAdvancedFilterScope(query);
+  const combinedScopeClause = teamScope.clause + advancedScope.clause;
+  const combinedScopeParams = [...teamScope.params, ...advancedScope.params];
   const [
     teamRows,
     taskSummaryRows,
@@ -137,27 +141,27 @@ async function getCompanySummary(companyId, teamIds = null) {
       [companyId, ...teamScope.params]
     ),
     queryRows(
-      `SELECT COUNT(*) AS total FROM leads WHERE company_id = ? AND is_active = 1 AND follow_up_date IS NOT NULL${teamScope.clause}`,
-      [companyId, ...teamScope.params]
+      `SELECT COUNT(*) AS total FROM leads WHERE company_id = ? AND is_active = 1 AND follow_up_date IS NOT NULL${combinedScopeClause}`,
+      [companyId, ...combinedScopeParams]
     ),
     queryRows(
       `
         SELECT TOP 5 lead_source, COUNT(*) AS total
         FROM leads
-        WHERE company_id = ? AND is_active = 1${teamScope.clause}
+        WHERE company_id = ? AND is_active = 1${combinedScopeClause}
         GROUP BY lead_source
         ORDER BY total DESC, lead_source ASC
       `,
-      [companyId, ...teamScope.params]
+      [companyId, ...combinedScopeParams]
     ),
     queryRows(
       `
         SELECT TOP 5 lead_id, company_name, contact_person, status, priority, workflow_stage, estimated_value, created_at
         FROM leads
-        WHERE company_id = ? AND is_active = 1${teamScope.clause}
+        WHERE company_id = ? AND is_active = 1${combinedScopeClause}
         ORDER BY created_at DESC, id DESC
       `,
-      [companyId, ...teamScope.params]
+      [companyId, ...combinedScopeParams]
     ),
     queryRows(
       `
@@ -168,7 +172,7 @@ async function getCompanySummary(companyId, teamIds = null) {
       `,
       [companyId, ...teamScope.params]
     ),
-    dashboardLeadAnalyticsRepository.getCompanyLeadAnalytics(companyId, teamIds),
+    dashboardLeadAnalyticsRepository.getCompanyLeadAnalytics(companyId, teamIds, query),
     queryRows(
       `SELECT
          COUNT(*) AS total_workflow_leads,
@@ -177,8 +181,8 @@ async function getCompanySummary(companyId, teamIds = null) {
          COALESCE(SUM(advance_received), 0) AS total_advance_received,
          COALESCE(SUM(remaining_payment), 0) AS total_remaining_payment
        FROM leads
-       WHERE company_id = ? AND is_active = 1 AND is_workflow = 1${teamScope.clause}`,
-      [companyId, ...teamScope.params]
+       WHERE company_id = ? AND is_active = 1 AND is_workflow = 1${combinedScopeClause}`,
+      [companyId, ...combinedScopeParams]
     ),
   ]);
   const taskSummary = taskSummaryRows[0] || {};
@@ -212,8 +216,10 @@ async function getUserSummary({
   scope,
   teamIds = null,
   viewerAccessColumns = ["assigned_to"],
+  query = {},
 }) {
   const leadTeamScope = buildScopedTeamClause(teamIds, "l.team_id");
+  const advancedScope = buildAdvancedFilterScope(query, "l");
   const taskTeamScope = buildScopedTeamClause(teamIds, "team_id");
   const createdParams = scope === "created" ? [userId] : [];
   const viewerPredicate =
@@ -230,7 +236,8 @@ async function getUserSummary({
       : scope === "assigned" && viewerPredicate.clause
         ? `AND ${viewerPredicate.clause}`
         : "";
-  const leadParams = [companyId, ...createdParams, ...viewerPredicate.params, ...leadTeamScope.params];
+  const combinedScopeClause = leadTeamScope.clause + advancedScope.clause;
+  const leadParams = [companyId, ...createdParams, ...viewerPredicate.params, ...leadTeamScope.params, ...advancedScope.params];
 
   const taskParams = [companyId];
   let taskCondition = "";
@@ -245,7 +252,7 @@ async function getUserSummary({
       `
         SELECT status, COUNT(*) AS total
         FROM leads l
-        WHERE l.company_id = ? AND l.is_active = 1 ${scopedCondition} ${leadTeamScope.clause}
+        WHERE l.company_id = ? AND l.is_active = 1 ${scopedCondition} ${combinedScopeClause}
         GROUP BY status
       `,
       leadParams
@@ -264,7 +271,7 @@ async function getUserSummary({
       `
         SELECT COUNT(*) AS total
         FROM leads l
-        WHERE l.company_id = ? AND l.is_active = 1 ${scopedCondition} ${leadTeamScope.clause} AND l.follow_up_date IS NOT NULL
+        WHERE l.company_id = ? AND l.is_active = 1 ${scopedCondition} ${combinedScopeClause} AND l.follow_up_date IS NOT NULL
       `,
       leadParams
     ),
@@ -279,7 +286,7 @@ async function getUserSummary({
           l.contact_person
         FROM lead_activities la
         INNER JOIN leads l ON l.lead_id = la.lead_id AND l.company_id = la.company_id
-        WHERE la.company_id = ? ${scopedCondition} ${leadTeamScope.clause}
+        WHERE la.company_id = ? ${scopedCondition} ${combinedScopeClause}
         ORDER BY la.created_at DESC, la.id DESC
       `,
       leadParams

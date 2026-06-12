@@ -36,3 +36,18 @@ export function normalizeStatusDistribution(distribution = []) {
     color: getStatusChartColor(item.status, index),
   }));
 }
+
+export function getStatusTotal(items = [], status) {
+  return Number(items.find((item) => item.status === status)?.total || 0);
+}
+
+export function buildDateHref(fromDate, toDate, extra = {}) {
+  if (!fromDate || !toDate) {
+    return buildLeadDrilldownHref(extra);
+  }
+  return buildLeadDrilldownHref({
+    from_date: fromDate,
+    to_date: toDate,
+    ...extra,
+  });
+}

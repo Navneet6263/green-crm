@@ -1,6 +1,7 @@
 const db = require("../db/connection");
 const { OPEN_PIPELINE_STATUSES } = require("../constants/lead");
-const { buildIndiaDayBuckets } = require("../utils/indiaDateBuckets");
+const { buildIndiaDayBuckets, buildIndiaDayBucketsForRange } = require("../utils/indiaDateBuckets");
+const { buildAdvancedFilterScope } = require("./dashboardQueryUtils");
 
 const STATUS_ORDER = [
   "new",
@@ -82,9 +83,18 @@ function buildFunnel(statusIndex) {
   }));
 }
 
-async function getCompanyLeadAnalytics(companyId, teamIds = null) {
+async function getCompanyLeadAnalytics(companyId, teamIds = null, query = {}) {
   const teamScope = buildTeamScope(teamIds);
-  const buckets = buildIndiaDayBuckets(7);
+  const advancedScope = buildAdvancedFilterScope(query);
+  const combinedScopeClause = teamScope.clause + advancedScope.clause;
+  const combinedScopeParams = [...teamScope.params, ...advancedScope.params];
+
+  let buckets;
+  if (query.from_date && query.to_date) {
+    buckets = buildIndiaDayBucketsForRange(query.from_date, query.to_date);
+  } else {
+    buckets = buildIndiaDayBuckets(7);
+  }
   const todayBucket = buckets[buckets.length - 1];
   const windowStart = buckets[0].startUtc;
   const windowEnd = todayBucket.endUtc;
@@ -92,8 +102,8 @@ async function getCompanyLeadAnalytics(companyId, teamIds = null) {
 
   const [statusRows, kpiRows, leadTrendRows, demoTrendRows, insightRows] = await Promise.all([
     queryRows(
-      `SELECT status, COUNT(*) AS total FROM leads WHERE company_id = ? AND is_active = 1${teamScope.clause} GROUP BY status`,
-      [companyId, ...teamScope.params]
+      `SELECT status, COUNT(*) AS total FROM leads WHERE company_id = ? AND is_active = 1${combinedScopeClause} GROUP BY status`,
+      [companyId, ...combinedScopeParams]
     ),
     queryRows(
       `
@@ -105,7 +115,7 @@ async function getCompanyLeadAnalytics(companyId, teamIds = null) {
           SUM(CASE WHEN status = 'booked-demo' AND updated_at >= ? AND updated_at < ? THEN 1 ELSE 0 END) AS booked_demo_today,
           SUM(CASE WHEN status = 'booked-demo' THEN 1 ELSE 0 END) AS booked_demo_total
         FROM leads
-        WHERE company_id = ? AND is_active = 1${teamScope.clause}
+        WHERE company_id = ? AND is_active = 1${combinedScopeClause}
       `,
       [
         todayBucket.startUtc,
@@ -116,7 +126,7 @@ async function getCompanyLeadAnalytics(companyId, teamIds = null) {
         todayBucket.startUtc,
         todayBucket.endUtc,
         companyId,
-        ...teamScope.params,
+        ...combinedScopeParams,
       ]
     ),
     queryRows(
@@ -125,11 +135,11 @@ async function getCompanyLeadAnalytics(companyId, teamIds = null) {
           CONVERT(varchar(10), CONVERT(date, DATEADD(minute, 330, created_at)), 23) AS day_key,
           COUNT(*) AS total
         FROM leads
-        WHERE company_id = ? AND is_active = 1 AND created_at >= ? AND created_at < ?${teamScope.clause}
+        WHERE company_id = ? AND is_active = 1 AND created_at >= ? AND created_at < ?${combinedScopeClause}
         GROUP BY CONVERT(date, DATEADD(minute, 330, created_at))
         ORDER BY day_key ASC
       `,
-      [companyId, windowStart, windowEnd, ...teamScope.params]
+      [companyId, windowStart, windowEnd, ...combinedScopeParams]
     ),
     queryRows(
       `
@@ -137,11 +147,11 @@ async function getCompanyLeadAnalytics(companyId, teamIds = null) {
           CONVERT(varchar(10), CONVERT(date, DATEADD(minute, 330, updated_at)), 23) AS day_key,
           COUNT(*) AS total
         FROM leads
-        WHERE company_id = ? AND is_active = 1 AND status = 'booked-demo' AND updated_at >= ? AND updated_at < ?${teamScope.clause}
+        WHERE company_id = ? AND is_active = 1 AND status = 'booked-demo' AND updated_at >= ? AND updated_at < ?${combinedScopeClause}
         GROUP BY CONVERT(date, DATEADD(minute, 330, updated_at))
         ORDER BY day_key ASC
       `,
-      [companyId, windowStart, windowEnd, ...teamScope.params]
+      [companyId, windowStart, windowEnd, ...combinedScopeParams]
     ),
     queryRows(
       `
@@ -151,14 +161,14 @@ async function getCompanyLeadAnalytics(companyId, teamIds = null) {
           SUM(CASE WHEN assigned_to IS NULL AND status IN (${openPipelineSql}) THEN 1 ELSE 0 END) AS unassigned,
           SUM(CASE WHEN status = 'booked-demo' THEN 1 ELSE 0 END) AS pending_demo
         FROM leads
-        WHERE company_id = ? AND is_active = 1${teamScope.clause}
+        WHERE company_id = ? AND is_active = 1${combinedScopeClause}
       `,
       [
         ...OPEN_PIPELINE_STATUSES,
         ...OPEN_PIPELINE_STATUSES,
         ...OPEN_PIPELINE_STATUSES,
         companyId,
-        ...teamScope.params,
+        ...combinedScopeParams,
       ]
     ),
   ]);
