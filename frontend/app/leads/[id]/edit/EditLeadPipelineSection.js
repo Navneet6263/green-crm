@@ -5,7 +5,7 @@ export function EditPipelineSection({ form, productChoices, teamSelectionPending
   // Use provided enabled statuses or fall back to all statuses
   const statuses = enabledStatuses.length > 0 ? enabledStatuses : [
     "new", "pending", "contacted", "qualified", "proposal", "negotiation",
-    "booked-demo", "demo-done", "trial-started", "closed-won", "closed-lost"
+    "on-hold", "booked-demo", "demo-done", "trial-started", "closed-won", "closed-lost"
   ];
 
   return (
@@ -64,6 +64,10 @@ export function EditPipelineSection({ form, productChoices, teamSelectionPending
         <label className="space-y-2">
           <span className={T.kicker}>Number of Units</span>
           <input className={T.input} type="number" min="0" step="1" value={form.number_of_units} onChange={(e) => onChange("number_of_units", e.target.value)} placeholder="0" />
+        </label>
+        <label className="space-y-2">
+          <span className={T.kicker}>No. of Employees</span>
+          <input className={T.input} type="text" value={form.no_of_employees || ""} onChange={(e) => onChange("no_of_employees", e.target.value)} placeholder="e.g. 100-500" />
         </label>
         <label className="space-y-2">
           <span className={T.kicker}>Follow-up Date</span>

@@ -13,6 +13,7 @@ export default function WorkspacePage({
   eyebrow,
   allowedRoles = [],
   requestBuilder = () => [],
+  requestDeps = [],
   heroStats = () => [],
   hideTitle = false,
   children,
@@ -72,7 +73,7 @@ export default function WorkspacePage({
 
     setSession(activeSession);
     loadData(activeSession);
-  }, [router]);
+  }, [router, ...requestDeps]);
 
   return (
     <DashboardShell

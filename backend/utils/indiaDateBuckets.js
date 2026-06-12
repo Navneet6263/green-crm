@@ -42,7 +42,29 @@ function buildIndiaDayBuckets(days = 7, reference = new Date()) {
   });
 }
 
+function buildIndiaDayBucketsForRange(fromIso, toIso) {
+  const fromDate = new Date(`${fromIso}T00:00:00Z`);
+  const toDate = new Date(`${toIso}T00:00:00Z`);
+  
+  // Convert UTC midnights to India start times (just for calculation context if needed, but really we just need the boundaries)
+  // Let's rely on getIndiaDayStartUtc to find the exact UTC bounds for these visual days.
+  const fromStartUtc = getIndiaDayStartUtc(new Date(fromDate.getTime() - INDIA_OFFSET_MINUTES * 60 * 1000));
+  const toStartUtc = getIndiaDayStartUtc(new Date(toDate.getTime() - INDIA_OFFSET_MINUTES * 60 * 1000));
+  
+  let diffDays = Math.round((toStartUtc - fromStartUtc) / DAY_MS) + 1;
+  // Cap at 90 days to avoid massive arrays/DB queries if someone queries 10 years
+  diffDays = Math.min(Math.max(1, diffDays), 90);
+  
+  // We use `toDate` (or `toIso`) as the reference date so it walks backwards from there
+  // Actually, wait, `buildIndiaDayBuckets` takes the `reference` which dictates `todayStartUtc`.
+  // If we pass `toStartUtc + 12 hours` as reference, `getIndiaDayStartUtc` will yield `toStartUtc`.
+  const refDate = new Date(toStartUtc.getTime() + 12 * 60 * 60 * 1000); // midday UTC guarantees it falls on the correct India day
+  
+  return buildIndiaDayBuckets(diffDays, refDate);
+}
+
 module.exports = {
   buildIndiaDayBuckets,
+  buildIndiaDayBucketsForRange,
   getIndiaDayStartUtc,
 };

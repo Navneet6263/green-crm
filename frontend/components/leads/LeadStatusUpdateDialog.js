@@ -6,7 +6,7 @@ import { createPortal } from "react-dom";
 import { LEAD_STATUS_ORDER, getLeadStatusLabel } from "../../lib/leadStatus";
 import LeadDemoHandoffFields from "./LeadDemoHandoffFields";
 
-const RESPONSES = ["Interested", "Busy", "Not reachable", "Call later", "Not interested", "Wrong number", "Converted"];
+const RESPONSES = ["Interested", "Busy", "Not reachable", "Call later", "On hold", "Not interested", "Wrong number", "Converted"];
 const INPUT = "w-full rounded-[16px] border border-[#eadfcd] bg-white px-3 py-2.5 text-sm text-[#060710] outline-none focus:border-[#d7b258] focus:ring-4 focus:ring-[#f6ead0]";
 const LABEL = "text-[10px] font-black uppercase tracking-[0.22em] text-[#9a886d]";
 const PRIMARY = "inline-flex min-h-[40px] items-center justify-center rounded-[16px] border border-[#d7b258] bg-[#f3dfab] px-4 py-2 text-sm font-semibold text-[#060710] disabled:cursor-not-allowed disabled:opacity-60";

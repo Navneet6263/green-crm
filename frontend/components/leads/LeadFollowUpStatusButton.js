@@ -8,7 +8,7 @@ const FIELD = "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 
 const MODES = ["call", "email", "whatsapp", "meeting"];
 const CALL_STATUSES = ["Connected", "Not connected", "Busy", "Not reachable", "Switched off", "Wrong number", "Call later"];
 const EMAIL_STATUSES = ["Sent", "Opened", "Replied", "Bounced", "No reply", "Wrong email"];
-const RESPONSES = ["Interested", "Busy", "Not reachable", "Call later", "Not interested", "Wrong number", "Converted", "No response"];
+const RESPONSES = ["Interested", "Busy", "Not reachable", "Call later", "On hold", "Not interested", "Wrong number", "Converted", "No response"];
 
 const MODE_ICON = { call: "📞", email: "✉️", whatsapp: "💬", meeting: "🤝" };
 

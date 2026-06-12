@@ -132,6 +132,7 @@ export default function EditLeadPage() {
       ...form,
       estimated_value: normalizeEstimatedValue(form.estimated_value),
       number_of_units: normalizeUnitCount(form.number_of_units),
+      no_of_employees: form.no_of_employees?.trim() || null,
       follow_up_date: toApiDateTime(form.follow_up_date) || "",
       advance_received: form.advance_received === "" ? 0 : Number(form.advance_received),
     };
@@ -146,6 +147,7 @@ export default function EditLeadPage() {
       ["workflow_stage", "Workflow Stage", originalLead.workflow_stage, nextPayload.workflow_stage],
       ["estimated_value", "Estimated Value", originalLead.estimated_value, nextPayload.estimated_value],
       ["number_of_units", "Number of Units", originalLead.number_of_units, nextPayload.number_of_units],
+      ["no_of_employees", "No. of Employees", originalLead.no_of_employees, nextPayload.no_of_employees],
       ["team_id", "Team", originalLead.team_name || originalLead.team_id, selectedTeam?.name || selectedTeam?.team_id || nextPayload.team_id],
       ["assigned_to", "Lead Owner", originalLead.assigned_to_name || originalLead.assigned_to, selectedOwner?.name || nextPayload.assigned_to],
       ["requirements", "Requirements", originalLead.requirements, nextPayload.requirements],
@@ -213,6 +215,7 @@ export default function EditLeadPage() {
           workflow_stage: leadResponse.workflow_stage || "sales",
           estimated_value: leadResponse.estimated_value || "",
           number_of_units: leadResponse.number_of_units ?? "",
+          no_of_employees: leadResponse.no_of_employees || "",
           team_id: nextTeamId,
           assigned_to: userItems.some((user) => user.user_id === leadResponse.assigned_to) ? leadResponse.assigned_to || "" : "",
           product_id: leadResponse.product_id || "",
@@ -281,10 +284,6 @@ export default function EditLeadPage() {
 
   async function handleSubmit(event) {
     event.preventDefault();
-    if (requiresChangeNote && !changeNote.trim()) {
-      setError("A change note is required whenever a lead is updated.");
-      return;
-    }
 
     if (!form.product_id) {
       setError("Select a product before saving the lead.");
@@ -316,14 +315,20 @@ export default function EditLeadPage() {
     setError("");
 
     try {
+      let finalChangeNote = changeNote.trim();
+      if (!finalChangeNote && changeItems.length > 0) {
+        finalChangeNote = "Auto-generated log:\n" + changeItems.map(c => `- ${c.label}: ${c.previous} -> ${c.next}`).join("\n");
+      }
+
       const nextPayload = {
         ...form,
         estimated_value: estimatedValue,
         number_of_units: unitCount,
+        no_of_employees: form.no_of_employees?.trim() || null,
         follow_up_date: toApiDateTime(form.follow_up_date),
         team_id: form.team_id || undefined,
         assigned_to: canManageAssignment ? form.assigned_to || undefined : undefined,
-        change_note: changeNote.trim(),
+        change_note: finalChangeNote,
         advance_received: form.advance_received === "" ? 0 : Number(form.advance_received),
       };
 

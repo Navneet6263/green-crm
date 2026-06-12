@@ -17,13 +17,13 @@ export function EditContextSection({ form, changeNote, requiresChangeNote, savin
           <textarea className={`${T.input} min-h-[120px] resize-y`} rows="4" value={form.requirements} onChange={(e) => onChange("requirements", e.target.value)} placeholder="Enter lead requirements..." />
         </label>
         <label className="space-y-2">
-          <span className={T.kicker}>{requiresChangeNote ? "Change Note (Required)" : "Change Note"}</span>
+          <span className={T.kicker}>Change Note</span>
           <textarea
             className={`${T.input} min-h-[120px] resize-y`}
             rows="4"
             value={changeNote}
             onChange={(e) => onChangeNoteChange(e.target.value)}
-            placeholder={requiresChangeNote ? "Explain what changed and why (required for audit trail)" : "Optional note about this update"}
+            placeholder="Optional note about this update"
           />
         </label>
       </div>
@@ -32,7 +32,7 @@ export function EditContextSection({ form, changeNote, requiresChangeNote, savin
         <button className={T.ghost} type="button" onClick={() => router.push(`/leads/${params.id}`)}>
           Cancel
         </button>
-        <button className={T.gold} type="submit" disabled={saving || (requiresChangeNote && !changeNote.trim())}>
+        <button className={T.gold} type="submit" disabled={saving}>
           {saving ? "Saving..." : "Save Changes"}
         </button>
       </div>

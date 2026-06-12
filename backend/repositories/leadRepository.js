@@ -362,6 +362,7 @@ async function createLead(lead, executor) {
         priority,
         estimated_value,
         number_of_units,
+        no_of_employees,
         team_id,
         assigned_to,
         assigned_at,
@@ -382,7 +383,7 @@ async function createLead(lead, executor) {
         advance_received,
         created_at,
         updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${SQL_NOW}, ${SQL_NOW})
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${SQL_NOW}, ${SQL_NOW})
     `,
     [
       lead.lead_id,
@@ -403,6 +404,7 @@ async function createLead(lead, executor) {
       lead.priority || "medium",
       lead.estimated_value || 0,
       lead.number_of_units,
+      lead.no_of_employees || null,
       lead.team_id || null,
       lead.assigned_to || null,
       lead.assigned_to ? new Date() : null,

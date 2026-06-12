@@ -169,6 +169,7 @@ function normalizeLeadPayload(payload) {
       payload.number_of_units ?? payload.number_of_unit ?? payload.unit_count ?? payload.units ?? null
     ),
     product_id: payload.product_id || null,
+    no_of_employees: payload.no_of_employees !== undefined ? String(payload.no_of_employees).trim() : null,
     requirements: payload.requirements || payload.notes || null,
     workflow_stage: String(payload.workflow_stage || "sales").toLowerCase(),
     assigned_to: payload.assigned_to || null,
@@ -312,6 +313,7 @@ function buildLeadChangeSummary(previousLead, nextLead, assignedToOverride) {
   track("Priority", previousLead.priority, nextLead.priority);
   track("Estimated value", previousLead.estimated_value, nextLead.estimated_value);
   track("Number of units", previousLead.number_of_units, nextLead.number_of_units);
+  track("No. of employees", previousLead.no_of_employees, nextLead.no_of_employees);
   track("Product", previousLead.product_id, nextLead.product_id);
   track("Workflow", previousLead.workflow_stage, nextLead.workflow_stage);
   track("Requirements", previousLead.requirements, nextLead.requirements);
@@ -958,6 +960,7 @@ async function updateLead(auth, leadId, payload) {
     priority: normalized.priority,
     estimated_value: normalized.estimated_value,
     number_of_units: normalized.number_of_units,
+    no_of_employees: normalized.no_of_employees,
     product_id: normalized.product_id,
     requirements: normalized.requirements,
     workflow_stage: normalized.workflow_stage,
@@ -967,7 +970,7 @@ async function updateLead(auth, leadId, payload) {
 
   let assignedToOverride;
 
-  if (payload.assigned_to) {
+  if (payload.assigned_to !== undefined && payload.assigned_to !== lead.assigned_to) {
     const isDemoHandoff =
       normalized.status === "booked-demo" &&
       [ROLES.SALES, ROLES.MARKETING].includes(auth.role) &&

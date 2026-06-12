@@ -627,6 +627,7 @@ export default function LeadDetailPage() {
                     ["Priority",  nice(lead.priority || "medium"),      "border-amber-100 bg-amber-50"],
                     ["Team",      teamBadgeLabel(lead) || "Auto team",  "border-slate-100 bg-slate-50"],
                     ["Units",     unitText(lead.number_of_units),       "border-slate-100 bg-slate-50"],
+                    ["Employees", lead.no_of_employees || "—",          "border-slate-100 bg-slate-50"],
                     ["Created By",lead.created_by_name || "—",          "border-slate-100 bg-slate-50"],
                     ["Lead ID",   lead.lead_id,                         "border-slate-100 bg-slate-50"],
                   ].map(([label, value, accent]) => (
