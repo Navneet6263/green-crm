@@ -48,7 +48,7 @@ const KICKER_CLASS = "text-[10px] font-bold uppercase tracking-widest text-slate
 const HERO_PANEL_CLASS = "rounded-2xl border border-slate-100 bg-white p-5 shadow-sm md:p-6";
 const PILL_CLASS = "inline-flex rounded-full border px-2.5 py-0.5 text-[11px] font-semibold";
 const HEADER_ACTION_BUTTON_CLASS = "inline-flex min-h-[38px] items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-slate-600 transition hover:border-amber-300 hover:bg-amber-50 hover:text-amber-800 disabled:cursor-not-allowed disabled:opacity-50";
-const nice = (v) => String(v || "").split("-").filter(Boolean).map((x) => x[0].toUpperCase() + x.slice(1)).join(" ");
+const nice = (v) => String(v || "").replace(/_/g, "-").split("-").filter(Boolean).map((x) => x[0].toUpperCase() + x.slice(1)).join(" ");
 const money = (v) => `INR ${Number(v || 0).toLocaleString("en-IN")}`;
 const when = (v, full = false) => formatIndiaDateTime(v, full);
 const hrefForDoc = (fileUrl) => !fileUrl ? "#" : /^(https?:\/\/|blob:)/i.test(fileUrl) ? fileUrl : `${API_BASE}${fileUrl}`;
@@ -628,6 +628,9 @@ export default function LeadDetailPage() {
                     ["Team",      teamBadgeLabel(lead) || "Auto team",  "border-slate-100 bg-slate-50"],
                     ["Units",     unitText(lead.number_of_units),       "border-slate-100 bg-slate-50"],
                     ["Employees", lead.no_of_employees || "—",          "border-slate-100 bg-slate-50"],
+                    ["Active Users", lead.active_users || "—",          "border-slate-100 bg-slate-50"],
+                    ["Payment Mode", nice(lead.payment_mode || "—"),    "border-emerald-100 bg-emerald-50"],
+                    ["Tenure",    lead.client_tenure || "—",            "border-slate-100 bg-slate-50"],
                     ["Created By",lead.created_by_name || "—",          "border-slate-100 bg-slate-50"],
                     ["Lead ID",   lead.lead_id,                         "border-slate-100 bg-slate-50"],
                   ].map(([label, value, accent]) => (

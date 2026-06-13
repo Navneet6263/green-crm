@@ -42,7 +42,7 @@ const PRIORITY_OPTIONS = [
 ];
 
 function createForm(cid = "") {
-  return { company_id:cid, team_id:"", product_id:"", contact_person:"", company_name:"", email:"", phone:"", industry:"", lead_source:"website", custom_lead_source:"", follow_up_date:"", estimated_value:"", number_of_units:"", no_of_employees:"", priority:"medium", requirements:"", assigned_to:"", address_street:"", address_city:"", address_state:"", address_zip:"", address_country:"India", advance_received:"" };
+  return { company_id:cid, team_id:"", product_id:"", contact_person:"", company_name:"", email:"", phone:"", industry:"", lead_source:"website", custom_lead_source:"", follow_up_date:"", estimated_value:"", number_of_units:"", no_of_employees:"", active_users:"", priority:"medium", requirements:"", assigned_to:"", address_street:"", address_city:"", address_state:"", address_zip:"", address_country:"India", advance_received:"" };
 }
 
 function formatDateTimeMin() {
@@ -77,6 +77,7 @@ export default function NewLeadPage() {
   const [pendingCreates, setPendingCreates] = useState(0);
 
   const role = session?.user?.role || "";
+  const isAdmin = ["super-admin", "platform-admin", "admin"].includes(role);
   const canAssign = canManageScopedAssignments(role);
   const isPlatformConsole = isPlatformConsoleRole(role);
   const isSuperAdmin = role === "super-admin";
@@ -209,6 +210,7 @@ export default function NewLeadPage() {
       estimated_value: Number(source.estimated_value || 0),
       number_of_units: source.number_of_units === "" ? null : Number(source.number_of_units),
       no_of_employees: source.no_of_employees.trim() || null,
+      active_users: source.active_users === "" ? null : Number(source.active_users),
       priority: source.priority, requirements: source.requirements.trim() || null,
       assigned_to: source.assigned_to || undefined,
       address_street: source.address_street.trim() || null, address_city: source.address_city.trim() || null,
@@ -279,7 +281,7 @@ export default function NewLeadPage() {
                   canOpenTeamWorkspace={canOpenTeamWorkspace} onChange={onChange}
                 />
                 <LeadFormSection2
-                  form={form} errors={errors}
+                  form={form} errors={errors} isAdmin={isAdmin}
                   INDUSTRY_OPTIONS={INDUSTRY_OPTIONS} LEAD_SOURCE_OPTIONS={LEAD_SOURCE_OPTIONS} PRIORITY_OPTIONS={PRIORITY_OPTIONS}
                   minimumDateTime={minimumDateTime} onChange={onChange}
                 />

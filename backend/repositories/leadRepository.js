@@ -381,9 +381,10 @@ async function createLead(lead, executor) {
         admin_comments,
         total_lead_value,
         advance_received,
+        active_users,
         created_at,
         updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${SQL_NOW}, ${SQL_NOW})
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${SQL_NOW}, ${SQL_NOW})
     `,
     [
       lead.lead_id,
@@ -413,6 +414,7 @@ async function createLead(lead, executor) {
       lead.product_id,
       lead.requirements || null,
       lead.workflow_stage || "sales",
+      1,
       lead.last_contacted_at || null,
       lead.is_workflow || 0,
       lead.workflow_status || null,
@@ -422,6 +424,7 @@ async function createLead(lead, executor) {
       lead.admin_comments || null,
       lead.estimated_value || lead.total_lead_value || 0,
       lead.advance_received || 0,
+      lead.active_users || null,
     ]
   );
 

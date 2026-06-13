@@ -58,7 +58,7 @@ export function EditLeadHeader({ originalLead, selectedTeam, params, router }) {
   );
 }
 
-export function EditIdentitySection({ form, teams, users, selectedTeam, teamSelectorVisible, canManageAssignment, resourceLoading, teamSelectionPending, ownerEmptyMessage, onChange }) {
+export function EditIdentitySection({ form, isAdmin, teams, users, selectedTeam, teamSelectorVisible, canManageAssignment, resourceLoading, teamSelectionPending, ownerEmptyMessage, onChange }) {
   const LEAD_SOURCE_OPTIONS = [
     { value:"website", label:"Website" }, { value:"google", label:"Google" },
     { value:"facebook", label:"Facebook" }, { value:"instagram", label:"Instagram" },
@@ -85,6 +85,56 @@ export function EditIdentitySection({ form, teams, users, selectedTeam, teamSele
         <label className="space-y-2">
           <span className={T.kicker}>Company Name</span>
           <input className={T.input} value={form.company_name} onChange={(e) => onChange("company_name", e.target.value)} required />
+        </label>
+        <label className="space-y-2">
+          <span className={T.kicker}>No. of Employees</span>
+          <input className={T.input} type="text" value={form.no_of_employees} onChange={(e) => onChange("no_of_employees", e.target.value)} placeholder="e.g. 100-500" />
+        </label>
+        <label className="space-y-2">
+          <span className={T.kicker}>Active Users</span>
+          <input className={T.input} type="number" min={0} step={1} value={form.active_users} onChange={(e) => onChange("active_users", e.target.value)} placeholder="e.g. 50" />
+        </label>
+        <label className="space-y-2">
+          <span className={T.kicker}>Mode of Payment</span>
+          <select className={T.input} value={form.payment_mode || ""} onChange={(e) => onChange("payment_mode", e.target.value)}>
+            <option value="">Select payment mode</option>
+            <option value="upi">UPI</option>
+            <option value="credit_debit_card">Credit/Debit Card</option>
+            <option value="neft_company">NEFT/Company Account</option>
+          </select>
+        </label>
+        <label className="space-y-2">
+          <span className={T.kicker}>Client Tenure (End Date)</span>
+          <div className="flex gap-2">
+            <select 
+              className={T.input} 
+              style={{ width: '130px', flexShrink: 0 }} 
+              onChange={(e) => {
+                const months = parseInt(e.target.value, 10);
+                if (months) {
+                  const d = new Date();
+                  d.setMonth(d.getMonth() + months);
+                  // Return format YYYY-MM-DD
+                  const yyyy = d.getFullYear();
+                  const mm = String(d.getMonth() + 1).padStart(2, '0');
+                  const dd = String(d.getDate()).padStart(2, '0');
+                  onChange("client_tenure", `${yyyy}-${mm}-${dd}`);
+                }
+              }}
+            >
+              <option value="">Custom</option>
+              <option value="1">1 Month</option>
+              <option value="3">3 Months</option>
+              <option value="6">6 Months</option>
+              <option value="12">12 Months</option>
+            </select>
+            <input 
+              className={T.input} 
+              type="date" 
+              value={form.client_tenure ? String(form.client_tenure).split('T')[0] : ""} 
+              onChange={(e) => onChange("client_tenure", e.target.value)} 
+            />
+          </div>
         </label>
         <label className="space-y-2">
           <span className={T.kicker}>Email</span>

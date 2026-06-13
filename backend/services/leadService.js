@@ -175,6 +175,9 @@ function normalizeLeadPayload(payload) {
     assigned_to: payload.assigned_to || null,
     total_lead_value: normalizeLeadNumber(payload.estimated_value ?? payload.total_lead_value ?? 0),
     advance_received: normalizeLeadNumber(payload.advance_received ?? 0),
+    active_users: normalizeLeadInteger(payload.active_users ?? null),
+    payment_mode: payload.payment_mode || null,
+    client_tenure: payload.client_tenure || null,
   };
 }
 
@@ -966,6 +969,9 @@ async function updateLead(auth, leadId, payload) {
     workflow_stage: normalized.workflow_stage,
     total_lead_value: normalized.estimated_value || normalized.total_lead_value,
     advance_received: normalized.advance_received,
+    active_users: normalized.active_users,
+    payment_mode: normalized.payment_mode,
+    client_tenure: normalized.client_tenure,
   };
 
   let assignedToOverride;

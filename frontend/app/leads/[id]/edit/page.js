@@ -73,7 +73,13 @@ export default function EditLeadPage() {
   const [teams, setTeams] = useState([]);
   const [users, setUsers] = useState([]);
   const [products, setProducts] = useState([]);
-  const [form, setForm] = useState(null);
+  const [form, setForm] = useState({
+    contact_person: "", company_name: "", email: "", phone: "",
+    lead_source: "website", priority: "medium", status: "new", workflow_stage: "sales",
+    estimated_value: "", number_of_units: "", no_of_employees: "", active_users: "",
+    payment_mode: "", client_tenure: "", team_id: "", assigned_to: "", product_id: "",
+    requirements: "", follow_up_date: "", advance_received: ""
+  });
   const [originalLead, setOriginalLead] = useState(null);
   const [changeNote, setChangeNote] = useState("");
   const [error, setError] = useState("");
@@ -133,6 +139,9 @@ export default function EditLeadPage() {
       estimated_value: normalizeEstimatedValue(form.estimated_value),
       number_of_units: normalizeUnitCount(form.number_of_units),
       no_of_employees: form.no_of_employees?.trim() || null,
+      active_users: form.active_users === "" ? null : Number(form.active_users),
+      payment_mode: form.payment_mode || null,
+      client_tenure: form.client_tenure?.trim() || null,
       follow_up_date: toApiDateTime(form.follow_up_date) || "",
       advance_received: form.advance_received === "" ? 0 : Number(form.advance_received),
     };
@@ -148,6 +157,9 @@ export default function EditLeadPage() {
       ["estimated_value", "Estimated Value", originalLead.estimated_value, nextPayload.estimated_value],
       ["number_of_units", "Number of Units", originalLead.number_of_units, nextPayload.number_of_units],
       ["no_of_employees", "No. of Employees", originalLead.no_of_employees, nextPayload.no_of_employees],
+      ["active_users", "Active Users", originalLead.active_users, nextPayload.active_users],
+      ["payment_mode", "Payment Mode", originalLead.payment_mode, nextPayload.payment_mode],
+      ["client_tenure", "Client Tenure", originalLead.client_tenure, nextPayload.client_tenure],
       ["team_id", "Team", originalLead.team_name || originalLead.team_id, selectedTeam?.name || selectedTeam?.team_id || nextPayload.team_id],
       ["assigned_to", "Lead Owner", originalLead.assigned_to_name || originalLead.assigned_to, selectedOwner?.name || nextPayload.assigned_to],
       ["requirements", "Requirements", originalLead.requirements, nextPayload.requirements],
@@ -168,6 +180,7 @@ export default function EditLeadPage() {
 
   const requiresChangeNote = changeItems.length > 0;
   const hideTitle = ["sales", "marketing", "admin", "manager"].includes(role);
+  const isAdmin = ["super-admin", "platform-admin", "admin"].includes(role);
 
   function onChange(field, value) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -216,6 +229,9 @@ export default function EditLeadPage() {
           estimated_value: leadResponse.estimated_value || "",
           number_of_units: leadResponse.number_of_units ?? "",
           no_of_employees: leadResponse.no_of_employees || "",
+          active_users: leadResponse.active_users ?? "",
+          payment_mode: leadResponse.payment_mode || "",
+          client_tenure: leadResponse.client_tenure || "",
           team_id: nextTeamId,
           assigned_to: userItems.some((user) => user.user_id === leadResponse.assigned_to) ? leadResponse.assigned_to || "" : "",
           product_id: leadResponse.product_id || "",
@@ -325,6 +341,9 @@ export default function EditLeadPage() {
         estimated_value: estimatedValue,
         number_of_units: unitCount,
         no_of_employees: form.no_of_employees?.trim() || null,
+        active_users: form.active_users === "" ? null : Number(form.active_users),
+        payment_mode: form.payment_mode || null,
+        client_tenure: form.client_tenure?.trim() || null,
         follow_up_date: toApiDateTime(form.follow_up_date),
         team_id: form.team_id || undefined,
         assigned_to: canManageAssignment ? form.assigned_to || undefined : undefined,
@@ -348,16 +367,16 @@ export default function EditLeadPage() {
 
   return (
     <DashboardShell session={session} title="Edit Lead" hideTitle={hideTitle} heroStats={[]}>
-      <div className="mx-auto max-w-5xl space-y-4 px-3 py-4 sm:px-4 sm:py-5">
+      <div className={`mx-auto max-w-5xl space-y-4 px-3 py-4 sm:px-4 sm:py-5 ${loading ? 'opacity-60 pointer-events-none transition-opacity duration-300' : 'opacity-100 transition-opacity duration-300'}`}>
         <AlertError message={error} onDismiss={() => setError("")} />
-        {loading ? <div className="rounded-xl border border-slate-100 bg-white px-4 py-3 text-sm text-slate-600">Loading lead...</div> : null}
-        {!loading && form ? (
+        {form && (
           <section className="space-y-4">
             <EditLeadHeader originalLead={originalLead} selectedTeam={selectedTeam} params={params} router={router} />
 
             <form className="space-y-4" onSubmit={handleSubmit}>
               <EditIdentitySection
                 form={form}
+                isAdmin={isAdmin}
                 teams={teams}
                 users={users}
                 selectedTeam={selectedTeam}
@@ -388,7 +407,7 @@ export default function EditLeadPage() {
               />
             </form>
           </section>
-        ) : null}
+        )}
       </div>
     </DashboardShell>
   );

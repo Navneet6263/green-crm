@@ -2,7 +2,7 @@
 
 import { T, Label, SectionCard } from "./lead-form-tokens";
 
-export function LeadFormSection2({ form, errors, INDUSTRY_OPTIONS, LEAD_SOURCE_OPTIONS, PRIORITY_OPTIONS, minimumDateTime, onChange }) {
+export function LeadFormSection2({ form, errors, isAdmin, INDUSTRY_OPTIONS, LEAD_SOURCE_OPTIONS, PRIORITY_OPTIONS, minimumDateTime, onChange }) {
   return (
     <SectionCard step="02" title="Lead Details" sub="Source, priority, value, financials, follow-up">
       <Label label="Industry">
@@ -33,6 +33,9 @@ export function LeadFormSection2({ form, errors, INDUSTRY_OPTIONS, LEAD_SOURCE_O
       </Label>
       <Label label="No. of Employees">
         <input className={T.input} type="text" value={form.no_of_employees} onChange={e => onChange("no_of_employees", e.target.value)} placeholder="e.g. 100-500" />
+      </Label>
+      <Label label="Active Users">
+        <input className={T.input} type="number" min={0} step={1} value={form.active_users} onChange={e => onChange("active_users", e.target.value)} placeholder="e.g. 50" />
       </Label>
       <Label label="Follow-up Date">
         <input className={T.input} type="datetime-local" min={minimumDateTime} value={form.follow_up_date} onChange={e => onChange("follow_up_date", e.target.value)} />
