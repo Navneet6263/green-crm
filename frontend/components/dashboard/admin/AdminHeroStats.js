@@ -1,46 +1,31 @@
 import React from "react";
 import { formatDashboardCount } from "./adminDashboardUtils";
 
-const HERO_STAT_CARD =
-  "rounded-[26px] border border-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(247,241,233,0.92))] p-5 shadow-[0_18px_42px_rgba(33,48,74,0.10)] backdrop-blur-xl transition duration-200 ease-out hover:scale-[1.02] hover:border-[#dbcdb8] hover:shadow-[0_24px_52px_rgba(33,48,74,0.14)]";
+const stats = [
+  { key: "leads", label: "Visible Leads", color: "#3b82f6" },
+  { key: "winRate", label: "Win Rate", color: "#10b981" },
+  { key: "demo", label: "Demo Done", color: "#f59e0b" },
+  { key: "completion", label: "Demo Completion", color: "#6366f1" },
+];
 
 export default function AdminHeroStats({ totalVisibleLeads, winRate, demoDoneCount, demoCompletionRate }) {
+  const values = {
+    leads: formatDashboardCount(totalVisibleLeads),
+    winRate,
+    demo: formatDashboardCount(demoDoneCount),
+    completion: demoCompletionRate,
+  };
+
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
-      <div className={HERO_STAT_CARD}>
-        <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#93816a]">Visible Lead Base</p>
-        <strong className="mt-4 block text-4xl font-black tracking-tight text-[#0f172a]">
-          {formatDashboardCount(totalVisibleLeads)}
-        </strong>
-        <p className="mt-3 text-sm leading-6 text-[#64748b]">
-          Includes all currently visible statuses from new through closed stages.
-        </p>
-      </div>
-      <div className={HERO_STAT_CARD}>
-        <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#93816a]">Win Rate</p>
-        <strong className="mt-4 block text-4xl font-black tracking-tight text-[#5eead4]">{winRate}</strong>
-        <p className="mt-3 text-sm leading-6 text-[#64748b]">
-          Closed won share across the visible lead base.
-        </p>
-      </div>
-      <div className={HERO_STAT_CARD}>
-        <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#93816a]">Demo Done</p>
-        <strong className="mt-4 block text-4xl font-black tracking-tight text-[#34d399]">
-          {formatDashboardCount(demoDoneCount)}
-        </strong>
-        <p className="mt-3 text-sm leading-6 text-[#64748b]">
-          Leads already moved from booked demo into completed demo status.
-        </p>
-      </div>
-      <div className={HERO_STAT_CARD}>
-        <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#93816a]">Demo Completion</p>
-        <strong className="mt-4 block text-4xl font-black tracking-tight text-[#a78bfa]">
-          {demoCompletionRate}
-        </strong>
-        <p className="mt-3 text-sm leading-6 text-[#64748b]">
-          Share of demo-stage leads already marked demo done.
-        </p>
-      </div>
+    <div className="grid grid-cols-2 gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      {stats.map((stat) => (
+        <div key={stat.key} className="flex flex-col rounded-xl border border-slate-100 bg-slate-50 p-3 transition-all duration-300 hover:bg-slate-100/50">
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">{stat.label}</p>
+          <strong className="mt-1.5 text-2xl font-black tracking-tight" style={{ color: stat.color }}>
+            {values[stat.key]}
+          </strong>
+        </div>
+      ))}
     </div>
   );
 }

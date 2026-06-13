@@ -1,5 +1,4 @@
 import Link from "next/link";
-
 import { formatDashboardCount } from "./adminDashboardUtils";
 
 export default function AdminMetricCard({ href, label, value, accent, note, meta }) {
@@ -7,16 +6,20 @@ export default function AdminMetricCard({ href, label, value, accent, note, meta
     <Link
       href={href}
       prefetch={false}
-      className="group cursor-pointer rounded-[26px] border border-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(247,241,233,0.92))] p-4 shadow-[0_18px_42px_rgba(33,48,74,0.10)] backdrop-blur-xl transition duration-200 ease-out hover:scale-[1.02] hover:border-[#dbcdb8] hover:shadow-[0_24px_52px_rgba(33,48,74,0.14)]"
+      className="group relative flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md"
     >
-      <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#93816a]">{label}</p>
-      <div className="mt-4 flex items-end justify-between gap-3">
-        <strong className="text-3xl font-black tracking-tight" style={{ color: accent }}>
+      <div className="absolute left-0 top-0 h-[3px] w-full opacity-80 transition-opacity duration-300 group-hover:opacity-100" style={{ backgroundColor: accent }} />
+      
+      <div className="flex items-center justify-between mt-1">
+        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">{label}</p>
+        {meta && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600">{meta}</span>}
+      </div>
+      <div className="mt-3">
+        <strong className="text-3xl font-black tracking-tight text-slate-900">
           {formatDashboardCount(value)}
         </strong>
-        {meta ? <span className="rounded-full border border-[#e4d9ca] bg-white/80 px-3 py-1 text-[11px] font-semibold text-[#6b7280]">{meta}</span> : null}
       </div>
-      <p className="mt-3 text-sm leading-6 text-[#64748b]">{note}</p>
+      {note && <p className="mt-2 text-[11px] leading-relaxed text-slate-500">{note}</p>}
     </Link>
   );
 }

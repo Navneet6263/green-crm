@@ -7,13 +7,8 @@ import AdminDemoTrendChart from "./AdminDemoTrendChart";
 import { buildLeadDrilldownHref } from "./adminDashboardUtils";
 
 export default function AdminDashboardCharts({
-  leadTrend,
-  funnel,
-  statusDistribution,
-  demoTrend,
-  openLeadList,
-  buildDateHref,
-  filterMeta,
+  leadTrend, funnel, statusDistribution, demoTrend,
+  paymentTrend, convertedSourceMix, openLeadList, buildDateHref, filterMeta,
 }) {
   function handleFunnelClick(item) {
     const mapping = {
@@ -23,56 +18,34 @@ export default function AdminDashboardCharts({
       "demo-done": buildLeadDrilldownHref({ status: "demo-done", ...filterMeta }),
       "closed-won": buildLeadDrilldownHref({ status: "closed-won", ...filterMeta }),
     };
-
     openLeadList(mapping[item?.key] || "/leads");
   }
 
   return (
-    <>
-      <div className="grid gap-5 xl:grid-cols-2">
-        <AdminChartPanel
-          eyebrow="Growth Trend"
-          title="Lead Trend"
-          copy="Track lead creation over time. Click any point to open that day's lead list."
-        >
-          <AdminLeadTrendChart
-            data={leadTrend}
-            onPointClick={(point) => openLeadList(buildDateHref(point.key, point.key, filterMeta))}
-          />
+    <div className="space-y-3">
+      {/* Row 1: Lead Trend + Funnel */}
+      <div className="grid gap-3 xl:grid-cols-2">
+        <AdminChartPanel eyebrow="Growth" title="Lead Trend" copy="Track lead creation over time. Click any point to drill in.">
+          <AdminLeadTrendChart data={leadTrend}
+            onPointClick={(p) => openLeadList(buildDateHref(p.key, p.key, filterMeta))} />
         </AdminChartPanel>
-
-        <AdminChartPanel
-          eyebrow="Demo Pipeline"
-          title="Demo Funnel"
-          copy="See how much of the lead base is sitting in working, booked demo, demo done, and won stages."
-        >
+        <AdminChartPanel eyebrow="Pipeline" title="Demo Funnel" copy="Lead distribution across funnel stages.">
           <AdminFunnelChart data={funnel} onStageClick={handleFunnelClick} />
         </AdminChartPanel>
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
-        <AdminChartPanel
-          eyebrow="Status Mix"
-          title="Status Distribution"
-          copy="Understand where the current lead base is concentrated. Booked demo and demo done are highlighted in the mix."
-        >
-          <AdminStatusDonutChart
-            data={statusDistribution}
-            onSegmentClick={(item) => openLeadList(buildLeadDrilldownHref({ status: item.status, ...filterMeta }))}
-          />
+      {/* Row 2: Status Donut + Demo Trend */}
+      <div className="grid gap-3 xl:grid-cols-[1.05fr_0.95fr]">
+        <AdminChartPanel eyebrow="Distribution" title="Status Mix" copy="Where the pipeline is concentrated.">
+          <AdminStatusDonutChart data={statusDistribution}
+            onSegmentClick={(item) => openLeadList(buildLeadDrilldownHref({ status: item.status, ...filterMeta }))} />
         </AdminChartPanel>
-
-        <AdminChartPanel
-          eyebrow="Daily Comparison"
-          title="Booked Demo Trend"
-          copy="Compare booked demos day by day. Click a bar to drill into that day's booked demos."
-        >
-          <AdminDemoTrendChart
-            data={demoTrend}
-            onBarClick={(point) => openLeadList(buildDateHref(point.key, point.key, { status: "booked-demo", ...filterMeta }))}
-          />
+        <AdminChartPanel eyebrow="Daily" title="Booked Demo Trend" copy="Day-by-day booked demo comparison.">
+          <AdminDemoTrendChart data={demoTrend}
+            onBarClick={(p) => openLeadList(buildDateHref(p.key, p.key, { status: "booked-demo", ...filterMeta }))} />
         </AdminChartPanel>
       </div>
-    </>
+
+    </div>
   );
 }

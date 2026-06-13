@@ -1,114 +1,89 @@
 import React from "react";
 import { LEAD_STATUS_ORDER, LEAD_STATUS_LABELS } from "../../../lib/leadStatus";
 
+const INPUT_CLASS = "h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition-all duration-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:bg-white";
+
 export default function AdminAdvancedFilters({
-  filters,
-  setFilters,
-  onReset,
+  filters, setFilters, onReset,
   products = [],
   sources = ["Referral", "Website", "Organic", "Social Media", "Cold Call", "Other"],
 }) {
-  const updateFilter = (key, value) => {
-    setFilters((prev) => ({ ...prev, [key]: value }));
+  const update = (key, value) => setFilters((prev) => ({ ...prev, [key]: value }));
+  const hasActive = filters.from_date || filters.to_date || filters.status || filters.priority || filters.lead_source || filters.product_id;
+
+  const applyQuickDate = (days) => {
+    const to = new Date();
+    const from = new Date();
+    from.setDate(to.getDate() - days);
+    
+    const format = (d) => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    };
+
+    setFilters((prev) => ({
+      ...prev,
+      from_date: format(from),
+      to_date: format(to)
+    }));
   };
 
-  const hasActiveFilters =
-    filters.from_date ||
-    filters.to_date ||
-    filters.status ||
-    filters.priority ||
-    filters.lead_source ||
-    filters.product_id;
-
   return (
-    <div className="mb-6 rounded-[24px] border border-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.7),rgba(250,244,235,0.85))] p-5 shadow-[0_12px_32px_rgba(33,48,74,0.06)] backdrop-blur-xl">
-      <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-[#0f172a]">Advanced Filters</h3>
-        {hasActiveFilters && (
-          <button
-            onClick={onReset}
-            className="text-xs font-medium text-[#ef4444] hover:text-[#dc2626] transition-colors"
-          >
-            Reset Filters
-          </button>
-        )}
+    <div className="mb-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="text-sm font-bold text-slate-900">Filters</h3>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400 mr-1">Quick:</span>
+          <button onClick={() => applyQuickDate(7)} className="rounded border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-bold text-slate-600 transition-all hover:bg-slate-100 hover:text-slate-900">7 Days</button>
+          <button onClick={() => applyQuickDate(30)} className="rounded border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-bold text-slate-600 transition-all hover:bg-slate-100 hover:text-slate-900">30 Days</button>
+          <button onClick={() => applyQuickDate(90)} className="rounded border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-bold text-slate-600 transition-all hover:bg-slate-100 hover:text-slate-900">90 Days</button>
+          {hasActive && (
+            <button onClick={onReset} className="ml-2 text-[11px] font-bold text-rose-500 hover:text-rose-600 transition-colors">
+              Reset All
+            </button>
+          )}
+        </div>
       </div>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3 lg:grid-cols-6">
-        <div className="flex flex-col space-y-1">
-          <label className="text-[11px] font-semibold tracking-wider text-slate-500 uppercase">From Date</label>
-          <input
-            type="date"
-            value={filters.from_date || ""}
-            onChange={(e) => updateFilter("from_date", e.target.value)}
-            className="h-10 w-full rounded-xl border border-black/5 bg-white/60 px-3 text-sm text-slate-800 focus:border-[#4f8cff] focus:outline-none focus:ring-2 focus:ring-[#cfe0ff]"
-          />
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
+        <div className="flex flex-col gap-1">
+          <label className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500">From</label>
+          <input type="date" value={filters.from_date || ""} onChange={(e) => update("from_date", e.target.value)} className={INPUT_CLASS} />
         </div>
-        <div className="flex flex-col space-y-1">
-          <label className="text-[11px] font-semibold tracking-wider text-slate-500 uppercase">To Date</label>
-          <input
-            type="date"
-            value={filters.to_date || ""}
-            onChange={(e) => updateFilter("to_date", e.target.value)}
-            className="h-10 w-full rounded-xl border border-black/5 bg-white/60 px-3 text-sm text-slate-800 focus:border-[#4f8cff] focus:outline-none focus:ring-2 focus:ring-[#cfe0ff]"
-          />
+        <div className="flex flex-col gap-1">
+          <label className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500">To</label>
+          <input type="date" value={filters.to_date || ""} onChange={(e) => update("to_date", e.target.value)} className={INPUT_CLASS} />
         </div>
-        <div className="flex flex-col space-y-1">
-          <label className="text-[11px] font-semibold tracking-wider text-slate-500 uppercase">Status</label>
-          <select
-            value={filters.status || ""}
-            onChange={(e) => updateFilter("status", e.target.value)}
-            className="h-10 w-full rounded-xl border border-black/5 bg-white/60 px-3 text-sm text-slate-800 focus:border-[#4f8cff] focus:outline-none focus:ring-2 focus:ring-[#cfe0ff]"
-          >
-            <option value="">All Statuses</option>
-            {LEAD_STATUS_ORDER.map((status) => (
-              <option key={status} value={status}>
-                {LEAD_STATUS_LABELS[status]}
-              </option>
-            ))}
+        <div className="flex flex-col gap-1">
+          <label className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500">Status</label>
+          <select value={filters.status || ""} onChange={(e) => update("status", e.target.value)} className={INPUT_CLASS}>
+            <option value="">All</option>
+            {LEAD_STATUS_ORDER.map((s) => <option key={s} value={s}>{LEAD_STATUS_LABELS[s]}</option>)}
           </select>
         </div>
-        <div className="flex flex-col space-y-1">
-          <label className="text-[11px] font-semibold tracking-wider text-slate-500 uppercase">Priority</label>
-          <select
-            value={filters.priority || ""}
-            onChange={(e) => updateFilter("priority", e.target.value)}
-            className="h-10 w-full rounded-xl border border-black/5 bg-white/60 px-3 text-sm text-slate-800 focus:border-[#4f8cff] focus:outline-none focus:ring-2 focus:ring-[#cfe0ff]"
-          >
-            <option value="">All Priorities</option>
+        <div className="flex flex-col gap-1">
+          <label className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500">Priority</label>
+          <select value={filters.priority || ""} onChange={(e) => update("priority", e.target.value)} className={INPUT_CLASS}>
+            <option value="">All</option>
             <option value="low">Low</option>
             <option value="medium">Medium</option>
             <option value="high">High</option>
             <option value="urgent">Urgent</option>
           </select>
         </div>
-        <div className="flex flex-col space-y-1">
-          <label className="text-[11px] font-semibold tracking-wider text-slate-500 uppercase">Source</label>
-          <select
-            value={filters.lead_source || ""}
-            onChange={(e) => updateFilter("lead_source", e.target.value)}
-            className="h-10 w-full rounded-xl border border-black/5 bg-white/60 px-3 text-sm text-slate-800 focus:border-[#4f8cff] focus:outline-none focus:ring-2 focus:ring-[#cfe0ff]"
-          >
-            <option value="">All Sources</option>
-            {sources.map((src) => (
-              <option key={src} value={src}>
-                {src}
-              </option>
-            ))}
+        <div className="flex flex-col gap-1">
+          <label className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500">Source</label>
+          <select value={filters.lead_source || ""} onChange={(e) => update("lead_source", e.target.value)} className={INPUT_CLASS}>
+            <option value="">All</option>
+            {sources.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
-        <div className="flex flex-col space-y-1">
-          <label className="text-[11px] font-semibold tracking-wider text-slate-500 uppercase">Product</label>
-          <select
-            value={filters.product_id || ""}
-            onChange={(e) => updateFilter("product_id", e.target.value)}
-            className="h-10 w-full rounded-xl border border-black/5 bg-white/60 px-3 text-sm text-slate-800 focus:border-[#4f8cff] focus:outline-none focus:ring-2 focus:ring-[#cfe0ff]"
-          >
-            <option value="">All Products</option>
-            {products.map((p) => (
-              <option key={p.product_id} value={p.product_id}>
-                {p.name}
-              </option>
-            ))}
+        <div className="flex flex-col gap-1">
+          <label className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500">Product</label>
+          <select value={filters.product_id || ""} onChange={(e) => update("product_id", e.target.value)} className={INPUT_CLASS}>
+            <option value="">All</option>
+            {products.map((p) => <option key={p.product_id} value={p.product_id}>{p.name}</option>)}
           </select>
         </div>
       </div>

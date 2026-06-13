@@ -108,6 +108,7 @@ async function getCompanySummary(companyId, teamIds = null, query = {}) {
     recentProducts,
     leadAnalytics,
     workflowRows,
+    convertedSourceMix,
   ] = await Promise.all([
     queryRows(
       `SELECT COUNT(DISTINCT u.user_id) AS total
@@ -184,6 +185,16 @@ async function getCompanySummary(companyId, teamIds = null, query = {}) {
        WHERE company_id = ? AND is_active = 1 AND is_workflow = 1${combinedScopeClause}`,
       [companyId, ...combinedScopeParams]
     ),
+    queryRows(
+      `
+        SELECT TOP 5 lead_source, COUNT(*) AS total
+        FROM leads
+        WHERE company_id = ? AND is_active = 1 AND status = 'closed-won'${combinedScopeClause}
+        GROUP BY lead_source
+        ORDER BY total DESC, lead_source ASC
+      `,
+      [companyId, ...combinedScopeParams]
+    ),
   ]);
   const taskSummary = taskSummaryRows[0] || {};
   const workflowRow = workflowRows[0] || {};
@@ -195,6 +206,7 @@ async function getCompanySummary(companyId, teamIds = null, query = {}) {
     pending_reminders: reminderRows[0].total,
     lead_counts: leadAnalytics.lead_counts,
     source_mix: sourceMix,
+    converted_source_mix: convertedSourceMix,
     recent_leads: recentLeads,
     recent_products: recentProducts,
     kpis: leadAnalytics.kpis,

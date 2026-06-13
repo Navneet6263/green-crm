@@ -1,14 +1,9 @@
 import { buildQueryPath } from "../../leads/shared/leadPageFormatters";
 import { LEAD_STATUS_COLORS, getLeadStatusLabel } from "../../../lib/leadStatus";
 
-const COMPACT_FORMATTER = new Intl.NumberFormat("en-IN", {
-  notation: "compact",
-  maximumFractionDigits: 1,
-});
-
 export function formatDashboardCount(value) {
   const safeValue = Number(value || 0);
-  return safeValue >= 1000 ? COMPACT_FORMATTER.format(safeValue) : safeValue.toLocaleString("en-IN");
+  return safeValue.toLocaleString("en-IN");
 }
 
 export function formatDashboardPercent(value, total) {

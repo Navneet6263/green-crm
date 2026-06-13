@@ -100,7 +100,7 @@ async function getCompanyLeadAnalytics(companyId, teamIds = null, query = {}) {
   const windowEnd = todayBucket.endUtc;
   const openPipelineSql = OPEN_PIPELINE_STATUSES.map(() => "?").join(", ");
 
-  const [statusRows, kpiRows, leadTrendRows, demoTrendRows, insightRows] = await Promise.all([
+  const [statusRows, kpiRows, leadTrendRows, demoTrendRows, insightRows, paymentTrendRows] = await Promise.all([
     queryRows(
       `SELECT status, COUNT(*) AS total FROM leads WHERE company_id = ? AND is_active = 1${combinedScopeClause} GROUP BY status`,
       [companyId, ...combinedScopeParams]
@@ -171,11 +171,24 @@ async function getCompanyLeadAnalytics(companyId, teamIds = null, query = {}) {
         ...combinedScopeParams,
       ]
     ),
+    queryRows(
+      `
+        SELECT
+          CONVERT(varchar(10), CONVERT(date, DATEADD(minute, 330, updated_at)), 23) AS day_key,
+          SUM(advance_received) AS total
+        FROM leads
+        WHERE company_id = ? AND is_active = 1 AND advance_received > 0 AND updated_at >= ? AND updated_at < ?${combinedScopeClause}
+        GROUP BY CONVERT(date, DATEADD(minute, 330, updated_at))
+        ORDER BY day_key ASC
+      `,
+      [companyId, windowStart, windowEnd, ...combinedScopeParams]
+    ),
   ]);
 
   const statusIndex = indexByStatus(statusRows);
   const leadTrendIndex = indexByDay(leadTrendRows);
   const demoTrendIndex = indexByDay(demoTrendRows);
+  const paymentTrendIndex = indexByDay(paymentTrendRows);
   const kpis = kpiRows[0] || {};
   const insights = insightRows[0] || {};
 
@@ -199,6 +212,11 @@ async function getCompanyLeadAnalytics(companyId, teamIds = null, query = {}) {
         key: bucket.key,
         label: bucket.label,
         total: toCount(demoTrendIndex[bucket.key]),
+      })),
+      payment_trend: buckets.map((bucket) => ({
+        key: bucket.key,
+        label: bucket.label,
+        total: toCount(paymentTrendIndex[bucket.key]),
       })),
       funnel: buildFunnel(statusIndex),
       status_distribution: buildDistribution(statusIndex),

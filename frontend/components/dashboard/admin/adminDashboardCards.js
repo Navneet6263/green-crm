@@ -18,10 +18,10 @@ export function buildMetricCards(kpis, todayKey, firstTrendKey, filterMeta, book
       href: buildDateHref(firstTrendKey, todayKey, filterMeta),
     },
     {
-      label: "Open Pipeline",
+      label: "Working Leads",
       value: kpis.open_pipeline,
       accent: "#f59e0b",
-      note: "All leads still live in pipeline stages and pending closure.",
+      note: "All leads currently being worked on and pending closure.",
       href: buildLeadDrilldownHref({ quick_filter: "active", ...filterMeta }),
     },
     {

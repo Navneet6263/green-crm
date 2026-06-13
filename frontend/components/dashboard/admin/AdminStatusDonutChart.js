@@ -1,7 +1,6 @@
 "use client";
 
 import { Cell, Label, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
-
 import AdminChartTooltip from "./AdminChartTooltip";
 import { formatDashboardCount, formatDashboardPercent, normalizeStatusDistribution } from "./adminDashboardUtils";
 
@@ -11,32 +10,23 @@ export default function AdminStatusDonutChart({ data, onSegmentClick }) {
 
   return (
     <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
-      <div className="h-[280px]">
+      <div className="h-[260px]">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Tooltip content={<AdminChartTooltip />} />
-            <Pie
-              data={normalized}
-              dataKey="total"
-              nameKey="label"
-              innerRadius={76}
-              outerRadius={116}
-              paddingAngle={2}
-              stroke="rgba(255,255,255,0.92)"
-              strokeWidth={4}
-              onClick={(entry) => onSegmentClick?.(entry)}
-            >
+            <Pie data={normalized} dataKey="total" nameKey="label" innerRadius={72} outerRadius={108}
+              paddingAngle={2} stroke="#ffffff" strokeWidth={3}
+              onClick={(entry) => onSegmentClick?.(entry)}>
               <Label
                 content={({ viewBox }) => {
                   const cx = Number(viewBox?.cx || 0);
                   const cy = Number(viewBox?.cy || 0);
-
                   return (
                     <g>
-                      <text x={cx} y={cy - 6} textAnchor="middle" className="fill-[#0f172a] text-[26px] font-black">
+                      <text x={cx} y={cy - 6} textAnchor="middle" className="fill-slate-900 text-[24px] font-black">
                         {formatDashboardCount(total)}
                       </text>
-                      <text x={cx} y={cy + 18} textAnchor="middle" className="fill-[#64748b] text-[11px] font-semibold uppercase tracking-[0.22em]">
+                      <text x={cx} y={cy + 16} textAnchor="middle" className="fill-slate-500 text-[10px] font-bold uppercase tracking-[0.2em]">
                         Total Leads
                       </text>
                     </g>
@@ -44,37 +34,26 @@ export default function AdminStatusDonutChart({ data, onSegmentClick }) {
                 }}
               />
               {normalized.map((entry) => (
-                <Cell key={entry.status} fill={`url(#status-gradient-${entry.status})`} />
+                <Cell key={entry.status} fill={entry.color} fillOpacity={0.85} />
               ))}
             </Pie>
-            <defs>
-              {normalized.map((entry) => (
-                <linearGradient key={entry.status} id={`status-gradient-${entry.status}`} x1="0" x2="1" y1="0" y2="1">
-                  <stop offset="0%" stopColor={entry.color} stopOpacity="0.94" />
-                  <stop offset="100%" stopColor={entry.color} stopOpacity="0.62" />
-                </linearGradient>
-              ))}
-            </defs>
           </PieChart>
         </ResponsiveContainer>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1 custom-scrollbar">
         {normalized.map((item) => (
-          <button
-            key={item.status}
-            type="button"
-            className="flex w-full cursor-pointer items-center justify-between rounded-[22px] border border-white/70 bg-white/78 px-4 py-3 text-left shadow-[0_14px_30px_rgba(33,48,74,0.08)] backdrop-blur-xl transition duration-200 ease-out hover:scale-[1.02] hover:border-[#ddd0be] hover:bg-white"
-            onClick={() => onSegmentClick?.(item)}
-          >
+          <button key={item.status} type="button"
+            className="flex w-full cursor-pointer items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-left transition-all duration-200 hover:border-slate-300 hover:bg-slate-50 hover:shadow-sm"
+            onClick={() => onSegmentClick?.(item)}>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
-                <span className="truncate text-sm font-semibold text-[#0f172a]">{item.label}</span>
+                <span className="truncate text-sm font-semibold text-slate-900">{item.label}</span>
               </div>
-              <p className="mt-1 text-xs text-[#64748b]">{formatDashboardPercent(item.total, total)} of visible lead base</p>
+              <p className="mt-0.5 text-[11px] text-slate-500">{formatDashboardPercent(item.total, total)} of pipeline</p>
             </div>
-            <strong className="text-lg font-black text-[#0f172a]">{formatDashboardCount(item.total)}</strong>
+            <strong className="text-lg font-black text-slate-900">{formatDashboardCount(item.total)}</strong>
           </button>
         ))}
       </div>
