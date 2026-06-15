@@ -145,6 +145,10 @@ function buildWhere(filters) {
     params.push(filters.createdTo);
   }
 
+  if (filters.hasPayment) {
+    conditions.push("(l.estimated_value > 0 OR l.advance_received > 0)");
+  }
+
   if (filters.search) {
     conditions.push("(l.company_name LIKE ? OR l.contact_person LIKE ? OR l.email LIKE ? OR l.phone LIKE ?)");
     params.push(
@@ -284,6 +288,9 @@ async function listLeads(filters, pagination, executor) {
         team.name AS team_name,
         team.code AS team_code,
         COUNT(*) OVER() AS total_count,
+        SUM(l.estimated_value) OVER() AS total_value,
+        SUM(CASE WHEN l.status = 'closed-won' THEN 1 ELSE 0 END) OVER() AS total_closed_won,
+        SUM(l.advance_received) OVER() AS total_advance_received,
         (
           SELECT COUNT(*)
           FROM lead_notes ln
@@ -308,11 +315,18 @@ async function listLeads(filters, pagination, executor) {
   );
 
   const totalFromWindow = rows.length ? Number(rows[0].total_count || 0) : null;
-  const normalizedRows = rows.map(({ total_count, ...row }) => row);
+  const totalValueWindow = rows.length ? Number(rows[0].total_value || 0) : null;
+  const totalClosedWonWindow = rows.length ? Number(rows[0].total_closed_won || 0) : null;
+  const totalAdvanceReceivedWindow = rows.length ? Number(rows[0].total_advance_received || 0) : null;
+
+  const normalizedRows = rows.map(({ total_count, total_value, total_closed_won, total_advance_received, ...row }) => row);
   if (totalFromWindow !== null) {
     return {
       rows: normalizedRows,
       total: totalFromWindow,
+      totalValue: totalValueWindow,
+      totalClosedWon: totalClosedWonWindow,
+      totalAdvanceReceived: totalAdvanceReceivedWindow,
       pageInfo: null,
     };
   }
@@ -327,13 +341,21 @@ async function listLeads(filters, pagination, executor) {
   }
 
   const [countRows] = await active.query(
-    `SELECT COUNT(*) AS total FROM leads l ${whereClause}`,
+    `SELECT 
+      COUNT(*) AS total,
+      SUM(estimated_value) AS total_value,
+      SUM(CASE WHEN status = 'closed-won' THEN 1 ELSE 0 END) AS total_closed_won,
+      SUM(advance_received) AS total_advance_received
+     FROM leads l ${whereClause}`,
     params
   );
 
   return {
     rows: normalizedRows,
     total: countRows[0].total,
+    totalValue: countRows[0].total_value,
+    totalClosedWon: countRows[0].total_closed_won,
+    totalAdvanceReceived: countRows[0].total_advance_received,
     pageInfo: null,
   };
 }

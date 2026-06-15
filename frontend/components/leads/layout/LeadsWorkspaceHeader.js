@@ -54,19 +54,24 @@ export default function LeadsWorkspaceHeader({
 
       {/* Hero stat cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {heroStats.map((item, i) => (
-          <div
-            key={item.label}
-            className={`group relative overflow-hidden rounded-2xl border px-4 py-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${STAT_ACCENT[i] || "border-slate-200 bg-slate-50"}`}
-          >
-            {/* shimmer sweep on hover */}
-            <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/60 to-transparent transition-transform duration-500 group-hover:translate-x-full" />
-            <p className={LEAD_KICKER_CLASS}>{item.label}</p>
-            <p className="mt-1.5 text-xl font-bold leading-none text-slate-900" style={{ color: item.color || undefined }}>
-              {item.value}
-            </p>
-          </div>
-        ))}
+        {heroStats.map((item, i) => {
+          const Tag = item.onClick ? "button" : "div";
+          return (
+            <Tag
+              key={item.label}
+              type={item.onClick ? "button" : undefined}
+              onClick={item.onClick}
+              className={`group relative overflow-hidden rounded-2xl border px-4 py-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${item.onClick ? "cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-500 text-left" : ""} ${STAT_ACCENT[i] || "border-slate-200 bg-slate-50"}`}
+            >
+              {/* shimmer sweep on hover */}
+              <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/60 to-transparent transition-transform duration-500 group-hover:translate-x-full" />
+              <p className={LEAD_KICKER_CLASS}>{item.label}</p>
+              <p className="mt-1.5 text-xl font-bold leading-none text-slate-900" style={{ color: item.color || undefined }}>
+                {item.value}
+              </p>
+            </Tag>
+          );
+        })}
       </div>
 
       {/* Filters */}

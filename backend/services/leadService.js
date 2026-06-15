@@ -579,6 +579,7 @@ async function buildLeadFilters(auth, query) {
     productId: query.product_id || null,
     createdFrom,
     createdTo,
+    hasPayment: query.has_payment === "true" || query.has_payment === true || query.hasPayment === "true" || query.hasPayment === true,
     teamIds: null,
   };
 
@@ -657,10 +658,13 @@ async function listLeads(auth, query) {
     assertCompanyAccess(auth, filters.companyId);
   }
 
-  const { rows, total, pageInfo } = await leadRepository.listLeads(filters, pagination);
+  const { rows, total, totalValue, totalClosedWon, totalAdvanceReceived, pageInfo } = await leadRepository.listLeads(filters, pagination);
   const maskedRows = rows.map((row) => maskLeadForRole(row, auth.role));
 
   const result = buildPaginatedResult(maskedRows, total, pagination, pageInfo);
+  result.meta.total_value = totalValue;
+  result.meta.total_closed_won = totalClosedWon;
+  result.meta.total_advance_received = totalAdvanceReceived;
 
   if (filters.companyId) {
     let teamClause = "";

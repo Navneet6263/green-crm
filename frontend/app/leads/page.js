@@ -165,11 +165,15 @@ function LeadsPageContent() {
   const closedWonCount = filters.status === "closed-won" ? records.totalMatched : records.leads.filter((lead) => lead.status === "closed-won").length;
   const transferredCount = filters.status === "transferred" ? records.totalMatched : records.leads.filter((lead) => ["legal", "finance", "completed"].includes(lead.workflow_stage || "sales")).length;
   const heroStats = useMemo(() => {
+    const totalVal = records.leadMeta?.total_value || records.leads.reduce((sum, lead) => sum + Number(lead.estimated_value || 0), 0);
+    const closedWon = records.leadMeta?.total_closed_won ?? closedWonCount;
+    const advanceReceived = records.leadMeta?.total_advance_received || 0;
+
     const stats = [
       { label: "Total Team Leads", value: records.totalMatched },
-      { label: "Page Value", value: formatLeadMoney(records.leads.reduce((sum, lead) => sum + Number(lead.estimated_value || 0), 0)), color: "#0f8c53" },
-      { label: "Loaded", value: records.leads.length, color: "#2f6fdd" },
-      { label: "Closed Won", value: closedWonCount, color: "#0f8c53" }
+      { label: filters.hasPayment ? "Total Value (Filtered)" : "Total Value", value: formatLeadMoney(totalVal), color: "#0f8c53", onClick: () => filters.setHasPayment(!filters.hasPayment) },
+      { label: filters.hasPayment ? "Advance Received (Filtered)" : "Advance Received", value: formatLeadMoney(advanceReceived), color: "#2f6fdd", onClick: () => filters.setHasPayment(!filters.hasPayment) },
+      { label: "Closed Won", value: closedWon, color: "#0f8c53" }
     ];
 
     const wf = records.leadMeta?.workflow_summary;
@@ -182,7 +186,7 @@ function LeadsPageContent() {
       );
     }
     return stats;
-  }, [closedWonCount, records.leads, records.totalMatched, records.leadMeta?.workflow_summary]);
+  }, [closedWonCount, records.leads, records.totalMatched, records.leadMeta?.workflow_summary, filters.hasPayment, filters.setHasPayment]);
   const emptyLeadsMessage = filters.teamFilter !== "all" && selectedScopeTeam ? `No leads matched ${teamSelectLabel(selectedScopeTeam)}.` : "Adjust the search or filters to widen the result set.";
   const bulkUsersMessage = pickedTeamIds.length > 1 ? "Select leads from one team at a time before bulk assignment." : scopedUsersEmptyMessage(bulkScopeTeam);
   const allPicked = !!records.leads.length && records.leads.every((lead) => picked.includes(lead.lead_id));

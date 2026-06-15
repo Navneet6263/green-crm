@@ -25,6 +25,7 @@ export function useLeadFilterState({ role, session }) {
   const [status, setStatus] = useState("all");
   const [teamFilter, setTeamFilter] = useState("all");
   const [toDate, setToDate] = useState("");
+  const [hasPayment, setHasPayment] = useState(false);
   const [workflowStage, setWorkflowStage] = useState("all");
   const isPlatformConsole = isPlatformConsoleRole(role);
   const hasFixedAssigneeScope = ["sales", "marketing", "viewer"].includes(role);
@@ -55,8 +56,9 @@ export function useLeadFilterState({ role, session }) {
       to_date: toDate || undefined,
       status: quickFilter ? undefined : status,
       quick_filter: quickFilter,
+      has_payment: hasPayment || undefined,
     }),
-    [assignedTo, createdBy, debouncedNotesSearch, debouncedSearch, fromDate, priority, product, quickFilter, scopedCompanyId, source, status, teamFilter, toDate, workflowStage]
+    [assignedTo, createdBy, debouncedNotesSearch, debouncedSearch, fromDate, priority, product, quickFilter, scopedCompanyId, source, status, teamFilter, toDate, workflowStage, hasPayment]
   );
 
   const activeFilterCount = useMemo(
@@ -193,6 +195,9 @@ export function useLeadFilterState({ role, session }) {
     status,
     teamCompanyId,
     teamFilter,
+    setToDate,
+    hasPayment,
+    setHasPayment,
     toDate,
     workflowStage,
   };

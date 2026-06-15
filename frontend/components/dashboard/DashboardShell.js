@@ -671,14 +671,31 @@ export default function DashboardShell({ session: initialSession, children, titl
           <div className={cn("mx-auto max-w-[1280px] space-y-5 pb-6", hideTitle ? "px-4 pt-4 md:px-6 md:pt-5" : "px-4 pt-2 md:px-6")}>
             {heroStats.length ? (
               <section className={cn("grid gap-2", heroStats.length >= 4 ? "md:grid-cols-2 xl:grid-cols-4" : "md:grid-cols-2")}>
-                {heroStats.map((stat) => (
-                  <article key={stat.label} className="rounded-xl border border-[#eadfcd] bg-white px-4 py-3">
-                    <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#8f816a]">{stat.label}</span>
-                    <strong className="mt-1 block text-xl font-bold leading-none" style={{ color: stat.color || "#173e73" }}>
-                      {formatHeroValue(stat.value)}
-                    </strong>
-                  </article>
-                ))}
+                {heroStats.map((stat) => {
+                  const content = (
+                    <>
+                      <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#8f816a]">{stat.label}</span>
+                      <strong className="mt-1 block text-xl font-bold leading-none text-left" style={{ color: stat.color || "#173e73" }}>
+                        {formatHeroValue(stat.value)}
+                      </strong>
+                    </>
+                  );
+
+                  return stat.onClick ? (
+                    <button
+                      key={stat.label}
+                      type="button"
+                      className="rounded-xl border border-[#eadfcd] bg-white px-4 py-3 text-left cursor-pointer hover:border-blue-400 hover:shadow-sm transition focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      onClick={stat.onClick}
+                    >
+                      {content}
+                    </button>
+                  ) : (
+                    <article key={stat.label} className="rounded-xl border border-[#eadfcd] bg-white px-4 py-3">
+                      {content}
+                    </article>
+                  );
+                })}
               </section>
             ) : null}
 

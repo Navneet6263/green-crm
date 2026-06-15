@@ -9,6 +9,9 @@ export function normalizeLeadMeta(meta = {}, pageNumber = 1) {
     total: Number(meta.total || 0),
     total_pages: Math.max(Number(meta.total_pages || 1), 1),
     workflow_summary: meta.workflow_summary || null,
+    total_value: meta.total_value,
+    total_closed_won: meta.total_closed_won,
+    total_advance_received: meta.total_advance_received,
   };
 }
 
