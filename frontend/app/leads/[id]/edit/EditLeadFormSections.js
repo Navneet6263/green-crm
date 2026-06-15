@@ -95,48 +95,6 @@ export function EditIdentitySection({ form, isAdmin, teams, users, selectedTeam,
           <input className={T.input} type="number" min={0} step={1} value={form.active_users} onChange={(e) => onChange("active_users", e.target.value)} placeholder="e.g. 50" />
         </label>
         <label className="space-y-2">
-          <span className={T.kicker}>Mode of Payment</span>
-          <select className={T.input} value={form.payment_mode || ""} onChange={(e) => onChange("payment_mode", e.target.value)}>
-            <option value="">Select payment mode</option>
-            <option value="upi">UPI</option>
-            <option value="credit_debit_card">Credit/Debit Card</option>
-            <option value="neft_company">NEFT/Company Account</option>
-          </select>
-        </label>
-        <label className="space-y-2">
-          <span className={T.kicker}>Client Tenure (End Date)</span>
-          <div className="flex gap-2">
-            <select 
-              className={T.input} 
-              style={{ width: '130px', flexShrink: 0 }} 
-              onChange={(e) => {
-                const months = parseInt(e.target.value, 10);
-                if (months) {
-                  const d = new Date();
-                  d.setMonth(d.getMonth() + months);
-                  // Return format YYYY-MM-DD
-                  const yyyy = d.getFullYear();
-                  const mm = String(d.getMonth() + 1).padStart(2, '0');
-                  const dd = String(d.getDate()).padStart(2, '0');
-                  onChange("client_tenure", `${yyyy}-${mm}-${dd}`);
-                }
-              }}
-            >
-              <option value="">Custom</option>
-              <option value="1">1 Month</option>
-              <option value="3">3 Months</option>
-              <option value="6">6 Months</option>
-              <option value="12">12 Months</option>
-            </select>
-            <input 
-              className={T.input} 
-              type="date" 
-              value={form.client_tenure ? String(form.client_tenure).split('T')[0] : ""} 
-              onChange={(e) => onChange("client_tenure", e.target.value)} 
-            />
-          </div>
-        </label>
-        <label className="space-y-2">
           <span className={T.kicker}>Email</span>
           <input className={T.input} type="email" value={form.email} onChange={(e) => onChange("email", e.target.value)} />
         </label>

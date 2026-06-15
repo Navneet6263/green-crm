@@ -25,6 +25,7 @@ import { AlertError } from "../../../../components/ui/Alert";
 import { CustomizationDebug } from "../../../../components/debug/CustomizationDebug";
 import { EditLeadHeader, EditIdentitySection } from "./EditLeadFormSections";
 import { EditPipelineSection } from "./EditLeadPipelineSection";
+import { EditPaymentSection } from "./EditLeadPaymentSection";
 import { EditContextSection } from "./EditLeadContextSection";
 
 function blank(value) {
@@ -77,7 +78,8 @@ export default function EditLeadPage() {
     contact_person: "", company_name: "", email: "", phone: "",
     lead_source: "website", priority: "medium", status: "new", workflow_stage: "sales",
     estimated_value: "", number_of_units: "", no_of_employees: "", active_users: "",
-    payment_mode: "", client_tenure: "", team_id: "", assigned_to: "", product_id: "",
+    payment_mode: "", payment_date: "", subscription_start_date: "", next_payment_date: "",
+    team_id: "", assigned_to: "", product_id: "",
     requirements: "", follow_up_date: "", advance_received: ""
   });
   const [originalLead, setOriginalLead] = useState(null);
@@ -141,7 +143,10 @@ export default function EditLeadPage() {
       no_of_employees: form.no_of_employees?.trim() || null,
       active_users: form.active_users === "" ? null : Number(form.active_users),
       payment_mode: form.payment_mode || null,
+      payment_date: form.payment_date || null,
       client_tenure: form.client_tenure?.trim() || null,
+      subscription_start_date: form.subscription_start_date || null,
+      next_payment_date: form.next_payment_date || null,
       follow_up_date: toApiDateTime(form.follow_up_date) || "",
       advance_received: form.advance_received === "" ? 0 : Number(form.advance_received),
     };
@@ -159,7 +164,10 @@ export default function EditLeadPage() {
       ["no_of_employees", "No. of Employees", originalLead.no_of_employees, nextPayload.no_of_employees],
       ["active_users", "Active Users", originalLead.active_users, nextPayload.active_users],
       ["payment_mode", "Payment Mode", originalLead.payment_mode, nextPayload.payment_mode],
+      ["payment_date", "Payment Received Date", originalLead.payment_date ? String(originalLead.payment_date).slice(0, 10) : "", nextPayload.payment_date],
       ["client_tenure", "Client Tenure", originalLead.client_tenure, nextPayload.client_tenure],
+      ["subscription_start_date", "Subscription Start Date", originalLead.subscription_start_date ? String(originalLead.subscription_start_date).slice(0, 10) : "", nextPayload.subscription_start_date],
+      ["next_payment_date", "Next Payment Date", originalLead.next_payment_date ? String(originalLead.next_payment_date).slice(0, 10) : "", nextPayload.next_payment_date],
       ["team_id", "Team", originalLead.team_name || originalLead.team_id, selectedTeam?.name || selectedTeam?.team_id || nextPayload.team_id],
       ["assigned_to", "Lead Owner", originalLead.assigned_to_name || originalLead.assigned_to, selectedOwner?.name || nextPayload.assigned_to],
       ["requirements", "Requirements", originalLead.requirements, nextPayload.requirements],
@@ -231,7 +239,10 @@ export default function EditLeadPage() {
           no_of_employees: leadResponse.no_of_employees || "",
           active_users: leadResponse.active_users ?? "",
           payment_mode: leadResponse.payment_mode || "",
+          payment_date: leadResponse.payment_date ? String(leadResponse.payment_date).slice(0, 10) : "",
           client_tenure: leadResponse.client_tenure || "",
+          subscription_start_date: leadResponse.subscription_start_date ? String(leadResponse.subscription_start_date).slice(0, 10) : "",
+          next_payment_date: leadResponse.next_payment_date ? String(leadResponse.next_payment_date).slice(0, 10) : "",
           team_id: nextTeamId,
           assigned_to: userItems.some((user) => user.user_id === leadResponse.assigned_to) ? leadResponse.assigned_to || "" : "",
           product_id: leadResponse.product_id || "",
@@ -343,7 +354,10 @@ export default function EditLeadPage() {
         no_of_employees: form.no_of_employees?.trim() || null,
         active_users: form.active_users === "" ? null : Number(form.active_users),
         payment_mode: form.payment_mode || null,
+        payment_date: form.payment_date || null,
         client_tenure: form.client_tenure?.trim() || null,
+        subscription_start_date: form.subscription_start_date || null,
+        next_payment_date: form.next_payment_date || null,
         follow_up_date: toApiDateTime(form.follow_up_date),
         team_id: form.team_id || undefined,
         assigned_to: canManageAssignment ? form.assigned_to || undefined : undefined,
@@ -394,6 +408,10 @@ export default function EditLeadPage() {
                 productEmptyMessage={productEmptyMessage}
                 onChange={onChange}
                 enabledStatuses={enabledStatuses}
+              />
+              <EditPaymentSection
+                form={form}
+                onChange={onChange}
               />
               <EditContextSection
                 form={form}

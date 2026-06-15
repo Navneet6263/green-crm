@@ -630,7 +630,10 @@ export default function LeadDetailPage() {
                     ["Employees", lead.no_of_employees || "—",          "border-slate-100 bg-slate-50"],
                     ["Active Users", lead.active_users || "—",          "border-slate-100 bg-slate-50"],
                     ["Payment Mode", nice(lead.payment_mode || "—"),    "border-emerald-100 bg-emerald-50"],
-                    ["Tenure",    lead.client_tenure || "—",            "border-slate-100 bg-slate-50"],
+                    ["Payment Date", lead.payment_date ? when(lead.payment_date).split(',')[0] : "—", "border-emerald-100 bg-emerald-50"],
+                    ["Sub Start", lead.subscription_start_date ? when(lead.subscription_start_date).split(',')[0] : "—", "border-slate-100 bg-slate-50"],
+                    ["Tenure",    lead.client_tenure ? when(lead.client_tenure).split(',')[0] : "—",            "border-slate-100 bg-slate-50"],
+                    ["Next Payment", lead.next_payment_date ? when(lead.next_payment_date).split(',')[0] : "—", "border-amber-100 bg-amber-50"],
                     ["Created By",lead.created_by_name || "—",          "border-slate-100 bg-slate-50"],
                     ["Lead ID",   lead.lead_id,                         "border-slate-100 bg-slate-50"],
                   ].map(([label, value, accent]) => (

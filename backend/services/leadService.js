@@ -177,7 +177,10 @@ function normalizeLeadPayload(payload) {
     advance_received: normalizeLeadNumber(payload.advance_received ?? 0),
     active_users: normalizeLeadInteger(payload.active_users ?? null),
     payment_mode: payload.payment_mode || null,
+    payment_date: normalizeLeadDate(payload.payment_date),
     client_tenure: payload.client_tenure || null,
+    subscription_start_date: normalizeLeadDate(payload.subscription_start_date),
+    next_payment_date: normalizeLeadDate(payload.next_payment_date),
   };
 }
 
@@ -971,7 +974,10 @@ async function updateLead(auth, leadId, payload) {
     advance_received: normalized.advance_received,
     active_users: normalized.active_users,
     payment_mode: normalized.payment_mode,
+    payment_date: normalized.payment_date,
     client_tenure: normalized.client_tenure,
+    subscription_start_date: normalized.subscription_start_date,
+    next_payment_date: normalized.next_payment_date,
   };
 
   let assignedToOverride;

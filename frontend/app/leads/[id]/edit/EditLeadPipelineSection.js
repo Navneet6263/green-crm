@@ -80,14 +80,6 @@ export function EditPipelineSection({ form, productChoices, teamSelectionPending
             onChange("follow_up_date", date && e.target.value ? `${date}T${e.target.value}` : date);
           }} />
         </label>
-        <label className="space-y-2">
-          <span className={T.kicker}>Advance Received (₹)</span>
-          <input className={T.input} type="number" value={form.advance_received} onChange={(e) => onChange("advance_received", e.target.value)} placeholder="0" />
-        </label>
-        <label className="space-y-2">
-          <span className={T.kicker}>Remaining Payment (₹)</span>
-          <input className={T.input} type="number" value={Number(form.estimated_value || 0) - Number(form.advance_received || 0)} disabled placeholder="0" />
-        </label>
       </div>
     </article>
   );

@@ -174,11 +174,11 @@ async function getCompanyLeadAnalytics(companyId, teamIds = null, query = {}) {
     queryRows(
       `
         SELECT
-          CONVERT(varchar(10), CONVERT(date, DATEADD(minute, 330, updated_at)), 23) AS day_key,
+          CONVERT(varchar(10), CONVERT(date, DATEADD(minute, 330, COALESCE(payment_date, updated_at))), 23) AS day_key,
           SUM(advance_received) AS total
         FROM leads
-        WHERE company_id = ? AND is_active = 1 AND advance_received > 0 AND updated_at >= ? AND updated_at < ?${combinedScopeClause}
-        GROUP BY CONVERT(date, DATEADD(minute, 330, updated_at))
+        WHERE company_id = ? AND is_active = 1 AND advance_received > 0 AND COALESCE(payment_date, updated_at) >= ? AND COALESCE(payment_date, updated_at) < ?${combinedScopeClause}
+        GROUP BY CONVERT(date, DATEADD(minute, 330, COALESCE(payment_date, updated_at)))
         ORDER BY day_key ASC
       `,
       [companyId, windowStart, windowEnd, ...combinedScopeParams]
