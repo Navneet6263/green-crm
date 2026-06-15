@@ -14,8 +14,10 @@ async function createAttendanceEvent(event, executor) {
         company_id,
         user_id,
         event_type,
-        ip_address
-      ) VALUES (?, ?, ?, ?, ?)
+        ip_address,
+        location,
+        created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, GETUTCDATE())
     `,
     [
       event.attendance_event_id,
@@ -23,6 +25,7 @@ async function createAttendanceEvent(event, executor) {
       event.user_id,
       event.event_type,
       event.ip_address,
+      event.location,
     ]
   );
 
@@ -46,7 +49,7 @@ async function getLatestEvent(companyId, userId, executor) {
       SELECT TOP 1 *
       FROM attendance_events
       WHERE company_id = ? AND user_id = ?
-      ORDER BY created_at DESC, id DESC
+      ORDER BY id DESC
     `,
     [companyId, userId]
   );
@@ -61,7 +64,7 @@ async function listUserEvents(companyId, userId, pagination, executor) {
       SELECT *
       FROM attendance_events
       WHERE company_id = ? AND user_id = ?
-      ORDER BY created_at DESC, id DESC
+      ORDER BY id DESC
       OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
     `,
     [companyId, userId, pagination.offset, pagination.limit]
@@ -81,8 +84,45 @@ async function listUserEvents(companyId, userId, pagination, executor) {
   };
 }
 
+async function listAllEvents(companyId, searchName, pagination, executor) {
+  const active = getExecutor(executor);
+  
+  let baseQuery = `
+    FROM attendance_events e
+    LEFT JOIN users u ON e.user_id = u.user_id
+    WHERE e.company_id = ?
+  `;
+  const params = [companyId];
+
+  if (searchName) {
+    baseQuery += ` AND u.name LIKE ?`;
+    params.push(`%${searchName}%`);
+  }
+
+  const [rows] = await active.query(
+    `
+      SELECT e.*, u.name as user_name, u.email as user_email
+      ${baseQuery}
+      ORDER BY e.id DESC
+      OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
+    `,
+    [...params, pagination.offset, pagination.limit]
+  );
+
+  const [countRows] = await active.query(
+    `SELECT COUNT(*) AS total ${baseQuery}`,
+    params
+  );
+
+  return {
+    rows,
+    total: Number(countRows[0]?.total || 0),
+  };
+}
+
 module.exports = {
   createAttendanceEvent,
   getLatestEvent,
   listUserEvents,
+  listAllEvents,
 };

@@ -6,7 +6,7 @@ export const CHANNEL_META = {
   call: { label: "Calling", description: "Provider routing for outbound calls and click-to-call actions." },
   whatsapp: { label: "WhatsApp", description: "Message delivery for WhatsApp reminders and follow-ups." },
   sms: { label: "SMS", description: "Transactional SMS delivery for reminders and quick updates." },
-  attendance: { label: "Attendance", description: "IP-based punch in and punch out control for office attendance." },
+  attendance: { label: "Attendance", description: "Cloud-synced punch in and punch out control for field attendance." },
 };
 
 export const MODE_OPTIONS = [
@@ -27,7 +27,7 @@ export const PROVIDER_OPTIONS = {
     { value: "twilio", label: "Twilio" },
     { value: "custom", label: "Custom" },
   ],
-  attendance: [{ value: "custom", label: "IP Rules" }],
+  attendance: [{ value: "custom", label: "Native Sync" }],
 };
 
 export const MANAGED_SERVICE_PERMISSION_FIELDS = [
@@ -97,6 +97,6 @@ export const CONFIG_FIELDS = {
     ],
   },
   attendance: {
-    custom: [{ key: "allowed_ips", label: "Allowed IPs", type: "textarea", rows: 4, full: true }],
+    custom: [],
   },
 };

@@ -171,8 +171,8 @@ function LeadsPageContent() {
 
     const stats = [
       { label: "Total Team Leads", value: records.totalMatched },
-      { label: filters.hasPayment ? "Total Value (Filtered)" : "Total Value", value: formatLeadMoney(totalVal), color: "#0f8c53", onClick: () => filters.setHasPayment(!filters.hasPayment) },
-      { label: filters.hasPayment ? "Advance Received (Filtered)" : "Advance Received", value: formatLeadMoney(advanceReceived), color: "#2f6fdd", onClick: () => filters.setHasPayment(!filters.hasPayment) },
+      { label: filters.hasPayment ? "Total Lead Value (Filtered)" : "Total Lead Value", value: formatLeadMoney(totalVal), color: "#0f8c53", onClick: () => filters.setHasPayment(!filters.hasPayment) },
+      { label: filters.hasPayment ? "Payment Advance (Filtered)" : "Payment Advance", value: formatLeadMoney(advanceReceived), color: "#2f6fdd", onClick: () => filters.setHasPayment(!filters.hasPayment) },
       { label: "Closed Won", value: closedWon, color: "#0f8c53" }
     ];
 

@@ -19,7 +19,7 @@ function buildDisabledCapability(channel, integration, reason, source = "tenant"
 }
 
 function validateAttendanceConfig(config = {}) {
-  return parseAllowedIps(config.allowed_ips).length > 0;
+  return true;
 }
 
 function validateIntegration(channel, integration) {

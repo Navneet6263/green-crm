@@ -4,6 +4,7 @@ const { createPrefixedId } = require("../../utils/ids");
 const AppError = require("../../utils/appError");
 const { buildPaginatedResult, parsePagination } = require("../../utils/pagination");
 const { resolveChannel } = require("../communication/integrationResolver");
+const { ROLES } = require("../../constants/roles");
 
 function normalizeIp(rawIp = "") {
   return String(rawIp || "")
@@ -30,18 +31,31 @@ async function getAttendanceStatus(auth, requestIp) {
     reason: capability.reason || null,
     last_event: latest,
     ip_address: ip,
-    ip_allowed: capability.enabled ? isAllowedIp(ip, allowedIps) : false,
+    ip_allowed: true, // Field agents don't need IP validation
     allowed_ip_count: allowedIps.length,
   };
 }
 
 async function listHistory(auth, query = {}) {
   const pagination = parsePagination(query);
-  const { rows, total } = await attendanceRepository.listUserEvents(
-    auth.companyId,
-    auth.userId,
-    pagination
-  );
+  
+  const isAdmin = [ROLES.SUPER_ADMIN, ROLES.PLATFORM_ADMIN, ROLES.PLATFORM_MANAGER, ROLES.ADMIN, ROLES.MANAGER].includes(auth.role);
+  
+  let rows, total;
+
+  if (isAdmin && typeof query.search === "string") {
+    ({ rows, total } = await attendanceRepository.listAllEvents(
+      auth.companyId,
+      query.search.trim(),
+      pagination
+    ));
+  } else {
+    ({ rows, total } = await attendanceRepository.listUserEvents(
+      auth.companyId,
+      auth.userId,
+      pagination
+    ));
+  }
 
   return buildPaginatedResult(rows, total, pagination);
 }
@@ -54,10 +68,6 @@ async function punch(auth, payload, requestIp) {
     throw new AppError("Attendance is not enabled for this company.", 403);
   }
 
-  if (!status.ip_allowed) {
-    throw new AppError("Punch is allowed only from approved office IP addresses.", 403);
-  }
-
   if (!["punch_in", "punch_out"].includes(nextType)) {
     throw new AppError("Attendance type must be punch_in or punch_out.", 400);
   }
@@ -68,6 +78,7 @@ async function punch(auth, payload, requestIp) {
     user_id: auth.userId,
     event_type: nextType,
     ip_address: status.ip_address,
+    location: payload.location || null,
   });
 
   await auditRepository.createLog({
@@ -78,12 +89,15 @@ async function punch(auth, payload, requestIp) {
     target_user: auth.userId,
     user_email: auth.email,
     user_role: auth.role,
-    details: { ip_address: status.ip_address },
+    details: { ip_address: status.ip_address, location: payload.location },
   });
 
   return {
     event,
-    status: await getAttendanceStatus(auth, requestIp),
+    status: {
+      ...status,
+      last_event: event,
+    },
   };
 }
 

@@ -1,59 +1,64 @@
+"use client";
+
 import DashboardIcon from "../dashboard/icons";
-import { KICKER_CLASS, PANEL_CLASS, PRIMARY_BUTTON_CLASS } from "../communications/constants";
 
 export default function AttendanceActionPanel({ attendance, punchAttendance, sending }) {
-  if (!attendance) {
-    return null;
-  }
+  if (!attendance) return null;
 
-  const stats = [
-    ["Current IP", attendance.ip_address || "--"],
-    ["Last Event", attendance.last_event?.event_type || "--"],
-    ["Validation", attendance.ip_allowed ? "Approved" : "Blocked"],
-  ];
-
+  const isPunchedIn = attendance.last_event?.event_type === "punch_in";
+  
   return (
-    <article className={PANEL_CLASS}>
-      <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+    <article className="rounded-[24px] border border-slate-200/60 bg-white p-6 shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <p className={KICKER_CLASS}>Attendance</p>
-          <h3 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Punch desk</h3>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-500 mb-1">Interactive</p>
+          <h3 className="text-2xl font-bold tracking-tight text-slate-900">Attendance Terminal</h3>
         </div>
-        <span className={`inline-flex rounded-full border px-3 py-1 text-[11px] font-bold ${attendance.enabled ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-[#eadfcd] bg-white text-[#7c6d55]"}`}>
-          {attendance.enabled ? `${attendance.allowed_ip_count} IP rules` : "Disabled"}
-        </span>
+        <div className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold ${attendance.enabled ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${attendance.enabled ? "bg-emerald-500 animate-pulse" : "bg-rose-500"}`} />
+          {attendance.enabled ? `Active` : "Disabled"}
+        </div>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-3">
-        {stats.map(([label, value]) => (
-          <div key={label} className="rounded-[22px] border border-[#eadfcd] bg-[#fffaf1] px-4 py-4">
-            <span className={KICKER_CLASS}>{label}</span>
-            <strong className="mt-3 block text-sm leading-6 text-[#060710]">{value}</strong>
-          </div>
-        ))}
+      <div className="grid gap-3 grid-cols-2 md:grid-cols-3 mb-6">
+        <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Current IP</span>
+          <strong className="mt-1.5 block text-base font-semibold text-slate-800">{attendance.ip_address || "--"}</strong>
+        </div>
+        <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Last Event</span>
+          <strong className="mt-1.5 flex items-center gap-2 text-base font-semibold text-slate-800 capitalize">
+            {attendance.last_event?.event_type?.replace("_", " ") || "No records"}
+            {isPunchedIn && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
+          </strong>
+        </div>
+        <div className="col-span-2 md:col-span-1 rounded-xl border border-slate-100 bg-slate-50 p-4">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Device</span>
+          <strong className="mt-1.5 block text-base font-semibold text-slate-800">
+            Mobile Field App
+          </strong>
+        </div>
       </div>
 
-      <div className="mt-5 flex flex-wrap gap-3">
-        <button className={PRIMARY_BUTTON_CLASS} type="button" onClick={() => punchAttendance("punch_in")} disabled={sending}>
-          <DashboardIcon name="attendance" className="h-4 w-4" />
-          {sending ? "Saving..." : "Punch In"}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <button 
+          onClick={() => punchAttendance("punch_in")} 
+          disabled={sending || isPunchedIn}
+          className="flex-1 inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-6 text-sm font-bold text-white shadow-sm transition hover:bg-indigo-700 disabled:opacity-50 disabled:hover:bg-indigo-600"
+        >
+          <DashboardIcon name="attendance" className="w-4 h-4" />
+          {sending ? "Syncing..." : "Punch In"}
         </button>
-        <button className={PRIMARY_BUTTON_CLASS} type="button" onClick={() => punchAttendance("punch_out")} disabled={sending}>
-          <DashboardIcon name="attendance" className="h-4 w-4" />
-          {sending ? "Saving..." : "Punch Out"}
+        <button 
+          onClick={() => punchAttendance("punch_out")} 
+          disabled={sending || !isPunchedIn}
+          className="flex-1 inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-slate-800 px-6 text-sm font-bold text-white shadow-sm transition hover:bg-slate-900 disabled:opacity-50 disabled:hover:bg-slate-800"
+        >
+          <DashboardIcon name="attendance" className="w-4 h-4" />
+          {sending ? "Syncing..." : "Punch Out"}
         </button>
       </div>
 
-      {!attendance.enabled && attendance.reason ? (
-        <p className="mt-4 text-sm leading-6 text-[#7a6b57]">
-          Backend capability reason: {attendance.reason.replaceAll("_", " ")}.
-        </p>
-      ) : null}
-      {attendance.enabled && !attendance.ip_allowed ? (
-        <p className="mt-4 text-sm leading-6 text-[#7a6b57]">
-          Current IP is not in the approved office list. Superadmin or company admin must add this IP in Attendance settings before punch actions will succeed.
-        </p>
-      ) : null}
     </article>
   );
 }

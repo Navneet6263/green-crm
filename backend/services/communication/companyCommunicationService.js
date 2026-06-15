@@ -37,12 +37,9 @@ function canManagePermissions(auth, companyId) {
 }
 
 function validateAttendanceConfig(config = {}) {
-  const allowedIps = parseAllowedIps(config.allowed_ips);
-  const valid = allowedIps.length > 0;
-
   return {
-    valid,
-    errors: valid ? [] : ["Attendance requires at least one allowed IP address."],
+    valid: true,
+    errors: [],
   };
 }
 

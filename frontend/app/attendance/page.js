@@ -8,6 +8,9 @@ import { useAttendanceWorkspace } from "../../components/attendance/useAttendanc
 
 export default function AttendancePage() {
   const workspace = useAttendanceWorkspace();
+  const isAdmin = ["super_admin", "platform_admin", "platform_manager", "admin", "manager"].includes(
+    workspace.session?.user?.role || ""
+  );
 
   return (
     <DashboardShell session={workspace.session} title="Attendance" hideTitle heroStats={[]}>
@@ -18,9 +21,14 @@ export default function AttendancePage() {
       {!workspace.loading ? (
         <section className="space-y-5">
           <AttendanceHero attendance={workspace.attendance} historyCount={workspace.history.length} />
-          <div className="grid gap-5 xl:grid-cols-[0.92fr_1.08fr] xl:items-start">
+          <div className="grid gap-6 lg:grid-cols-[1fr_1.3fr] lg:items-start mt-8">
             <AttendanceActionPanel attendance={workspace.attendance} punchAttendance={workspace.punchAttendance} sending={workspace.sending} />
-            <AttendanceHistoryPanel events={workspace.history} />
+            <AttendanceHistoryPanel 
+              events={workspace.history} 
+              search={workspace.search} 
+              setSearch={workspace.setSearch} 
+              isAdmin={isAdmin} 
+            />
           </div>
         </section>
       ) : null}
