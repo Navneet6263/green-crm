@@ -117,6 +117,7 @@ export default function LeadDetailPage() {
   const [loading, setLoading] = useState(true), [savingActivity, setSavingActivity] = useState(false), [savingTask, setSavingTask] = useState(false), [transferring, setTransferring] = useState(false), [uploadingDocuments, setUploadingDocuments] = useState(false);
   const [error, setError] = useState(""), [notice, setNotice] = useState(""), [activityType, setActivityType] = useState("call"), [activityText, setActivityText] = useState(""), [transferOwner, setTransferOwner] = useState(""), [transferNote, setTransferNote] = useState("");
   const [task, setTask] = useState({ title: "", type: "call", priority: "medium", due_date: "", due_time: "", assigned_to: "", notes: "" });
+  const isNewLead = !lead || !lead.status || lead.status === "new";
   const { customization } = useCustomization(session?.token);
   const enabledStatuses = getEnabledStatuses(customization);
   const role = session?.user?.role || "";
@@ -508,7 +509,23 @@ export default function LeadDetailPage() {
                     {ACTIVITY_OPTIONS.map((option) => <option key={option} value={option}>{nice(option)}</option>)}
                   </select>
                   <input className={INPUT_CLASS} value={activityText} onChange={(event) => setActivityText(event.target.value)} placeholder="Add a follow-up update" />
-                  <button className={PRIMARY_BUTTON_CLASS} type="submit" disabled={savingActivity}>{savingActivity ? "Saving..." : "Add Update"}</button>
+                  <div className="relative group inline-flex">
+                    <button 
+                      className={`${PRIMARY_BUTTON_CLASS} ${isNewLead ? "opacity-50 cursor-not-allowed" : ""}`} 
+                      type={isNewLead ? "button" : "submit"} 
+                      disabled={savingActivity}
+                    >
+                      {savingActivity ? "Saving..." : "Add Update"}
+                    </button>
+                    {isNewLead && (
+                      <div className="pointer-events-none absolute bottom-full left-1/2 mb-2 w-[240px] -translate-x-1/2 opacity-0 transition-opacity duration-200 group-hover:opacity-100 z-10">
+                        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-center text-[11px] font-bold leading-relaxed text-red-600 shadow-md">
+                          Follow-ups disabled. Please update the Lead Status from 'New' first.
+                        </div>
+                        <div className="absolute left-1/2 top-full h-0 w-0 -translate-x-1/2 border-x-[6px] border-t-[6px] border-x-transparent border-t-red-200"></div>
+                      </div>
+                    )}
+                  </div>
                 </form>
                 <div className="mt-4">
                   <LeadHistoryTimeline items={activity} renderWhen={when} />
@@ -671,7 +688,25 @@ export default function LeadDetailPage() {
                   <div className="grid gap-4 sm:grid-cols-2"><label className="space-y-2"><span className={KICKER_CLASS}>Date</span><input className={INPUT_CLASS} type="date" value={task.due_date} onChange={(event) => setTask((current) => ({ ...current, due_date: event.target.value }))} /></label><label className="space-y-2"><span className={KICKER_CLASS}>Time</span><input className={INPUT_CLASS} type="time" value={task.due_time} onChange={(event) => setTask((current) => ({ ...current, due_time: event.target.value }))} /></label></div>
                   <label className="space-y-2"><span className={KICKER_CLASS}>Assignee</span><select className={INPUT_CLASS} value={task.assigned_to} onChange={(event) => setTask((current) => ({ ...current, assigned_to: event.target.value }))}><option value="">Select assignee</option>{users.map((user) => <option key={user.user_id} value={user.user_id}>{user.name} | {user.role}</option>)}</select>{!users.length ? <p className="text-xs font-medium text-[#8d6e27]">{scopedUsersMessage}</p> : null}</label>
                   <label className="space-y-2"><span className={KICKER_CLASS}>Follow-up Notes</span><textarea className={`${INPUT_CLASS} min-h-[120px] resize-y`} rows="3" value={task.notes} onChange={(event) => setTask((current) => ({ ...current, notes: event.target.value }))} placeholder="Optional preparation notes" /></label>
-                  <button className={PRIMARY_BUTTON_CLASS} type="submit" disabled={savingTask}>{savingTask ? "Scheduling..." : "Schedule Follow-up"}</button>
+                  <div>
+                    <div className="relative group inline-flex">
+                      <button 
+                        className={`${PRIMARY_BUTTON_CLASS} ${isNewLead ? "opacity-50 cursor-not-allowed" : ""}`} 
+                        type={isNewLead ? "button" : "submit"} 
+                        disabled={savingTask}
+                      >
+                        {savingTask ? "Scheduling..." : "Schedule Follow-up"}
+                      </button>
+                      {isNewLead && (
+                        <div className="pointer-events-none absolute bottom-full left-1/2 mb-2 w-[240px] -translate-x-1/2 opacity-0 transition-opacity duration-200 group-hover:opacity-100 z-10">
+                          <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-center text-[11px] font-bold leading-relaxed text-red-600 shadow-md">
+                            Follow-ups disabled. Please update the Lead Status from 'New' first.
+                          </div>
+                          <div className="absolute left-1/2 top-full h-0 w-0 -translate-x-1/2 border-x-[6px] border-t-[6px] border-x-transparent border-t-red-200"></div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </form>
               </article>
 

@@ -28,7 +28,7 @@ function buildNote({ callStatus, emailStatus, mode, nextDate, nextTime, note, re
   return rows.join("\n");
 }
 
-export default function LeadFollowUpStatusButton({ className = "", lead, onSaved, token }) {
+export default function LeadFollowUpStatusButton({ className = "", lead, onSaved, token, disabled = false }) {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState("call");
   const [callStatus, setCallStatus] = useState("Connected");
@@ -79,9 +79,30 @@ export default function LeadFollowUpStatusButton({ className = "", lead, onSaved
 
   return (
     <>
-      <button type="button" className={className} onClick={() => setOpen(true)}>
-        Follow-up Status
-      </button>
+      <div className="relative group inline-flex">
+        <button 
+          type="button" 
+          className={`${className} ${disabled ? "opacity-50 cursor-not-allowed" : ""}`} 
+          onClick={(e) => {
+            if (disabled) {
+              e.preventDefault();
+              return;
+            }
+            setOpen(true);
+          }} 
+          aria-disabled={disabled}
+        >
+          Follow-up Status
+        </button>
+        {disabled ? (
+          <div className="pointer-events-none absolute bottom-full left-1/2 mb-2 w-[240px] -translate-x-1/2 opacity-0 transition-opacity duration-200 group-hover:opacity-100 z-10">
+            <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-center text-[11px] font-bold leading-relaxed text-red-600 shadow-md">
+              Follow-ups disabled. Please update the Lead Status from 'New' first.
+            </div>
+            <div className="absolute left-1/2 top-full h-0 w-0 -translate-x-1/2 border-x-[6px] border-t-[6px] border-x-transparent border-t-red-200"></div>
+          </div>
+        ) : null}
+      </div>
 
       {open ? createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4 backdrop-blur-sm">

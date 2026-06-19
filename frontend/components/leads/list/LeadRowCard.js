@@ -164,7 +164,7 @@ export default function LeadRowCard({
               ) : null}
               <Link prefetch={false} href={`/leads/${lead.lead_id}`} className={ACTION_BTN}>View</Link>
               {canEdit ? <Link prefetch={false} href={`/leads/${lead.lead_id}/edit`} className={ACTION_BTN}>Edit</Link> : null}
-              {canEdit ? <LeadFollowUpStatusButton className={FOLLOW_UP_BTN} lead={lead} onSaved={onInlineNoteSaved} token={sessionToken} /> : null}
+              {canEdit ? <LeadFollowUpStatusButton className={FOLLOW_UP_BTN} lead={lead} onSaved={onInlineNoteSaved} token={sessionToken} disabled={!lead.status || lead.status === "new"} /> : null}
             </div>
           </div>
         </div>
