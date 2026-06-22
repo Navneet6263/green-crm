@@ -327,6 +327,14 @@ function buildLeadChangeSummary(previousLead, nextLead, assignedToOverride) {
   track("Product", previousLead.product_id, nextLead.product_id);
   track("Workflow", previousLead.workflow_stage, nextLead.workflow_stage);
   track("Requirements", previousLead.requirements, nextLead.requirements);
+  track("Total lead value", previousLead.total_lead_value, nextLead.total_lead_value);
+  track("Advance received", previousLead.advance_received, nextLead.advance_received);
+  track("Active users", previousLead.active_users, nextLead.active_users);
+  track("Payment mode", previousLead.payment_mode, nextLead.payment_mode);
+  track("Payment date", previousLead.payment_date, nextLead.payment_date);
+  track("Client tenure", previousLead.client_tenure, nextLead.client_tenure);
+  track("Subscription start", previousLead.subscription_start_date, nextLead.subscription_start_date);
+  track("Next payment date", previousLead.next_payment_date, nextLead.next_payment_date);
 
   if (assignedToOverride !== undefined) {
     track("Owner", previousLead.assigned_to, assignedToOverride);
@@ -336,10 +344,7 @@ function buildLeadChangeSummary(previousLead, nextLead, assignedToOverride) {
 }
 
 function buildChangeNoteContent(noteContent, changes) {
-  const summary = changes.map((change) => `${change.label}: ${change.before} -> ${change.after}`);
-  return summary.length
-    ? `${noteContent}\n\nChanges:\n${summary.join("\n")}`
-    : noteContent;
+  return noteContent;
 }
 
 async function ensureSameCompanyUser(userId, companyId) {

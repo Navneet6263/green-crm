@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 
 import DashboardShell from "../../../components/dashboard/DashboardShell";
 import DashboardIcon from "../../../components/dashboard/icons";
@@ -372,8 +373,11 @@ export default function LeadDetailPage() {
           <article className={HERO_PANEL_CLASS}>
             <div className="space-y-6">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <button className={GHOST_BUTTON_CLASS} type="button" onClick={() => router.push("/leads")}>← Back</button>
-                <button className={PRIMARY_BUTTON_CLASS} type="button" onClick={() => router.push(`/leads/${lead.lead_id}/edit`)}><DashboardIcon name="settings" className="h-4 w-4" />Edit Lead</button>
+                <Link href="/leads" className={GHOST_BUTTON_CLASS}>← Back</Link>
+                <Link href={`/leads/${lead.lead_id}/edit`} className={PRIMARY_BUTTON_CLASS}>
+                  <DashboardIcon name="settings" className="h-4 w-4" />
+                  Edit Lead
+                </Link>
               </div>
 
               <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px] xl:items-start">

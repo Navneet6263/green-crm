@@ -7,6 +7,18 @@ import { LEAD_DATE_PRESET_OPTIONS } from "../filters/leadFilterOptions";
 import { getDatePresetRange } from "../filters/leadFilterUtils";
 import { MANAGER_ROLES } from "./leadPageConstants";
 
+const LEAD_FILTER_STORAGE_KEY = "greencrm_lead_filters";
+
+function readStoredFilters() {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(LEAD_FILTER_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
 export function useLeadFilterState({ role, session }) {
   const [assignedTo, setAssignedTo] = useState("all");
   const [company, setCompany] = useState("all");
@@ -27,6 +39,7 @@ export function useLeadFilterState({ role, session }) {
   const [toDate, setToDate] = useState("");
   const [hasPayment, setHasPayment] = useState(false);
   const [workflowStage, setWorkflowStage] = useState("all");
+  const restoredRef = useRef(false);
   const isPlatformConsole = isPlatformConsoleRole(role);
   const hasFixedAssigneeScope = ["sales", "marketing", "viewer"].includes(role);
   const canManage = MANAGER_ROLES.includes(role);
@@ -39,6 +52,34 @@ export function useLeadFilterState({ role, session }) {
       setAssignedTo((current) => (current === session.user.user_id ? current : session.user.user_id));
     }
   }, [hasFixedAssigneeScope, session?.user?.user_id]);
+
+  useEffect(() => {
+    if (restoredRef.current) return;
+    restoredRef.current = true;
+    const stored = readStoredFilters();
+    if (!stored) return;
+    if (stored.status) setStatus(stored.status);
+    if (stored.priority) setPriority(stored.priority);
+    if (stored.source) setSource(stored.source);
+    if (stored.product) setProduct(stored.product);
+    if (stored.workflowStage) setWorkflowStage(stored.workflowStage);
+    if (stored.teamFilter) setTeamFilter(stored.teamFilter);
+    if (stored.datePreset) setDatePreset(stored.datePreset);
+    if (stored.fromDate) setFromDate(stored.fromDate);
+    if (stored.toDate) setToDate(stored.toDate);
+    if (stored.createdBy) setCreatedBy(stored.createdBy);
+    if (stored.company) setCompany(stored.company);
+    if (stored.assignedTo && !hasFixedAssigneeScope) setAssignedTo(stored.assignedTo);
+    if (stored.hasPayment) setHasPayment(stored.hasPayment);
+  }, [hasFixedAssigneeScope]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const data = { status, priority, source, product, workflowStage, teamFilter, datePreset, fromDate, toDate, createdBy, company, assignedTo, hasPayment };
+    try {
+      sessionStorage.setItem(LEAD_FILTER_STORAGE_KEY, JSON.stringify(data));
+    } catch {}
+  }, [status, priority, source, product, workflowStage, teamFilter, datePreset, fromDate, toDate, createdBy, company, assignedTo, hasPayment]);
 
   const leadQueryBase = useMemo(
     () => ({
@@ -111,6 +152,7 @@ export function useLeadFilterState({ role, session }) {
     if (isPlatformConsole) {
       setCompany("all");
     }
+    try { sessionStorage.removeItem(LEAD_FILTER_STORAGE_KEY); } catch {}
   }
 
   function handleDatePresetChange(nextPreset) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 
 import DashboardShell from "../../../../components/dashboard/DashboardShell";
@@ -39,7 +39,7 @@ function printable(value) {
 
 function comparable(value) {
   if (blank(value)) return "";
-  return String(value).trim();
+  return String(value).trim().replace("T", " ").replace(/\.000Z$/, "").replace(/Z$/, "");
 }
 
 function normalizeEstimatedValue(value) {
@@ -88,6 +88,8 @@ export default function EditLeadPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [resourceLoading, setResourceLoading] = useState(false);
+  const initialTeamLoadedRef = useRef(false);
+  const loadedTeamIdRef = useRef(null);
 
   // Load customization settings
   const { customization } = useCustomization(session?.token);
@@ -171,7 +173,7 @@ export default function EditLeadPage() {
       ["team_id", "Team", originalLead.team_name || originalLead.team_id, selectedTeam?.name || selectedTeam?.team_id || nextPayload.team_id],
       ["assigned_to", "Lead Owner", originalLead.assigned_to_name || originalLead.assigned_to, selectedOwner?.name || nextPayload.assigned_to],
       ["requirements", "Requirements", originalLead.requirements, nextPayload.requirements],
-      ["follow_up_date", "Follow-up Date", originalLead.follow_up_date ? String(originalLead.follow_up_date).slice(0, 16) : "", nextPayload.follow_up_date],
+      ["follow_up_date", "Follow-up Date", originalLead.follow_up_date ? toApiDateTime(String(originalLead.follow_up_date).slice(0, 16)) : "", nextPayload.follow_up_date],
       ["product_id", "Product", productLookup.get(originalLead.product_id) || originalLead.product_name || originalLead.product_id, productLookup.get(nextPayload.product_id) || nextPayload.product_id],
       ["advance_received", "Advance Received", originalLead.advance_received, nextPayload.advance_received],
     ];
@@ -202,6 +204,7 @@ export default function EditLeadPage() {
     }
 
     setSession(activeSession);
+    router.prefetch(`/leads/${params.id}`);
     const allowAssignments = canManageScopedAssignments(activeSession.user?.role);
     apiRequest(`/leads/${params.id}`, { token: activeSession.token })
       .then(async (leadResponse) => {
@@ -250,6 +253,7 @@ export default function EditLeadPage() {
           follow_up_date: leadResponse.follow_up_date ? String(leadResponse.follow_up_date).slice(0, 16) : "",
           advance_received: leadResponse.advance_received || "",
         });
+        loadedTeamIdRef.current = nextTeamId;
         if (leadResponse.product_id && !scopedProducts.some((product) => product.product_id === leadResponse.product_id)) {
           setForm((current) => current ? { ...current, product_id: "" } : current);
         }
@@ -263,6 +267,16 @@ export default function EditLeadPage() {
 
     async function reloadScopedUsers() {
       if (!session?.token || !originalLead?.company_id || !canManageAssignment || !form) {
+        return;
+      }
+
+      if (form.team_id === loadedTeamIdRef.current) {
+        return;
+      }
+
+      // Skip the first run — data was already loaded in the mount useEffect
+      if (!initialTeamLoadedRef.current) {
+        initialTeamLoadedRef.current = true;
         return;
       }
 
@@ -286,6 +300,7 @@ export default function EditLeadPage() {
 
         if (ignore) return;
 
+        loadedTeamIdRef.current = form.team_id;
         setUsers(scopedUsers);
         setForm((current) =>
           current
@@ -344,7 +359,7 @@ export default function EditLeadPage() {
     try {
       let finalChangeNote = changeNote.trim();
       if (!finalChangeNote && changeItems.length > 0) {
-        finalChangeNote = "Auto-generated log:\n" + changeItems.map(c => `- ${c.label}: ${c.previous} -> ${c.next}`).join("\n");
+        finalChangeNote = changeItems.map(c => `${c.label}: ${c.previous} → ${c.next}`).join("\n");
       }
 
       const nextPayload = {
