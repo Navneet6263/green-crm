@@ -68,6 +68,7 @@ const child = spawn(command, {
   cwd: rootDir,
   stdio: "inherit",
   shell: true,
+  env: { ...process.env, NEXT_PRIVATE_SKIP_LOCKFILE_PATCHING: "1" }
 });
 
 child.on("exit", (code) => {
