@@ -823,6 +823,22 @@ async function getUserProductHistory(userId, companyId, teamIds = null, executor
   return rows;
 }
 
+async function findLeadByPhoneInTeam(phone, teamId, excludeLeadId = null, executor) {
+  const active = getExecutor(executor);
+  const params = [phone, teamId];
+  let query = `
+    SELECT lead_id, contact_person, company_name 
+    FROM leads 
+    WHERE phone = ? AND team_id = ? AND is_active = 1
+  `;
+  if (excludeLeadId) {
+    query += ` AND lead_id != ?`;
+    params.push(excludeLeadId);
+  }
+  const [rows] = await active.query(query, params);
+  return rows[0] || null;
+}
+
 module.exports = {
   createActivity,
   createLead,
@@ -836,4 +852,5 @@ module.exports = {
   listReminders,
   softDeleteLead,
   updateLead,
+  findLeadByPhoneInTeam,
 };

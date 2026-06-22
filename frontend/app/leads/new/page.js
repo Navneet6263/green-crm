@@ -179,10 +179,16 @@ export default function NewLeadPage() {
     if (!form.product_id) e.product_id = "Select a product.";
     if (!form.contact_person.trim()) e.contact_person = "Contact name is required.";
     if (!form.company_name.trim()) e.company_name = "Company name is required.";
-    if (!form.email.trim()) e.email = "Email is required.";
-    else if (!/\S+@\S+\.\S+/.test(form.email)) e.email = "Enter a valid email.";
-    if (!form.phone.trim()) e.phone = "Phone is required.";
-    else { const d = form.phone.replace(/\D/g,""); if (d.length < 7 || d.length > 15) e.phone = "Phone must be 7–15 digits."; }
+    if (!form.email.trim() && !form.phone.trim()) {
+      e.email = "Either email or phone is required.";
+      e.phone = "Either email or phone is required.";
+    } else {
+      if (form.email.trim() && !/\S+@\S+\.\S+/.test(form.email)) e.email = "Enter a valid email.";
+      if (form.phone.trim()) { 
+        const d = form.phone.replace(/\D/g,""); 
+        if (d.length < 7 || d.length > 15) e.phone = "Phone must be 7–15 digits."; 
+      }
+    }
     if (form.lead_source === "other" && !form.custom_lead_source.trim()) e.custom_lead_source = "Enter the custom source.";
     if (form.number_of_units !== "") { const u = Number(form.number_of_units); if (!Number.isInteger(u) || u < 0) e.number_of_units = "Must be a whole number."; }
     if (isPlatformConsole && !form.assigned_to) e.assigned_to = "Choose the tenant owner.";

@@ -100,7 +100,7 @@ export function EditIdentitySection({ form, isAdmin, teams, users, selectedTeam,
         </label>
         <label className="space-y-2">
           <span className={T.kicker}>Phone</span>
-          <input className={T.input} value={form.phone} onChange={(e) => onChange("phone", e.target.value)} required />
+          <input className={T.input} value={form.phone} onChange={(e) => onChange("phone", e.target.value)} />
         </label>
         <label className="space-y-2">
           <span className={T.kicker}>Lead Source</span>

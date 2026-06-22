@@ -252,8 +252,12 @@ function buildBulkImportLeadPayload(row, defaultCompanyId = null) {
 }
 
 function validateLeadPayload(lead) {
-  if (!lead.contact_person || !lead.company_name || !lead.phone) {
-    throw new AppError("Contact person, company name, and phone are required.");
+  if (!lead.contact_person || !lead.company_name) {
+    throw new AppError("Contact person and company name are required.");
+  }
+
+  if (!lead.phone && !lead.email) {
+    throw new AppError("Either email or phone is required.");
   }
 
   if (!lead.product_id) {
@@ -857,6 +861,13 @@ async function createLead(auth, payload) {
   );
   await ensureUserBelongsToTeam(companyId, assignedTo, teamId, "Lead owner");
 
+  if (lead.phone) {
+    const existing = await leadRepository.findLeadByPhoneInTeam(lead.phone, teamId);
+    if (existing) {
+      throw new AppError(`This number already exists in this team under the name: ${existing.contact_person || existing.company_name}`, 400);
+    }
+  }
+
   let is_workflow = 0;
   let workflow_status = null;
   if (assignedTo) {
@@ -952,6 +963,13 @@ async function updateLead(auth, leadId, payload) {
   }
 
   await ensureLeadContext(lead.company_id, normalized.product_id);
+
+  if (normalized.phone && normalized.phone !== lead.phone) {
+    const existing = await leadRepository.findLeadByPhoneInTeam(normalized.phone, lead.team_id, lead.lead_id);
+    if (existing) {
+      throw new AppError(`This number already exists in this team under the name: ${existing.contact_person || existing.company_name}`, 400);
+    }
+  }
 
   const updates = {
     contact_person: normalized.contact_person,

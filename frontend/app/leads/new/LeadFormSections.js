@@ -54,10 +54,10 @@ export function LeadFormSection1({ form, errors, companies, teams, assignableUse
       <Label label="Company Name *" error={errors.company_name} fieldId="company_name">
         <input className={T.input} value={form.company_name} onChange={e => onChange("company_name", e.target.value)} placeholder="Acme Corp" />
       </Label>
-      <Label label="Email *" error={errors.email} fieldId="email">
+      <Label label="Email" error={errors.email} fieldId="email">
         <input className={T.input} type="email" value={form.email} onChange={e => onChange("email", e.target.value)} placeholder="john@acme.com" />
       </Label>
-      <Label label="Phone *" error={errors.phone} fieldId="phone">
+      <Label label="Phone" error={errors.phone} fieldId="phone">
         <input className={T.input} value={form.phone} onChange={e => onChange("phone", e.target.value)} placeholder="+91 98765 43210" />
       </Label>
 
