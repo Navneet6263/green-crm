@@ -399,6 +399,8 @@ export default function LeadDetailPage() {
                     {lead.product_name ? <span className="inline-flex rounded-full border border-amber-200 bg-amber-100 px-2.5 py-0.5 text-[11px] font-semibold text-amber-800">{lead.product_name}</span> : null}
                     {teamBadgeLabel(lead) ? <span className="inline-flex rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-[11px] font-semibold text-slate-600">{teamBadgeLabel(lead)}</span> : null}
                     <span className="inline-flex rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-[11px] font-semibold text-slate-600">Workflow · {nice(lead.workflow_stage || "sales")}</span>
+                    <span className="inline-flex rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-[11px] font-semibold text-slate-700">Est. {money(lead.estimated_value)}</span>
+                    <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700">Adv. {money(lead.advance_received)}</span>
                   </div>
 
                   <div className="flex flex-wrap items-center gap-3">
@@ -621,9 +623,14 @@ export default function LeadDetailPage() {
                     <span className={KICKER_CLASS}>Lead Summary</span>
                     <h2 className="mt-0.5 text-lg font-bold text-slate-900">Account Overview</h2>
                   </div>
-                  <span className="rounded-full border border-amber-200 bg-amber-100 px-3 py-1 text-[11px] font-bold text-amber-800">
-                    {money(lead.estimated_value)}
-                  </span>
+                  <div className="flex gap-2">
+                    <span className="rounded-full border border-amber-200 bg-amber-100 px-3 py-1 text-[11px] font-bold text-amber-800">
+                      Est. {money(lead.estimated_value)}
+                    </span>
+                    <span className="rounded-full border border-emerald-200 bg-emerald-100 px-3 py-1 text-[11px] font-bold text-emerald-800">
+                      Adv. {money(lead.advance_received)}
+                    </span>
+                  </div>
                 </div>
 
                 {/* Contact identity block */}
