@@ -23,6 +23,13 @@ export const BULK_IMPORT_FIELDS = [
     note: "Leave blank to keep the lead with the current importer.",
   },
   {
+    key: "shared_users",
+    label: "Collaborators",
+    required: "Optional",
+    example: "UI0004, UI0005",
+    note: "Comma separated user codes to add more people.",
+  },
+  {
     key: "contact_person",
     label: "Contact Person",
     required: "Yes",
@@ -126,6 +133,13 @@ export const BULK_IMPORT_FIELDS = [
     required: "Optional",
     example: "India",
     note: "If blank, GreenCRM uses India.",
+  },
+  {
+    key: "onboarded_date",
+    label: "Onboarded Date",
+    required: "Optional",
+    example: "2026-04-10",
+    note: "Date when lead was onboarded (if applicable).",
   },
 ];
 

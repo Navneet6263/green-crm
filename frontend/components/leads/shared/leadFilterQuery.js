@@ -21,6 +21,7 @@ export function parseLeadFilterSearchParams(searchParams) {
     status: status || quickFilter || "all",
     teamFilter: readValue(searchParams, "team_ids") || "all",
     toDate: readValue(searchParams, "to_date"),
+    dateFilterType: readValue(searchParams, "date_filter_type") || "created_at",
     workflowStage: readValue(searchParams, "workflow_stage") || "all",
     syncKey: searchParams?.toString?.() || "",
   };

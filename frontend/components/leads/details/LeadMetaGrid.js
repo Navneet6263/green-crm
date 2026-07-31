@@ -10,6 +10,7 @@ export default function LeadMetaGrid({ lead, teamBadgeLabel }) {
     { label: "Team", value: teamBadgeLabel(lead) || "Auto team" },
     { label: "Source", value: titleizeLeadValue(lead.lead_source || "website") },
     { label: "Follow Up", value: formatLeadDate(lead.follow_up_date, true) },
+    { label: "Onboarded Date", value: formatLeadDate(lead.onboarded_date, true) },
     { label: "Estimated Value", value: formatLeadMoney(lead.estimated_value) },
     { label: "Payment Advance", value: formatLeadMoney(lead.advance_received) },
     { label: "Remaining Payment", value: formatLeadMoney(lead.remaining_payment ?? (Number(lead.estimated_value || 0) - Number(lead.advance_received || 0))) },

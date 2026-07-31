@@ -366,6 +366,7 @@ const schemaStatements = [
     subscription_start_date DATE        NULL,
     next_payment_date     DATE          NULL,
     remaining_payment     AS (total_lead_value - advance_received) PERSISTED,
+    onboarded_date        DATETIME      NULL,
     created_at            DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at            DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),

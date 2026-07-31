@@ -10,6 +10,7 @@ const LEAD_STATUSES = [
   "demo-done",
   "trial-started",
   "closed-won",
+  "onboarded",
   "closed-lost",
 ];
 

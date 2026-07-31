@@ -45,6 +45,7 @@ function getDefaultCustomization() {
       "demo-done",
       "trial-started",
       "closed-won",
+      "onboarded",
       "closed-lost",
     ],
     lead_form_fields: {

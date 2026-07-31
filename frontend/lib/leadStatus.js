@@ -10,6 +10,7 @@ export const LEAD_STATUS_ORDER = [
   "demo-done",
   "trial-started",
   "closed-won",
+  "onboarded",
   "closed-lost",
 ];
 
@@ -24,6 +25,7 @@ export const LEAD_OPEN_STATUSES = [
   "booked-demo",
   "demo-done",
   "trial-started",
+  "onboarded",
 ];
 
 export const LEAD_STATUS_LABELS = {
@@ -38,6 +40,7 @@ export const LEAD_STATUS_LABELS = {
   "demo-done": "Demo Done",
   "trial-started": "Trial Started",
   "closed-won": "Closed Won",
+  "onboarded": "Onboarded",
   "closed-lost": "Closed Lost",
 };
 
@@ -53,6 +56,7 @@ export const LEAD_STATUS_BADGES = {
   "demo-done": "bg-[#e5fff4] text-[#067647] ring-[#c1f2dd]",
   "trial-started": "bg-[#edf3ff] text-[#2d64dd] ring-[#d6e3ff]",
   "closed-won": "bg-[#ebf8ee] text-[#217346] ring-[#ccead5]",
+  "onboarded": "bg-[#ebf8ee] text-[#217346] ring-[#ccead5]",
   "closed-lost": "bg-[#fff0f0] text-[#b63b3b] ring-[#f3caca]",
 };
 
@@ -68,6 +72,7 @@ export const LEAD_STATUS_ACCENTS = {
   "demo-done": ["rgba(16,185,129,.14)", "#0f8c53"],
   "trial-started": ["rgba(59,130,246,.14)", "#2d64dd"],
   "closed-won": ["rgba(31,199,120,.16)", "#0f8c53"],
+  "onboarded": ["rgba(31,199,120,.16)", "#0f8c53"],
   "closed-lost": ["rgba(224,82,82,.14)", "#b63b3b"],
 };
 
@@ -83,6 +88,7 @@ export const LEAD_STATUS_COLORS = {
   "demo-done": "#10b981",
   "trial-started": "#3b82f6",
   "closed-won": "#22c55e",
+  "onboarded": "#22c55e",
   "closed-lost": "#ef4444",
 };
 
@@ -100,5 +106,5 @@ export function titleizeLeadStatus(value = "") {
 }
 
 export function isClosedLeadStatus(status) {
-  return ["closed-won", "closed-lost"].includes(String(status || "").toLowerCase());
+  return ["closed-won", "onboarded", "closed-lost"].includes(String(status || "").toLowerCase());
 }

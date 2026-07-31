@@ -299,6 +299,8 @@ function LeadsPageContent() {
       onFromDateChange: filters.handleFromDateChange,
       toDate: filters.toDate,
       onToDateChange: filters.handleToDateChange,
+      dateFilterType: filters.dateFilterType,
+      onDateFilterTypeChange: filters.setDateFilterType,
     },
     activeCount: filters.activeFilterCount,
     onReset: filters.resetLeadFilters,

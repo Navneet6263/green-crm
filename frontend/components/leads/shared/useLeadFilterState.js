@@ -24,6 +24,7 @@ export function useLeadFilterState({ role, session }) {
   const [company, setCompany] = useState("all");
   const [createdBy, setCreatedBy] = useState("all");
   const [datePreset, setDatePreset] = useState("all");
+  const [dateFilterType, setDateFilterType] = useState("created_at");
   const [fromDate, setFromDate] = useState("");
   const [priority, setPriority] = useState("all");
   const [notesSearch, setNotesSearch] = useState("");
@@ -65,6 +66,7 @@ export function useLeadFilterState({ role, session }) {
     if (stored.workflowStage) setWorkflowStage(stored.workflowStage);
     if (stored.teamFilter) setTeamFilter(stored.teamFilter);
     if (stored.datePreset) setDatePreset(stored.datePreset);
+    if (stored.dateFilterType) setDateFilterType(stored.dateFilterType);
     if (stored.fromDate) setFromDate(stored.fromDate);
     if (stored.toDate) setToDate(stored.toDate);
     if (stored.createdBy) setCreatedBy(stored.createdBy);
@@ -75,11 +77,11 @@ export function useLeadFilterState({ role, session }) {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const data = { status, priority, source, product, workflowStage, teamFilter, datePreset, fromDate, toDate, createdBy, company, assignedTo, hasPayment };
+    const data = { status, priority, source, product, workflowStage, teamFilter, datePreset, dateFilterType, fromDate, toDate, createdBy, company, assignedTo, hasPayment };
     try {
       sessionStorage.setItem(LEAD_FILTER_STORAGE_KEY, JSON.stringify(data));
     } catch {}
-  }, [status, priority, source, product, workflowStage, teamFilter, datePreset, fromDate, toDate, createdBy, company, assignedTo, hasPayment]);
+  }, [status, priority, source, product, workflowStage, teamFilter, datePreset, dateFilterType, fromDate, toDate, createdBy, company, assignedTo, hasPayment]);
 
   const leadQueryBase = useMemo(
     () => ({
@@ -95,11 +97,12 @@ export function useLeadFilterState({ role, session }) {
       created_by: createdBy !== "all" ? createdBy : undefined,
       from_date: fromDate || undefined,
       to_date: toDate || undefined,
+      date_filter_type: dateFilterType,
       status: quickFilter ? undefined : status,
       quick_filter: quickFilter,
       has_payment: hasPayment || undefined,
     }),
-    [assignedTo, createdBy, debouncedNotesSearch, debouncedSearch, fromDate, priority, product, quickFilter, scopedCompanyId, source, status, teamFilter, toDate, workflowStage, hasPayment]
+    [assignedTo, createdBy, debouncedNotesSearch, debouncedSearch, fromDate, priority, product, quickFilter, scopedCompanyId, source, status, teamFilter, toDate, workflowStage, hasPayment, dateFilterType]
   );
 
   const activeFilterCount = useMemo(
@@ -146,6 +149,7 @@ export function useLeadFilterState({ role, session }) {
     setWorkflowStage("all");
     setCreatedBy("all");
     setDatePreset("all");
+    setDateFilterType("created_at");
     setFromDate("");
     setToDate("");
     setTeamFilter("all");
@@ -188,6 +192,7 @@ export function useLeadFilterState({ role, session }) {
     setFromDate(query.fromDate || "");
     setToDate(query.toDate || "");
     setDatePreset(query.fromDate || query.toDate ? "custom" : "all");
+    setDateFilterType(query.dateFilterType || "created_at");
     setTeamFilter(query.teamFilter || "all");
 
     if (isPlatformConsole) {
@@ -208,6 +213,7 @@ export function useLeadFilterState({ role, session }) {
     company,
     createdBy,
     datePreset,
+    dateFilterType,
     datePresetOptions: LEAD_DATE_PRESET_OPTIONS,
     fromDate,
     handleDatePresetChange,
@@ -227,6 +233,7 @@ export function useLeadFilterState({ role, session }) {
     setCreatedBy,
     setPriority,
     setProduct,
+    setDateFilterType,
     setNotesSearch: handleNotesSearchChange,
     setSearch: handleSearchChange,
     setSource,

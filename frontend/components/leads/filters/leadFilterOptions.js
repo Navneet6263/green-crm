@@ -35,6 +35,7 @@ export const LEAD_STATUS_OPTIONS = [
   { value: "trial-started", label: "Trial started" },
   { value: "closed-won", label: "Closed won" },
   { value: "closed-lost", label: "Closed lost" },
+  { value: "onboarded", label: "Onboarded" },
 ];
 
 export const LEAD_PRIORITY_OPTIONS = [

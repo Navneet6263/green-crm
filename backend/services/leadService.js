@@ -104,7 +104,16 @@ function normalizeLeadDate(value) {
   }
 
   const source = String(value).trim();
-  const normalized = source.includes("T") ? source : source.replace(" ", "T");
+
+  let normalized = source;
+  // Support DD-MM-YYYY or DD/MM/YYYY formats
+  const ddMmYyyyMatch = /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(.*)$/.exec(source);
+  if (ddMmYyyyMatch) {
+    const [, day, month, year, rest] = ddMmYyyyMatch;
+    normalized = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}${rest}`;
+  }
+
+  normalized = normalized.includes("T") ? normalized : normalized.replace(" ", "T");
   const parsed = new Date(normalized);
   return Number.isNaN(parsed.getTime()) ? INVALID_LEAD_DATE : parsed;
 }
@@ -174,6 +183,7 @@ function normalizeLeadPayload(payload) {
     workflow_stage: String(payload.workflow_stage || "sales").toLowerCase(),
     assigned_to: payload.assigned_to || null,
     total_lead_value: normalizeLeadNumber(payload.estimated_value ?? payload.total_lead_value ?? 0),
+    onboarded_date: payload.onboarded_date ? normalizeLeadDate(payload.onboarded_date) : null,
     advance_received: normalizeLeadNumber(payload.advance_received ?? 0),
     active_users: normalizeLeadInteger(payload.active_users ?? null),
     payment_mode: payload.payment_mode || null,
@@ -181,6 +191,7 @@ function normalizeLeadPayload(payload) {
     client_tenure: payload.client_tenure || null,
     subscription_start_date: normalizeLeadDate(payload.subscription_start_date),
     next_payment_date: normalizeLeadDate(payload.next_payment_date),
+    onboarded_date: normalizeLeadDate(payload.onboarded_date),
   };
 }
 
@@ -223,12 +234,15 @@ function buildBulkImportLeadPayload(row, defaultCompanyId = null) {
     "emp_code",
   ]);
   const productCode = getImportValue(row, ["product_id", "product_code"]);
+  const sharedUsersString = getImportValue(row, ["shared_users", "collaborators"]);
+  const sharedUserIds = sharedUsersString ? sharedUsersString.split(",").map((s) => s.trim()).filter(Boolean) : [];
 
   return {
     company_id: getImportValue(row, ["company_id", "company_code"]) || defaultCompanyId || null,
     team_id: getImportValue(row, ["team_id", "team_code"]),
     product_id: productCode,
     assigned_to: assignedCode || null,
+    shared_user_ids: sharedUserIds,
     contact_person: getImportValue(row, ["contact_person", "contact_person_name"]) || "",
     company_name: getImportValue(row, ["company_name"]) || "",
     email: getImportValue(row, ["email"]) || "",
@@ -244,9 +258,10 @@ function buildBulkImportLeadPayload(row, defaultCompanyId = null) {
     address_state: getImportValue(row, ["address_state", "state"]),
     address_zip: getImportValue(row, ["address_zip", "postal_code"]),
     address_country: getImportValue(row, ["address_country", "country"]) || "India",
-    status: "new",
+    status: getImportValue(row, ["onboarded_date", "approval_date"]) ? "onboarded" : (getImportValue(row, ["status"]) || "new"),
     requirements: null,
     workflow_stage: "sales",
+    onboarded_date: getImportValue(row, ["onboarded_date", "approval_date"]),
     row_number: Number(row.__row_number || row.row_number || 0) || null,
   };
 }
@@ -335,6 +350,7 @@ function buildLeadChangeSummary(previousLead, nextLead, assignedToOverride) {
   track("Client tenure", previousLead.client_tenure, nextLead.client_tenure);
   track("Subscription start", previousLead.subscription_start_date, nextLead.subscription_start_date);
   track("Next payment date", previousLead.next_payment_date, nextLead.next_payment_date);
+  track("Onboarded date", previousLead.onboarded_date, nextLead.onboarded_date);
 
   if (assignedToOverride !== undefined) {
     track("Owner", previousLead.assigned_to, assignedToOverride);
@@ -586,6 +602,7 @@ async function buildLeadFilters(auth, query) {
     notesSearch: query.notes_search || "",
     workflowStage: query.workflow_stage || null,
     productId: query.product_id || null,
+    dateFilterType: query.date_filter_type || "created_at",
     createdFrom,
     createdTo,
     hasPayment: query.has_payment === "true" || query.has_payment === true || query.hasPayment === "true" || query.hasPayment === true,
@@ -883,6 +900,14 @@ async function createLead(auth, payload) {
     }
   }
 
+  let nextSharedUsers = [];
+  if (payload.shared_user_ids && payload.shared_user_ids.length > 0) {
+    nextSharedUsers = await ensureSharedUsersAllowed(
+      { company_id: companyId, team_id: teamId, assigned_to: assignedTo },
+      payload.shared_user_ids
+    );
+  }
+
   return db.withTransaction(async (transaction) => {
     const createdLead = await leadRepository.createLead(
       {
@@ -915,6 +940,7 @@ async function createLead(auth, payload) {
         workflow_status,
         total_lead_value: lead.estimated_value || lead.total_lead_value,
         advance_received: lead.advance_received,
+        onboarded_date: lead.onboarded_date,
       },
       transaction
     );
@@ -947,6 +973,15 @@ async function createLead(auth, payload) {
       },
       transaction
     );
+
+    if (nextSharedUsers.length > 0) {
+      await leadAssignmentRepository.replaceSharedUsers(
+        createdLead.lead_id,
+        companyId,
+        nextSharedUsers.map((u) => u.user_id),
+        transaction
+      );
+    }
 
     return maskLeadForRole(createdLead, auth.role);
   });
@@ -1005,6 +1040,7 @@ async function updateLead(auth, leadId, payload) {
     client_tenure: normalized.client_tenure,
     subscription_start_date: normalized.subscription_start_date,
     next_payment_date: normalized.next_payment_date,
+    onboarded_date: normalized.onboarded_date,
   };
 
   let assignedToOverride;

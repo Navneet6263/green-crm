@@ -8,25 +8,21 @@ import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
 import Highlight from '@tiptap/extension-highlight';
 import Placeholder from '@tiptap/extension-placeholder';
-import { Note } from '@/types/note';
+
 import EditorToolbar from '@/components/notes/EditorToolbar';
 import { Lock, Pin, X } from 'lucide-react';
 
-interface EditorPanelProps {
-  note: Note;
-  onUpdate: (noteId: string, data: Partial<Note>) => void;
-  onClose: () => void;
-}
 
-export default function EditorPanel({ note, onUpdate, onClose }: EditorPanelProps) {
+
+export default function EditorPanel({ note, onUpdate, onClose }) {
   const [title, setTitle] = useState(note.title);
-  const [tags, setTags] = useState<string[]>(note.tags ?? []);
+  const [tags, setTags] = useState(note.tags ?? []);
   const [tagInput, setTagInput] = useState('');
-  const [savedAt, setSavedAt] = useState<Date | null>(null);
+  const [savedAt, setSavedAt] = useState(null);
   const [wordCount, setWordCount] = useState(0);
-  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autoSaveTimer = useRef(null);
 
-  const save = useCallback((content: string, currentTags: string[]) => {
+  const save = useCallback((content, currentTags) => {
     onUpdate(note.id, { content, tags: currentTags });
     setSavedAt(new Date());
   }, [note.id, onUpdate]);
@@ -70,7 +66,7 @@ export default function EditorPanel({ note, onUpdate, onClose }: EditorPanelProp
     if (title !== note.title) onUpdate(note.id, { title });
   };
 
-  const handleTagKeyDown = (e: React.KeyboardEvent) => {
+  const handleTagKeyDown = (e) => {
     if (e.key === 'Enter' && tagInput.trim()) {
       const newTag = tagInput.trim().toLowerCase();
       if (!tags.includes(newTag)) {
@@ -82,7 +78,7 @@ export default function EditorPanel({ note, onUpdate, onClose }: EditorPanelProp
     }
   };
 
-  const removeTag = (tag: string) => {
+  const removeTag = (tag) => {
     const newTags = tags.filter(t => t !== tag);
     setTags(newTags);
     if (editor) save(JSON.stringify(editor.getJSON()), newTags);

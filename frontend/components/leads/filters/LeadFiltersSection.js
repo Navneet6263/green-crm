@@ -71,6 +71,8 @@ export default function LeadFiltersSection({
                 onFromDateChange={dateFilters.onFromDateChange}
                 toDate={dateFilters.toDate}
                 onToDateChange={dateFilters.onToDateChange}
+                dateFilterType={dateFilters.dateFilterType}
+                onDateFilterTypeChange={dateFilters.onDateFilterTypeChange}
                 kickerClassName={kickerClassName}
                 inputClassName={inputClassName}
               />

@@ -175,6 +175,7 @@ export default function LeadRowCard({
           {lead.email ? <span className={`${META_CHIP} hidden max-w-[220px] sm:inline-flex`}><span className="truncate">{lead.email}</span></span> : null}
           {lead.created_by_name ? <span className={META_CHIP}><span className="font-semibold text-slate-400">By</span><MiniAvatar name={lead.created_by_name} bg="bg-slate-400" /><span className="truncate font-semibold text-slate-600">{lead.created_by_name}</span></span> : null}
           {lead.follow_up_date ? <span className={META_CHIP}><span className="font-semibold text-slate-400">Follow-up</span><span className="font-semibold text-amber-600">{formatLeadDate(lead.follow_up_date, true)}</span></span> : null}
+          {lead.onboarded_date ? <span className={META_CHIP}><span className="font-semibold text-slate-400">Onboarded</span><span className="font-semibold text-emerald-600">{formatLeadDate(lead.onboarded_date, true)}</span></span> : null}
           <span className={META_CHIP}><span className="font-semibold text-slate-400">Est.</span><strong className="text-slate-700">{formatLeadMoney(lead.estimated_value)}</strong></span>
           <span className={META_CHIP}><span className="font-semibold text-slate-400">Adv.</span><strong className="text-emerald-600">{formatLeadMoney(lead.advance_received)}</strong></span>
           <span className={`${META_CHIP} hidden sm:inline-flex`}>{titleizeLeadValue(lead.lead_source || "website")}</span>

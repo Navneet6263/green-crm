@@ -1,20 +1,3 @@
-export interface Note {
-  id: string;
-  title: string;
-  content: string;
-  color: string | null;
-  is_pinned: boolean;
-  tags: string[];
-  is_archived?: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface NoteTag {
-  tag: string;
-  count: number;
-}
-
 export const NOTE_COLORS = [
   { value: null, name: 'Default', class: 'bg-white' },
   { value: 'red', name: 'Red', class: 'bg-red-50' },

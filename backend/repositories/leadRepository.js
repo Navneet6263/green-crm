@@ -135,13 +135,15 @@ function buildWhere(filters) {
     params.push(filters.priority);
   }
 
+  const dateColumn = filters.dateFilterType === "onboarded_date" ? "l.onboarded_date" : "l.created_at";
+
   if (filters.createdFrom) {
-    conditions.push("l.created_at >= ?");
+    conditions.push(`${dateColumn} >= ?`);
     params.push(filters.createdFrom);
   }
 
   if (filters.createdTo) {
-    conditions.push("l.created_at <= ?");
+    conditions.push(`${dateColumn} <= ?`);
     params.push(filters.createdTo);
   }
 
@@ -404,9 +406,10 @@ async function createLead(lead, executor) {
         total_lead_value,
         advance_received,
         active_users,
+        onboarded_date,
         created_at,
         updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${SQL_NOW}, ${SQL_NOW})
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${SQL_NOW}, ${SQL_NOW})
     `,
     [
       lead.lead_id,
@@ -447,6 +450,7 @@ async function createLead(lead, executor) {
       lead.estimated_value || lead.total_lead_value || 0,
       lead.advance_received || 0,
       lead.active_users || null,
+      lead.onboarded_date || null,
     ]
   );
 

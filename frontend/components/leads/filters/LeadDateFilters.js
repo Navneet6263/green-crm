@@ -10,11 +10,24 @@ export default function LeadDateFilters({
   onFromDateChange,
   toDate,
   onToDateChange,
+  dateFilterType,
+  onDateFilterTypeChange,
   kickerClassName,
   inputClassName,
 }) {
   return (
     <div className="grid gap-3">
+      <LeadFilterSelect
+        label="Filter date by"
+        value={dateFilterType}
+        onChange={onDateFilterTypeChange}
+        options={[
+          { value: "created_at", label: "Lead Created Date" },
+          { value: "onboarded_date", label: "Onboarded Date" },
+        ]}
+        kickerClassName={kickerClassName}
+        inputClassName={inputClassName}
+      />
       <LeadFilterSelect
         label="Date preset"
         value={preset}

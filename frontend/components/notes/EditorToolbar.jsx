@@ -7,17 +7,13 @@ import {
   CheckSquare, Quote, Code, Undo, Redo, Highlighter,
 } from 'lucide-react';
 
-interface EditorToolbarProps {
-  editor: Editor | null;
-}
-
-export default function EditorToolbar({ editor }: EditorToolbarProps) {
+export default function EditorToolbar({ editor }) {
   if (!editor) return null;
 
   const btn = (
-    onClick: () => void,
-    icon: React.ReactNode,
-    title: string,
+    onClick,
+    icon,
+    title,
     isActive = false,
   ) => (
     <button

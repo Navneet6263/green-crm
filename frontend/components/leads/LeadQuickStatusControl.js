@@ -69,7 +69,7 @@ export default function LeadQuickStatusControl({
     return { due, title };
   }
 
-  function saveStatusUpdate({ demo = {}, followUp, isDemoStatus = false, note }) {
+  function saveStatusUpdate({ demo = {}, followUp, isDemoStatus = false, onboardedDate, note }) {
     if (!token || !lead?.lead_id || saveLockRef.current || nextStatus === currentStatus) {
       return;
     }
@@ -81,6 +81,7 @@ export default function LeadQuickStatusControl({
       ...lead,
       assigned_to: isDemoStatus ? demo.assignee : lead.assigned_to,
       requirements: isDemoStatus ? demo.requirement.trim() : lead.requirements,
+      onboarded_date: onboardedDate || lead.onboarded_date,
       status: submittedStatus,
     };
 
@@ -99,6 +100,7 @@ export default function LeadQuickStatusControl({
           assigned_to: isDemoStatus ? demo.assignee : undefined,
           change_note: isDemoStatus ? description : note,
           requirements: isDemoStatus ? demo.requirement.trim() : undefined,
+          onboarded_date: onboardedDate,
           status: submittedStatus,
         },
       });

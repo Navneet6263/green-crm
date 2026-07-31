@@ -43,8 +43,10 @@ export default function LeadStatusUpdateDialog({
 }) {
   const [mounted, setMounted] = useState(false);
   const isDemoStatus = nextStatus === "booked-demo";
+  const isOnboardedStatus = nextStatus === "onboarded";
   const [customerResponse, setCustomerResponse] = useState("Interested");
   const [note, setNote] = useState("");
+  const [onboardedDate, setOnboardedDate] = useState("");
   const [demo, setDemo] = useState({ assignee: "", date: "", note: "", requirement: "", time: "" });
   const [followUp, setFollowUp] = useState({
     assignee: lead?.assigned_to || "",
@@ -63,7 +65,8 @@ export default function LeadStatusUpdateDialog({
   );
   const followUpMissing = followUp.required && !followUp.date;
   const demoMissing = isDemoStatus && (!demo.requirement.trim() || !demo.date || !demo.time || !demo.assignee);
-  const cannotSave = disabled || saving || (!isDemoStatus && !note.trim()) || followUpMissing || demoMissing || nextStatus === currentStatus;
+  const onboardedMissing = isOnboardedStatus && !onboardedDate;
+  const cannotSave = disabled || saving || (!isDemoStatus && !isOnboardedStatus && !note.trim()) || followUpMissing || demoMissing || onboardedMissing || nextStatus === currentStatus;
 
   useEffect(() => {
     setMounted(true);
@@ -104,10 +107,18 @@ export default function LeadStatusUpdateDialog({
         {isDemoStatus ? (
           <LeadDemoHandoffFields assigneeOptions={assigneeOptions} demo={demo} setDemo={setDemo} />
         ) : (
-          <label className="mt-4 block space-y-2">
-            <span className={LABEL}>What did customer say? *</span>
-            <textarea className={`${INPUT} min-h-[132px] resize-y`} value={note} onChange={(event) => setNote(event.target.value)} placeholder="Write the real customer response before saving this status change." rows="4" />
-          </label>
+          <>
+            {isOnboardedStatus && (
+              <label className="mt-4 block space-y-2">
+                <span className={LABEL}>Onboarded Date *</span>
+                <input className={INPUT} type="date" value={onboardedDate} onChange={(event) => setOnboardedDate(event.target.value)} disabled={saving} />
+              </label>
+            )}
+            <label className="mt-4 block space-y-2">
+              <span className={LABEL}>What did customer say? {isOnboardedStatus ? "(Optional)" : "*"}</span>
+              <textarea className={`${INPUT} min-h-[132px] resize-y`} value={note} onChange={(event) => setNote(event.target.value)} placeholder="Write the real customer response before saving this status change." rows="4" />
+            </label>
+          </>
         )}
 
         {!isDemoStatus ? <div className="mt-4 rounded-[22px] border border-[#eadfcd] bg-[#fffaf1] p-4">
@@ -139,7 +150,7 @@ export default function LeadStatusUpdateDialog({
         {error ? <p className="mt-3 text-sm font-semibold text-rose-600">{error}</p> : null}
         <div className="mt-5 flex justify-end gap-2">
           <button className={GHOST} type="button" onClick={onCancel} disabled={saving}>Cancel</button>
-          <button className={PRIMARY} type="button" disabled={cannotSave} onClick={() => onSave({ customerResponse, demo, followUp, isDemoStatus, note: isDemoStatus ? demo.note : notePayload })}>{saving ? "Saving..." : "Save Status Update"}</button>
+          <button className={PRIMARY} type="button" disabled={cannotSave} onClick={() => onSave({ customerResponse, demo, followUp, isDemoStatus, onboardedDate, note: isDemoStatus ? demo.note : notePayload })}>{saving ? "Saving..." : "Save Status Update"}</button>
         </div>
       </section>
     </div>
