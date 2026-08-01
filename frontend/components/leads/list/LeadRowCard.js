@@ -171,7 +171,7 @@ export default function LeadRowCard({
 
         <div className="flex flex-wrap items-center gap-1.5">
           <span className={META_CHIP}><span className="font-semibold text-slate-400">Owner</span><MiniAvatar name={lead.assigned_to_name || "?"} bg="bg-emerald-500" /><span className="truncate font-semibold text-slate-700">{lead.assigned_to_name || "Unassigned"}</span></span>
-          {lead.phone ? <a href={`tel:${String(lead.phone).replace(/[^\d+]/g, "")}`} className={`${META_CHIP} hover:text-amber-700`}>{lead.phone}</a> : null}
+          {lead.phone ? <span className={`${META_CHIP}`}>{lead.phone}</span> : null}
           {lead.email ? <span className={`${META_CHIP} hidden max-w-[220px] sm:inline-flex`}><span className="truncate">{lead.email}</span></span> : null}
           {lead.created_by_name ? <span className={META_CHIP}><span className="font-semibold text-slate-400">By</span><MiniAvatar name={lead.created_by_name} bg="bg-slate-400" /><span className="truncate font-semibold text-slate-600">{lead.created_by_name}</span></span> : null}
           {lead.follow_up_date ? <span className={META_CHIP}><span className="font-semibold text-slate-400">Follow-up</span><span className="font-semibold text-amber-600">{formatLeadDate(lead.follow_up_date, true)}</span></span> : null}

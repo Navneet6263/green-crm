@@ -9,6 +9,7 @@ import {
   LEAD_PRIORITY_OPTIONS,
   LEAD_STATUS_OPTIONS,
   LEAD_WORKFLOW_STAGE_OPTIONS,
+  getLeadStatusOptions,
 } from "../filters/leadFilterOptions";
 import {
   buildLeadSourceOptions,
@@ -16,10 +17,11 @@ import {
   titleize,
 } from "../filters/leadFilterUtils";
 
-export function useLeadFilterFields({ companies, filterUsers, filters, leadOptionPool, productOptions, role, session, teams }) {
+export function useLeadFilterFields({ companies, enabledStatuses, filterUsers, filters, leadOptionPool, productOptions, role, session, teams }) {
   const canManage = MANAGER_ROLES.includes(role);
   const products = useMemo(() => buildLeadProductPool(leadOptionPool, productOptions), [leadOptionPool, productOptions]);
   const sourceOptions = useMemo(() => [{ value: "all", label: "All sources" }, ...buildLeadSourceOptions(leadOptionPool, filters.source)], [filters.source, leadOptionPool]);
+  const statusOptions = useMemo(() => enabledStatuses ? getLeadStatusOptions(enabledStatuses) : LEAD_STATUS_OPTIONS, [enabledStatuses]);
 
   const resolveScopedUserLabel = (userId, field = "assigned", fallback = "Selected user") => {
     if (!userId) {
@@ -54,7 +56,7 @@ export function useLeadFilterFields({ companies, filterUsers, filters, leadOptio
       [
         filters.isPlatformConsole ? { key: "company", label: "Tenant", value: filters.company, onChange: filters.setCompany, options: [{ value: "all", label: "All companies" }, ...companies.map((item) => ({ value: item.company_id, label: item.name }))] } : null,
         teams.length > 1 ? { key: "team", label: "Team", value: filters.teamFilter, onChange: filters.setTeamFilter, options: [{ value: "all", label: "All teams" }, ...teams.map((item) => ({ value: item.team_id, label: teamSelectLabel(item) }))] } : null,
-        { key: "status", label: "Status", value: filters.status, onChange: filters.setStatus, options: LEAD_STATUS_OPTIONS },
+        { key: "status", label: "Status", value: filters.status, onChange: filters.setStatus, options: statusOptions },
         { key: "notes-search", label: "Search Notes", value: filters.notesSearch, onChange: filters.setNotesSearch, options: null, isTextInput: true, placeholder: "Search notes text..." },
         { key: "product", label: "Product", value: filters.product, onChange: filters.setProduct, options: [{ value: "all", label: "All products" }, ...products.map((item) => ({ value: item.value, label: `${item.label} (${item.count})` }))] },
         { key: "priority", label: "Priority", value: filters.priority, onChange: filters.setPriority, options: LEAD_PRIORITY_OPTIONS },
@@ -63,6 +65,6 @@ export function useLeadFilterFields({ companies, filterUsers, filters, leadOptio
         { key: "workflow-stage", label: "Workflow stage", value: filters.workflowStage, onChange: filters.setWorkflowStage, options: LEAD_WORKFLOW_STAGE_OPTIONS },
         canManage ? { key: "created-by", label: "Created by", value: filters.createdBy, onChange: filters.setCreatedBy, options: createdByOptions, disabled: filters.isPlatformConsole && filters.company === "all", helperText: filters.isPlatformConsole && filters.company === "all" ? "Select a tenant before filtering by creator." : "" } : null,
       ].filter(Boolean),
-    [assigneeOptions, canManage, companies, createdByOptions, filters.assignedTo, filters.company, filters.createdBy, filters.hasFixedAssigneeScope, filters.isPlatformConsole, filters.notesSearch, filters.priority, filters.product, filters.setAssignedTo, filters.setCompany, filters.setCreatedBy, filters.setNotesSearch, filters.setPriority, filters.setProduct, filters.setSource, filters.setStatus, filters.setTeamFilter, filters.setWorkflowStage, filters.source, filters.status, filters.teamFilter, filters.workflowStage, products, sourceOptions, teams]
+    [assigneeOptions, canManage, companies, createdByOptions, filters.assignedTo, filters.company, filters.createdBy, filters.hasFixedAssigneeScope, filters.isPlatformConsole, filters.notesSearch, filters.priority, filters.product, filters.setAssignedTo, filters.setCompany, filters.setCreatedBy, filters.setNotesSearch, filters.setPriority, filters.setProduct, filters.setSource, filters.setStatus, filters.setTeamFilter, filters.setWorkflowStage, filters.source, filters.status, filters.teamFilter, filters.workflowStage, products, sourceOptions, statusOptions, teams]
   );
 }

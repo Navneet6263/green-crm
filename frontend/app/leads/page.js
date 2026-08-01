@@ -88,7 +88,7 @@ function LeadsPageContent() {
     filters.setTeamFilter("all");
   }, [filters.setTeamFilter]);
   const resources = useLeadScopeResources({ canLoadScopedUsers, canManage, isPlatformConsole, onInvalidTeamFilter: handleInvalidTeamFilter, pickedTeamIds, refreshSeed, scopedCompanyId: filters.scopedCompanyId, scopedTeamId, session, teamCompanyId, teamFilter: filters.teamFilter });
-  const leadFilterFields = useLeadFilterFields({ companies, filterUsers: resources.filterUsers, filters, leadOptionPool, productOptions: resources.productOptions, role, session, teams: resources.teams });
+  const leadFilterFields = useLeadFilterFields({ companies, enabledStatuses, filterUsers: resources.filterUsers, filters, leadOptionPool, productOptions: resources.productOptions, role, session, teams: resources.teams });
   const bulkUpload = useLeadBulkUpload({ onImported: () => setRefreshSeed((current) => current + 1), setError, setNotice, token: session?.token });
   const leadExport = useLeadExport({ allMatchedLeads: records.allMatchedLeads, leadQueryBase: filters.leadQueryBase, setError, setNotice, token: session?.token, totalMatched: records.totalMatched });
 
