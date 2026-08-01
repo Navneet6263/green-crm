@@ -1,7 +1,5 @@
 "use client";
 
-import { useMemo } from "react";
-
 export default function RecentUpdatesDateFilter({
   datePreset,
   setDatePreset,
@@ -20,26 +18,52 @@ export default function RecentUpdatesDateFilter({
       return;
     }
 
-    const today = new Date();
-    const to = today.toISOString().split("T")[0];
-    let from = "";
+    const now = new Date();
+    const todayStr = now.toISOString().split("T")[0];
+
+    let fromStr = "";
+    let toStr = todayStr;
 
     switch (preset) {
-      case "last7days":
-        from = new Date(today.setDate(today.getDate() - 7)).toISOString().split("T")[0];
+      case "today": {
+        fromStr = todayStr;
+        toStr = todayStr;
         break;
-      case "last30days":
-        from = new Date(today.setDate(today.getDate() - 30)).toISOString().split("T")[0];
+      }
+      case "yesterday": {
+        const y = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        fromStr = y.toISOString().split("T")[0];
+        toStr = fromStr;
         break;
-      case "thisMonth":
-        from = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split("T")[0];
+      }
+      case "last7days": {
+        const d7 = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        fromStr = d7.toISOString().split("T")[0];
         break;
+      }
+      case "last30days": {
+        const d30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        fromStr = d30.toISOString().split("T")[0];
+        break;
+      }
+      case "thisMonth": {
+        const tm = new Date(now.getFullYear(), now.getMonth(), 1);
+        fromStr = tm.toISOString().split("T")[0];
+        break;
+      }
+      case "lastMonth": {
+        const lmStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const lmEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+        fromStr = lmStart.toISOString().split("T")[0];
+        toStr = lmEnd.toISOString().split("T")[0];
+        break;
+      }
       default:
         break;
     }
 
-    setFromDate(from);
-    setToDate(to);
+    setFromDate(fromStr);
+    setToDate(toStr);
   };
 
   return (
@@ -53,9 +77,12 @@ export default function RecentUpdatesDateFilter({
             className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 outline-none transition-all focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20"
           >
             <option value="all">All Time</option>
+            <option value="today">Today</option>
+            <option value="yesterday">Yesterday</option>
             <option value="last7days">Last 7 Days</option>
             <option value="last30days">Last 30 Days</option>
             <option value="thisMonth">This Month</option>
+            <option value="lastMonth">Last Month</option>
             <option value="custom">Custom Range...</option>
           </select>
         </div>

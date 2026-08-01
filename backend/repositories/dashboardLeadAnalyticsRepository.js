@@ -1,20 +1,7 @@
 const db = require("../db/connection");
-const { OPEN_PIPELINE_STATUSES } = require("../constants/lead");
+const { OPEN_PIPELINE_STATUSES, LEAD_STATUSES } = require("../constants/lead");
 const { buildIndiaDayBuckets, buildIndiaDayBucketsForRange } = require("../utils/indiaDateBuckets");
 const { buildAdvancedFilterScope } = require("./dashboardQueryUtils");
-
-const STATUS_ORDER = [
-  "new",
-  "contacted",
-  "qualified",
-  "proposal",
-  "negotiation",
-  "booked-demo",
-  "demo-done",
-  "trial-started",
-  "closed-won",
-  "closed-lost",
-];
 const FUNNEL_STAGES = [
   { key: "new", label: "New", statuses: ["new"] },
   { key: "contacted", label: "Contacted", statuses: ["contacted", "qualified", "proposal", "negotiation"] },
@@ -66,7 +53,7 @@ function countBucket(statusIndex, statuses = []) {
 }
 
 function buildDistribution(statusIndex) {
-  return STATUS_ORDER
+  return LEAD_STATUSES
     .map((status) => ({
       status,
       total: toCount(statusIndex[status]),

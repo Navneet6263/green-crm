@@ -1,5 +1,6 @@
 const recentActivityRepository = require('../repositories/recentActivityRepository');
 const customerNoteRepository = require('../repositories/customerNoteRepository');
+const { MANAGER_ROLES } = require('../constants/roles');
 
 class RecentActivityController {
   /**
@@ -9,13 +10,21 @@ class RecentActivityController {
   async getRecentNotes(req, res, next) {
     try {
       const companyId = req.auth.companyId;
-      const { limit = 20, type = 'all', myNotesOnly = 'false', users, products } = req.query;
+      const userRole = req.auth.role;
+      const isManagerOrAbove = MANAGER_ROLES.includes(userRole);
+      const { limit = 20, page = 1, type = 'all', myNotesOnly = 'false', users, products } = req.query;
+
+      // Non-managers can ONLY see their own notes
+      const allowedUsers = isManagerOrAbove
+        ? (users ? users.split(',').filter(Boolean) : [])
+        : [req.auth.userId];
 
       const options = {
         limit: Math.min(parseInt(limit) || 20, 10000), // Max 10,000 for exports
+        page: Math.max(parseInt(page) || 1, 1),
         type: ['all', 'leads', 'customers'].includes(type) ? type : 'all',
-        userId: myNotesOnly === 'true' ? req.auth.userId : null,
-        userIds: users ? users.split(',').filter(Boolean) : [],
+        userId: isManagerOrAbove ? (myNotesOnly === 'true' ? req.auth.userId : null) : req.auth.userId,
+        userIds: allowedUsers,
         productIds: products ? products.split(',').filter(Boolean) : [],
         fromDate: req.query.fromDate ? `${req.query.fromDate} 00:00:00` : null,
         toDate: req.query.toDate ? `${req.query.toDate} 23:59:59` : null,
@@ -23,14 +32,25 @@ class RecentActivityController {
         sort: req.query.sort || 'recent'
       };
 
-      const notes = await recentActivityRepository.getRecentNotes(companyId, options);
+      const result = await recentActivityRepository.getRecentNotes(companyId, options);
+      const items = result.items || [];
 
       res.json({
         success: true,
-        data: notes,
+        data: items,
+        items,
+        total: result.total || 0,
+        pagination: {
+          page: result.page,
+          limit: result.limit,
+          total: result.total,
+          totalPages: result.totalPages
+        },
         meta: {
-          count: notes.length,
+          count: items.length,
+          total: result.total,
           limit: options.limit,
+          page: options.page,
           type: options.type,
           myNotesOnly: myNotesOnly === 'true',
           userIds: options.userIds,

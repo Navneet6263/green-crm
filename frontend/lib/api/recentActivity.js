@@ -11,6 +11,7 @@ export const recentActivityApi = {
   async getRecentNotes(params = {}) {
     const queryParams = new URLSearchParams();
     if (params.limit) queryParams.append('limit', params.limit.toString());
+    if (params.page) queryParams.append('page', params.page.toString());
     if (params.type) queryParams.append('type', params.type);
     if (params.myNotesOnly) queryParams.append('myNotesOnly', 'true');
     if (params.users && params.users.length > 0) queryParams.append('users', params.users.join(','));

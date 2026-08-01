@@ -36,6 +36,12 @@ class RecentActivityRepository {
           l.contact_person as entity_name,
           l.company_name as entity_company_name,
           l.status as entity_status,
+          l.email,
+          l.phone,
+          l.requirements,
+          l.lost_reason,
+          l.legal_approved_by,
+          l.legal_approved_at,
           p.product_id,
           p.name as product_name
         FROM lead_notes ln
@@ -64,8 +70,8 @@ class RecentActivityRepository {
         params.push(toDate);
       }
       if (search) {
-        leadQuery += ` AND (ln.content LIKE ? OR l.company_name LIKE ? OR l.contact_person LIKE ?)`;
-        params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+        leadQuery += ` AND (ln.content LIKE ? OR l.company_name LIKE ? OR l.contact_person LIKE ? OR l.phone LIKE ? OR l.email LIKE ?)`;
+        params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
       }
       
       unionQuery += leadQuery;
@@ -93,6 +99,12 @@ class RecentActivityRepository {
           c.name as entity_name,
           c.company_name as entity_company_name,
           c.status as entity_status,
+          c.email,
+          c.phone,
+          NULL as requirements,
+          NULL as lost_reason,
+          NULL as legal_approved_by,
+          NULL as legal_approved_at,
           p.product_id,
           p.name as product_name
         FROM customer_notes cn
@@ -121,27 +133,33 @@ class RecentActivityRepository {
         params.push(toDate);
       }
       if (search) {
-        customerQuery += ` AND (cn.content LIKE ? OR c.company_name LIKE ? OR c.name LIKE ?)`;
-        params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+        customerQuery += ` AND (cn.content LIKE ? OR c.company_name LIKE ? OR c.name LIKE ? OR c.phone LIKE ? OR c.email LIKE ?)`;
+        params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
       }
 
       unionQuery += customerQuery;
     }
 
-    // Wrap in outer query to order and limit
+    const page = Math.max(parseInt(options.page) || 1, 1);
+    const limitVal = Math.min(parseInt(limit) || 20, 10000);
+    const offset = (page - 1) * limitVal;
     const sortOrder = sort === 'oldest' ? 'ASC' : 'DESC';
-    const limitClause = limit > 0 ? `TOP ${limit}` : '';
 
-    const finalQuery = `
-      SELECT ${limitClause} *
+    const countQuery = `SELECT COUNT(*) as total FROM (${unionQuery}) combined`;
+    const [countRows] = await query(countQuery, params);
+    const total = countRows[0]?.total || 0;
+
+    const dataQuery = `
+      SELECT *
       FROM (
         ${unionQuery}
       ) combined
       ORDER BY created_at ${sortOrder}
+      OFFSET ${offset} ROWS FETCH NEXT ${limitVal} ROWS ONLY
     `;
 
-    const [rows] = await query(finalQuery, params);
-    return rows;
+    const [rows] = await query(dataQuery, params);
+    return { items: rows, total, page, limit: limitVal, totalPages: Math.ceil(total / limitVal) || 1 };
   }
 
   /**
