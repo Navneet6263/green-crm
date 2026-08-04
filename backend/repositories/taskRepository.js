@@ -93,7 +93,7 @@ async function listTasks(filters, pagination, executor) {
 
   return {
     rows,
-    total: countRows[0].total,
+    total: Number(countRows[0]?.total || 0),
   };
 }
 

@@ -8,7 +8,6 @@ const customizationController = require("../controllers/customizationController"
 router.get(
   "/",
   authenticate,
-  authorize("super-admin", "admin"),
   customizationController.getCustomization
 );
 
