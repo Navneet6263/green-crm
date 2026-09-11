@@ -22,9 +22,11 @@ const noteRoutes = require("./noteRoutes");
 const recentActivityRoutes = require("./recentActivityRoutes");
 const chatRoutes = require("./chatRoutes");
 const leadTransferRoutes = require("./leadTransfer");
+const leadCountIntegrationRoutes = require("./leadCountIntegrationRoutes");
 
 const router = express.Router();
 
+router.use("/integrations", leadCountIntegrationRoutes);
 router.use("/auth", authRoutes);
 router.use("/attendance", attendanceRoutes);
 router.use("/audit-logs", auditRoutes);
