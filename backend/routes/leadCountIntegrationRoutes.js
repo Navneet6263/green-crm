@@ -27,8 +27,13 @@ router.all(path, (req, res, next) => {
   }
   return next();
 }, asyncHandler(async (req, res) => {
-  const data = await repository.listEmployeeLeadCounts(req.leadCountIntegration.companyId);
-  res.json({ success: true, data, meta: { fetched_at: new Date().toISOString() } });
+  const reference = new Date();
+  const data = await repository.listEmployeeLeadCounts(req.leadCountIntegration.companyId, undefined, reference);
+  res.json({ success: true, data, meta: {
+    fetched_at: new Date().toISOString(),
+    report_as_of: reference.toISOString(),
+    timezone: "Asia/Kolkata",
+  } });
 }));
 
 module.exports = router;
