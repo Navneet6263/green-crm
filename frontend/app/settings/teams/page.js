@@ -251,6 +251,7 @@ export default function TeamSettingsPage() {
             onCreateFirst={()=>{ setTeamForm(createDraft(scopedCompanyId)); setEditorMode("create"); setEditorOpen(true); }}
           />
           <TeamDetail
+            canManageManagers={session?.user?.role !== "manager"}
             selectedTeam={selectedTeam} teamMembers={teamMembers} teamManagers={teamManagers}
             filteredAssignmentUsers={filteredAssignmentUsers}
             availableMembers={availableMembers} availableManagers={availableManagers}

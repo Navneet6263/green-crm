@@ -206,7 +206,7 @@ export default function EditLeadPage() {
     setSession(activeSession);
     router.prefetch(`/leads/${params.id}`);
     const allowAssignments = canManageScopedAssignments(activeSession.user?.role);
-    apiRequest(`/leads/${params.id}`, { token: activeSession.token })
+    apiRequest(`/leads/${params.id}?view=core`, { token: activeSession.token })
       .then(async (leadResponse) => {
         const [productsResponse, scopeResponse] = await Promise.all([
           loadProductsForScope(activeSession.token, {

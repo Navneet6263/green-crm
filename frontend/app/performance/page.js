@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 
 import WorkspacePage from "../../components/dashboard/WorkspacePage";
 import DashboardIcon from "../../components/dashboard/icons";
@@ -73,6 +74,7 @@ function pendingTask(task) {
 }
 
 export default function PerformancePage() {
+  const [rosterPage, setRosterPage] = useState(1);
   return (
     <WorkspacePage
       title="Team Performance"
@@ -80,101 +82,21 @@ export default function PerformancePage() {
       hideTitle
       allowedRoles={["manager", "admin"]}
       requestBuilder={() => [
-        { key: "users", path: "/users?page_size=1000&analytics=1" },
-        { key: "tasks", path: "/tasks?page_size=1000&analytics=1" },
-        { key: "leads", path: "/leads?page_size=1000&analytics=1" },
+        { key: "performance", path: "/dashboard/performance" },
       ]}
       heroStats={() => []}
     >
       {({ session, data, error, loading }) => {
-        const role = session?.user?.role || "";
-        const users = data?.users?.items || [];
-        const tasks = data?.tasks?.items || [];
-        const leads = data?.leads?.items || [];
-
-        const teamUsers = users.filter((user) => {
-          const normalizedRole = String(user.role || "").toLowerCase();
-          if (role !== "manager") {
-            return !["super-admin", "platform-admin", "platform-manager"].includes(normalizedRole);
-          }
-          return !["manager", "admin", "super-admin", "platform-admin", "platform-manager"].includes(normalizedRole);
-        });
-
-        const teamUserIds = new Set(teamUsers.map((user) => user.user_id));
-        const teamUserNames = new Set(teamUsers.map((user) => user.name || user.full_name).filter(Boolean));
-        const visibleLeads = leads.filter(
-          (lead) =>
-            teamUserIds.has(lead.assigned_to) ||
-            teamUserIds.has(lead.created_by) ||
-            teamUserNames.has(lead.assigned_to_name) ||
-            teamUserNames.has(lead.created_by_name)
-        );
-        const visibleTasks = tasks.filter(
-          (task) =>
-            teamUserIds.has(task.assigned_to) ||
-            teamUserNames.has(task.assigned_to_name) ||
-            teamUserNames.has(task.owner_name)
-        );
-
-        const stageCounts = visibleLeads.reduce((acc, lead) => {
-          const key = String(lead.status || "new").toLowerCase();
-          acc[key] = (acc[key] || 0) + 1;
-          return acc;
-        }, {});
-        const sourceCounts = visibleLeads.reduce((acc, lead) => {
-          const key = String(lead.lead_source || "unknown").toLowerCase();
-          acc[key] = (acc[key] || 0) + 1;
-          return acc;
-        }, {});
-
-        const teamBoard = teamUsers
-          .map((user) => {
-            const ownedLeads = visibleLeads.filter(
-              (lead) =>
-                lead.assigned_to === user.user_id ||
-                lead.created_by === user.user_id ||
-                lead.assigned_to_name === (user.name || user.full_name)
-            );
-            const ownedTasks = visibleTasks.filter(
-              (task) =>
-                task.assigned_to === user.user_id ||
-                task.assigned_to_name === (user.name || user.full_name) ||
-                task.owner_name === (user.name || user.full_name)
-            );
-            const wonLeads = ownedLeads.filter((lead) => ["won", "closed-won"].includes(String(lead.status || "").toLowerCase())).length;
-            const pendingTasks = ownedTasks.filter(pendingTask);
-            const overdueTasks = pendingTasks.filter((task) => {
-              if (!task?.due_date) return false;
-              const due = new Date(task.due_date);
-              return !Number.isNaN(due.getTime()) && due.getTime() < Date.now();
-            }).length;
-
-            return {
-              ...user,
-              displayName: user.name || user.full_name || "Unknown",
-              ownedLeads,
-              ownedTasks,
-              wonLeads,
-              pendingTasks: pendingTasks.length,
-              overdueTasks,
-            };
-          })
-          .sort((a, b) => b.wonLeads - a.wonLeads || b.ownedLeads.length - a.ownedLeads.length || a.overdueTasks - b.overdueTasks);
-
+        const report = data.performance || {};
+        const teamBoard = report.teamBoard || [];
+        const visibleLeads = report.recentLeads || [];
+        const visibleTasks = report.pendingTasks || [];
         const spotlight = teamBoard[0] || null;
-        const activeStaff = teamBoard.filter((user) => user.is_active !== false).length;
-        const overdueTasks = teamBoard.reduce((sum, user) => sum + user.overdueTasks, 0);
-        const wonLeads = teamBoard.reduce((sum, user) => sum + user.wonLeads, 0);
-        const sourceMix = Object.entries(sourceCounts)
-          .map(([lead_source, total]) => ({ lead_source, total }))
-          .sort((a, b) => Number(b.total || 0) - Number(a.total || 0))
-          .slice(0, 4);
-        const stageMix = Object.entries(stageCounts)
-          .map(([status, total]) => ({ status, total }))
-          .sort((a, b) => Number(b.total || 0) - Number(a.total || 0))
-          .slice(0, 5);
-        const openLeads = visibleLeads.filter((lead) => !["won", "closed-won", "closed-lost"].includes(String(lead.status || "").toLowerCase())).length;
-
+        const activeStaff = teamBoard.filter(user => Boolean(user.is_active)).length;
+        const overdueTasks = teamBoard.reduce((sum, user) => sum + Number(user.overdueTasks || 0), 0);
+        const openLeads = teamBoard.reduce((sum, user) => sum + Number(user.openLeads || 0), 0);
+        const sourceMix = (report.sourceMix || []).slice().sort((a,b) => b.total-a.total).slice(0,4);
+        const stageMix = (report.stageMix || []).slice().sort((a,b) => b.total-a.total).slice(0,5);
         return (
           <>
             {error ? <div className="rounded-[20px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div> : null}
@@ -185,7 +107,7 @@ export default function PerformancePage() {
               </div>
             ) : null}
 
-            {!loading ? (
+            {!loading && !error ? (
               <div className="flex flex-col gap-5">
                 <section className="overflow-hidden rounded-[36px] border border-[#eadfcd] bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.98),_rgba(250,241,221,0.98)_44%,_rgba(245,231,193,0.98)_100%)] shadow-[0_24px_70px_rgba(79,58,22,0.08)]">
                   <div className="grid gap-6 px-5 py-6 md:px-7 md:py-7 xl:grid-cols-[1.1fr_0.9fr]">
@@ -199,7 +121,7 @@ export default function PerformancePage() {
                             Review team performance, lead conversions, and task completion across your team.
                           </h2>
                           <p className="max-w-2xl text-sm leading-7 text-[#746853] md:text-base">
-                            Reps, tasks, wins, overdue movement, and stage depth all stay visible without the older stacked performance view.
+                            All-time, permission-scoped SQL Server totals. Leads count toward their current primary owner only; creators are not counted twice. Cancelled tasks are excluded from pending work.
                           </p>
                         </div>
                       </div>
@@ -237,7 +159,7 @@ export default function PerformancePage() {
                               <p className="mt-1 truncate text-sm text-[#8f816a]">{spotlight.email || "No email on file"}</p>
                               <div className="mt-4 grid gap-3 sm:grid-cols-3">
                                 <div><p className={KICKER}>Won</p><strong className="mt-2 block text-xl font-black text-[#217346]">{compact(spotlight.wonLeads)}</strong></div>
-                                <div><p className={KICKER}>Owned Leads</p><strong className="mt-2 block text-xl font-black text-[#060710]">{compact(spotlight.ownedLeads.length)}</strong></div>
+                                <div><p className={KICKER}>Owned Leads</p><strong className="mt-2 block text-xl font-black text-[#060710]">{compact(spotlight.ownedLeadCount)}</strong></div>
                                 <div><p className={KICKER}>Pending Tasks</p><strong className="mt-2 block text-xl font-black text-[#8d6e27]">{compact(spotlight.pendingTasks)}</strong></div>
                               </div>
                             </div>
@@ -263,9 +185,14 @@ export default function PerformancePage() {
                     <div className="mb-5">
                       <p className={KICKER}>Team Board</p>
                       <h3 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Individual performance scan</h3>
+                      <div className="mt-3 flex items-center gap-3 text-sm">
+                        <button className="rounded-lg border px-3 py-2 disabled:opacity-40" disabled={rosterPage <= 1} onClick={()=>setRosterPage(p=>p-1)}>Previous</button>
+                        <span>Page {rosterPage} of {Math.max(1,Math.ceil(teamBoard.length/25))}</span>
+                        <button className="rounded-lg border px-3 py-2 disabled:opacity-40" disabled={rosterPage >= Math.ceil(teamBoard.length/25)} onClick={()=>setRosterPage(p=>p+1)}>Next</button>
+                      </div>
                     </div>
                     <div className="space-y-3">
-                      {teamBoard.length ? teamBoard.map((user) => (
+                      {teamBoard.length ? teamBoard.slice((rosterPage-1)*25,rosterPage*25).map((user) => (
                         <div key={user.user_id} className="rounded-[24px] border border-[#eadfcd] bg-[#fffaf1] px-4 py-4">
                           <div className="flex items-start gap-3">
                             <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#10111d] text-sm font-black text-white">{initials(user.displayName)}</span>
@@ -278,7 +205,7 @@ export default function PerformancePage() {
                                 <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${ROLE_TONE[user.role] || "bg-[#f6efe2] text-[#5d503c]"}`}>{titleize(user.role || "user")}</span>
                               </div>
                               <div className="mt-4 grid gap-3 sm:grid-cols-4">
-                                <div><p className={KICKER}>Owned Leads</p><strong className="mt-2 block text-lg font-black text-[#060710]">{compact(user.ownedLeads.length)}</strong></div>
+                                <div><p className={KICKER}>Owned Leads</p><strong className="mt-2 block text-lg font-black text-[#060710]">{compact(user.ownedLeadCount)}</strong></div>
                                 <div><p className={KICKER}>Won</p><strong className="mt-2 block text-lg font-black text-[#217346]">{compact(user.wonLeads)}</strong></div>
                                 <div><p className={KICKER}>Pending</p><strong className="mt-2 block text-lg font-black text-[#8d6e27]">{compact(user.pendingTasks)}</strong></div>
                                 <div><p className={KICKER}>Overdue</p><strong className="mt-2 block text-lg font-black text-[#c56b1c]">{compact(user.overdueTasks)}</strong></div>

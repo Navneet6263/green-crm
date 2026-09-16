@@ -272,7 +272,7 @@ function TasksContent({ tasks, loadError, loading, session, refresh }) {
       {/* Quick Task Creation Modal */}
       {isCreateOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
-          <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl overflow-hidden border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
+          <div className="w-full max-w-lg max-h-[calc(100dvh-2rem)] rounded-2xl bg-white shadow-2xl overflow-y-auto border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
             {/* Header */}
             <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-6 py-4">
               <h3 className="text-base font-bold text-slate-800">Create New Task</h3>

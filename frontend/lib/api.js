@@ -5,6 +5,7 @@ const IN_FLIGHT_GET_REQUESTS = new Map();
 const RECENT_GET_RESPONSES = new Map();
 const DEFAULT_DEDUPE_WINDOW_MS = 5000;
 let authRedirectTriggered = false;
+let cacheGeneration = 0;
 
 function handleUnauthorizedResponse(options = {}) {
   if (!options.token || typeof window === "undefined" || authRedirectTriggered) {
@@ -12,8 +13,7 @@ function handleUnauthorizedResponse(options = {}) {
   }
 
   authRedirectTriggered = true;
-  RECENT_GET_RESPONSES.clear();
-  IN_FLIGHT_GET_REQUESTS.clear();
+  invalidateGetCache();
 
   try {
     window.localStorage.removeItem("greencrm-session");
@@ -54,7 +54,9 @@ function pruneRecentResponses() {
 }
 
 function invalidateGetCache() {
+  cacheGeneration += 1;
   RECENT_GET_RESPONSES.clear();
+  IN_FLIGHT_GET_REQUESTS.clear();
 }
 
 function clonePayload(payload) {
@@ -70,9 +72,11 @@ function clonePayload(payload) {
 }
 
 export async function apiRequest(path, options = {}) {
-  const method = options.method || "GET";
+  const method = (options.method || "GET").toUpperCase();
   const isGet = method === "GET";
-  const requestKey = isGet ? buildRequestKey(path, options) : null;
+  // Cancellable requests must not share another caller's AbortController.
+  const requestKey = isGet && !options.signal && !options.fresh ? buildRequestKey(path, options) : null;
+  const generation = cacheGeneration;
 
   if (requestKey) {
     pruneRecentResponses();
@@ -102,6 +106,7 @@ export async function apiRequest(path, options = {}) {
       headers,
       body: hasFormData ? options.formData : hasRawBody ? options.rawBody : hasJsonBody ? JSON.stringify(options.body) : undefined,
       cache: "no-store",
+      signal: options.signal,
     });
 
     const payload = await response.json().catch(() => ({}));
@@ -121,7 +126,7 @@ export async function apiRequest(path, options = {}) {
       }
       // Return paginated shape as-is so callers can access meta
       if (payload.meta !== null && payload.meta !== undefined) {
-        return { items: payload.data, meta: payload.meta };
+        return { ...payload, items: payload.items ?? payload.data, meta: payload.meta };
       }
       return payload.data;
     }
@@ -136,20 +141,23 @@ export async function apiRequest(path, options = {}) {
   try {
     const result = await requestPromise;
 
-    if (requestKey && getDedupeWindowMs() > 0) {
+    if (requestKey && generation === cacheGeneration && getDedupeWindowMs() > 0) {
+      if (RECENT_GET_RESPONSES.size >= 200) {
+        RECENT_GET_RESPONSES.delete(RECENT_GET_RESPONSES.keys().next().value);
+      }
       RECENT_GET_RESPONSES.set(requestKey, {
         payload: clonePayload(result),
         expiresAt: Date.now() + getDedupeWindowMs(),
       });
     }
 
-    if (!requestKey) {
+    if (!isGet) {
       invalidateGetCache();
     }
 
     return clonePayload(result);
   } finally {
-    if (requestKey) {
+    if (requestKey && IN_FLIGHT_GET_REQUESTS.get(requestKey) === requestPromise) {
       IN_FLIGHT_GET_REQUESTS.delete(requestKey);
     }
   }

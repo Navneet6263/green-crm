@@ -5,6 +5,93 @@ const { OPEN_PIPELINE_STATUSES } = require("../constants/lead");
 
 const SQL_NOW = "SYSUTCDATETIME()";
 
+async function getWorkflowSummary(filters, executor) {
+  const { whereClause, params } = buildWhere({ ...filters, isWorkflow: true });
+  const [rows] = await getExecutor(executor).query(`SELECT COUNT(*) AS total_workflow_leads,
+      COALESCE(SUM(CASE WHEN l.workflow_status IN ('in_progress','pending_qa','revisions_needed') THEN 1 ELSE 0 END),0) AS active_workflow_leads,
+      COALESCE(SUM(CASE WHEN l.workflow_status IN ('approved','completed') THEN 1 ELSE 0 END),0) AS completed_workflow_leads,
+      COALESCE(SUM(l.advance_received),0) AS total_advance_received,
+      COALESCE(SUM(l.remaining_payment),0) AS total_remaining_payment
+    FROM leads l ${whereClause}`, params);
+  return rows[0];
+}
+
+async function getMyDay(filters, pagination, bucket, executor) {
+  const active = getExecutor(executor);
+  const scope = buildWhere(filters);
+  const due = require("../utils/workQueue").buildDuePredicate("l.follow_up_date", bucket);
+  const where = `${scope.whereClause} AND ${due.clause}`;
+  const params = [...scope.params, ...due.params];
+  const [counts] = await active.query(`SELECT COUNT(*) AS total FROM leads l ${where}`, params);
+  const [rows] = await active.query(`SELECT l.lead_id, l.company_name, l.contact_person, l.phone,
+      l.status, l.priority, l.follow_up_date, l.assigned_to,
+      (SELECT TOP 1 ln.content FROM lead_notes ln WHERE ln.company_id = l.company_id AND ln.lead_id = l.lead_id ORDER BY ln.created_at DESC, ln.id DESC) AS latest_note
+    FROM leads l ${where}
+    ORDER BY l.follow_up_date ASC, l.created_at ASC, l.lead_id ASC
+    OFFSET ? ROWS FETCH NEXT ? ROWS ONLY`, [...params, pagination.offset, pagination.limit]);
+  return { rows, total: Number(counts[0]?.total || 0) };
+}
+
+// Aggregate inside SQL Server; never transfer all lead pages to draw charts.
+async function getAnalytics(filters, executor) {
+  const active = getExecutor(executor);
+  const { whereClause, params } = buildWhere(filters);
+  const [rows] = await active.query(`
+    WITH scoped AS (
+      SELECT COALESCE(l.status, 'new') AS status,
+        COALESCE(l.workflow_stage, 'sales') AS workflow,
+        LOWER(LTRIM(RTRIM(COALESCE(l.lead_source, 'unknown')))) AS source,
+        COALESCE(CAST(l.assigned_to AS NVARCHAR(100)), 'unassigned') AS owner,
+        COALESCE(u.name, 'Unassigned') AS owner_name,
+        COALESCE(CAST(l.product_id AS NVARCHAR(100)), 'unmapped') AS product,
+        COALESCE(p.name, 'Unmapped') AS product_name,
+        COALESCE(l.priority, 'medium') AS priority,
+        CONVERT(VARCHAR(10), l.created_at, 23) AS day,
+        COALESCE(l.estimated_value, 0) AS value,
+        CASE WHEN l.status IN ('closed-won', 'onboarded', 'converted', 'closed') THEN 1 ELSE 0 END AS won,
+        CASE WHEN l.status IN ('closed-won', 'onboarded', 'converted', 'closed', 'closed-lost') THEN 0 ELSE 1 END AS is_open
+      FROM leads l
+      LEFT JOIN users u ON u.user_id = l.assigned_to
+      LEFT JOIN products p ON p.product_id = l.product_id
+      ${whereClause}
+    )
+    SELECT CASE WHEN GROUPING(status) = 0 THEN 'status'
+      WHEN GROUPING(workflow) = 0 THEN 'workflow' WHEN GROUPING(source) = 0 THEN 'source'
+      WHEN GROUPING(owner) = 0 THEN 'owner' WHEN GROUPING(product) = 0 THEN 'product'
+      WHEN GROUPING(priority) = 0 THEN 'priority' WHEN GROUPING(day) = 0 THEN 'day' ELSE 'total' END AS dimension,
+      COALESCE(status, workflow, source, owner, product, priority, day, 'total') AS [key],
+      CASE WHEN GROUPING(owner) = 0 THEN MAX(owner_name)
+        WHEN GROUPING(product) = 0 THEN MAX(product_name) ELSE NULL END AS label,
+      COUNT(*) AS leads, COALESCE(SUM(value), 0) AS value,
+      COALESCE(SUM(won), 0) AS won,
+      COALESCE(SUM(CASE WHEN won = 1 THEN value ELSE 0 END), 0) AS won_value,
+      COALESCE(SUM(is_open), 0) AS open_leads,
+      COALESCE(SUM(CASE WHEN is_open = 1 THEN value ELSE 0 END), 0) AS open_value
+    FROM scoped
+    GROUP BY GROUPING SETS ((status), (workflow), (source), (owner), (product), (priority), (day), ())
+  `, params);
+  return rows;
+}
+
+async function getAnalyticsFocus(filters, executor) {
+  const { whereClause, params } = buildWhere(filters);
+  const [rows] = await getExecutor(executor).query(`SELECT TOP 20
+      l.lead_id, l.company_name, l.contact_person, l.status, l.workflow_stage,
+      l.estimated_value, l.follow_up_date, u.name AS assigned_to_name,
+      COUNT(*) OVER() AS total,
+      COALESCE(SUM(l.estimated_value) OVER(), 0) AS total_value,
+      SUM(CASE WHEN l.follow_up_date < SYSUTCDATETIME() THEN 1 ELSE 0 END) OVER() AS overdue,
+      SUM(CASE WHEN l.assigned_to IS NULL THEN 1 ELSE 0 END) OVER() AS no_owner
+    FROM leads l LEFT JOIN users u ON u.user_id = l.assigned_to
+    ${whereClause}
+    ORDER BY l.estimated_value DESC, l.lead_id DESC`, params);
+  const first = rows[0] || {};
+  return {
+    items: rows.map(({ total, total_value, overdue, no_owner, ...lead }) => lead),
+    metrics: { total: first.total || 0, value: first.total_value || 0, overdue: first.overdue || 0, no_owner: first.no_owner || 0 },
+  };
+}
+
 function getExecutor(executor) {
   return executor || db;
 }
@@ -62,6 +149,8 @@ function buildWhere(filters) {
     conditions.push("l.assigned_to = ?");
     params.push(filters.assignedTo);
   }
+  if (filters.unassigned) conditions.push("l.assigned_to IS NULL");
+  if (filters.unmapped) conditions.push("l.product_id IS NULL");
 
   if (filters.viewerUserId) {
     const viewerPredicate = buildLeadUserAccessPredicate({
@@ -844,6 +933,10 @@ async function findLeadByPhoneInTeam(phone, teamId, excludeLeadId = null, execut
 }
 
 module.exports = {
+  getWorkflowSummary,
+  getMyDay,
+  getAnalytics,
+  getAnalyticsFocus,
   createActivity,
   createLead,
   createNote,

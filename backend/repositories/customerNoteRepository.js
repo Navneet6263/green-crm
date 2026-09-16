@@ -54,11 +54,11 @@ class CustomerNoteRepository {
   /**
    * Create a new customer note
    */
-  async create(noteData) {
+  async create(noteData, executor = { query }) {
     const insertQuery = `
-      INSERT INTO customer_notes (company_id, customer_id, content, created_by)
+      INSERT INTO customer_notes (company_id, customer_id, content, created_by, created_at, updated_at)
       OUTPUT INSERTED.id
-      VALUES (?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, SYSUTCDATETIME(), SYSUTCDATETIME())
     `;
 
     const params = [
@@ -68,7 +68,7 @@ class CustomerNoteRepository {
       noteData.createdBy
     ];
 
-    const [insertResult] = await query(insertQuery, params);
+    const [insertResult] = await executor.query(insertQuery, params);
     
     if (!Array.isArray(insertResult) || insertResult.length === 0) {
       throw new Error('Failed to create customer note - no ID returned');
@@ -92,7 +92,7 @@ class CustomerNoteRepository {
       LEFT JOIN users u ON cn.created_by = u.user_id
       WHERE cn.id = ?
     `;
-    const [selectResult] = await query(selectQuery, [noteId]);
+    const [selectResult] = await executor.query(selectQuery, [noteId]);
     
     if (!Array.isArray(selectResult) || selectResult.length === 0) {
       throw new Error('Failed to fetch created customer note');

@@ -76,7 +76,7 @@ async function authenticate(req, _res, next) {
     const cachedAuthState = getCachedAuthState(cacheKey);
 
     if (cachedAuthState) {
-      req.auth = cachedAuthState;
+      req.auth = { ...cachedAuthState, __teamScopeCache: new Map() };
       req.token = token;
       req.tokenPayload = payload;
       next();
@@ -94,7 +94,7 @@ async function authenticate(req, _res, next) {
     }
 
     try {
-      req.auth = await pendingAuthState;
+      req.auth = { ...await pendingAuthState, __teamScopeCache: new Map() };
     } finally {
       clearPendingAuthState(cacheKey, pendingAuthState);
     }

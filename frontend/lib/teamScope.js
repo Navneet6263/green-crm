@@ -118,7 +118,8 @@ export function filterRecordsByTeam(records, teamId) {
     return records || [];
   }
 
-  return (records || []).filter((record) => !record?.team_id || record.team_id === teamId);
+  return (records || []).filter((record) => !record?.team_id || record.team_id === teamId
+    || (Array.isArray(record.mapped_team_ids) && record.mapped_team_ids.includes(teamId)));
 }
 
 export async function loadTeamsForCompany(token, companyId, pageSize = 120) {

@@ -15,7 +15,7 @@ class RecentActivityRepository {
     // Normalize user filters
     const usersToFilter = [];
     if (userId) usersToFilter.push(userId);
-    if (Array.isArray(userIds)) usersToFilter.push(...userIds);
+    if (!userId && Array.isArray(userIds)) usersToFilter.push(...userIds);
     const uniqueUsers = [...new Set(usersToFilter)];
 
     // Lead notes query
@@ -25,6 +25,7 @@ class RecentActivityRepository {
           'lead' as note_type,
           ln.id,
           ln.company_id,
+          l.team_id,
           ln.lead_id as entity_id,
           NULL as customer_id,
           ln.content,
@@ -45,13 +46,18 @@ class RecentActivityRepository {
           p.product_id,
           p.name as product_name
         FROM lead_notes ln
-        LEFT JOIN users u ON ln.created_by = u.user_id
-        LEFT JOIN leads l ON ln.lead_id = l.lead_id
-        LEFT JOIN products p ON l.product_id = p.product_id
+        LEFT JOIN users u ON ln.created_by = u.user_id AND u.company_id = ln.company_id
+        INNER JOIN leads l ON ln.lead_id = l.lead_id AND l.company_id = ln.company_id
+        LEFT JOIN products p ON l.product_id = p.product_id AND p.company_id = l.company_id
         WHERE ln.company_id = ?
           AND l.is_active = 1
       `;
       params.push(companyId);
+
+      if (Array.isArray(options.teamIds)) {
+        leadQuery += options.teamIds.length ? ` AND l.team_id IN (${options.teamIds.map(() => '?').join(',')})` : ' AND 1 = 0';
+        params.push(...options.teamIds);
+      }
 
       if (uniqueUsers.length > 0) {
         leadQuery += ` AND ln.created_by IN (${uniqueUsers.map(() => '?').join(',')})`;
@@ -88,6 +94,7 @@ class RecentActivityRepository {
           'customer' as note_type,
           cn.id,
           cn.company_id,
+          c.team_id,
           NULL as entity_id,
           cn.customer_id,
           cn.content,
@@ -108,13 +115,18 @@ class RecentActivityRepository {
           p.product_id,
           p.name as product_name
         FROM customer_notes cn
-        LEFT JOIN users u ON cn.created_by = u.user_id
-        LEFT JOIN customers c ON cn.customer_id = c.customer_id
-        LEFT JOIN products p ON c.product_id = p.product_id
+        LEFT JOIN users u ON cn.created_by = u.user_id AND u.company_id = cn.company_id
+        INNER JOIN customers c ON cn.customer_id = c.customer_id AND c.company_id = cn.company_id
+        LEFT JOIN products p ON c.product_id = p.product_id AND p.company_id = c.company_id
         WHERE cn.company_id = ?
           AND c.is_active = 1
       `;
       params.push(companyId);
+
+      if (Array.isArray(options.teamIds)) {
+        customerQuery += options.teamIds.length ? ` AND c.team_id IN (${options.teamIds.map(() => '?').join(',')})` : ' AND 1 = 0';
+        params.push(...options.teamIds);
+      }
 
       if (uniqueUsers.length > 0) {
         customerQuery += ` AND cn.created_by IN (${uniqueUsers.map(() => '?').join(',')})`;
@@ -141,7 +153,7 @@ class RecentActivityRepository {
     }
 
     const page = Math.max(parseInt(options.page) || 1, 1);
-    const limitVal = Math.min(parseInt(limit) || 20, 10000);
+    const limitVal = Math.max(1, Math.min(parseInt(limit) || 20, 10000));
     const offset = (page - 1) * limitVal;
     const sortOrder = sort === 'oldest' ? 'ASC' : 'DESC';
 
@@ -172,40 +184,46 @@ class RecentActivityRepository {
   /**
    * Get statistics about recent activity
    */
-  async getActivityStats(companyId, days = 7) {
+  async getActivityStats(companyId, days = 7, teamIds = null) {
+    const teamClause = alias => !Array.isArray(teamIds) ? '' : teamIds.length
+      ? ` AND ${alias}.team_id IN (${teamIds.map(() => '?').join(',')})` : ' AND 1 = 0';
     const queryText = `
       SELECT
         (SELECT COUNT(*) FROM lead_notes ln
-         INNER JOIN leads l ON ln.lead_id = l.lead_id
+         INNER JOIN leads l ON ln.lead_id = l.lead_id AND l.company_id = ln.company_id
          WHERE ln.company_id = ? 
            AND l.is_active = 1
            AND ln.created_at >= DATEADD(day, -?, SYSUTCDATETIME())
+           ${teamClause('l')}
         ) as lead_notes_count,
         (SELECT COUNT(*) FROM customer_notes cn
-         INNER JOIN customers c ON cn.customer_id = c.customer_id
+         INNER JOIN customers c ON cn.customer_id = c.customer_id AND c.company_id = cn.company_id
          WHERE cn.company_id = ? 
            AND c.is_active = 1
            AND cn.created_at >= DATEADD(day, -?, SYSUTCDATETIME())
+           ${teamClause('c')}
         ) as customer_notes_count,
         (SELECT COUNT(DISTINCT ln.created_by) FROM lead_notes ln
-         INNER JOIN leads l ON ln.lead_id = l.lead_id
+         INNER JOIN leads l ON ln.lead_id = l.lead_id AND l.company_id = ln.company_id
          WHERE ln.company_id = ? 
            AND l.is_active = 1
            AND ln.created_at >= DATEADD(day, -?, SYSUTCDATETIME())
+           ${teamClause('l')}
         ) as active_users_on_leads,
         (SELECT COUNT(DISTINCT cn.created_by) FROM customer_notes cn
-         INNER JOIN customers c ON cn.customer_id = c.customer_id
+         INNER JOIN customers c ON cn.customer_id = c.customer_id AND c.company_id = cn.company_id
          WHERE cn.company_id = ? 
            AND c.is_active = 1
            AND cn.created_at >= DATEADD(day, -?, SYSUTCDATETIME())
+           ${teamClause('c')}
         ) as active_users_on_customers
     `;
 
     const [rows] = await query(queryText, [
-      companyId, days,
-      companyId, days,
-      companyId, days,
-      companyId, days
+      companyId, days, ...(teamIds || []),
+      companyId, days, ...(teamIds || []),
+      companyId, days, ...(teamIds || []),
+      companyId, days, ...(teamIds || [])
     ]);
 
     return rows[0] || {

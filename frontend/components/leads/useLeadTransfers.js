@@ -13,7 +13,7 @@ export function useLeadTransfers() {
   const timerRef = useRef(null);
 
   const fetchPendingTransfers = async () => {
-    if (!token) return;
+    if (!token || document.visibilityState === "hidden") return;
     try {
       const data = await apiRequest("/lead-transfers/pending", { token });
       setTransfers(data || []);
@@ -32,8 +32,11 @@ export function useLeadTransfers() {
 
     // Poll every 30 seconds for new transfers
     timerRef.current = setInterval(fetchPendingTransfers, 30000);
+    const onVisible = () => { if (document.visibilityState === "visible") void fetchPendingTransfers(); };
+    document.addEventListener("visibilitychange", onVisible);
 
     return () => {
+      document.removeEventListener("visibilitychange", onVisible);
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }

@@ -20,6 +20,8 @@ function normalizePrimaryKey(line) {
 }
 
 function normalizeColumn(line) {
+  // Table constraints are SQL syntax, not a column named "CONSTRAINT".
+  if (/^CONSTRAINT\b/i.test(line)) return line;
   const match = line.match(/^([a-zA-Z0-9_]+)\s+(.+)$/);
 
   if (!match) {
@@ -294,10 +296,23 @@ const schemaStatements = [
     updated_at  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     UNIQUE KEY uq_products_product_id (product_id),
+    UNIQUE KEY uq_products_company_product (company_id, product_id),
     UNIQUE KEY uq_products_company_name (company_id, name),
     KEY idx_products_company_active (company_id, is_active),
     KEY idx_products_company_team (company_id, team_id, is_active),
     CONSTRAINT fk_products_team FOREIGN KEY (company_id, team_id) REFERENCES teams (company_id, team_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
+  `CREATE TABLE IF NOT EXISTS product_team_mappings (
+    company_id VARCHAR(20) NOT NULL,
+    product_id VARCHAR(20) NOT NULL,
+    team_id VARCHAR(20) NOT NULL,
+    created_by VARCHAR(20) NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (company_id, product_id, team_id),
+    KEY idx_product_mapping_team (company_id, team_id, product_id),
+    CONSTRAINT fk_product_mapping_product FOREIGN KEY (company_id, product_id) REFERENCES products (company_id, product_id),
+    CONSTRAINT fk_product_mapping_team FOREIGN KEY (company_id, team_id) REFERENCES teams (company_id, team_id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
 
   // ── leads ──────────────────────────────────────────────────

@@ -1,4 +1,7 @@
 const productRepository = require("../repositories/productRepository");
+const db = require("../db/connection");
+const teamRepository = require("../repositories/teamRepository");
+const { productAllowsTeam } = require("./productAccessService");
 const companyRepository = require("../repositories/companyRepository");
 const auditRepository = require("../repositories/auditRepository");
 const { ROLES } = require("../constants/roles");
@@ -69,7 +72,10 @@ async function listProducts(auth, query) {
     pagination,
   });
 
-  return buildPaginatedResult(rows, total, pagination);
+  return buildPaginatedResult(rows.map(row => ({ ...row,
+    can_manage: auth.role !== ROLES.MANAGER || (teamIds || []).includes(row.team_id),
+    can_map_teams: [ROLES.SUPER_ADMIN, ROLES.PLATFORM_ADMIN, ROLES.PLATFORM_MANAGER, ROLES.ADMIN].includes(auth.role),
+  })), total, pagination);
 }
 
 async function createProduct(auth, payload) {
@@ -97,6 +103,7 @@ async function createProduct(auth, payload) {
     companyId,
     await resolveProductTeamId(auth, companyId, payload)
   );
+  await assertTeamAccess(auth, companyId, teamId);
 
   const existingProduct = await productRepository.getProductByName(companyId, name);
   if (existingProduct) {
@@ -157,6 +164,10 @@ async function updateProduct(auth, productId, payload) {
     product.company_id,
     await resolveProductTeamId(auth, product.company_id, payload, product)
   );
+  await assertTeamAccess(auth, product.company_id, nextTeamId);
+  if (auth.role === ROLES.MANAGER && nextTeamId !== product.team_id) {
+    throw new AppError("Only company admins can change a product's owning team.", 403);
+  }
 
   const updated = await productRepository.updateProduct(product.product_id, product.company_id, {
     name: payload.name !== undefined ? String(payload.name || "").trim() : product.name,
@@ -222,10 +233,10 @@ async function enableProductForCompany(auth, companyId, productId) {
     throw new AppError("Product not found for the specified company.", 404);
   }
 
-  await assertRecordTeamAccess(auth, product, {
-    includeManaged: true,
-    includeMembership: true,
-  });
+  const { teamIds } = await resolveTeamScope(auth, companyId);
+  if (teamIds && !teamIds.some(teamId => productAllowsTeam(product, teamId))) {
+    throw new AppError("Product is not available for your teams.", 403);
+  }
 
   return {
     product_id: product.product_id,
@@ -234,10 +245,35 @@ async function enableProductForCompany(auth, companyId, productId) {
   };
 }
 
+async function mapProductTeams(auth, productId, payload) {
+  if (![ROLES.SUPER_ADMIN, ROLES.PLATFORM_ADMIN, ROLES.PLATFORM_MANAGER, ROLES.ADMIN].includes(auth.role)) {
+    throw new AppError("Only company admins or platform operators can share products between teams.", 403);
+  }
+  const product = await productRepository.getProductById(productId);
+  if (!product) throw new AppError("Product not found.", 404);
+  assertCompanyAccess(auth, product.company_id);
+  if (!product.team_id) throw new AppError("Set the product's owning team before sharing it.", 400);
+  if (!Array.isArray(payload.team_ids) || payload.team_ids.some(id => typeof id !== "string" || !id.trim())) {
+    throw new AppError("team_ids must be an array of team identifiers.", 400);
+  }
+  const requested = [...new Set(payload.team_ids.map(id => id.trim()))];
+  const valid = await teamRepository.listValidTeamIds(product.company_id, requested);
+  if (requested.some(id => !valid.includes(id))) throw new AppError("All mapped teams must be active in this company.", 400);
+  const teamIds = requested.filter(id => id !== product.team_id);
+  await db.withTransaction(async tx => {
+    await productRepository.replaceTeamMappings(product.company_id, productId, teamIds, auth.userId, tx);
+    await auditRepository.createLog({ audit_id: await createPrefixedId("aud"), company_id: product.company_id,
+      action: "product.teams_mapped", performed_by: auth.userId, user_email: auth.email, user_role: auth.role,
+      details: { product_id: productId, owner_team_id: product.team_id, mapped_team_ids: teamIds } }, tx);
+  });
+  return productRepository.getProductById(productId);
+}
+
 module.exports = {
   createProduct,
   deleteProduct,
   enableProductForCompany,
   listProducts,
   updateProduct,
+  mapProductTeams,
 };

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { apiRequest } from "../../lib/api";
@@ -16,6 +16,7 @@ export default function WorkspacePage({
   requestDeps = [],
   heroStats = () => [],
   hideTitle = false,
+  progressive = false,
   children,
 }) {
   const router = useRouter();
@@ -23,8 +24,15 @@ export default function WorkspacePage({
   const [data, setData] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [resourceLoading, setResourceLoading] = useState({});
+  const [resourceErrors, setResourceErrors] = useState({});
+  const requestRef = useRef({ version: 0, controller: null });
 
   async function loadData(activeSession) {
+    requestRef.current.controller?.abort();
+    const controller = new AbortController();
+    const version = ++requestRef.current.version;
+    requestRef.current.controller = controller;
     const requests = requestBuilder(activeSession) || [];
 
     if (!requests.length) {
@@ -35,27 +43,42 @@ export default function WorkspacePage({
 
     setLoading(true);
     setError("");
+    setData({});
+    setResourceErrors({});
+    setResourceLoading(Object.fromEntries(requests.map(request => [request.key, true])));
 
     try {
-      const results = await Promise.all(
-        requests.map((request) =>
-          apiRequest(request.path, {
-            token: activeSession.token,
-            method: request.method,
-            body: request.body,
-          })
-        )
+      const results = await Promise.allSettled(
+        requests.map(async (request) => {
+          try {
+            const result = await apiRequest(request.path, {
+              token: activeSession.token,
+              method: request.method,
+              body: request.body,
+              signal: controller.signal,
+            });
+            if (version === requestRef.current.version) {
+              setData(current => ({ ...current, [request.key]: result }));
+              if (progressive) setLoading(false);
+            }
+            return result;
+          } catch (failure) {
+            if (version === requestRef.current.version && !controller.signal.aborted) {
+              setResourceErrors(current => ({ ...current, [request.key]: failure.message }));
+            }
+            throw failure;
+          } finally {
+            if (version === requestRef.current.version) setResourceLoading(current => ({ ...current, [request.key]: false }));
+          }
+        })
       );
-
-      const nextData = {};
-      requests.forEach((request, index) => {
-        nextData[request.key] = results[index];
-      });
-      setData(nextData);
+      if (version !== requestRef.current.version) return;
+      const failures = results.flatMap((result, index) => result.status === "rejected" ? [`${requests[index].key}: ${result.reason.message}`] : []);
+      setError(failures.join(" · "));
     } catch (requestError) {
-      setError(requestError.message);
+      if (version === requestRef.current.version) setError(requestError.message);
     } finally {
-      setLoading(false);
+      if (version === requestRef.current.version) setLoading(false);
     }
   }
 
@@ -73,6 +96,7 @@ export default function WorkspacePage({
 
     setSession(activeSession);
     loadData(activeSession);
+    return () => { requestRef.current.version += 1; requestRef.current.controller?.abort(); };
   }, [router, ...requestDeps]);
 
   return (
@@ -88,6 +112,8 @@ export default function WorkspacePage({
         data,
         error,
         loading,
+        resourceLoading,
+        resourceErrors,
         refresh: () => session ? loadData(session) : undefined,
       })}
     </DashboardShell>

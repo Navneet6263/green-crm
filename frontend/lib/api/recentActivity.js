@@ -20,6 +20,7 @@ export const recentActivityApi = {
     if (params.toDate) queryParams.append('toDate', params.toDate);
     if (params.search) queryParams.append('search', params.search);
     if (params.sort) queryParams.append('sort', params.sort);
+    if (params.teamId) queryParams.append('team_id', params.teamId);
 
     const response = await apiClient.get(
       `/recent-activity/notes${queryParams.toString() ? `?${queryParams.toString()}` : ''}`
@@ -31,8 +32,10 @@ export const recentActivityApi = {
    * Get activity statistics
    * @param {number} days - Number of days to look back (default: 7)
    */
-  async getActivityStats(days = 7) {
-    const response = await apiClient.get(`/recent-activity/stats?days=${days}`);
+  async getActivityStats(days = 7, teamId = '') {
+    const query = new URLSearchParams({ days: String(days) });
+    if (teamId) query.set('team_id', teamId);
+    const response = await apiClient.get(`/recent-activity/stats?${query}`);
     return response;
   },
 };

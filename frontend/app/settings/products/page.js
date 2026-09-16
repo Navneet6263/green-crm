@@ -65,11 +65,15 @@ export default function ProductSettingsPage() {
   const [togglingId, setTogglingId] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [mappedTeamIds, setMappedTeamIds] = useState([]);
+  const [savingMappings, setSavingMappings] = useState(false);
 
   const role = session?.user?.role || "";
   const isPlatformConsole = isPlatformConsoleRole(role);
   const scopedCompanyId = resolveScopedCompanyId(session, companyId);
   const selectedProduct = useMemo(() => products.find(p => p.product_id === selectedId)||null, [products, selectedId]);
+  const canEditSelected = selectedProduct?.can_manage !== false;
+  const canMapTeams = ["super-admin", "platform-admin", "platform-manager", "admin"].includes(role);
   const teamSelectorVisible = shouldShowTeamSelector(role, teams);
   const createTeamPending = teamSelectorVisible && !createForm.team_id;
   const editTeamPending = teamSelectorVisible && Boolean(selectedProduct) && !editForm.team_id;
@@ -144,7 +148,22 @@ export default function ProductSettingsPage() {
 
   useEffect(() => {
     if (selectedProduct) setEditForm(draft({ name: selectedProduct.name||"", color: hex(selectedProduct.color), is_active: isActive(selectedProduct.is_active), team_id: resolveInitialTeamId(teams, selectedProduct.team_id) }));
+    setMappedTeamIds(selectedProduct?.mapped_team_ids || []);
   }, [selectedProduct, teams]);
+
+  async function saveTeamMappings(e) {
+    e.preventDefault();
+    if (!canMapTeams || !selectedProduct?.team_id || savingMappings) return;
+    setSavingMappings(true); setError(""); setNotice("");
+    try {
+      await apiRequest(`/products/${selectedProduct.product_id}/teams`, {
+        method: "PUT", token: session.token, body: { team_ids: mappedTeamIds },
+      });
+      await loadProducts(session, scopedCompanyId);
+      setNotice("Product team mapping saved. Leads and customers remain private to their own teams.");
+    } catch (e) { setError(formatScopedError(e, "Could not save product team mapping.")); }
+    finally { setSavingMappings(false); }
+  }
 
   async function createProduct(e) {
     e.preventDefault();
@@ -162,7 +181,7 @@ export default function ProductSettingsPage() {
 
   async function saveProduct(e) {
     e.preventDefault();
-    if (!session?.token || !selectedProduct) return;
+    if (!session?.token || !selectedProduct || !canEditSelected) return;
     if (editTeamPending) return setError(teamSelectionRequiredMessage("product"));
     setSaving(true); setError(""); setNotice("");
     try {
@@ -173,7 +192,7 @@ export default function ProductSettingsPage() {
   }
 
   async function toggleProduct(product) {
-    if (!session?.token || !product) return;
+    if (!session?.token || !product || product.can_manage === false) return;
     setTogglingId(product.product_id); setError(""); setNotice("");
     try {
       await apiRequest(`/products/${product.product_id}`, { method:"PATCH", token:session.token, body:{ is_active:!isActive(product.is_active) } });
@@ -256,6 +275,7 @@ export default function ProductSettingsPage() {
                               {active ? "Active" : "Archived"}
                             </span>
                             {teamBadgeLabel(product) ? <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800">{teamBadgeLabel(product)}</span> : null}
+                            {product.can_manage === false ? <span className="text-xs font-medium text-sky-700">Shared product · use only</span> : null}
                           </div>
                           <div className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-slate-400">
                             <span style={{ color }}>{color}</span>
@@ -334,6 +354,8 @@ export default function ProductSettingsPage() {
                   </div>
                 </div>
                 <form className="space-y-4" onSubmit={saveProduct}>
+                  {!canEditSelected ? <p className="rounded-xl bg-sky-50 p-3 text-sm text-sky-800">This product is shared with your team. You can use it on your team's leads, but only the owning team or company admin can edit it.</p> : null}
+                  <fieldset disabled={!canEditSelected} className="space-y-4 disabled:opacity-60">
                   <label className="block space-y-1.5">
                     <span className={T.K}>Product Name</span>
                     <input className={T.input} value={editForm.name} onChange={e => setEditForm(f=>({...f,name:e.target.value}))} required />
@@ -360,7 +382,30 @@ export default function ProductSettingsPage() {
                       {togglingId===selectedProduct.product_id ? "Updating…" : isActive(selectedProduct.is_active) ? "Archive" : "Restore"}
                     </button>
                   </div>
+                  </fieldset>
                 </form>
+                {canMapTeams ? (
+                  <form className="mt-5 space-y-3 border-t border-slate-100 pt-5" onSubmit={saveTeamMappings}>
+                    <h4 className="text-sm font-bold text-slate-900">Share product with teams</h4>
+                    <p className="text-xs text-slate-500">The owning team keeps access. Selected teams can use this product, not view the owning team's leads or customers.</p>
+                    {!selectedProduct.team_id ? <p className="text-sm text-amber-700">Choose and save an owning team first.</p> : null}
+                    <fieldset disabled={savingMappings || !selectedProduct.team_id} className="max-h-52 space-y-2 overflow-y-auto rounded-xl border border-slate-200 p-3">
+                      <legend className="px-1 text-xs font-semibold text-slate-600">Allowed teams</legend>
+                      {teams.map(team => {
+                        const isOwner = team.team_id === selectedProduct.team_id;
+                        return <label key={team.team_id} className="flex items-center gap-2 text-sm text-slate-700">
+                          <input type="checkbox" disabled={isOwner} checked={isOwner || mappedTeamIds.includes(team.team_id)}
+                            onChange={e => setMappedTeamIds(ids => e.target.checked ? [...new Set([...ids, team.team_id])] : ids.filter(id => id !== team.team_id))} />
+                          {teamSelectLabel(team)}{isOwner ? " (owner)" : ""}
+                        </label>;
+                      })}
+                      {!teams.length ? <p className="text-sm text-slate-500">No active teams available.</p> : null}
+                    </fieldset>
+                    <button type="submit" className={T.gold} disabled={savingMappings || !selectedProduct.team_id}>
+                      {savingMappings ? "Saving mapping…" : "Save team mapping"}
+                    </button>
+                  </form>
+                ) : null}
               </div>
             ) : (
               <div className={`${T.panel} flex min-h-[200px] flex-col items-center justify-center gap-3 px-5 py-8 text-center`}>

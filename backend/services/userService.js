@@ -17,7 +17,8 @@ const { buildPaginatedResult, parsePagination } = require("../utils/pagination")
 const AppError = require("../utils/appError");
 const { getRoleLimit } = require("../utils/companySettings");
 const { assertCompanyAccess, getAccessibleCompanyIds, isPlatformOperatorRole } = require("../utils/tenant");
-const { parseRequestedTeamIds, resolveTeamScope } = require("./accessScopeService");
+const { assertUserInManagerScope, parseRequestedTeamIds, resolveTeamScope } = require("./accessScopeService");
+const teamRepository = require("../repositories/teamRepository");
 
 function sanitizeUser(user) {
   if (!user) {
@@ -55,7 +56,6 @@ function isTenantRole(role) {
 
 function canManagerManageRole(role) {
   return [
-    ROLES.MANAGER,
     ROLES.SALES,
     ROLES.MARKETING,
     ROLES.SUPPORT,
@@ -186,7 +186,7 @@ function assertManagementAccess(auth, targetUser, nextRole) {
       [ROLES.ADMIN, ROLES.SUPER_ADMIN].includes(targetUser.role) ||
       [ROLES.ADMIN, ROLES.SUPER_ADMIN].includes(nextRole)
     ) {
-      throw new AppError("Managers can manage manager and below tenant roles only.", 403);
+      throw new AppError("Managers can manage employees in their own teams, not manager/admin accounts.", 403);
     }
   }
 }
@@ -269,7 +269,7 @@ async function createUser(auth, payload) {
 
   if (auth.role === ROLES.MANAGER) {
     if (!isTenantRole(role) || !canManagerManageRole(role)) {
-      throw new AppError("Managers can create manager and below tenant roles only.", 403);
+      throw new AppError("Managers can create employee accounts only. Ask a company admin to create managers.", 403);
     }
   }
 
@@ -307,6 +307,13 @@ async function createUser(auth, payload) {
   const temporaryPassword =
     String(payload.password || "").trim() || `Temp@${Math.random().toString(36).slice(-8)}1`;
 
+  let managedTeamId = null;
+  if (auth.role === ROLES.MANAGER) {
+    const { teamIds } = await resolveTeamScope(auth, companyId, parseRequestedTeamIds(payload));
+    if (teamIds?.length !== 1) throw new AppError("Select one of your teams for the new employee.", 400);
+    [managedTeamId] = teamIds;
+  }
+
   const user = await db.withTransaction(async (transaction) => {
     const createdUser = await userRepository.createUser(
       {
@@ -322,6 +329,11 @@ async function createUser(auth, payload) {
       },
       transaction
     );
+
+    if (managedTeamId) await teamRepository.addTeamMember({
+      company_id: companyId, team_id: managedTeamId, user_id: createdUser.user_id,
+      membership_role: "member", is_primary: true, added_by: auth.userId,
+    }, transaction);
 
     if (isPlatformOperatorRole(role)) {
       await platformAccessRepository.replaceCompanyIdsForUser(
@@ -401,6 +413,7 @@ async function updateUser(auth, userId, payload) {
   const currentIsPlatformRoot = isPlatformRootRole(user.role);
   const nextIsPlatformRoot = isPlatformRootRole(nextRole);
   assertManagementAccess(auth, user, nextRole);
+  await assertUserInManagerScope(auth, user.company_id, user.user_id);
 
   if (!ROLE_VALUES.includes(nextRole)) {
     throw new AppError("Invalid role.");
@@ -496,6 +509,7 @@ async function toggleUser(auth, userId, payload = {}) {
   }
 
   assertManagementAccess(auth, user, user.role);
+  await assertUserInManagerScope(auth, user.company_id, user.user_id);
   const nextActive =
     payload.is_active === undefined ? !Boolean(user.is_active) : Boolean(payload.is_active);
 
@@ -551,14 +565,16 @@ async function listUsersByRole(auth, role, companyId) {
       : auth.companyId;
 
   assertCompanyAccess(auth, effectiveCompanyId);
-  const rows = await userRepository.listUsersByRole(effectiveCompanyId, normalizeRole(role));
+  const { teamIds } = await resolveTeamScope(auth, effectiveCompanyId);
+  const rows = await userRepository.listUsersByRole(effectiveCompanyId, normalizeRole(role), { teamIds });
   return rows.map(sanitizeUser);
 }
 
 async function searchActiveUsers(auth, queryText) {
   const companyId = auth.companyId;
   assertCompanyAccess(auth, companyId);
-  const rows = await userRepository.listActiveUsersInCompany(companyId, { search: queryText });
+  const { teamIds } = await resolveTeamScope(auth, companyId);
+  const rows = await userRepository.listActiveUsersInCompany(companyId, { search: queryText, teamIds });
   return rows.map(sanitizeUser);
 }
 

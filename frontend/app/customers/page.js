@@ -1,14 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import DashboardShell from "../../components/dashboard/DashboardShell";
 import DashboardIcon from "../../components/dashboard/icons";
 import { CustomerFollowUpBadge, CustomerStatusBadge, OnboardingStatusBadge, isCustomerFollowUpOverdue } from "../../components/customers/CustomerStatusBits";
 import FollowUpActivityModal from "../../components/customers/FollowUpActivityModal";
 import { apiRequest } from "../../lib/api";
-import { buildCustomerNotes, parseCustomerProfile, stripCustomerProfile } from "../../lib/customerProfile";
+import { stripCustomerProfile } from "../../lib/customerProfile";
 import { loadSession } from "../../lib/session";
 import { formatScopedError, isPlatformConsoleRole, loadTeamScopeResources, resolveSessionCompanyId, teamBadgeLabel, teamSelectLabel } from "../../lib/teamScope";
 import { AlertError, AlertSuccess } from "../../components/ui/Alert";
@@ -66,6 +66,14 @@ export default function CustomersPage() {
   const [showActivityModal, setShowActivityModal] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [savingActivity, setSavingActivity] = useState(false);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [meta, setMeta] = useState({ total: 0, total_pages: 1 });
+  const [createdByOptions, setCreatedByOptions] = useState([]);
+  const requestRef = useRef({ version: 0, controller: null });
+  const filterKey = JSON.stringify([debouncedSearch, statusFilter, followUpFilter, sortBy, companyFilter, teamFilter, createdByFilter]);
+  const [pageState, setPageState] = useState({ key: "", value: 1 });
+  const page = pageState.key === filterKey ? pageState.value : 1;
+  const setPage = (value) => setPageState({ key: filterKey, value });
 
   const role = session?.user?.role || "viewer";
   const isPlatformConsole = isPlatformConsoleRole(role);
@@ -74,47 +82,29 @@ export default function CustomersPage() {
   const teamCompanyId = isPlatformConsole ? (companyFilter !== "all" ? companyFilter : "") : resolveSessionCompanyId(session);
   const selectedTeam = useMemo(()=>teams.find(t=>t.team_id===teamFilter)||null,[teamFilter,teams]);
 
-  const createdByOptions = useMemo(()=>[...new Set(customers.map(c=>c.created_by_name).filter(Boolean))].sort(),[customers]);
+  const filtered = customers;
+  const stats = meta.summary || { total: 0, active: 0, scheduled: 0, overdue: 0, value: 0 };
 
-  const filtered = useMemo(()=>{
-    const q = search.trim().toLowerCase();
-    const list = customers.filter(c=>{
-      const txt = [c.name,c.company_name,c.email,c.phone,c.status,c.assigned_to_name,c.team_name,latestNote(c.notes)].filter(Boolean).join(" ").toLowerCase();
-      const overdue = isCustomerFollowUpOverdue(c.next_follow_up);
-      const has = Boolean(c.next_follow_up);
-      return (!q||txt.includes(q)) &&
-        (statusFilter==="all"||c.status===statusFilter) &&
-        (createdByFilter==="all"||c.created_by_name===createdByFilter) &&
-        (followUpFilter==="all"||(followUpFilter==="scheduled"&&has)||(followUpFilter==="upcoming"&&has&&!overdue)||(followUpFilter==="overdue"&&overdue)||(followUpFilter==="none"&&!has));
-    });
-    list.sort((a,b)=>{
-      if(sortBy==="name") return String(a.company_name||a.name||"").localeCompare(String(b.company_name||b.name||""));
-      if(sortBy==="value") return Number(b.total_value||0)-Number(a.total_value||0);
-      if(sortBy==="follow-up"){
-        const at=a.next_follow_up?new Date(a.next_follow_up).getTime():Number.MAX_SAFE_INTEGER;
-        const bt=b.next_follow_up?new Date(b.next_follow_up).getTime():Number.MAX_SAFE_INTEGER;
-        return at-bt;
-      }
-      return new Date(b.updated_at||b.created_at||0)-new Date(a.updated_at||a.created_at||0);
-    });
-    return list;
-  },[customers,createdByFilter,followUpFilter,search,sortBy,statusFilter]);
-
-  const stats = useMemo(()=>({
-    total: customers.length,
-    active: customers.filter(c=>c.status==="active").length,
-    scheduled: customers.filter(c=>c.next_follow_up).length,
-    overdue: customers.filter(c=>isCustomerFollowUpOverdue(c.next_follow_up)).length,
-    value: customers.reduce((s,c)=>s+Number(c.total_value||0),0),
-  }),[customers]);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   async function loadCustomers(s, cf="all", tf="all") {
+    requestRef.current.controller?.abort();
+    const controller = new AbortController();
+    const version = ++requestRef.current.version;
+    requestRef.current.controller = controller;
     setLoading(true); setError("");
     try {
-      const r = await apiRequest(buildPath("/customers",{page_size:120,company_id:isPlatformConsole?cf:undefined,team_ids:tf}),{token:s.token});
+      const r = await apiRequest(buildPath("/customers",{page, page_size:25, include_summary:1, search:debouncedSearch, status:statusFilter, follow_up:followUpFilter, sort:sortBy, created_by:createdByFilter, company_id:isPlatformConsole?cf:undefined,team_ids:tf}),{token:s.token, signal:controller.signal});
+      if (version !== requestRef.current.version) return;
+      if (page > Number(r.meta?.total_pages || 1)) { setPage(Number(r.meta?.total_pages || 1)); return; }
       setCustomers(r.items||[]);
-    } catch(e) { setError(formatScopedError(e,"Could not load customers.")); setCustomers([]); }
-    finally { setLoading(false); }
+      setMeta(r.meta || { total: 0, total_pages: 1 });
+      setCreatedByOptions(r.meta?.creators || []);
+    } catch(e) { if (version === requestRef.current.version && e.name !== "AbortError") { setError(formatScopedError(e,"Could not load customers.")); setCustomers([]); setMeta({ total: 0, total_pages: 1 }); } }
+    finally { if (version === requestRef.current.version) setLoading(false); }
   }
 
   useEffect(()=>{
@@ -130,7 +120,10 @@ export default function CustomersPage() {
     }
   },[router]);
 
-  useEffect(()=>{ if(session) loadCustomers(session,companyFilter,teamFilter); },[companyFilter,isPlatformConsole,session,teamFilter]);
+  useEffect(()=>{
+    if(session) loadCustomers(session,companyFilter,teamFilter);
+    return () => { requestRef.current.version += 1; requestRef.current.controller?.abort(); };
+  },[filterKey,page,isPlatformConsole,session?.token]);
 
   useEffect(()=>{
     if(!session?.token||!teamCompanyId){ setTeams([]); setTeamFilter("all"); return; }
@@ -152,7 +145,7 @@ export default function CustomersPage() {
     setSaving(id); setError("");
     try {
       await apiRequest(`/customers/${id}`,{method:"DELETE",token:session.token});
-      setCustomers(c=>c.filter(x=>x.customer_id!==id));
+      await loadCustomers(session, companyFilter, teamFilter);
     } catch(e){ setError(formatScopedError(e,"Could not delete this customer.")); }
     finally { setSaving(""); }
   }
@@ -201,18 +194,11 @@ export default function CustomersPage() {
     setError("");
     setNotice("");
     try {
-      const existing = stripCustomerProfile(selectedCustomer.notes);
-      const timestamp = new Date().toISOString();
-      const author = session?.user?.name || "Team";
-      const entry = `[${timestamp}] ${author}: [${activityType.toUpperCase()}] ${remarks}`;
-      const updatedNotes = existing ? `${existing}\n${entry}` : entry;
-      
-      await apiRequest(`/customers/${selectedCustomer.customer_id}`, {
-        method: "PATCH",
+      await apiRequest(`/customers/${selectedCustomer.customer_id}/notes`, {
+        method: "POST",
         token: session.token,
         body: {
-          notes: buildCustomerNotes(parseCustomerProfile(selectedCustomer.notes), updatedNotes),
-          last_interaction: timestamp,
+          content: `[${activityType.toUpperCase()}] ${remarks.trim()}`,
         },
       });
       
@@ -222,6 +208,7 @@ export default function CustomersPage() {
       await loadCustomers(session, companyFilter, teamFilter);
     } catch (err) {
       setError(formatScopedError(err, "Could not save activity."));
+      return false;
     } finally {
       setSavingActivity(false);
     }
@@ -248,8 +235,9 @@ export default function CustomersPage() {
             <h1 className="mt-0.5 text-2xl font-bold tracking-tight text-slate-900">Customers</h1>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button className={Btn.ghost} type="button" onClick={exportCsv}><DashboardIcon name="documents" className="h-4 w-4" />CSV</button>
-            <button className={Btn.ghost} type="button" onClick={exportHtml}><DashboardIcon name="documents" className="h-4 w-4" />Excel</button>
+            <button className={Btn.ghost} type="button" disabled={loading} onClick={()=>loadCustomers(session,companyFilter,teamFilter)}>Refresh</button>
+            <button className={Btn.ghost} type="button" disabled={loading || !filtered.length} onClick={exportCsv}><DashboardIcon name="documents" className="h-4 w-4" />CSV (page)</button>
+            <button className={Btn.ghost} type="button" disabled={loading || !filtered.length} onClick={exportHtml}><DashboardIcon name="documents" className="h-4 w-4" />Excel (page)</button>
             {canManage ? <Link href="/customers/new" className={Btn.gold}><DashboardIcon name="customers" className="h-4 w-4" />Add Customer</Link> : null}
           </div>
         </div>
@@ -263,7 +251,7 @@ export default function CustomersPage() {
               </div>
               <div className="min-w-0">
                 <p className={C.kicker}>{s.label}</p>
-                <p className="mt-0.5 text-lg font-bold text-slate-900 leading-none">{s.money ? money(stats[s.key]) : stats[s.key]}</p>
+                <p className="mt-0.5 text-lg font-bold text-slate-900 leading-none">{loading ? "…" : s.money ? money(stats[s.key]) : stats[s.key]}</p>
               </div>
             </div>
           ))}
@@ -303,7 +291,7 @@ export default function CustomersPage() {
             {canDelete && createdByOptions.length>1 ? (
               <select className={C.input} value={createdByFilter} onChange={e=>setCreatedByFilter(e.target.value)}>
                 <option value="all">All creators</option>
-                {createdByOptions.map(n=><option key={n} value={n}>{n}</option>)}
+                {createdByOptions.map(n=><option key={n.user_id} value={n.user_id}>{n.name}</option>)}
               </select>
             ) : null}
             <select className={C.input} value={sortBy} onChange={e=>setSortBy(e.target.value)}>
@@ -313,7 +301,14 @@ export default function CustomersPage() {
               <option value="follow-up">Nearest follow-up</option>
             </select>
           </div>
-          <p className="mt-3 text-xs text-slate-400">{filtered.length} of {customers.length} customers</p>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500" aria-live="polite">
+            <p>{loading ? "Searching all accessible customers…" : `${filtered.length} shown · ${meta.total || 0} matching customers. Cards cover all matches.`}</p>
+            <div className="flex items-center gap-2">
+              <button className={Btn.ghost} disabled={loading || page <= 1} onClick={()=>setPage(page-1)}>Previous</button>
+              <span>Page {page} of {meta.total_pages || 1}</span>
+              <button className={Btn.ghost} disabled={loading || page >= (meta.total_pages || 1)} onClick={()=>setPage(page+1)}>Next</button>
+            </div>
+          </div>
         </div>
 
         {/* ── List ── */}
@@ -323,7 +318,7 @@ export default function CustomersPage() {
           <div className="space-y-2.5">
             {filtered.map(customer=>{
               const overdue = isCustomerFollowUpOverdue(customer.next_follow_up);
-              const note = latestNote(customer.notes);
+              const note = customer.latest_note || latestNote(customer.notes);
               return (
                 <article key={customer.customer_id} className={`${C.panel} px-5 py-4`}>
                   <div className="flex items-start justify-between gap-4">

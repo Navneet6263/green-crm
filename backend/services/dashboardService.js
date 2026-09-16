@@ -4,6 +4,7 @@ const { getAccessibleCompanyIds, isPlatformOperatorRole } = require("../utils/te
 const { parseRequestedTeamIds, resolveTeamScope } = require("./accessScopeService");
 
 const dashboardCache = new Map();
+const pendingSummaries = new Map();
 
 function getAssignedViewerColumns(role) {
   if (role === ROLES.LEGAL_TEAM) {
@@ -42,6 +43,10 @@ function readCache(key) {
 }
 
 function writeCache(key, value, ttlMs) {
+  for (const [entryKey, entry] of dashboardCache) {
+    if (entry.expiresAt <= Date.now()) dashboardCache.delete(entryKey);
+  }
+  if (dashboardCache.size >= 500) dashboardCache.delete(dashboardCache.keys().next().value);
   dashboardCache.set(key, {
     value,
     expiresAt: Date.now() + ttlMs,
@@ -157,15 +162,32 @@ async function getSummary(auth, query = {}) {
     return cached;
   }
 
-  const summary = await loadSummary(auth, query);
-  writeCache(cacheKey, summary, ttlMs);
-  return summary;
+  if (pendingSummaries.has(cacheKey)) return pendingSummaries.get(cacheKey);
+  const pending = loadSummary(auth, query).then((summary) => {
+    writeCache(cacheKey, summary, ttlMs);
+    return summary;
+  });
+  pendingSummaries.set(cacheKey, pending);
+  try {
+    return await pending;
+  } finally {
+    if (pendingSummaries.get(cacheKey) === pending) pendingSummaries.delete(cacheKey);
+  }
+}
+
+async function getPerformance(auth, query = {}) {
+  if (![ROLES.ADMIN, ROLES.MANAGER].includes(auth.role)) {
+    throw new (require("../utils/appError"))("Only admins and managers can review team performance.", 403);
+  }
+  require("../utils/tenant").assertCompanyAccess(auth, auth.companyId);
+  const teamIds = await resolveDashboardTeamScope(auth, query);
+  return require("../repositories/performanceRepository").getPerformance(auth.companyId, teamIds, auth.role === ROLES.MANAGER);
 }
 
 
 
 // Widget-level service methods for lazy/parallel dashboard loading
-// Each widget fetches only what it needs — no more loading everything at once.
+// Widgets share the scoped summary cache and its in-flight computation.
 // ---------------------------------------------------------------------------
 
 async function getWidgetKpis(auth, query = {}) {
@@ -212,6 +234,7 @@ async function getWidgetCharts(auth, query = {}) {
 }
 
 module.exports = {
+  getPerformance,
   getSummary,
   getWidgetCharts,
   getWidgetKpis,

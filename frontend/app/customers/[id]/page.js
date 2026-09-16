@@ -14,7 +14,7 @@ import CustomerTimeline from "../../../components/customers/premium/CustomerTime
 import CustomerProfilePanel from "../../../components/customers/premium/CustomerProfilePanel";
 import CustomerAddSubscriptionModal from "../../../components/customers/premium/CustomerAddSubscriptionModal";
 import FollowUpActivityModal from "../../../components/customers/FollowUpActivityModal";
-import { stripCustomerProfile, buildCustomerNotes, parseCustomerProfile } from "../../../lib/customerProfile";
+import { stripCustomerProfile } from "../../../lib/customerProfile";
 
 function parseLegacyNotes(notesText) {
   const clean = stripCustomerProfile(notesText);
@@ -102,18 +102,11 @@ export default function CustomerDetailPage() {
   async function saveFollowUpActivity({ activityType, remarks }) {
     setSavingActivity(true); setError(""); setNotice("");
     try {
-      const existing = stripCustomerProfile(customer.notes);
-      const timestamp = new Date().toISOString();
-      const author = session?.user?.name || "Team";
-      const entry = `[${timestamp}] ${author}: [${activityType.toUpperCase()}] ${remarks}`;
-      const updatedNotes = existing ? `${existing}\n${entry}` : entry;
-      
-      await apiRequest(`/customers/${params.id}`, {
-        method: "PATCH",
+      await apiRequest(`/customers/${params.id}/notes`, {
+        method: "POST",
         token: session.token,
         body: {
-          notes: buildCustomerNotes(parseCustomerProfile(customer.notes), updatedNotes),
-          last_interaction: timestamp,
+          content: `[${activityType.toUpperCase()}] ${remarks.trim()}`,
         },
       });
       setNotice("Follow-up activity saved.");
@@ -121,6 +114,7 @@ export default function CustomerDetailPage() {
       await load(session);
     } catch (err) {
       setError(formatScopedError(err, "Could not save activity."));
+      return false;
     } finally {
       setSavingActivity(false);
     }

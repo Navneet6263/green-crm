@@ -3,16 +3,20 @@
 import { useEffect, useState, useMemo } from "react";
 import { recentActivityApi } from "../../lib/api/recentActivity.js";
 
-export default function MonthlyLeaderboard({ notes = [], session }) {
+export default function MonthlyLeaderboard({ session, teamId = "" }) {
   const [period, setPeriod] = useState("thisMonth");
   const [periodNotes, setPeriodNotes] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   // Fetch full dataset for accurate monthly leaderboard calculations
   useEffect(() => {
     if (!session) return;
+    let ignore = false;
     const fetchPeriodData = async () => {
       setLoading(true);
+      setPeriodNotes([]);
+      setError("");
       try {
         const now = new Date();
         let start, end;
@@ -27,25 +31,27 @@ export default function MonthlyLeaderboard({ notes = [], session }) {
         const res = await recentActivityApi.getRecentNotes({
           limit: 10000,
           page: 1,
+          teamId,
           fromDate: start.toISOString().split("T")[0],
           toDate: end.toISOString().split("T")[0]
         });
 
         const items = res.items || res.data || (Array.isArray(res) ? res : []);
-        setPeriodNotes(items);
+        if (!ignore) setPeriodNotes(items);
       } catch (err) {
-        console.error("Leaderboard fetch error:", err);
+        if (!ignore) setError("Could not load this team's leaderboard. Please refresh.");
       } finally {
-        setLoading(false);
+        if (!ignore) setLoading(false);
       }
     };
 
     fetchPeriodData();
-  }, [session, period]);
+    return () => { ignore = true; };
+  }, [session, teamId, period]);
 
   // Calculate monthly stats by user
   const { topPerformer, lowestPerformer, userRankings, myStats } = useMemo(() => {
-    const dataSource = periodNotes.length > 0 ? periodNotes : notes;
+    const dataSource = periodNotes;
     const userMap = {};
 
     dataSource.forEach((note) => {
@@ -76,7 +82,7 @@ export default function MonthlyLeaderboard({ notes = [], session }) {
       userRankings: rankings,
       myStats: myStat
     };
-  }, [periodNotes, notes, session]);
+  }, [periodNotes, session]);
 
   const currentMonthName = useMemo(() => {
     const d = new Date();
@@ -86,6 +92,7 @@ export default function MonthlyLeaderboard({ notes = [], session }) {
 
   return (
     <div className="mb-6 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm space-y-5">
+      {error && <p role="alert" className="text-xs text-rose-600">{error}</p>}
       {/* Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
         <div>

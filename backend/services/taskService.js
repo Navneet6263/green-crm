@@ -19,6 +19,15 @@ const {
   resolveTeamScope,
 } = require("./accessScopeService");
 
+async function assertTaskRelation(auth, companyId, teamId, relatedTo, relatedId) {
+  if (!relatedId) return;
+  const record = relatedTo === "lead" ? await leadRepository.getLeadById(relatedId, companyId)
+    : relatedTo === "customer" ? await customerRepository.getCustomerById(relatedId, companyId) : null;
+  if (!record) throw new AppError("Related lead or customer not found.", 404);
+  await assertRecordTeamAccess(auth, record);
+  if (record.team_id !== teamId) throw new AppError("Task and related record must belong to the same team.", 400);
+}
+
 async function resolveTaskTeamId(auth, companyId, payload, existingTask = null) {
   const requestedTeamIds = parseRequestedTeamIds(payload);
   if (requestedTeamIds.length) {
@@ -64,6 +73,11 @@ async function resolveTaskTeamId(auth, companyId, payload, existingTask = null) 
 }
 
 async function buildTaskFilters(auth, query) {
+  const dueFrom = query.due_from ? new Date(query.due_from) : null;
+  const dueTo = query.due_to ? new Date(query.due_to) : null;
+  if ((dueFrom && Number.isNaN(dueFrom.getTime())) || (dueTo && Number.isNaN(dueTo.getTime())) || (dueFrom && dueTo && dueFrom >= dueTo)) {
+    throw new AppError("Invalid task date range.", 400);
+  }
   const filters = {
     companyId: null,
     companyIds: null,
@@ -74,6 +88,10 @@ async function buildTaskFilters(auth, query) {
     teamIds: null,
     relatedTo: query.related_to || null,
     relatedId: query.related_id || null,
+    openOnly: query.open_only === "1",
+    dueBucket: query.due_bucket || null,
+    dueFrom,
+    dueTo,
   };
 
   if (auth.role === ROLES.SUPER_ADMIN) {
@@ -98,6 +116,8 @@ async function buildTaskFilters(auth, query) {
     });
     filters.teamIds = teamScope.teamIds;
   }
+
+  if (query.mine === "1") filters.assignedTo = auth.userId;
 
   return filters;
 }
@@ -168,6 +188,8 @@ async function createTask(auth, payload) {
     })
   );
   await ensureUserBelongsToTeam(companyId, assignee, teamId, "Task owner");
+  await assertTeamAccess(auth, companyId, teamId);
+  await assertTaskRelation(auth, companyId, teamId, payload.related_to, payload.related_id);
 
   const task = await taskRepository.createTask({
     task_id: await createPrefixedId("tsk"),
@@ -232,6 +254,10 @@ async function updateTask(auth, taskId, payload) {
     "Task owner"
   );
 
+  await assertTeamAccess(auth, task.company_id, nextTeamId);
+  await assertTaskRelation(auth, task.company_id, nextTeamId,
+    payload.related_to !== undefined ? payload.related_to : task.related_to,
+    payload.related_id !== undefined ? payload.related_id : task.related_id);
   const updates = {
     title: payload.title !== undefined ? String(payload.title || "").trim() : task.title,
     type: payload.type !== undefined ? payload.type : task.type,

@@ -6,6 +6,7 @@ import { recentActivityApi } from "../../lib/api/recentActivity.js";
 
 export default function RecentUpdatesFilter({ 
   session, 
+  teamId = "",
   fromDate,
   toDate,
   selectedUsers, 
@@ -17,46 +18,60 @@ export default function RecentUpdatesFilter({
   const [products, setProducts] = useState([]);
   const [allNotesForCounts, setAllNotesForCounts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   // Load user & product lists
   useEffect(() => {
     if (!session) return;
+    let ignore = false;
     const loadFilters = async () => {
+      setLoading(true);
+      setUsers([]);
+      setProducts([]);
+      setError("");
       try {
+        const query = new URLSearchParams({ page_size: "200" });
+        if (teamId) query.set("team_id", teamId);
         const [usersRes, productsRes] = await Promise.all([
-          apiRequest("/users?page_size=200", { token: session.token }),
-          apiRequest("/products", { token: session.token })
+          apiRequest(`/users?${query}`, { token: session.token }),
+          apiRequest(`/products?${query}`, { token: session.token })
         ]);
+        if (ignore) return;
         setUsers(usersRes.items || usersRes || []);
         setProducts(productsRes.items || productsRes.data || productsRes || []);
       } catch (err) {
-        console.error("Failed to load filter options", err);
+        if (!ignore) setError("Could not load team filter options. Please refresh.");
       } finally {
-        setLoading(false);
+        if (!ignore) setLoading(false);
       }
     };
     loadFilters();
-  }, [session]);
+    return () => { ignore = true; };
+  }, [session, teamId]);
 
   // Fetch full notes dataset for current date range to compute accurate per-user counts
   useEffect(() => {
     if (!session) return;
+    let ignore = false;
+    setAllNotesForCounts([]);
     const fetchCountsData = async () => {
       try {
         const res = await recentActivityApi.getRecentNotes({
           limit: 10000,
           page: 1,
+          teamId,
           fromDate,
           toDate
         });
         const items = res.items || res.data || (Array.isArray(res) ? res : []);
-        setAllNotesForCounts(items);
+        if (!ignore) setAllNotesForCounts(items);
       } catch (err) {
-        console.error("Failed to fetch notes for counts", err);
+        if (!ignore) setError("Could not load activity counts. Please refresh.");
       }
     };
     fetchCountsData();
-  }, [session, fromDate, toDate]);
+    return () => { ignore = true; };
+  }, [session, teamId, fromDate, toDate]);
 
   // Compute accurate per-user count map (matches by ID & Name)
   const userCounts = useMemo(() => {
@@ -92,6 +107,7 @@ export default function RecentUpdatesFilter({
 
   return (
     <div className="w-full sm:w-64 shrink-0 space-y-6">
+      {error && <p role="alert" className="text-xs text-rose-600">{error}</p>}
       {/* Users Filter */}
       <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
         <div className="flex items-center justify-between mb-3">

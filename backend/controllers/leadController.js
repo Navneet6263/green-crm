@@ -19,7 +19,7 @@ async function listByProduct(req, res) {
 }
 
 async function getOne(req, res) {
-  const data = await leadService.getLead(req.auth, req.params.leadId);
+  const data = await leadService.getLead(req.auth, req.params.leadId, req.query);
   res.json({ data });
 }
 

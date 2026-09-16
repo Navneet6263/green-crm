@@ -1,6 +1,7 @@
 const recentActivityRepository = require('../repositories/recentActivityRepository');
 const customerNoteRepository = require('../repositories/customerNoteRepository');
 const { MANAGER_ROLES } = require('../constants/roles');
+const { resolveTeamScope, parseRequestedTeamIds } = require('../services/accessScopeService');
 
 class RecentActivityController {
   /**
@@ -20,7 +21,8 @@ class RecentActivityController {
         : [req.auth.userId];
 
       const options = {
-        limit: Math.min(parseInt(limit) || 20, 10000), // Max 10,000 for exports
+        teamIds: (await resolveTeamScope(req.auth, companyId, parseRequestedTeamIds(req.query))).teamIds,
+        limit: Math.max(1, Math.min(parseInt(limit) || 20, 10000)), // Max 10,000 for exports
         page: Math.max(parseInt(page) || 1, 1),
         type: ['all', 'leads', 'customers'].includes(type) ? type : 'all',
         userId: isManagerOrAbove ? (myNotesOnly === 'true' ? req.auth.userId : null) : req.auth.userId,
@@ -54,7 +56,8 @@ class RecentActivityController {
           type: options.type,
           myNotesOnly: myNotesOnly === 'true',
           userIds: options.userIds,
-          productIds: options.productIds
+          productIds: options.productIds,
+          teamIds: options.teamIds
         }
       });
     } catch (error) {
@@ -73,7 +76,8 @@ class RecentActivityController {
 
       const stats = await recentActivityRepository.getActivityStats(
         companyId,
-        parseInt(days) || 7
+        parseInt(days) || 7,
+        (await resolveTeamScope(req.auth, companyId, parseRequestedTeamIds(req.query))).teamIds
       );
 
       res.json({

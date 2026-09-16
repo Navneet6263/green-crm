@@ -1,5 +1,9 @@
 const productService = require("../services/productService");
 
+async function mapTeams(req, res) {
+  res.json({ data: await productService.mapProductTeams(req.auth, req.params.productId, req.body) });
+}
+
 async function list(req, res) {
   const data = await productService.listProducts(req.auth, req.query);
   res.json(data);
@@ -30,6 +34,7 @@ async function enableForCompany(req, res) {
 }
 
 module.exports = {
+  mapTeams,
   create,
   enableForCompany,
   list,

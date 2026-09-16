@@ -1,4 +1,5 @@
 const customerRepository = require("../repositories/customerRepository");
+const db = require("../db/connection");
 const customerMemberRepository = require("../repositories/customerMemberRepository");
 const customerActivityRepository = require("../repositories/customerActivityRepository");
 const userRepository = require("../repositories/userRepository");
@@ -9,6 +10,7 @@ const { buildPaginatedResult, parsePagination } = require("../utils/pagination")
 const AppError = require("../utils/appError");
 const { assertCompanyAccess, getAccessibleCompanyIds, isPlatformOperatorRole } = require("../utils/tenant");
 const leadRepository = require("../repositories/leadRepository");
+const { assertProductForTeam } = require("./productAccessService");
 const {
   assertRecordTeamAccess,
   assertTeamAccess,
@@ -63,6 +65,10 @@ async function buildCustomerFilters(auth, query) {
     companyIds: null,
     status: query.status || null,
     search: query.search || "",
+    createdBy: query.created_by || null,
+    followUp: query.follow_up || null,
+    sort: query.sort || "recent",
+    includeSummary: query.include_summary === "1",
     assignedTo: null,
     teamIds: null,
   };
@@ -103,8 +109,11 @@ async function listCustomers(auth, query) {
     assertCompanyAccess(auth, filters.companyId);
   }
 
-  const { rows, total } = await customerRepository.listCustomers(filters, pagination);
-  return buildPaginatedResult(rows, total, pagination);
+  const { rows, total, summary, creators } = await customerRepository.listCustomers(filters, pagination);
+  const result = buildPaginatedResult(rows, total, pagination);
+  if (summary) result.meta.summary = summary;
+  if (creators) result.meta.creators = creators;
+  return result;
 }
 
 async function getCustomer(auth, customerId) {
@@ -175,6 +184,13 @@ async function createCustomer(auth, payload) {
     })
   );
   await ensureUserBelongsToTeam(companyId, assignee, teamId, "Customer owner");
+  await assertTeamAccess(auth, companyId, teamId);
+  await assertProductForTeam(companyId, payload.product_id, teamId);
+  if (payload.converted_from_lead_id) {
+    const source = await leadRepository.getLeadById(payload.converted_from_lead_id, companyId);
+    await assertRecordTeamAccess(auth, source);
+    if (source.team_id !== teamId) throw new AppError("Customer and source lead must have the same team.", 400);
+  }
 
   const customer = await customerRepository.createCustomer({
     customer_id: await createPrefixedId("cst"),
@@ -279,6 +295,13 @@ async function updateCustomer(auth, customerId, payload) {
     "Customer owner"
   );
 
+  await assertTeamAccess(auth, customer.company_id, nextTeamId);
+  await assertProductForTeam(customer.company_id, payload.product_id !== undefined ? payload.product_id : customer.product_id, nextTeamId);
+  if (payload.converted_from_lead_id) {
+    const source = await leadRepository.getLeadById(payload.converted_from_lead_id, customer.company_id);
+    await assertRecordTeamAccess(auth, source);
+    if (source.team_id !== nextTeamId) throw new AppError("Customer and source lead must have the same team.", 400);
+  }
   const updated = await customerRepository.updateCustomer(customer.customer_id, customer.company_id, {
     name: payload.name !== undefined ? String(payload.name || "").trim() : customer.name,
     company_name: payload.company_name !== undefined ? String(payload.company_name || "").trim() : customer.company_name,
@@ -331,40 +354,39 @@ async function deleteCustomer(auth, customerId) {
 }
 
 async function addCustomerNote(auth, customerId, payload) {
+  if (auth.role === ROLES.VIEWER) throw new AppError("View-only users cannot add notes.", 403);
   const customer = await getCustomer(auth, customerId);
   // Members have full access - no additional check needed
   
-  if (!payload.content) {
+  if (typeof payload.content !== "string" || !payload.content.trim()) {
     throw new AppError("Note content is required.");
   }
 
   const content = String(payload.content).trim();
-  const entry = `[${new Date().toISOString()}] ${auth.name}: ${content}`;
-  const notes = customer.notes ? `${customer.notes}\n${entry}` : entry;
-  const updated = await customerRepository.updateCustomer(customer.customer_id, customer.company_id, {
-    notes,
-    last_interaction: new Date(),
-  });
-
-  // Create the actual note in customer_notes table for Recent Updates Feed
+  if (content.length > 20000) throw new AppError("Note must be 20,000 characters or fewer.", 400);
+  // Append-only records avoid overwriting another employee's notes. All three
+  // writes commit together so the customer timeline and recent feed agree.
   const customerNoteRepository = require("../repositories/customerNoteRepository");
-  await customerNoteRepository.create({
-    companyId: customer.company_id,
-    customerId: customer.customer_id,
-    content: content,
-    createdBy: auth.userId
-  });
+  return db.withTransaction(async (executor) => {
+    await customerNoteRepository.create({
+      companyId: customer.company_id,
+      customerId: customer.customer_id,
+      content,
+      createdBy: auth.userId,
+    }, executor);
 
-  // Log note activity
-  await customerActivityRepository.createActivity({
-    company_id: customer.company_id,
-    customer_id: customer.customer_id,
-    type: "note",
-    description: content,
-    created_by: auth.userId,
+    // Log note activity in the same transaction.
+    await customerActivityRepository.createActivity({
+      company_id: customer.company_id,
+      customer_id: customer.customer_id,
+      type: "note",
+      description: content,
+      created_by: auth.userId,
+    }, executor);
+    return customerRepository.updateCustomer(customer.customer_id, customer.company_id, {
+      last_interaction: new Date(),
+    }, executor);
   });
-
-  return updated;
 }
 
 async function addCustomerFollowUp(auth, customerId, payload) {

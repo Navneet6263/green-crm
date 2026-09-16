@@ -8,6 +8,10 @@ export function CreateUserForm({
   creating, 
   onSubmit,
   isSuperAdmin,
+  isManager = false,
+  managedTeams = [],
+  teamsLoading = false,
+  teamsError = "",
   companies,
   selectedCompanyId,
   onCompanyChange
@@ -40,6 +44,25 @@ export function CreateUserForm({
                 </option>
               ))}
             </select>
+          </label>
+        )}
+
+        {isManager && (
+          <label className="block space-y-1.5 sm:col-span-2 xl:col-span-3">
+            <span className={T.kicker}>Employee team *</span>
+            <select className={T.input} value={createForm.team_id || ""} required
+              disabled={teamsLoading || !managedTeams.length}
+              onChange={(e) => setCreateForm((form) => ({ ...form, team_id: e.target.value }))}>
+              <option value="">{teamsLoading ? "Loading your teams..." : "Choose your team"}</option>
+              {managedTeams.map((team) => (
+                <option key={team.team_id} value={team.team_id}>{team.name}{team.code ? ` | ${team.code}` : ""}</option>
+              ))}
+            </select>
+            <p className="text-xs text-slate-500" role={teamsError ? "alert" : undefined}>
+              {teamsError || (!teamsLoading && !managedTeams.length
+                ? "Ask your company admin to add you as a member of an active team before creating employees."
+                : "The new employee will automatically join this team.")}
+            </p>
           </label>
         )}
 
@@ -116,7 +139,8 @@ export function CreateUserForm({
           <button 
             className={T.gold} 
             type="submit" 
-            disabled={creating || (isSuperAdmin && !selectedCompanyId)}
+            disabled={creating || (isSuperAdmin && !selectedCompanyId)
+              || (isManager && (teamsLoading || Boolean(teamsError) || !managedTeams.some((team) => team.team_id === createForm.team_id)))}
           >
             <DashboardIcon name="users" className="h-4 w-4" />
             {creating ? "Creating…" : "Create Team Member"}

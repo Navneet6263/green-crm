@@ -5,6 +5,9 @@ const authenticate = require("../middlewares/authenticate");
 const asyncHandler = require("../utils/asyncHandler");
 const db = require("../db/connection");
 const { createPrefixedId } = require("../utils/ids");
+const { assertRecordTeamAccess, ensureUserBelongsToTeam, resolveTeamScope } = require("../services/accessScopeService");
+const { MANAGER_ROLES } = require("../constants/roles");
+const AppError = require("../utils/appError");
 
 const router = express.Router();
 
@@ -21,12 +24,16 @@ router.post("/leads/:id/transfer", asyncHandler(async (req, res) => {
 
   // Get lead details
   const [leadRows] = await db.query(
-    "SELECT id, lead_id, company_name, contact_person, company_id FROM leads WHERE id = ? OR lead_id = ?",
+    "SELECT id, lead_id, company_name, contact_person, company_id, team_id, assigned_to FROM leads WHERE is_active = 1 AND (id = TRY_CONVERT(BIGINT, ?) OR lead_id = ?)",
     [leadIdentifier, leadIdentifier]
   );
   const lead = leadRows[0];
   if (!lead) {
     return res.status(404).json({ success: false, error: "Lead not found" });
+  }
+  await assertRecordTeamAccess(req.auth, lead);
+  if (!MANAGER_ROLES.includes(req.auth.role) && lead.assigned_to !== req.auth.userId) {
+    throw new AppError("You can only transfer your own leads.", 403);
   }
 
   const leadName = lead.company_name || lead.contact_person || "Unnamed Lead";
@@ -34,13 +41,14 @@ router.post("/leads/:id/transfer", asyncHandler(async (req, res) => {
 
   // Get target user details
   const [toUserRows] = await db.query(
-    "SELECT id, user_id, name FROM users WHERE id = ?",
-    [toUserId]
+    "SELECT id, user_id, name FROM users WHERE id = ? AND company_id = ? AND is_active = 1",
+    [toUserId, lead.company_id]
   );
   const toUser = toUserRows[0];
   if (!toUser) {
     return res.status(404).json({ success: false, error: "Target recipient user not found" });
   }
+  await ensureUserBelongsToTeam(lead.company_id, toUser.user_id, lead.team_id, "Transfer recipient");
 
   const toUserName = toUser.name || "Unknown User";
 
@@ -81,11 +89,14 @@ router.post("/leads/:id/transfer", asyncHandler(async (req, res) => {
 
 // GET /api/lead-transfers/pending
 router.get("/lead-transfers/pending", asyncHandler(async (req, res) => {
+  const { teamIds } = await resolveTeamScope(req.auth, req.auth.companyId);
+  const teamClause = !Array.isArray(teamIds) ? "" : teamIds.length
+    ? `AND l.team_id IN (${teamIds.map(() => "?").join(",")})` : "AND 1 = 0";
   const [transfers] = await db.query(
-    `SELECT * FROM lead_transfers
-     WHERE to_user_id = ? AND is_acknowledged = 0
-     ORDER BY created_at ASC`,
-    [req.auth.id]
+    `SELECT tr.* FROM lead_transfers tr INNER JOIN leads l ON l.id = tr.lead_id
+     WHERE tr.to_user_id = ? AND tr.is_acknowledged = 0 AND l.company_id = ? AND l.is_active = 1 ${teamClause}
+     ORDER BY tr.created_at ASC`,
+    [req.auth.id, req.auth.companyId, ...(teamIds || [])]
   );
 
   res.json({ success: true, data: transfers });
@@ -109,6 +120,10 @@ router.post("/lead-transfers/:id/acknowledge", asyncHandler(async (req, res) => 
   if (String(transfer.to_user_id) !== String(req.auth.id)) {
     return res.status(403).json({ success: false, error: "You are not authorized to acknowledge this transfer" });
   }
+  // Re-check current ownership scope before ANY acknowledgment/assignment write.
+  const [currentLeads] = await db.query("SELECT company_id, team_id FROM leads WHERE id = ? AND is_active = 1", [transfer.lead_id]);
+  await assertRecordTeamAccess(req.auth, currentLeads[0]);
+  await ensureUserBelongsToTeam(currentLeads[0].company_id, req.auth.userId, currentLeads[0].team_id, "Transfer recipient");
 
   console.log(`[TRANSFER DEBUG] Acknowledging transfer ${transferId} for lead ${transfer.lead_id}. Recipient user DB ID: ${transfer.to_user_id}`);
 

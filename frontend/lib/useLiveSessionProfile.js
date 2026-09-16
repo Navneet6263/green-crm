@@ -23,6 +23,7 @@ export function useLiveSessionProfile(seedSession) {
     let intervalId;
 
     async function refreshProfile() {
+      if (document.visibilityState === "hidden") return;
       try {
         const profile = await apiRequest("/auth/profile", { token: seedSession.token });
         if (!active) {

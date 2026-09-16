@@ -1,4 +1,6 @@
 const sql = require("mssql");
+const { classifyStatement, formatResult } = require("./queryResult");
+const { measureDatabase } = require("../utils/requestMetrics");
 
 function parseBoolean(value, fallback) {
   if (value === undefined || value === null || value === "") {
@@ -82,8 +84,7 @@ function prepareSql(rawSql, rawParams = []) {
   return {
     sqlText: boundSql,
     params: normalizedParams,
-    isInsert: /^\s*INSERT\b/i.test(normalizedSql),
-    isSelect: /^\s*SELECT\b/i.test(normalizedSql),
+    ...classifyStatement(normalizedSql),
   };
 }
 
@@ -101,41 +102,14 @@ function buildRequest(target, params) {
   return request;
 }
 
-function sumRowsAffected(result) {
-  return (result.rowsAffected || []).reduce((total, count) => total + count, 0);
-}
-
-function formatResult(result, meta) {
-  if (meta.isSelect) {
-    return [result.recordset || [], result];
-  }
-
-  if (meta.isInsert) {
-    const insertRow = result.recordsets?.[result.recordsets.length - 1]?.[0] || {};
-    return [
-      {
-        affectedRows: sumRowsAffected(result),
-        insertId: insertRow.insertId ?? null,
-      },
-      result,
-    ];
-  }
-
-  return [
-    {
-      affectedRows: sumRowsAffected(result),
-    },
-    result,
-  ];
-}
 
 async function executeQuery(target, rawSql, params = []) {
   const prepared = prepareSql(rawSql, params);
   const request = buildRequest(target, prepared.params);
-  const sqlText = prepared.isInsert
+  const sqlText = prepared.isInsert && !prepared.hasOutput
     ? `${prepared.sqlText}; SELECT CAST(SCOPE_IDENTITY() AS BIGINT) AS insertId;`
     : prepared.sqlText;
-  const result = await request.query(sqlText);
+  const result = await measureDatabase(() => request.query(sqlText));
 
   return formatResult(result, prepared);
 }

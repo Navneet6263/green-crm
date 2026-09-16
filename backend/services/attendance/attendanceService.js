@@ -5,6 +5,8 @@ const AppError = require("../../utils/appError");
 const { buildPaginatedResult, parsePagination } = require("../../utils/pagination");
 const { resolveChannel } = require("../communication/integrationResolver");
 const { ROLES } = require("../../constants/roles");
+const { resolveTeamScope } = require("../accessScopeService");
+const teamRepository = require("../../repositories/teamRepository");
 
 function normalizeIp(rawIp = "") {
   return String(rawIp || "")
@@ -44,10 +46,12 @@ async function listHistory(auth, query = {}) {
   let rows, total;
 
   if (isAdmin && typeof query.search === "string") {
+    const { teamIds } = await resolveTeamScope(auth, auth.companyId);
+    const userIds = teamIds ? await teamRepository.listUsersForTeams(auth.companyId, teamIds) : null;
     ({ rows, total } = await attendanceRepository.listAllEvents(
       auth.companyId,
       query.search.trim(),
-      pagination
+      pagination, undefined, userIds
     ));
   } else {
     ({ rows, total } = await attendanceRepository.listUserEvents(

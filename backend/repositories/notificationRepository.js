@@ -44,28 +44,21 @@ async function listNotifications({ companyId, companyIds = null, userId, unreadO
       SELECT *
       FROM notifications
       ${whereClause}
-      ORDER BY created_at DESC
+      ORDER BY created_at DESC, notif_id DESC
       OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
     `,
     [...params, pagination.offset, pagination.limit]
   );
 
-  const inferredTotal = inferTotalFromPage(rows, pagination);
-  if (inferredTotal !== null) {
-    return {
-      rows,
-      total: inferredTotal,
-    };
-  }
-
   const [countRows] = await active.query(
-    `SELECT COUNT(*) AS total FROM notifications ${whereClause}`,
+    `SELECT COUNT(*) AS total, COALESCE(SUM(CASE WHEN is_read = 0 THEN 1 ELSE 0 END), 0) AS unread_count FROM notifications ${whereClause}`,
     params
   );
 
   return {
     rows,
     total: countRows[0].total,
+    unreadCount: countRows[0].unread_count,
   };
 }
 
@@ -99,10 +92,23 @@ async function markNotificationRead(notifId, companyId, executor) {
     "UPDATE notifications SET is_read = 1 WHERE notif_id = ? AND company_id = ?",
     [notifId, companyId]
   );
-  return getNotificationById(notifId, companyId, active);
+  return getNotificationById(notifId, companyId, null, active);
+}
+
+async function markAllPersonalRead({ companyId, companyIds, userId }, executor) {
+  const conditions = ["user_id = ?", "is_read = 0"];
+  const params = [userId];
+  if (companyId) { conditions.push("company_id = ?"); params.push(companyId); }
+  else if (Array.isArray(companyIds)) {
+    conditions.push(companyIds.length ? `company_id IN (${companyIds.map(() => "?").join(",")})` : "1 = 0");
+    params.push(...companyIds);
+  }
+  await getExecutor(executor).query(`UPDATE notifications SET is_read = 1 WHERE ${conditions.join(" AND ")}`, params);
+  return { updated: true };
 }
 
 module.exports = {
+  markAllPersonalRead,
   getNotificationById,
   listNotifications,
   markNotificationRead,

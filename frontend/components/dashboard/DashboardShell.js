@@ -73,6 +73,7 @@ const ACCESS_ROUTE_RULES = [
   { prefix: "/settings/teams", accessKey: "team_management", label: "Team Management" },
   { prefix: "/settings/users", accessKey: "team_management", label: "Team Management" },
   { prefix: "/tasks", accessKey: "tasks", label: "Tasks" },
+  { prefix: "/calendar", accessKey: "tasks", label: "Calendar" },
   { prefix: "/communications", accessKey: "communications", label: "Communications" },
   { prefix: "/attendance", accessKey: "attendance", label: "Attendance" },
   { prefix: "/analytics", accessKey: "analytics", label: "Analytics" },
@@ -161,6 +162,7 @@ export default function DashboardShell({ session: initialSession, children, titl
   const { showModal, currentTransfer, totalPending, acknowledgeTransfer } = useLeadTransfers();
   const [navOpen, setNavOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [loadingNotifications, setLoadingNotifications] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
@@ -168,6 +170,7 @@ export default function DashboardShell({ session: initialSession, children, titl
   const [markingAllNotifications, setMarkingAllNotifications] = useState(false);
   const [pendingNotificationIds, setPendingNotificationIds] = useState([]);
   const notificationRef = useRef(null);
+  const notificationVersion = useRef(0);
   const accountRef = useRef(null);
   const sidebarRef = useRef(null);
 
@@ -271,6 +274,8 @@ export default function DashboardShell({ session: initialSession, children, titl
     let initialLoadTimeout;
 
     async function loadNotifications() {
+      if (document.visibilityState === "hidden") return;
+      const version = notificationVersion.current;
       if (!session?.token) {
         return;
       }
@@ -280,17 +285,16 @@ export default function DashboardShell({ session: initialSession, children, titl
       }
 
       try {
-        const response = await apiRequest("/notifications?page_size=8", {
+        const response = await apiRequest(`/notifications?page_size=8&mine=1${notificationFilter === "unread" ? "&unread_only=true" : ""}`, {
           token: session.token,
         });
 
-        if (!ignore) {
+        if (!ignore && version === notificationVersion.current) {
           setNotifications(response.items || []);
+          setUnreadCount(Number(response.meta?.unread_count || 0));
         }
       } catch (_error) {
-        if (!ignore) {
-          setNotifications([]);
-        }
+        // A transient failure must not erase the user's existing inbox.
       } finally {
         if (!ignore) {
           setLoadingNotifications(false);
@@ -302,13 +306,16 @@ export default function DashboardShell({ session: initialSession, children, titl
       loadNotifications();
       intervalId = setInterval(loadNotifications, 30000);
     }, 1200);
+    const onVisible = () => { if (document.visibilityState === "visible") void loadNotifications(); };
+    document.addEventListener("visibilitychange", onVisible);
 
     return () => {
       ignore = true;
       clearTimeout(initialLoadTimeout);
       clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [session?.token]);
+  }, [session?.token, notificationFilter]);
 
   async function markNotificationRead(notifId) {
     if (!session?.token || pendingNotificationIds.includes(notifId)) {
@@ -324,6 +331,8 @@ export default function DashboardShell({ session: initialSession, children, titl
         method: "PATCH",
         token: session.token,
       });
+      notificationVersion.current += 1;
+      if (notifications.some(item => item.notif_id === notifId && !item.is_read)) setUnreadCount(count => Math.max(0, count - 1));
 
       setNotifications((current) =>
         current.map((item) =>
@@ -344,7 +353,7 @@ export default function DashboardShell({ session: initialSession, children, titl
       .filter((item) => !item.is_read)
       .map((item) => item.notif_id);
 
-    if (!session?.token || !unreadIds.length || markingAllNotifications) {
+    if (!session?.token || !unreadCount || markingAllNotifications) {
       return;
     }
 
@@ -354,28 +363,12 @@ export default function DashboardShell({ session: initialSession, children, titl
     ]);
 
     try {
-      const results = await Promise.allSettled(
-        unreadIds.map((notifId) =>
-          apiRequest(`/notifications/${notifId}/read`, {
-            method: "PATCH",
-            token: session.token,
-          }).then(() => notifId)
-        )
-      );
-
-      const successfulIds = results.flatMap((result) =>
-        result.status === "fulfilled" ? [result.value] : []
-      );
-
-      if (successfulIds.length) {
-        setNotifications((current) =>
-          current.map((item) =>
-            successfulIds.includes(item.notif_id)
-              ? { ...item, is_read: true }
-              : item
-          )
-        );
-      }
+      await apiRequest("/notifications/read-all", { method: "PATCH", token: session.token });
+      notificationVersion.current += 1;
+      setNotifications(current => current.map(item => ({ ...item, is_read: true })));
+      setUnreadCount(0);
+    } catch (_error) {
+      // Keep unread state when the server could not acknowledge the operation.
     } finally {
       setMarkingAllNotifications(false);
       setPendingNotificationIds((current) =>
@@ -548,19 +541,19 @@ export default function DashboardShell({ session: initialSession, children, titl
                     onClick={() => setShowNotifications((current) => !current)}
                   >
                     <DashboardIcon name="bell" className="h-5 w-5" />
-                    {unreadNotifications.length ? (
+                    {unreadCount ? (
                       <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#F59E0B] px-1 text-[10px] font-bold text-white">
-                        {unreadNotifications.length > 9 ? "9+" : unreadNotifications.length}
+                        {unreadCount > 99 ? "99+" : unreadCount}
                       </span>
                     ) : null}
                   </button>
 
                   {showNotifications ? (
-                    <div className="absolute right-0 top-[calc(100%+12px)] z-30 w-[min(92vw,420px)] rounded-[28px] border border-[#eadfcd] bg-white p-4 shadow-[0_28px_80px_rgba(79,58,22,0.16)]">
+                    <div className="fixed left-3 right-3 top-20 sm:absolute sm:left-auto sm:right-0 sm:top-[calc(100%+12px)] z-30 sm:w-[420px] max-h-[calc(100dvh-6rem)] overflow-y-auto rounded-[28px] border border-[#eadfcd] bg-white p-4 shadow-[0_28px_80px_rgba(79,58,22,0.16)]">
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <strong className="block text-base text-slate-900">Notifications</strong>
-                          <span className="text-sm text-slate-400">{unreadNotifications.length} unread</span>
+                          <span className="text-sm text-slate-400">{unreadCount} unread · latest 8</span>
                         </div>
                         <div className="flex flex-wrap gap-2">
                           <button
@@ -572,7 +565,7 @@ export default function DashboardShell({ session: initialSession, children, titl
                           <button
                             className="rounded-full border border-[#eadfcd] px-3 py-1 text-xs font-semibold text-[#6f604a] disabled:opacity-50"
                             onClick={markAllNotificationsRead}
-                            disabled={!unreadNotifications.length || markingAllNotifications}
+                            disabled={!unreadCount || markingAllNotifications}
                           >
                             {markingAllNotifications ? "Updating..." : "Mark all read"}
                           </button>
@@ -593,7 +586,16 @@ export default function DashboardShell({ session: initialSession, children, titl
                                   ? "border-slate-100 bg-slate-50"
                                   : "border-amber-200 bg-amber-50"
                               )}
-                              onClick={() => markNotificationRead(item.notif_id)}
+                              onClick={() => {
+                                void markNotificationRead(item.notif_id);
+                                const destination = item.action_url || (item.lead_id ? `/leads/${encodeURIComponent(item.lead_id)}` : "");
+                                if (destination) {
+                                  try {
+                                    const url = new URL(destination, window.location.origin);
+                                    if (url.origin === window.location.origin) { setShowNotifications(false); router.push(url.pathname + url.search); }
+                                  } catch (_) { /* Ignore malformed notification destinations. */ }
+                                }
+                              }}
                               disabled={pendingNotificationIds.includes(item.notif_id)}
                             >
                               <span className={cn("mt-1.5 h-2 w-2 shrink-0 rounded-full", item.is_read ? "bg-slate-300" : "bg-amber-500")} />

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import DashboardIcon from "../dashboard/icons";
+import { useDialogFocus } from "../../lib/useDialogFocus";
 
 const C = {
   input: "w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-50",
@@ -19,35 +20,49 @@ const ACTIVITY_TYPES = [
 export default function FollowUpActivityModal({ isOpen, onClose, onSave, saving = false }) {
   const [activityType, setActivityType] = useState("call");
   const [remarks, setRemarks] = useState("");
+  const [saveError, setSaveError] = useState("");
+  const dialogRef = useRef(null);
+  const submitting = useRef(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!remarks.trim()) return;
-    await onSave({ activityType, remarks: remarks.trim() });
-    setActivityType("call");
-    setRemarks("");
+    if (!remarks.trim() || saving || submitting.current) return;
+    submitting.current = true;
+    setSaveError("");
+    try {
+      const saved = await onSave({ activityType, remarks: remarks.trim() });
+      if (saved === false) { setSaveError("Activity was not saved. Your remarks are preserved; please retry."); return; }
+      setActivityType("call");
+      setRemarks("");
+    } catch (error) { setSaveError(error.message || "Could not save activity. Please retry."); }
+    finally { submitting.current = false; }
   };
 
   const handleClose = () => {
+    if (saving || submitting.current) return;
+    if (remarks.trim() && !window.confirm("Discard this unsaved activity?")) return;
     setActivityType("call");
     setRemarks("");
+    setSaveError("");
     onClose();
   };
+  useDialogFocus(dialogRef, isOpen, handleClose);
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm px-4">
-      <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white shadow-2xl">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="activity-dialog-title" tabIndex={-1} className="w-full max-w-lg max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
           <div>
-            <h2 className="text-xl font-bold text-slate-900">Add Follow-up Activity</h2>
+            <h2 id="activity-dialog-title" className="text-xl font-bold text-slate-900">Add Follow-up Activity</h2>
             <p className="mt-0.5 text-sm text-slate-500">Record your interaction with the customer</p>
           </div>
           <button
             type="button"
             onClick={handleClose}
+            aria-label="Close activity dialog"
             className="grid h-8 w-8 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
             disabled={saving}
           >
@@ -57,6 +72,7 @@ export default function FollowUpActivityModal({ isOpen, onClose, onSave, saving 
 
         {/* Body */}
         <form onSubmit={handleSubmit} className="px-6 py-5 space-y-5">
+          {saveError && <p role="alert" className="text-sm text-rose-700">{saveError}</p>}
           {/* Activity Type Selection */}
           <div className="space-y-2">
             <label className={C.kicker}>Activity Type</label>
@@ -100,6 +116,7 @@ export default function FollowUpActivityModal({ isOpen, onClose, onSave, saving 
               placeholder="What was discussed? Any action items or next steps..."
               disabled={saving}
               required
+              maxLength={19980}
             />
             <p className="text-xs text-slate-400">
               Be specific about outcomes, commitments, or concerns raised

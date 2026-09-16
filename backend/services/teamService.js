@@ -8,10 +8,18 @@ const { createPrefixedId, slugify } = require("../utils/ids");
 const { buildPaginatedResult, parsePagination } = require("../utils/pagination");
 const AppError = require("../utils/appError");
 const { assertCompanyAccess, getAccessibleCompanyIds, isPlatformOperatorRole } = require("../utils/tenant");
-const { assertTeamAccess, isCompanyWideRole, parseRequestedTeamIds, resolveTeamScope } = require("./accessScopeService");
+const { assertTeamAccess, assertUserInManagerScope, isCompanyWideRole, parseRequestedTeamIds, resolveTeamScope } = require("./accessScopeService");
 
 function normalizeText(value) {
   return String(value || "").trim();
+}
+
+function assertMembershipManagement(auth, targetUser) {
+  // Membership now grants team authority to manager-role users, so managers
+  // must not grant/revoke other managers' access via the ordinary member route.
+  if (auth.role === ROLES.MANAGER && MANAGER_ROLES.includes(targetUser?.role)) {
+    throw new AppError("Only company admins or platform operators can change manager/admin team memberships.", 403);
+  }
 }
 
 function resolveCompanyId(auth, payloadCompanyId = null) {
@@ -32,7 +40,7 @@ async function ensureManagePermission(auth, companyId, teamId = null) {
   if (teamId && auth.role === ROLES.MANAGER) {
     await assertTeamAccess(auth, companyId, teamId, {
       includeManaged: true,
-      includeMembership: false,
+      includeMembership: true,
     });
   }
 }
@@ -98,6 +106,7 @@ async function listAssignableUsers(auth, teamId, query = {}) {
 
   return userRepository.listActiveUsersInCompany(team.company_id, {
     search: query.search || "",
+    teamIds: auth.role === ROLES.MANAGER ? [team.team_id] : null,
   });
 }
 
@@ -131,6 +140,9 @@ async function createTeam(auth, payload) {
 
   const distinctManagerIds = [...new Set(managerIds.filter(Boolean))];
   const distinctMemberIds = [...new Set([...memberIds, ...distinctManagerIds])];
+  if (auth.role === ROLES.MANAGER) {
+    for (const userId of memberIds) await assertUserInManagerScope(auth, companyId, userId);
+  }
 
   const users = await Promise.all(
     distinctMemberIds.map((userId) => userRepository.getUserInCompany(userId, companyId))
@@ -138,6 +150,10 @@ async function createTeam(auth, payload) {
 
   if (users.some((user) => !user || !user.is_active)) {
     throw new AppError("All team users must belong to the same active company.", 400);
+  }
+  for (const user of users) {
+    // Preserve existing create-team behaviour for the creator only.
+    if (user.user_id !== auth.userId) assertMembershipManagement(auth, user);
   }
 
   const created = await db.withTransaction(async (transaction) => {
@@ -241,10 +257,14 @@ async function addTeamMember(auth, teamId, payload) {
     throw new AppError("user_id is required.", 400);
   }
 
+  await assertUserInManagerScope(auth, team.company_id, userId);
+
   const user = await userRepository.getUserInCompany(userId, team.company_id);
   if (!user || !user.is_active) {
     throw new AppError("User must belong to the same active company.", 400);
   }
+
+  assertMembershipManagement(auth, user);
 
   await teamRepository.addTeamMember({
     company_id: team.company_id,
@@ -261,11 +281,15 @@ async function addTeamMember(auth, teamId, payload) {
 async function removeTeamMember(auth, teamId, userId, query = {}) {
   const team = await getTeam(auth, teamId, { company_id: query.company_id || null });
   await ensureManagePermission(auth, team.company_id, team.team_id);
+  const user = await userRepository.getUserInCompany(userId, team.company_id);
+  if (!user) throw new AppError("User not found in this company.", 404);
+  assertMembershipManagement(auth, user);
   await teamRepository.setTeamMemberActive(team.team_id, team.company_id, userId, false);
   return getTeam(auth, team.team_id, { company_id: team.company_id });
 }
 
 async function addTeamManager(auth, teamId, payload) {
+  if (auth.role === ROLES.MANAGER) throw new AppError("Only company admins or platform operators can change team managers.", 403);
   const team = await getTeam(auth, teamId, { company_id: payload.company_id || null });
   await ensureManagePermission(auth, team.company_id, team.team_id);
 
@@ -303,6 +327,7 @@ async function addTeamManager(auth, teamId, payload) {
 }
 
 async function removeTeamManager(auth, teamId, userId, query = {}) {
+  if (auth.role === ROLES.MANAGER) throw new AppError("Only company admins or platform operators can change team managers.", 403);
   const team = await getTeam(auth, teamId, { company_id: query.company_id || null });
   await ensureManagePermission(auth, team.company_id, team.team_id);
   await teamRepository.setTeamManagerActive(team.team_id, team.company_id, userId, false);

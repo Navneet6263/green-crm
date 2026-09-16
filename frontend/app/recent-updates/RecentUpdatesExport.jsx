@@ -5,6 +5,7 @@ import { recentActivityApi } from "../../lib/api/recentActivity.js";
 
 export default function RecentUpdatesExport({
   session,
+  teamId = "",
   typeFilter,
   selectedUsers,
   selectedProducts,
@@ -21,6 +22,7 @@ export default function RecentUpdatesExport({
       const res = await recentActivityApi.getRecentNotes({
         limit: 10000,
         page: 1,
+        teamId,
         type: typeFilter === "all" ? "all" : `${typeFilter}s`,
         users: selectedUsers,
         products: selectedProducts,

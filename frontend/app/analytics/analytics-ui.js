@@ -8,7 +8,7 @@ const PANEL = "rounded-2xl border border-slate-100 bg-white shadow-sm px-5 py-5"
 
 export function AnalyticsWorkspace({
   deck, focusDeck, range, statusFocus, workflowFocus, filters,
-  loading, error, onRangeChange, onRefresh, onExport,
+  loading, error, exportDisabled, onRangeChange, onRefresh, onExport,
   onStatusFocus, onWorkflowFocus, onFilterChange, onResetFilters,
 }) {
   return (
@@ -18,6 +18,7 @@ export function AnalyticsWorkspace({
       <AnalyticsHeader
         deck={deck} range={range} filters={filters}
         onRangeChange={onRangeChange} onRefresh={onRefresh} onExport={onExport}
+        exportDisabled={exportDisabled || loading || Boolean(error)}
         onFilterChange={onFilterChange} onResetFilters={onResetFilters}
       />
 
@@ -30,8 +31,8 @@ export function AnalyticsWorkspace({
           {/* Row 1 — Trend + Source */}
           <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
             <div className={PANEL}>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Revenue Pulse</p>
-              <h3 className="mt-0.5 mb-5 text-base font-bold text-slate-900">Lead movement & closed value</h3>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Pipeline Pulse</p>
+              <h3 className="mt-0.5 mb-5 text-base font-bold text-slate-900">Lead creation & current won status</h3>
               <TrendChart trend={deck.trend} />
             </div>
             <div className={PANEL}>

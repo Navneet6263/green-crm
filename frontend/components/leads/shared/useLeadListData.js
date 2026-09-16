@@ -28,7 +28,12 @@ export function useLeadListData({ leadQueryBase, refreshSeed, session }) {
   const [pageRefreshing, setPageRefreshing] = useState(false);
   const leadPageCacheRef = useRef(new Map());
   const leadFullCacheRef = useRef(new Map());
-  const leadCacheKey = useMemo(() => JSON.stringify(leadQueryBase), [leadQueryBase]);
+  const leadCacheKey = useMemo(() => JSON.stringify([session?.token, leadQueryBase]), [session?.token, leadQueryBase]);
+
+  useEffect(() => {
+    leadPageCacheRef.current.clear();
+    leadFullCacheRef.current.clear();
+  }, [refreshSeed, session?.token]);
 
   function applyLeadPage(items, meta) {
     setLeadMeta(meta);
@@ -47,8 +52,6 @@ export function useLeadListData({ leadQueryBase, refreshSeed, session }) {
       if (cachedLeadPage) {
         applyLeadPage(cachedLeadPage.items || [], cachedLeadPage.meta);
         setLoading(false);
-        setPageRefreshing(false);
-        return;
       }
 
       setPageRefreshing(true);
@@ -60,7 +63,7 @@ export function useLeadListData({ leadQueryBase, refreshSeed, session }) {
         setListError("");
         const response = await apiRequest(
           buildQueryPath("/leads", { page, page_size: LEADS_PAGE_SIZE, ...leadQueryBase }),
-          { token: session.token }
+          { token: session.token, fresh: true }
         );
 
         if (ignore) {
@@ -95,16 +98,11 @@ export function useLeadListData({ leadQueryBase, refreshSeed, session }) {
     return () => {
       ignore = true;
     };
-  }, [leadCacheKey, leadQueryBase, page, refreshSeed, session]);
+  }, [leadCacheKey, leadQueryBase, page, refreshSeed, session?.token]);
 
   useEffect(() => {
     leadFullCacheRef.current.clear();
   }, [leadCacheKey]);
-
-  useEffect(() => {
-    leadPageCacheRef.current.clear();
-    leadFullCacheRef.current.clear();
-  }, [refreshSeed]);
 
   const allMatchedLeads = useMemo(
     () =>

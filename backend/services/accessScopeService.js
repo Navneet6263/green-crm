@@ -29,8 +29,8 @@ function parseRequestedTeamIds(source = {}) {
   return normalizeIdList(candidates);
 }
 
-function buildScopeCacheKey(companyId, includeManaged, includeMembership) {
-  return `${companyId || "all"}:${includeManaged ? "managed" : "no-managed"}:${includeMembership ? "member" : "no-member"}`;
+function buildScopeCacheKey(companyId, includeManaged, includeMembership, allowFallbackWithoutTeams) {
+  return `${companyId || "all"}:${includeManaged}:${includeMembership}:${allowFallbackWithoutTeams}`;
 }
 
 function isCompanyWideRole(role) {
@@ -42,15 +42,24 @@ async function getAccessibleTeamIds(
   companyId,
   { includeManaged = true, includeMembership = true, allowFallbackWithoutTeams = true } = {}
 ) {
-  if (!companyId || isCompanyWideRole(auth.role)) {
+  if (isCompanyWideRole(auth.role)) {
     return null;
+  }
+  if (!companyId) return [];
+  // A manager's account role applies in every active team they belong to.
+  // Explicit team-manager mappings remain valid for existing assignments;
+  // neither kind of mapping may fall back to company-wide access when empty.
+  if (auth.role === ROLES.MANAGER) {
+    includeManaged = true;
+    includeMembership = true;
+    allowFallbackWithoutTeams = false;
   }
 
   if (!auth.__teamScopeCache) {
     auth.__teamScopeCache = new Map();
   }
 
-  const cacheKey = buildScopeCacheKey(companyId, includeManaged, includeMembership);
+  const cacheKey = buildScopeCacheKey(companyId, includeManaged, includeMembership, allowFallbackWithoutTeams);
   if (auth.__teamScopeCache.has(cacheKey)) {
     return auth.__teamScopeCache.get(cacheKey);
   }
@@ -147,7 +156,7 @@ async function resolveTeamScope(auth, companyId, requestedTeamIds = [], options 
   }
 
   const allowed = normalizedRequested.filter((teamId) => accessibleTeamIds.includes(teamId));
-  if (!allowed.length) {
+  if (allowed.length !== normalizedRequested.length) {
     throw new AppError("You cannot access the requested team scope.", 403);
   }
 
@@ -183,10 +192,22 @@ async function assertRecordTeamAccess(auth, record, options = {}) {
 }
 
 async function assertTeamAccess(auth, companyId, teamId, options = {}) {
+  if (teamId) {
+    const valid = await teamRepository.listValidTeamIds(companyId, [teamId]);
+    if (!valid.includes(teamId)) throw new AppError("Selected team is not active in this company.", 400);
+  }
   const scope = await resolveTeamScope(auth, companyId, [teamId], options);
   if (scope.teamIds && !scope.teamIds.includes(teamId)) {
     throw new AppError("You cannot access this team.", 403);
   }
+}
+
+async function assertUserInManagerScope(auth, companyId, userId) {
+  assertCompanyAccess(auth, companyId);
+  if (auth.role !== ROLES.MANAGER) return;
+  const { teamIds } = await resolveTeamScope(auth, companyId);
+  const userIds = await teamRepository.listUsersForTeams(companyId, teamIds || []);
+  if (!userIds.includes(userId)) throw new AppError("You can only manage or assign users in your teams.", 403);
 }
 
 async function ensureUserBelongsToTeam(companyId, userId, teamId, label = "User") {
@@ -237,6 +258,7 @@ async function resolveDefaultTeamId(companyId) {
 module.exports = {
   assertRecordTeamAccess,
   assertTeamAccess,
+  assertUserInManagerScope,
   ensureTeamIdWhenTeamsConfigured,
   ensureUserBelongsToTeam,
   getActiveTeamCount,

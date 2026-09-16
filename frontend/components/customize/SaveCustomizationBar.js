@@ -1,8 +1,8 @@
 export default function SaveCustomizationBar({ saving, onSave }) {
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-[#eadfcd] bg-white/95 backdrop-blur-sm shadow-lg">
+    <div className="sticky bottom-0 z-20 rounded-2xl border border-[#eadfcd] bg-white/95 backdrop-blur-sm shadow-lg">
       <div className="mx-auto max-w-[1400px] px-4 py-4">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <p className="text-sm text-[#746853]">
             Changes will apply to all new leads and forms
           </p>

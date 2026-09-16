@@ -38,6 +38,10 @@ export default function UserSettingsPage() {
     saving,
     workingId,
     isSuperAdmin,
+    isManager,
+    managedTeams,
+    teamsLoading,
+    teamsError,
     roles,
     selectedUser,
     filteredUsers,
@@ -73,6 +77,10 @@ export default function UserSettingsPage() {
           creating={creating}
           onSubmit={createUser}
           isSuperAdmin={isSuperAdmin}
+          isManager={isManager}
+          managedTeams={managedTeams}
+          teamsLoading={teamsLoading}
+          teamsError={teamsError}
           companies={companies}
           selectedCompanyId={selectedCompanyId}
           onCompanyChange={setSelectedCompanyId}

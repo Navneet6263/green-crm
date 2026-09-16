@@ -138,6 +138,7 @@ async function listUsers({ companyId, companyIds = null, role, search, teamIds =
 
 async function listUsersByRole(companyId, role, options = {}, executor) {
   const active = getExecutor(executor);
+  if (Array.isArray(options.teamIds) && !options.teamIds.length) return [];
   const normalizedTeamIds = [...new Set((Array.isArray(options.teamIds) ? options.teamIds : []).map((value) => String(value || "").trim()).filter(Boolean))];
   const teamClause = normalizedTeamIds.length
     ? `
@@ -183,6 +184,7 @@ async function listUsersByRole(companyId, role, options = {}, executor) {
 
 async function listActiveUsersInCompany(companyId, options = {}, executor) {
   const active = getExecutor(executor);
+  if (Array.isArray(options.teamIds) && !options.teamIds.length) return [];
   const search = String(options.search || "").trim();
   const params = [companyId];
   const searchClause = search
@@ -193,6 +195,16 @@ async function listActiveUsersInCompany(companyId, options = {}, executor) {
     const pattern = `%${search}%`;
     params.push(pattern, pattern, pattern, pattern);
   }
+
+  const teamIds = Array.isArray(options.teamIds) ? [...new Set(options.teamIds)] : null;
+  const teamClause = teamIds?.length ? `AND EXISTS (
+    SELECT 1 FROM (
+      SELECT company_id, team_id, user_id FROM team_members WHERE is_active = 1
+      UNION SELECT company_id, team_id, user_id FROM team_managers WHERE is_active = 1
+    ) member WHERE member.company_id = u.company_id AND member.user_id = u.user_id
+      AND member.team_id IN (${teamIds.map(() => "?").join(",")})
+  )` : "";
+  if (teamIds) params.push(...teamIds);
 
   const [rows] = await active.query(
     `
@@ -212,6 +224,7 @@ async function listActiveUsersInCompany(companyId, options = {}, executor) {
       WHERE u.company_id = ?
         AND u.is_active = 1
         ${searchClause}
+        ${teamClause}
       ORDER BY u.name ASC, u.created_at DESC
     `,
     params

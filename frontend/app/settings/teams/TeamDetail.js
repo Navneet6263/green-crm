@@ -9,27 +9,28 @@ const ROLE_FILTERS = [["all","All roles"],["manager","Managers"],["sales","Sales
 
 function when(v) { return formatIndiaDateTime(v, false); }
 
-function UserRow({ user, isMember, isManager, workingKey, onAddMember, onRemoveMember, onAddManager }) {
-  const canPromote = MANAGER_CAPABLE_ROLES.has(user.role) && !isManager;
+function UserRow({ user, isMember, isManager, workingKey, onAddMember, onRemoveMember, onAddManager, onRemoveManager, canManageManagers }) {
+  const canPromote = canManageManagers && MANAGER_CAPABLE_ROLES.has(user.role) && !isManager;
+  const canChangeMembership = canManageManagers || !MANAGER_CAPABLE_ROLES.has(user.role);
   return (
     <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-100 bg-white px-4 py-3 transition hover:border-amber-200">
       <Avatar name={user.name} bg={isMember ? "bg-emerald-600" : "bg-slate-300"} />
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-1.5">
           <p className="text-sm font-semibold text-slate-900">{user.name}</p>
-          <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold text-slate-500">{prettyRole(user.role)}</span>
+          <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold text-slate-500">Role: {prettyRole(user.role)}</span>
           {isMember ? <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">Member</span> : null}
-          {isManager ? <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800">Manager</span> : null}
+          {isManager ? <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800">Team Manager</span> : null}
         </div>
         <p className="truncate text-xs text-slate-400">{user.email}</p>
       </div>
       <div className="flex shrink-0 flex-wrap gap-2">
         {isMember ? (
-          <button className={T.danger} type="button" onClick={() => onRemoveMember(user.user_id)} disabled={workingKey === `member:${user.user_id}`}>
+          <button className={T.danger} type="button" onClick={() => onRemoveMember(user.user_id)} disabled={!canChangeMembership || workingKey === `member:${user.user_id}`}>
             {workingKey === `member:${user.user_id}` ? "Removing…" : "Remove"}
           </button>
         ) : (
-          <button className={T.ghost} type="button" onClick={() => onAddMember(user.user_id)} disabled={workingKey === "member:add"}>
+          <button className={T.ghost} type="button" onClick={() => onAddMember(user.user_id)} disabled={!canChangeMembership || workingKey === "member:add"}>
             {workingKey === "member:add" ? "Adding…" : "+ Member"}
           </button>
         )}
@@ -38,8 +39,8 @@ function UserRow({ user, isMember, isManager, workingKey, onAddMember, onRemoveM
             {workingKey === "manager:add" ? "Assigning…" : "Make Manager"}
           </button>
         ) : null}
-        {isManager && !canPromote ? (
-          <button className={T.danger} type="button" onClick={() => onRemoveMember(user.user_id)} disabled={workingKey === `manager:${user.user_id}`}>
+        {isManager && canManageManagers ? (
+          <button className={T.danger} type="button" onClick={() => onRemoveManager(user.user_id)} disabled={workingKey === `manager:${user.user_id}`}>
             {workingKey === `manager:${user.user_id}` ? "Removing…" : "Remove Mgr"}
           </button>
         ) : null}
@@ -49,6 +50,7 @@ function UserRow({ user, isMember, isManager, workingKey, onAddMember, onRemoveM
 }
 
 export function TeamDetail({
+  canManageManagers = false,
   selectedTeam, teamMembers, teamManagers, filteredAssignmentUsers,
   availableMembers, availableManagers,
   memberCandidateId, managerCandidateId,
@@ -109,13 +111,14 @@ export function TeamDetail({
           <div>
             <p className={T.kicker}>Managers</p>
             <h3 className="mt-0.5 text-base font-bold text-slate-900">Who leads this team</h3>
+            <p className="mt-1 max-w-md text-xs text-slate-500">Manager-role members already have team access. A separate Team Manager assignment is optional. To revoke access, remove both membership and any Team Manager assignment.</p>
           </div>
           <div className="flex gap-2">
-            <select className={`${T.input} max-w-[200px]`} value={managerCandidateId} onChange={e => onSetManagerCandidate(e.target.value)} disabled={!availableManagers.length || detailLoading}>
+            <select className={`${T.input} max-w-[200px]`} value={managerCandidateId} onChange={e => onSetManagerCandidate(e.target.value)} disabled={!canManageManagers || !availableManagers.length || detailLoading}>
               <option value="">{availableManagers.length ? "Choose manager…" : "No eligible users"}</option>
               {availableManagers.map(u => <option key={u.user_id} value={u.user_id}>{u.name} · {prettyRole(u.role)}</option>)}
             </select>
-            <button className={T.gold} type="button" onClick={() => onAddManager()} disabled={!managerCandidateId || workingKey === "manager:add"}>
+            <button className={T.gold} type="button" onClick={() => onAddManager()} disabled={!canManageManagers || !managerCandidateId || workingKey === "manager:add"}>
               {workingKey === "manager:add" ? "Assigning…" : "Assign"}
             </button>
           </div>
@@ -134,7 +137,7 @@ export function TeamDetail({
                   <p className="text-sm font-semibold text-slate-900">{m.name}</p>
                   <p className="truncate text-xs text-slate-400">{m.email} · {prettyRole(m.role)}</p>
                 </div>
-                <button className={T.danger} type="button" onClick={() => onRemoveManager(m.user_id)} disabled={workingKey === `manager:${m.user_id}`}>
+                <button className={T.danger} type="button" onClick={() => onRemoveManager(m.user_id)} disabled={!canManageManagers || workingKey === `manager:${m.user_id}`}>
                   {workingKey === `manager:${m.user_id}` ? "Removing…" : "Remove"}
                 </button>
               </div>
@@ -155,7 +158,7 @@ export function TeamDetail({
           <div className="flex gap-2">
             <select className={`${T.input} max-w-[200px]`} value={memberCandidateId} onChange={e => onSetMemberCandidate(e.target.value)} disabled={!availableMembers.length || detailLoading}>
               <option value="">{availableMembers.length ? "Quick add…" : "All users added"}</option>
-              {availableMembers.map(u => <option key={u.user_id} value={u.user_id}>{u.name} · {prettyRole(u.role)}</option>)}
+              {availableMembers.filter(u => canManageManagers || !MANAGER_CAPABLE_ROLES.has(u.role)).map(u => <option key={u.user_id} value={u.user_id}>{u.name} · {prettyRole(u.role)}</option>)}
             </select>
             <button className={T.gold} type="button" onClick={() => onAddMember()} disabled={!memberCandidateId || workingKey === "member:add"}>
               {workingKey === "member:add" ? "Adding…" : "Add"}
@@ -186,6 +189,8 @@ export function TeamDetail({
                 onAddMember={onAddMember}
                 onRemoveMember={onRemoveMember}
                 onAddManager={onAddManager}
+                onRemoveManager={onRemoveManager}
+                canManageManagers={canManageManagers}
               />
             ))}
           </div>

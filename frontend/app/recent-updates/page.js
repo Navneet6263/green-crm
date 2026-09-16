@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import DashboardShell from "../../components/dashboard/DashboardShell";
 import { loadSession } from "../../lib/session";
+import { loadTeamsForCompany, resolveSessionCompanyId, teamSelectLabel } from "../../lib/teamScope";
 import { recentActivityApi } from "../../lib/api/recentActivity.js";
 import RecentUpdatesFilter from "./RecentUpdatesFilter";
 import RecentUpdatesFeed from "./RecentUpdatesFeed";
@@ -17,6 +18,11 @@ export default function RecentUpdatesPage() {
   const [session, setSession] = useState(null);
   const [notes, setNotes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [teams, setTeams] = useState([]);
+  const [teamId, setTeamId] = useState("");
+  const [teamError, setTeamError] = useState("");
+  const [teamsLoading, setTeamsLoading] = useState(false);
   
   // Filter States
   const [typeFilter, setTypeFilter] = useState("all");
@@ -43,11 +49,34 @@ export default function RecentUpdatesPage() {
     setSession(s);
     
     const today = new Date();
-    const to = today.toISOString().split("T")[0];
-    const from = new Date(today.setDate(today.getDate() - 30)).toISOString().split("T")[0];
+    const dateKey = date => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
+    const to = dateKey(today);
+    const from = dateKey(new Date(today.getTime() - 6 * 86400000));
     setFromDate(from);
     setToDate(to);
   }, [router]);
+
+  useEffect(() => {
+    if (!session?.token) return;
+    let ignore = false;
+    setTeamsLoading(true);
+    setTeamError("");
+    loadTeamsForCompany(session.token, resolveSessionCompanyId(session))
+      .then(items => { if (!ignore) setTeams(items); })
+      .catch(err => { if (!ignore) { setTeams([]); setTeamError(err.message || "Could not load team choices."); } })
+      .finally(() => { if (!ignore) setTeamsLoading(false); });
+    return () => { ignore = true; };
+  }, [session]);
+
+  const changeTeam = (value) => {
+    setTeamId(value);
+    setSelectedUsers([]);
+    setSelectedProducts([]);
+    setNotes([]);
+    setPagination({ total: 0, totalPages: 1 });
+    setLoading(true);
+    setPage(1);
+  };
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -62,37 +91,44 @@ export default function RecentUpdatesPage() {
   }, [typeFilter, selectedUsers, selectedProducts, fromDate, toDate]);
 
   useEffect(() => {
+    let ignore = false;
     const fetchUpdates = async () => {
       if (!session) return;
       try {
         setLoading(true);
+        setNotes([]);
+        setError("");
         const res = await recentActivityApi.getRecentNotes({ 
           limit, 
           page,
           type: typeFilter === "all" ? "all" : `${typeFilter}s`,
           users: selectedUsers,
           products: selectedProducts,
+          teamId,
           fromDate,
           toDate,
           search: debouncedSearch
         });
 
+        if (ignore) return;
         const items = res.items || res.data || (Array.isArray(res) ? res : []);
         setNotes(items);
         if (res.pagination) {
           setPagination(res.pagination);
         } else {
-          setPagination({ total: items.length, totalPages: Math.ceil(items.length / limit) || 1 });
+          const total = Number(res.meta?.total ?? items.length);
+          setPagination({ total, totalPages: Math.ceil(total / limit) || 1 });
         }
       } catch (err) {
-        console.error("Error fetching recent updates:", err);
+        if (!ignore) setError(err.message || "Could not load updates. Please retry.");
       } finally {
-        setLoading(false);
+        if (!ignore) setLoading(false);
       }
     };
     
     fetchUpdates();
-  }, [session, typeFilter, selectedUsers, selectedProducts, fromDate, toDate, debouncedSearch, page, limit]);
+    return () => { ignore = true; };
+  }, [session, teamId, typeFilter, selectedUsers, selectedProducts, fromDate, toDate, debouncedSearch, page, limit]);
 
   const handleNavigate = (note) => {
     if (note.note_type === "lead" && note.entity_id) {
@@ -104,6 +140,8 @@ export default function RecentUpdatesPage() {
 
   return (
     <DashboardShell session={session} title="Recent Updates" hideTitle={true}>
+      {error && <div role="alert" className="mb-4 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{error}</div>}
+      {teamError && <div role="alert" className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">Team choices could not load: {teamError}. Results remain limited to your permitted teams.</div>}
       <div className="mx-auto max-w-7xl px-4 py-6 sm:py-8">
         {/* Header Section */}
         <div className="mb-6 flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
@@ -112,7 +150,7 @@ export default function RecentUpdatesPage() {
               Recent Updates & Activity
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 max-w-2xl">
-              Track team performance, monthly leaderboards, notes, and activity across all leads.
+              Track notes, activity and performance within your permitted teams.
             </p>
           </div>
           
@@ -148,10 +186,21 @@ export default function RecentUpdatesPage() {
           </div>
         </div>
 
-        {/* Layout Grid */}
-        <div className="flex flex-col gap-6 lg:flex-row items-start">
+        <div className="mb-5 rounded-xl border border-slate-200 bg-white p-4">
+          <label htmlFor="recent-team" className="mb-1 block text-xs font-bold text-slate-700">Team</label>
+          <select id="recent-team" value={teamId} onChange={e => changeTeam(e.target.value)} disabled={teamsLoading}
+            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm sm:max-w-sm">
+            <option value="">{teamsLoading ? "Loading teams..." : session?.user?.role === "admin" ? "All company teams" : "All my permitted teams"}</option>
+            {teams.map(team => <option key={team.team_id} value={team.team_id}>{teamSelectLabel(team)}</option>)}
+          </select>
+          <p className="mt-2 text-xs text-slate-500">This team selection applies to the feed, name/product filters, monthly leaderboard and Excel export.</p>
+        </div>
+
+        {/* Remount scoped panels so old-team state cannot survive a team switch. */}
+        <div key={teamId || "all-teams"} className="flex flex-col gap-6 lg:flex-row items-start">
           <div className="w-full lg:w-72 shrink-0 space-y-6 flex flex-col order-2 lg:order-1">
             <RecentUpdatesExport
+              teamId={teamId}
               session={session}
               typeFilter={typeFilter}
               selectedUsers={selectedUsers}
@@ -169,6 +218,7 @@ export default function RecentUpdatesPage() {
               setToDate={setToDate}
             />
             <RecentUpdatesFilter 
+              teamId={teamId}
               session={session}
               fromDate={fromDate}
               toDate={toDate}
@@ -182,6 +232,7 @@ export default function RecentUpdatesPage() {
           <div className="w-full flex-1 order-1 lg:order-2">
             {/* Monthly Leaderboard & Top Performer Highlights */}
             <MonthlyLeaderboard 
+              teamId={teamId}
               notes={notes}
               session={session}
             />

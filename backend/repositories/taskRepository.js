@@ -38,6 +38,14 @@ function buildWhere(filters) {
     conditions.push("t.status = ?");
     params.push(filters.status);
   }
+  if (filters.openOnly) conditions.push("t.status NOT IN ('done', 'completed', 'closed', 'cancelled')");
+  if (filters.dueFrom) { conditions.push("t.due_date >= ?"); params.push(filters.dueFrom); }
+  if (filters.dueTo) { conditions.push("t.due_date < ?"); params.push(filters.dueTo); }
+  if (filters.dueBucket) {
+    const due = require("../utils/workQueue").buildDuePredicate("t.due_date", filters.dueBucket);
+    conditions.push(due.clause);
+    params.push(...due.params);
+  }
 
   if (filters.priority) {
     conditions.push("t.priority = ?");
@@ -85,7 +93,7 @@ async function listTasks(filters, pagination, executor) {
       LEFT JOIN users creator ON creator.user_id = t.created_by
       LEFT JOIN teams team ON team.team_id = t.team_id
       ${whereClause}
-      ORDER BY t.due_date ASC, t.created_at DESC
+      ORDER BY t.due_date ASC, t.created_at DESC, t.task_id DESC
       OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
     `,
     [...params, pagination.offset, pagination.limit]

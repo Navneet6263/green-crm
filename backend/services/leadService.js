@@ -3,6 +3,7 @@ const crypto = require("crypto");
 const companyRepository = require("../repositories/companyRepository");
 const userRepository = require("../repositories/userRepository");
 const productRepository = require("../repositories/productRepository");
+const { assertProductForTeam } = require("./productAccessService");
 const leadRepository = require("../repositories/leadRepository");
 const leadAssignmentRepository = require("../repositories/leadAssignmentRepository");
 const leadDocumentRepository = require("../repositories/leadDocumentRepository");
@@ -552,35 +553,18 @@ async function resolveLeadTeamId(auth, companyId, payload, existingLead = null) 
     }
   }
 
-  if (resolvedTeamId && product?.team_id && product.team_id !== resolvedTeamId) {
-    throw new AppError("Lead team must match the selected product team.", 400);
+  // A shared product does NOT move the record to its owner's team.
+  resolvedTeamId = resolvedTeamId || existingLead?.team_id
+    || (payload.assigned_to ? await resolvePreferredTeamId(companyId, payload.assigned_to) : null)
+    || await resolvePreferredTeamId(companyId, auth.userId);
+  if (!resolvedTeamId) {
+    const { teamIds } = await resolveTeamScope(auth, companyId);
+    resolvedTeamId = teamIds?.length === 1 ? teamIds[0]
+      : teamIds === null ? product?.team_id || await resolveDefaultTeamId(companyId) : null;
   }
-
-  if (!resolvedTeamId && product?.team_id) {
-    return product.team_id;
-  }
-
-  if (existingLead?.team_id) {
-    return existingLead.team_id;
-  }
-
-  if (resolvedTeamId) {
-    return resolvedTeamId;
-  }
-
-  if (payload.assigned_to) {
-    const preferredAssigneeTeam = await resolvePreferredTeamId(companyId, payload.assigned_to);
-    if (preferredAssigneeTeam) {
-      return preferredAssigneeTeam;
-    }
-  }
-
-  const creatorTeamId = await resolvePreferredTeamId(companyId, auth.userId);
-  if (creatorTeamId) {
-    return creatorTeamId;
-  }
-
-  return resolveDefaultTeamId(companyId);
+  await assertTeamAccess(auth, companyId, resolvedTeamId);
+  await assertProductForTeam(companyId, payload.product_id || existingLead?.product_id, resolvedTeamId);
+  return resolvedTeamId;
 }
 
 async function buildLeadFilters(auth, query) {
@@ -692,42 +676,54 @@ async function listLeads(auth, query) {
   result.meta.total_closed_won = totalClosedWon;
   result.meta.total_advance_received = totalAdvanceReceived;
 
-  if (filters.companyId) {
-    let teamClause = "";
-    const params = [filters.companyId];
-    if (Array.isArray(filters.teamIds) && filters.teamIds.length > 0) {
-      teamClause = ` AND team_id IN (${filters.teamIds.map(() => "?").join(", ")})`;
-      params.push(...filters.teamIds);
-    } else if (Array.isArray(filters.teamIds) && filters.teamIds.length === 0) {
-      teamClause = " AND 1 = 0";
-    }
-
-    const [sumRows] = await db.query(
-      `SELECT
-         COUNT(*) AS total_workflow_leads,
-         SUM(CASE WHEN workflow_status IN ('in_progress', 'pending_qa', 'revisions_needed') THEN 1 ELSE 0 END) AS active_workflow_leads,
-         SUM(CASE WHEN workflow_status IN ('approved', 'completed') THEN 1 ELSE 0 END) AS completed_workflow_leads,
-         COALESCE(SUM(advance_received), 0) AS total_advance_received,
-         COALESCE(SUM(remaining_payment), 0) AS total_remaining_payment
-       FROM leads
-       WHERE company_id = ? AND is_active = 1 AND is_workflow = 1${teamClause}`,
-      params
-    );
-    const row = sumRows[0] || {};
-    result.meta.workflow_summary = {
-      total_workflow_leads: row.total_workflow_leads || 0,
-      active_workflow_leads: row.active_workflow_leads || 0,
-      completed_workflow_leads: row.completed_workflow_leads || 0,
-      total_advance_received: row.total_advance_received || 0,
-      total_remaining_payment: row.total_remaining_payment || 0,
-    };
+  if (filters.companyId && auth.role !== ROLES.EXPERT && query.include_workflow_summary !== "0") {
+    result.meta.workflow_summary = await leadRepository.getWorkflowSummary(filters);
   }
 
   return result;
 }
 
-async function getLead(auth, leadId) {
+async function getAnalytics(auth, query = {}, focus = false) {
+  if (![ROLES.ADMIN, ROLES.MANAGER, ROLES.MARKETING].includes(auth.role)) {
+    throw new AppError("Analytics is not available for this role.", 403);
+  }
+  const ranges = { week: 7, month: 31, quarter: 92, year: 365 };
+  if (query.range && !Object.hasOwn(ranges, query.range)) throw new AppError("Invalid analytics range.", 400);
+  const days = query.range ? ranges[query.range] : 31;
+  const now = new Date();
+  const scopeQuery = { ...query, from_date: new Date(now.getTime() - days * 86400000).toISOString(), to_date: now.toISOString() };
+  if (scopeQuery.assigned_to === "unassigned") delete scopeQuery.assigned_to;
+  if (scopeQuery.product_id === "unmapped") delete scopeQuery.product_id;
+  const filters = await buildLeadFilters(auth, scopeQuery);
+  assertCompanyAccess(auth, filters.companyId);
+  filters.unassigned = query.assigned_to === "unassigned";
+  filters.unmapped = query.product_id === "unmapped";
+  // Marketing's accessible/shared scope is preserved even when filtering owners.
+  if (query.assigned_to && !filters.unassigned) filters.assignedTo = query.assigned_to;
+  if (focus) return leadRepository.getAnalyticsFocus(filters);
+  const optionFilters = { ...filters, assignedTo: null, unassigned: false, unmapped: false, productId: null, priority: null, leadSource: null, status: null, workflowStage: null };
+  const [rows, options] = await Promise.all([
+    leadRepository.getAnalytics(filters),
+    leadRepository.getAnalytics(optionFilters),
+  ]);
+  return { rows, options: options.filter(row => ["owner", "product", "priority", "source"].includes(row.dimension)), generated_at: now.toISOString(), from_date: scopeQuery.from_date, to_date: scopeQuery.to_date };
+}
+
+async function getMyDay(auth, query = {}) {
+  if (![ROLES.ADMIN, ROLES.MANAGER, ...SHARED_ACCESS_ROLES].includes(auth.role)) throw new AppError("My Day is not available for this role.", 403);
+  const filters = await buildLeadFilters(auth, { quick_filter: "active" });
+  assertCompanyAccess(auth, filters.companyId);
+  filters.viewerUserId = auth.userId;
+  const columns = getRestrictedLeadAccessColumns(auth.role);
+  filters.viewerAccessColumns = columns.length ? columns : ["assigned_to"];
+  const pagination = parsePagination(query);
+  const { rows, total } = await leadRepository.getMyDay(filters, pagination, query.bucket);
+  return buildPaginatedResult(rows.map(row => maskLeadForRole(row, auth.role)), total, pagination);
+}
+
+async function getLead(auth, leadId, options = {}) {
   const lead = await getLeadRecord(auth, leadId);
+  if (options.view === "core") return maskLeadForRole(lead, auth.role);
   const [documents, legalDocuments, financeDocuments, stageHistory, transferHistory, sharedUsers] = await Promise.all([
     leadDocumentRepository.listLeadDocumentsByLead(lead.lead_id, lead.company_id),
     workflowRepository.listLegalDocumentsByLead(lead.lead_id, lead.company_id),
@@ -1315,9 +1311,10 @@ async function prepareBulkAssignmentRows(auth, rows, assignee) {
 
   const prepared = rows.map((lead) => ({
     ...lead,
-    next_team_id: lead.product_team_id || lead.team_id || fallbackTeamId || null,
+    next_team_id: lead.team_id || lead.product_team_id || fallbackTeamId || null,
   }));
   const nextTeamIds = [...new Set(prepared.map((lead) => lead.next_team_id).filter(Boolean))];
+  for (const teamId of nextTeamIds) await assertTeamAccess(auth, companyId, teamId);
   const userTeamIds = await listAssignedUserTeamIds(companyId, assignee.user_id, nextTeamIds);
   const missingTeam = nextTeamIds.find((teamId) => !userTeamIds.includes(teamId));
 
@@ -1936,6 +1933,8 @@ async function convertLeadToCustomer(auth, leadId) {
 }
 
 module.exports = {
+  getMyDay,
+  getAnalytics,
   addLeadActivity,
   addLeadNote,
   assignLead,

@@ -13,7 +13,7 @@ const KPI_ACCENT = [
   "border-violet-200 bg-gradient-to-br from-violet-50 to-white",
 ];
 
-export function AnalyticsHeader({ deck, range, filters, onRangeChange, onRefresh, onExport, onFilterChange, onResetFilters }) {
+export function AnalyticsHeader({ deck, range, filters, onRangeChange, onRefresh, onExport, onFilterChange, onResetFilters, exportDisabled }) {
   const hasFilter = Object.values(filters).some(v => v && v !== "all" && v !== "");
 
   return (
@@ -23,7 +23,7 @@ export function AnalyticsHeader({ deck, range, filters, onRangeChange, onRefresh
         <div>
           <p className={K}>Analytics Desk</p>
           <h1 className="mt-0.5 text-2xl font-bold tracking-tight text-slate-900">Pipeline Intelligence</h1>
-          <p className="mt-0.5 text-sm text-slate-400">Track health, source mix, and team performance in real time.</p>
+          <p className="mt-0.5 text-sm text-slate-400">Complete pipeline summaries for the selected creation-date range.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           {/* Range pills */}
@@ -38,7 +38,7 @@ export function AnalyticsHeader({ deck, range, filters, onRangeChange, onRefresh
           <button type="button" onClick={onRefresh} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300">
             <DashboardIcon name="analytics" className="h-4 w-4" />Refresh
           </button>
-          <button type="button" onClick={onExport} className="inline-flex items-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50 px-3.5 py-2 text-sm font-semibold text-amber-900 transition hover:bg-amber-100">
+          <button type="button" disabled={exportDisabled} onClick={onExport} className="inline-flex items-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50 px-3.5 py-2 text-sm font-semibold text-amber-900 transition hover:bg-amber-100 disabled:opacity-40">
             <DashboardIcon name="documents" className="h-4 w-4" />Export CSV
           </button>
         </div>

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiRequest } from "../../../lib/api";
 import { loadSession } from "../../../lib/session";
+import { loadTeamsForCompany } from "../../../lib/teamScope";
 import {
   BASE_ROLES,
   formDraft,
@@ -24,6 +25,9 @@ export function useUserManagement() {
   const [users, setUsers] = useState([]);
   const [company, setCompany] = useState(null);
   const [companies, setCompanies] = useState([]);
+  const [managedTeams, setManagedTeams] = useState([]);
+  const [teamsLoading, setTeamsLoading] = useState(false);
+  const [teamsError, setTeamsError] = useState("");
   const [selectedCompanyId, setSelectedCompanyId] = useState("");
   const [selectedUserId, setSelectedUserId] = useState("");
   const [createForm, setCreateForm] = useState(formDraft());
@@ -41,14 +45,38 @@ export function useUserManagement() {
 
   const role = session?.user?.role || "";
   const isSuperAdmin = role === "super-admin";
+  const isManager = role === "manager";
   const scopedCompanyId = isSuperAdmin
     ? selectedCompanyId
     : session?.company?.company_id || session?.user?.company_id || "";
 
   const roles = useMemo(
-    () => (isSuperAdmin ? [["admin", "Admin"], ...BASE_ROLES] : BASE_ROLES),
-    [isSuperAdmin]
+    () => (isSuperAdmin ? [["admin", "Admin"], ...BASE_ROLES]
+      : isManager ? BASE_ROLES.filter(([value]) => !["manager", "expert"].includes(value)) : BASE_ROLES),
+    [isSuperAdmin, isManager]
   );
+
+  useEffect(() => {
+    if (!isManager || !session?.token || !scopedCompanyId) return;
+    let cancelled = false;
+    setTeamsLoading(true);
+    setTeamsError("");
+    loadTeamsForCompany(session.token, scopedCompanyId)
+      .then((teams) => {
+        if (cancelled) return;
+        setManagedTeams(teams);
+        setCreateForm((form) => ({ ...form, team_id: teams.some((team) => team.team_id === form.team_id)
+          ? form.team_id : teams.length === 1 ? teams[0].team_id : "" }));
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setManagedTeams([]);
+          setTeamsError(error.message || "Could not load your teams. Reload to retry.");
+        }
+      })
+      .finally(() => { if (!cancelled) setTeamsLoading(false); });
+    return () => { cancelled = true; };
+  }, [isManager, session?.token, scopedCompanyId]);
 
   const selectedUser = useMemo(
     () => users.find((u) => u.user_id === selectedUserId) || null,
@@ -198,6 +226,10 @@ export function useUserManagement() {
     saving,
     workingId,
     isSuperAdmin,
+    isManager,
+    managedTeams,
+    teamsLoading,
+    teamsError,
     roles,
     selectedUser,
     filteredUsers,

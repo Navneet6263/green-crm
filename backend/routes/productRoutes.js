@@ -10,6 +10,7 @@ router.use(asyncHandler(authenticate));
 
 router.get("/", asyncHandler(productController.list));
 router.post("/", asyncHandler(productController.create));
+router.put("/:productId/teams", asyncHandler(productController.mapTeams));
 router.put("/:productId", asyncHandler(productController.update));
 router.patch("/:productId", asyncHandler(productController.update));
 router.delete("/:productId", asyncHandler(productController.remove));

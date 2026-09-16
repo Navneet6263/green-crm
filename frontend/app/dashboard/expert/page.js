@@ -152,7 +152,7 @@ export default function ExpertDashboardPage() {
 
       {/* Floating Notifications Dropdown Panel */}
       {showNotifications && (
-        <div className="fixed left-20 top-6 z-50 w-80 bg-white rounded-2xl border border-gray-200 shadow-2xl p-4 flex flex-col max-h-[500px]">
+        <div className="fixed left-4 right-4 sm:left-20 sm:right-auto top-6 z-50 sm:w-80 bg-white rounded-2xl border border-gray-200 shadow-2xl p-4 flex flex-col max-h-[min(500px,calc(100dvh-3rem))] overflow-y-auto">
           <div className="flex items-center justify-between border-b border-gray-100 pb-3 mb-3">
             <div>
               <h3 className="font-bold text-gray-900 text-sm">Notifications</h3>

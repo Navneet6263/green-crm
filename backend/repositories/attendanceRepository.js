@@ -84,7 +84,7 @@ async function listUserEvents(companyId, userId, pagination, executor) {
   };
 }
 
-async function listAllEvents(companyId, searchName, pagination, executor) {
+async function listAllEvents(companyId, searchName, pagination, executor, userIds = null) {
   const active = getExecutor(executor);
   
   let baseQuery = `
@@ -93,6 +93,12 @@ async function listAllEvents(companyId, searchName, pagination, executor) {
     WHERE e.company_id = ?
   `;
   const params = [companyId];
+
+  if (Array.isArray(userIds)) {
+    if (!userIds.length) return { rows: [], total: 0 };
+    baseQuery += ` AND e.user_id IN (${userIds.map(() => "?").join(",")})`;
+    params.push(...userIds);
+  }
 
   if (searchName) {
     baseQuery += ` AND u.name LIKE ?`;

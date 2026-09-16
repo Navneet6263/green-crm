@@ -290,11 +290,16 @@ export const ROLE_SHORTCUTS = {
 };
 
 export function getRoleMeta(role) {
+  const sections = SIDEBAR_SECTIONS[role] || SIDEBAR_SECTIONS.viewer;
+  const hasMyDay = ["admin", "manager", "sales", "marketing", "legal-team", "finance-team", "support", "viewer"].includes(role);
   return {
     color: ROLE_COLOR[role] || "#94a3b8",
     label: ROLE_LABEL[role] || role || "Workspace",
     description: ROLE_DESCRIPTIONS[role] || "Role-aware workspace for multi-tenant CRM operations.",
-    sections: SIDEBAR_SECTIONS[role] || SIDEBAR_SECTIONS.viewer,
+    sections: hasMyDay ? sections.map((section, index) => index === 0 ? {
+      ...section,
+      items: [section.items[0], ITEM("My Day", "/my-day", "dashboard"), ITEM("Calendar", "/calendar", "calendar", "tasks"), ...section.items.slice(1)],
+    } : section) : sections,
     shortcuts: ROLE_SHORTCUTS[role] || ROLE_SHORTCUTS.viewer,
   };
 }

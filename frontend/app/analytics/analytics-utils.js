@@ -293,6 +293,10 @@ export function buildAnalyticsCsv(deck, range, focusDeck) {
   ];
   return {
     name: `analytics-${range}-${new Date().toISOString().slice(0, 10)}.csv`,
-    content: rows.map((row) => row.join(",")).join("\n"),
+    content: rows.map((row) => row.map(value => {
+      const text = String(value ?? "");
+      const safe = /^[=+@\-\t\r]/.test(text) ? `'${text}` : text;
+      return `"${safe.replaceAll('"', '""')}"`;
+    }).join(",")).join("\n"),
   };
 }

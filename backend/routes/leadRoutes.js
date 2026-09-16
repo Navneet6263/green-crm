@@ -10,8 +10,19 @@ const router = express.Router();
 router.use(asyncHandler(authenticate));
 
 router.get("/", asyncHandler(leadController.list));
+router.get("/analytics", asyncHandler(async (req, res) => {
+  const data = await require("../services/leadService").getAnalytics(req.auth, req.query);
+  res.json({ data });
+}));
+router.get("/analytics/focus", asyncHandler(async (req, res) => {
+  const data = await require("../services/leadService").getAnalytics(req.auth, req.query, true);
+  res.json({ data });
+}));
 router.post("/", asyncHandler(leadController.create));
 router.get("/my-leads", asyncHandler(leadController.listMyLeads));
+router.get("/my-day", asyncHandler(async (req, res) => {
+  res.json(await require("../services/leadService").getMyDay(req.auth, req.query));
+}));
 router.get("/stats/products", asyncHandler(leadController.productStats));
 router.get("/user/product-history", asyncHandler(leadController.productHistory));
 router.post("/assign", asyncHandler(leadController.assign));

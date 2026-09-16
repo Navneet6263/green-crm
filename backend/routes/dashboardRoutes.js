@@ -8,6 +8,9 @@ const router = express.Router();
 
 router.use(asyncHandler(authenticate));
 router.get("/summary", asyncHandler(dashboardController.summary));
+router.get("/performance", asyncHandler(async (req, res) => {
+  res.json({ data: await require("../services/dashboardService").getPerformance(req.auth, req.query) });
+}));
 
 // Widget-level endpoints — each loads independently for lazy/parallel rendering
 router.get("/widgets/kpis", asyncHandler(dashboardController.widgetKpis));

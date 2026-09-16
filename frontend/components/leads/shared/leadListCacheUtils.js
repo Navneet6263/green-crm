@@ -15,7 +15,11 @@ import {
 } from "./leadPageHelpers";
 
 export function cacheLeadPage(pageCacheRef, cacheKey, pageNumber, items, meta) {
+  if (!pageCacheRef.current.has(cacheKey) && pageCacheRef.current.size >= 10) {
+    pageCacheRef.current.delete(pageCacheRef.current.keys().next().value);
+  }
   const pageCache = pageCacheRef.current.get(cacheKey) || new Map();
+  if (!pageCache.has(pageNumber) && pageCache.size >= 10) pageCache.delete(pageCache.keys().next().value);
   pageCache.set(pageNumber, { items: items || [], meta });
   pageCacheRef.current.set(cacheKey, pageCache);
 }

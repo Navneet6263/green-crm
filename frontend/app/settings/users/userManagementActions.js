@@ -62,7 +62,7 @@ export async function handleCreateUser(session, createForm, scopedCompanyId, isS
     const fb = buildCreateFeedback(r);
     setMessage(fb.text);
     setMessageTone(fb.tone);
-    setCreateForm(formDraft(scopedCompanyId));
+    setCreateForm({ ...formDraft(scopedCompanyId), team_id: createForm.team_id || "" });
     await loadWorkspace(session, scopedCompanyId);
     if (r.user_id) setSelectedUserId(r.user_id);
   } catch (e) {

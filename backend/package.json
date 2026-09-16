@@ -2,6 +2,8 @@
   "name": "greencrm-backend",
   "version": "1.0.0",
   "scripts": {
+    "test:lead-count-integration": "node --test tests/lead-count-integration.test.js",
+    "test:regression": "node --test tests/crm-improvements.test.js tests/crm-services.test.js",
     "dev": "nodemon server.js",
     "start": "node server.js",
     "schema:sql": "node db/generateSqlServerBootstrap.js",
