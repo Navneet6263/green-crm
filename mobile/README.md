@@ -22,6 +22,16 @@ Android/iOS share the mobile codebase; web CRM and backend deployments stay sepa
 
 No demo login or production sample records were added. Test fixtures live only in tests.
 
+### Updating the installed app
+
+EAS Update is configured for the internal `preview` APK. **Build/install a new APK once**
+to include the update library; older APKs do not gain this capability automatically.
+Later compatible UI/JavaScript changes can be published without reinstalling the APK.
+Updates are downloaded on launch and normally applied on a subsequent cold launch;
+there is no forced restart during forms/tracking. Native/permission changes still need
+a new build. No cloud build or OTA publish has been run by this configuration change.
+See [the update workflow and safety checks](UPDATES.md).
+
 ### Important boundaries
 
 - **Offline support is for tracking and Reached, not lead creation or photos.**
@@ -142,6 +152,9 @@ SQLCipher, Android foreground services or iOS background execution.
 The rollout guide records results and remaining device/SQL Server checks.
 
 ## Physical-device acceptance (required before release)
+
+For the Android 16 startup fix, new APK requirement and exact permission/crash
+acceptance sequence, see [TRACKING-ANDROID.md](TRACKING-ANDROID.md).
 
 1. Use staging, migrate, install the native build and log in as a sales employee.
 2. Try denied foreground/background/precise permissions and disabled GPS. No false ON state.

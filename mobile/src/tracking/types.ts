@@ -4,7 +4,9 @@ export type TrackEvent = { event_id: string; session_id: string; device_id: stri
   latitude?: number; longitude?: number; accuracy?: number; mocked?: boolean; label?: string; consent_version?: number };
 export type ActiveTrip = { owner: string; sessionId: string; deviceId: string; startedAt: string };
 export type StoredEvent = { event_id: string; payload: string; synced: number };
-export type TrackState = { active: ActiveTrip | null; pending: number; events: TrackEvent[]; error: string; running?: boolean };
+export type TrackingStatus = 'off' | 'permission_required' | 'location_off' | 'interrupted' | 'waiting_gps' | 'recording' | 'gps_idle';
+export type TrackState = { active: ActiveTrip | null; pending: number; events: TrackEvent[]; error: string; running?: boolean;
+  status?: TrackingStatus; lastFixAt?: string; serviceError?: string; access?: { foreground: boolean; background: boolean; services: boolean; ready: boolean } };
 export function ownerKey(session: Session, base: string) {
   if (!session.user.company_id || !session.user.user_id) throw new Error('Your company/user identity is missing. Sign in again before tracking.');
   return JSON.stringify([base, session.user.company_id, session.user.user_id]);

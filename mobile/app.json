@@ -2,27 +2,74 @@
   "expo": {
     "name": "GreenCRM Sales",
     "slug": "greencrm-field",
-    "version": "0.1.0",
+    "version": "0.1.1",
+    "runtimeVersion": { "policy": "fingerprint" },
+    "updates": {
+      "enabled": true,
+      "url": "https://u.expo.dev/4ba321e6-7d51-4ac0-9c05-f951eb8bc90c",
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0,
+      "useEmbeddedUpdate": true
+    },
     "scheme": "greencrm-field",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
-    "ios": { "supportsTablet": false, "bundleIdentifier": "com.greencall.field.dev" },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.greencall.field.dev"
+    },
     "android": {
       "package": "com.greencall.field.dev",
+      "versionCode": 2,
       "allowBackup": false,
-      "blockedPermissions": ["android.permission.RECORD_AUDIO"]
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO"
+      ],
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_LOCATION"
+      ]
     },
-    "plugins": ["expo-router", "expo-secure-store",
-      ["expo-sqlite", { "useSQLCipher": true }],
-      ["expo-location", {
-        "locationWhenInUsePermission": "Record your sales route and reached locations only after you tap Start tracking.",
-        "locationAlwaysAndWhenInUsePermission": "Continue your started sales route while the screen is locked. Stop tracking anytime in the app.",
-        "isIosBackgroundLocationEnabled": true,
-        "isAndroidBackgroundLocationEnabled": true,
-        "isAndroidForegroundServiceEnabled": true
-      }],
-      ["expo-image-picker", { "photosPermission": "Choose a photo to attach to your CRM lead.", "cameraPermission": "Take a photo to attach to your CRM lead.", "microphonePermission": false }]
+    "plugins": [
+      "expo-router",
+      "./plugins/withTrackingSafety.cjs",
+      "expo-secure-store",
+      [
+        "expo-sqlite",
+        {
+          "useSQLCipher": true
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Record your sales route and reached locations only after you tap Start tracking.",
+          "locationAlwaysAndWhenInUsePermission": "Continue your started sales route while the screen is locked. Stop tracking anytime in the app.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Choose a photo to attach to your CRM lead.",
+          "cameraPermission": "Take a photo to attach to your CRM lead.",
+          "microphonePermission": false
+        }
+      ]
     ],
-    "experiments": { "typedRoutes": false }
+    "experiments": {
+      "typedRoutes": false
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "4ba321e6-7d51-4ac0-9c05-f951eb8bc90c"
+      }
+    }
   }
 }
