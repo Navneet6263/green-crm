@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "GreenCRM Sales",
+    "slug": "greencrm-field",
+    "version": "0.1.0",
+    "scheme": "greencrm-field",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "ios": { "supportsTablet": false, "bundleIdentifier": "com.greencall.field.dev" },
+    "android": {
+      "package": "com.greencall.field.dev",
+      "allowBackup": false,
+      "blockedPermissions": ["android.permission.RECORD_AUDIO"]
+    },
+    "plugins": ["expo-router", "expo-secure-store",
+      ["expo-sqlite", { "useSQLCipher": true }],
+      ["expo-location", {
+        "locationWhenInUsePermission": "Record your sales route and reached locations only after you tap Start tracking.",
+        "locationAlwaysAndWhenInUsePermission": "Continue your started sales route while the screen is locked. Stop tracking anytime in the app.",
+        "isIosBackgroundLocationEnabled": true,
+        "isAndroidBackgroundLocationEnabled": true,
+        "isAndroidForegroundServiceEnabled": true
+      }],
+      ["expo-image-picker", { "photosPermission": "Choose a photo to attach to your CRM lead.", "cameraPermission": "Take a photo to attach to your CRM lead.", "microphonePermission": false }]
+    ],
+    "experiments": { "typedRoutes": false }
+  }
+}

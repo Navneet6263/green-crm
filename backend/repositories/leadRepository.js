@@ -538,7 +538,7 @@ async function createLead(lead, executor) {
       lead.admin_comments || null,
       lead.estimated_value || lead.total_lead_value || 0,
       lead.advance_received || 0,
-      lead.active_users || null,
+      lead.active_users ?? null,
       lead.onboarded_date || null,
     ]
   );

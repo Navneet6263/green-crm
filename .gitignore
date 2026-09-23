@@ -18,6 +18,7 @@ build/
 
 # Logs
 *.log
+backend/private_uploads/
 npm-debug.log*
 
 # OS

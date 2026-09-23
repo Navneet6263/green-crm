@@ -1,0 +1,21 @@
+const router = require('express').Router();
+const authenticate = require('../middlewares/authenticate');
+const asyncHandler = require('../utils/asyncHandler');
+const AppError = require('../utils/appError');
+const repository = require('../repositories/fieldTrackingRepository');
+const { assertSales, normalizeEvent, uuid } = require('../services/tracking/validation');
+const { createRateLimiter } = require('../middlewares/rateLimiter');
+router.use(asyncHandler(authenticate));
+router.use((req, _res, next) => { assertSales(req.auth); next(); });
+router.use(createRateLimiter({ windowMs: 60000, max: 60, keyGenerator: req => `${req.auth.companyId}:${req.auth.userId}` }));
+router.post('/sync', asyncHandler(async (req, res) => {
+  const input = req.body?.events;
+  if (!Array.isArray(input) || input.length < 1 || input.length > 100) throw new AppError('Send 1–100 tracking events.', 400);
+  const events = input.map(event => normalizeEvent(event));
+  if (new Set(events.map(event => event.event_id)).size !== events.length) throw new AppError('Duplicate event IDs in batch.', 400);
+  res.json({ data: await repository.ingest(req.auth, events) });
+}));
+const page = req => Math.min(100000, Math.max(1, Math.floor(Number(req.query.page) || 1)));
+router.get('/sessions', asyncHandler(async (req, res) => res.json({ data: await repository.listSessions(req.auth, page(req)) })));
+router.get('/sessions/:sessionId/events', asyncHandler(async (req, res) => res.json({ data: await repository.listEvents(req.auth, uuid(req.params.sessionId), page(req)) })));
+module.exports = router;

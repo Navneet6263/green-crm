@@ -25,6 +25,7 @@ const leadTransferRoutes = require("./leadTransfer");
 const leadCountIntegrationRoutes = require("./leadCountIntegrationRoutes");
 
 const router = express.Router();
+router.use('/field-tracking', require('./fieldTrackingRoutes'));
 
 router.use("/integrations", leadCountIntegrationRoutes);
 router.use("/auth", authRoutes);

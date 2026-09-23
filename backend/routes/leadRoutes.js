@@ -8,6 +8,7 @@ const leadController = require("../controllers/leadController");
 const router = express.Router();
 
 router.use(asyncHandler(authenticate));
+router.use('/:leadId/photos', require('./fieldPhotoRoutes'));
 
 router.get("/", asyncHandler(leadController.list));
 router.get("/analytics", asyncHandler(async (req, res) => {

@@ -246,6 +246,22 @@ test("create lead keeps receiving team T3 instead of product owner T1; foreign a
   await assert.rejects(leadService.createLead(manager(), { ...payload, team_id: "T1" }), /requested team scope/);
 });
 
+test("lead creation persists employee range and zero active users instead of discarding form fields", async () => {
+  teamScope();
+  mock.method(companies, "getCompanyById", async () => ({ company_id: "c1" }));
+  mock.method(products, "getProductById", async () => product);
+  mock.method(users, "getUserInCompany", async id => ({ user_id: id, company_id: "c1", is_active: 1, role: "sales" }));
+  mock.method(teams, "getPreferredTeamId", async () => "T3");
+  mock.method(teams, "listUsersForTeams", async () => ["own-user"]);
+  mock.method(leads, "findLeadByPhoneInTeam", async () => null);
+  queryHandler = async sql => { assert.match(sql, /SELECT TOP 1 lead_id/); return [[]]; };
+  mock.method(leads, "createLead", async payload => {
+    assert.equal(payload.no_of_employees, "100-500"); assert.equal(payload.active_users, 0);
+    throw new Error("verified-create-payload");
+  });
+  await assert.rejects(leadService.createLead(manager(), { company_name: "Example", contact_person: "Person", phone: "9999999999", product_id: "p1", assigned_to: "own-user", team_id: "T3", no_of_employees: "100-500", active_users: 0 }), /verified-create-payload/);
+});
+
 test("inferred foreign teams are checked, not just explicit team_id", async () => {
   teamScope();
   mock.method(users, "getUserInCompany", async id => ({ user_id: id, company_id: "c1", is_active: 1 }));

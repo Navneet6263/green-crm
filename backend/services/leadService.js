@@ -925,6 +925,8 @@ async function createLead(auth, payload) {
         priority: lead.priority,
         estimated_value: lead.estimated_value,
         number_of_units: lead.number_of_units,
+        no_of_employees: lead.no_of_employees,
+        active_users: lead.active_users,
         team_id: teamId,
         assigned_to: assignedTo,
         assigned_by: auth.userId,
