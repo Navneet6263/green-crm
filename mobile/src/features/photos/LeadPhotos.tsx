@@ -49,6 +49,7 @@ export function LeadPhotos({ session, leadId }: { session: Session; leadId: stri
       if (controller.current === abort) setError(failure instanceof Error ? failure.message : 'Photo could not load.');
     } finally { clearTimeout(timer); if (controller.current === abort) setLoading(false); }
   };
+  if (!result.loading && !result.error && !result.data?.length) return null;
   return <Card><Text style={styles.heading}>Visit photos</Text><Text style={styles.small}>Private photos, available only with lead access. Internet required.</Text>
     {result.loading ? <ActivityIndicator /> : result.error ? <><Notice error message={result.error} /><Button secondary title="Retry photos" onPress={result.reload} /></> : result.data?.length ?
       <View style={{ gap: 8 }}>{result.data.map((photo, index) => <Button key={photo.photo_id} secondary title={`View photo ${index + 1}`} onPress={() => void open(photo)} />)}</View>

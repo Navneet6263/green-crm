@@ -1,56 +1,63 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useSession } from '../src/auth/SessionProvider';
-import { API_BASE } from '../src/api/runtime';
+import { useLogin } from '../src/auth/useLogin';
+import { LoginIntro } from '../src/auth/LoginIntro';
 import { Button, Notice } from '../src/ui/components';
 import { Field } from '../src/ui/fields';
 import { Icon } from '../src/ui/Icon';
 import { colors, styles } from '../src/ui/theme';
+import { Glass, GlassBackdrop } from '../src/ui/Glass';
 
 export default function Login() {
-  const { signIn } = useSession();
-  const [email, setEmail] = useState(''), [password, setPassword] = useState('');
-  const [visible, setVisible] = useState(false), [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  const lock = useRef(false);
-  const submit = async () => {
-    if (lock.current) return;
-    if (!email.trim() || !password) { setError('Enter your work email and password.'); return; }
-    lock.current = true; setBusy(true); setError('');
-    try { await signIn(email, password); setPassword(''); }
-    catch (failure) { setError(failure instanceof Error ? failure.message : 'Sign in failed.'); }
-    finally { lock.current = false; setBusy(false); }
-  };
-  let server = API_BASE;
-  try { server = new URL(API_BASE).host; } catch { /* API client validates configuration. */ }
-  return <SafeAreaView style={{ flex: 1, backgroundColor: colors.white }}>
+  const form = useLogin();
+  const [visible, setVisible] = useState(false);
+  const enteringCode = form.mode === 'otp' && Boolean(form.challenge);
+  const title = form.mode === 'password' ? 'Sign in' : enteringCode ? 'Verify & sign in' : 'Send login code';
+  return <SafeAreaView style={{ flex: 1, backgroundColor: colors.canvas }}>
+    <GlassBackdrop vivid />
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ flexGrow: 1, width: '100%', maxWidth: 560, alignSelf: 'center', padding: 24, gap: 28 }}>
-        <View style={[styles.row, { paddingTop: 16 }]}><View style={{ backgroundColor: colors.green, borderRadius: 16, padding: 13 }}><Icon name="leads" color="white" size={26} /></View>
-          <View><Text style={{ fontSize: 23, color: colors.ink, fontWeight: '800', letterSpacing: -0.7 }}>GreenCRM</Text><Text style={[styles.eyebrow, { marginTop: 4 }]}>SALES WORKSPACE</Text></View>
-        </View>
-        <LinearGradient colors={['#113E30', '#1C6248']} style={{ borderRadius: 28, padding: 26, gap: 16, overflow: 'hidden' }}>
-          <View style={{ position: 'absolute', width: 190, height: 190, borderRadius: 95, borderWidth: 30, borderColor: '#FFFFFF08', right: -80, top: -65 }} />
-          <View style={styles.row}><View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#BCE69A' }} /><Text style={{ color: '#D2E5D9', letterSpacing: 2, fontSize: 10, fontWeight: '700' }}>BUILT FOR YOUR WORKDAY</Text></View>
-          <Text style={{ color: 'white', fontSize: 34, fontWeight: '800', lineHeight: 40, letterSpacing: -1 }}>Your next sale.{ '\n' }Starts here.</Text>
-          <Text style={{ color: '#D4E6DB', fontSize: 14, lineHeight: 22 }}>Your leads, your follow-ups, your tasks.{ '\n' }Connected to the CRM you already use.</Text>
-          <View style={[styles.row, { borderTopWidth: 1, borderTopColor: '#FFFFFF22', paddingTop: 16 }]}><Icon name="lock" size={16} color="#D2E5D9" /><Text style={{ color: '#D2E5D9', fontSize: 12 }}>Your company. Your assigned work.</Text></View>
-        </LinearGradient>
-        <View style={{ gap: 18 }}>
-          <View style={{ gap: 6 }}><Text style={[styles.title, { fontSize: 26 }]}>Welcome back</Text><Text style={styles.subtitle}>Sign in with your sales account to get started.</Text></View>
-          {error ? <Notice message={error} error /> : null}
-          <Field label="Work email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} autoComplete="email" placeholder="you@company.com" editable={!busy} />
-          <View style={{ gap: 5 }}><Field label="Password" value={password} onChangeText={setPassword} secureTextEntry={!visible}
-            autoComplete="current-password" placeholder="Enter your password" editable={!busy} onSubmitEditing={() => void submit()} />
-            <Pressable accessibilityRole="button" onPress={() => setVisible(!visible)} style={{ alignSelf: 'flex-end', minHeight: 44, justifyContent: 'center' }}><Text style={{ color: colors.green, fontWeight: '600', fontSize: 12 }}>{visible ? 'Hide password' : 'Show password'}</Text></Pressable>
+      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ flexGrow: 1, width: '100%', maxWidth: 480, alignSelf: 'center', padding: 20, gap: 24 }}>
+        <LoginIntro />
+        <Glass style={{ gap: 17, padding: 20, borderRadius: 28 }}>
+          <View style={{ gap: 5 }}><Text accessibilityRole="header" style={[styles.title, { fontSize: 24 }]}>Welcome back</Text><Text style={styles.small}>Let's get you signed in.</Text></View>
+          <View style={{ flexDirection: 'row', padding: 4, borderRadius: 14, backgroundColor: '#E5EDE8' }}>
+            {(['password', 'otp'] as const).map(mode => <Pressable key={mode} accessibilityRole="tab"
+              accessibilityState={{ selected: form.mode === mode, disabled: form.busy }} disabled={form.busy}
+              onPress={() => form.changeMode(mode)} style={{ flex: 1, minHeight: 44, borderRadius: 11, alignItems: 'center', justifyContent: 'center', backgroundColor: form.mode === mode ? 'white' : 'transparent' }}>
+              <Text style={{ color: form.mode === mode ? colors.green : colors.muted, fontSize: 13, fontWeight: '700' }}>{mode === 'password' ? 'Password' : 'Email OTP'}</Text>
+            </Pressable>)}
           </View>
-          <Button title="Sign in" icon="arrow" loading={busy} onPress={() => void submit()} />
-          <Text style={[styles.small, { textAlign: 'center' }]}>Need access or a password reset?{ '\n' }Contact your company's CRM administrator.</Text>
-        </View>
-        <View style={{ gap: 5, marginTop: 'auto', paddingTop: 12 }}><Text style={[styles.small, { textAlign: 'center' }]}>CRM server · {server}</Text>
-          {Platform.OS === 'web' ? <Text style={[styles.small, { textAlign: 'center' }]}>Browser sessions end on refresh. No token is saved in browser storage.</Text> : null}
+          {form.error ? <Notice message={form.error} error /> : null}
+          <Field label="Work email" value={form.email} onChangeText={form.setEmail} keyboardType="email-address"
+            autoCapitalize="none" autoCorrect={false} autoComplete="email" placeholder="you@company.com" editable={!form.busy && !enteringCode} />
+          {form.mode === 'password' ? <View style={{ gap: 4 }}>
+            <Field label="Password" value={form.password} onChangeText={form.setPassword} secureTextEntry={!visible}
+              autoComplete="current-password" placeholder="Enter your password" editable={!form.busy} onSubmitEditing={() => void form.submit()} />
+            <Pressable accessibilityRole="button" disabled={form.busy} onPress={() => setVisible(!visible)} style={{ alignSelf: 'flex-end', minHeight: 44, justifyContent: 'center' }}>
+              <Text style={{ color: colors.green, fontWeight: '600', fontSize: 12 }}>{visible ? 'Hide password' : 'Show password'}</Text>
+            </Pressable>
+          </View> : enteringCode ? <View style={{ gap: 12 }}>
+            <Text accessibilityLiveRegion="polite" style={styles.small}>If your sales account is active, check your email for a 6-digit code.</Text>
+            <Field label="Login code" value={form.code} onChangeText={value => form.setCode(value.replace(/\D/g, '').slice(0, 6))}
+              keyboardType="number-pad" autoComplete="one-time-code" textContentType="oneTimeCode" maxLength={6} autoCorrect={false}
+              placeholder="000000" editable={!form.busy} onSubmitEditing={() => void form.submit()} />
+            {form.expired ? <Text style={{ color: colors.red }}>Code expired. Request a new one.</Text> : null}
+            <View style={styles.spread}>
+              <Pressable accessibilityRole="button" onPress={form.changeEmail} disabled={form.busy} style={{ minHeight: 44, justifyContent: 'center' }}><Text style={{ color: colors.green }}>Change email</Text></Pressable>
+              <Pressable accessibilityRole="button" accessibilityLabel="Resend code" disabled={form.busy || form.remaining > 0}
+                onPress={() => void form.sendCode()} style={{ minHeight: 44, justifyContent: 'center', opacity: form.remaining > 0 ? 0.55 : 1 }}>
+                <Text style={{ color: colors.green }}>{form.remaining > 0 ? `Resend in ${form.remaining}s` : 'Resend code'}</Text>
+              </Pressable>
+            </View>
+          </View> : <Text style={styles.small}>Use a one-time code instead of your password.</Text>}
+          <Button title={title} icon="arrow" loading={form.busy} disabled={enteringCode ? form.expired || form.code.length !== 6 : form.mode === 'otp' && form.remaining > 0} onPress={() => void form.submit()} />
+          {form.busy ? <Text accessibilityLiveRegion="polite" style={[styles.small, { textAlign: 'center' }]}>{form.mode === 'otp' && !enteringCode ? 'Requesting your code…' : 'Please wait…'}</Text> : null}
+          {form.mode === 'otp' && !enteringCode && form.remaining > 0 ? <Text style={styles.small}>You can request another code in {form.remaining}s.</Text> : null}
+        </Glass>
+        <View style={{ marginTop: 'auto', gap: 8, paddingTop: 2, paddingBottom: 8 }}>
+          <View style={[styles.row, { justifyContent: 'center' }]}><Icon name="lock" size={13} /><Text style={styles.small}>Your workspace. Securely connected.</Text></View>
+          <Text style={[styles.small, { textAlign: 'center', fontSize: 11 }]}>Need access? Contact your CRM administrator.</Text>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

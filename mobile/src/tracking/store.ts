@@ -79,6 +79,13 @@ export async function snapshot(owner: string) {
   const db = await trackingDb();
   const active = await getActive();
   const pending = await db.getFirstAsync<{ count: number }>('SELECT COUNT(*) AS count FROM tracking_events WHERE owner=? AND synced=0', owner);
-  const rows = await db.getAllAsync<StoredEvent>('SELECT event_id,payload,synced FROM tracking_events WHERE owner=? ORDER BY seq DESC LIMIT 500', owner);
-  return { active: active?.owner === owner ? active : null, pending: pending?.count || 0, events: rows.map(row => JSON.parse(row.payload) as TrackEvent).reverse(), error: await meta<string>(db, `error:${owner}`) || '' };
+  const ownActive = active?.owner === owner ? active : null;
+  const latest = ownActive ? null : await db.getFirstAsync<{ session_id: string }>('SELECT session_id FROM tracking_events WHERE owner=? ORDER BY seq DESC LIMIT 1', owner);
+  const sessionId = ownActive?.sessionId || latest?.session_id;
+  // Read the selected session, not a mixed 500-event tail. A defensive cap is
+  // explicitly surfaced; incomplete local history must never claim a full trip.
+  const rows = sessionId ? await db.getAllAsync<StoredEvent>('SELECT event_id,payload,synced FROM tracking_events WHERE owner=? AND session_id=? ORDER BY seq DESC LIMIT 50001', owner, sessionId) : [];
+  const routeTruncated = rows.length > 50000;
+  return { active: ownActive, pending: pending?.count || 0, routeTruncated,
+    events: rows.slice(0, 50000).map(row => JSON.parse(row.payload) as TrackEvent).reverse(), error: await meta<string>(db, `error:${owner}`) || '' };
 }

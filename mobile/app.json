@@ -2,7 +2,8 @@
   "expo": {
     "name": "GreenCRM Sales",
     "slug": "greencrm-field",
-    "version": "0.1.1",
+    "version": "0.1.6",
+    "icon": "./assets/crm-icon.png",
     "runtimeVersion": { "policy": "fingerprint" },
     "updates": {
       "enabled": true,
@@ -20,12 +21,13 @@
     },
     "android": {
       "package": "com.greencall.field.dev",
-      "versionCode": 2,
+      "versionCode": 7,
       "allowBackup": false,
       "blockedPermissions": [
         "android.permission.RECORD_AUDIO"
       ],
       "permissions": [
+        "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.ACCESS_BACKGROUND_LOCATION",
@@ -34,9 +36,11 @@
       ]
     },
     "plugins": [
+      ["expo-splash-screen", { "image": "./assets/crm-icon.png", "imageWidth": 120, "backgroundColor": "#F4F7F5" }],
       "expo-router",
       "./plugins/withTrackingSafety.cjs",
       "expo-secure-store",
+      "expo-sharing",
       [
         "expo-sqlite",
         {

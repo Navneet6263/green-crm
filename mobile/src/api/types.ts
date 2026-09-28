@@ -10,6 +10,9 @@ export type Lead = {
   product_name?: string; team_name?: string; requirements?: string;
   product_id?: string; team_id?: string; address_street?: string; address_city?: string;
   address_state?: string; address_zip?: string; created_at?: string;
+  address_country?: string; industry?: string; lead_source?: string; assigned_to_name?: string; created_by_name?: string;
+  estimated_value?: number | null; advance_received?: number | null; remaining_payment?: number | null;
+  number_of_units?: number | null; no_of_employees?: string; active_users?: number | null; onboarded_date?: string | null;
 };
 export type Task = { task_id: string; title: string; status: string; due_date?: string; priority?: string; notes?: string; related_to?: string; related_id?: string; team_id?: string };
 export type LeadNote = { id: number; content: string; created_at: string; created_by_name?: string };

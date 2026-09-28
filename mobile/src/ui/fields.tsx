@@ -1,4 +1,4 @@
-import { Pressable, ScrollView, Text, TextInput, View, type TextInputProps } from 'react-native';
+import { Platform, Pressable, ScrollView, Text, TextInput, View, type TextInputProps } from 'react-native';
 import { colors, styles } from './theme';
 
 export function Field({ label, hint, ...props }: TextInputProps & { label: string; hint?: string }) {
@@ -10,6 +10,7 @@ export function Field({ label, hint, ...props }: TextInputProps & { label: strin
 export function Chips({ options, value, onChange, disabled = false }: { options: { value: string; label: string }[]; value: string; onChange: (value: string) => void; disabled?: boolean }) {
   return <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
     {options.map(item => <Pressable key={item.value} accessibilityRole="button" accessibilityState={{ selected: value === item.value, disabled }} disabled={disabled}
+      {...(Platform.OS === 'web' ? { 'aria-pressed': value === item.value } : {})}
       onPress={() => onChange(item.value)} style={{ minHeight: 44, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 13,
         backgroundColor: value === item.value ? colors.green : colors.white, borderWidth: 1, borderColor: value === item.value ? colors.green : colors.line }}>
       <Text style={{ fontSize: 13, fontWeight: '600', color: value === item.value ? colors.white : colors.muted }}>{item.label}</Text>

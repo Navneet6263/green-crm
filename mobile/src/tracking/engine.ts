@@ -6,7 +6,7 @@ import { beginTrip, endTrip, getActive, recordFix, setTrackingError, snapshot } 
 import { MAX_TRIP_MS, ownerKey } from './types';
 import { trackingStoreExists } from './database';
 import { requireActiveApp, trackingAccess, setupTrackingPermissions } from './permissions';
-import { nativeServiceHealth, waitForNativeService } from './nativeService';
+import { nativeServiceHealth, waitForNativeService, TrackingBuildError } from './nativeService';
 import { describeTracking } from './status';
 export { syncTracking } from './sync';
 export const TASK_NAME = 'greencrm-sales-route-v1';
@@ -29,8 +29,12 @@ export async function trackingState(session: Session) {
     if (state.active && !expired) await setTrackingError(owner, reason);
     state = await snapshot(owner); registered = false;
   }
-  const health = await nativeServiceHealth();
-  return describeTracking({ ...state, serviceError: health?.error || '' }, access, registered && (health?.running ?? true));
+  try {
+    const health = await nativeServiceHealth();
+    return describeTracking({ ...state, buildSupported: true, serviceError: health?.error || '' }, access, registered && (health?.running ?? true));
+  } catch (error) {
+    return describeTracking({ ...state, buildSupported: !(error instanceof TrackingBuildError), serviceError: error instanceof Error ? error.message : 'Could not check tracking service.' }, access, false);
+  }
 }
 export const prepareTracking = () => exclusive(setupTrackingPermissions);
 export async function reconcileTracking(session: Session) {
@@ -45,10 +49,14 @@ export function startTracking(session: Session) {
       requireActiveApp();
     };
     if (!(await TaskManager.isAvailableAsync())) throw new Error('Background tracking needs a native development build, not Expo Go or a browser.');
+    await nativeServiceHealth(); // Missing native patch must never fall back to unsafe recording.
+    await setupTrackingPermissions(() => {
+      if (startedGeneration !== generation) throw new Error('Start was cancelled.');
+    });
+    checkCancelled();
     const access = await trackingAccess();
     if (!access.services) throw new Error('Turn on the phone location service.');
-    if (!access.ready) throw new Error('Complete Set up location first, return to GreenCRM, then tap Start tracking.');
-    await nativeServiceHealth(); // An old binary must fail safely BEFORE creating a trip.
+    if (!access.ready) throw new Error('Allow location access, then tap Start tracking again.');
     checkCancelled();
     const trip = await beginTrip(ownerKey(session, API_BASE));
     try {

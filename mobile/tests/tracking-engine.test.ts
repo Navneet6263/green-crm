@@ -9,10 +9,11 @@ import type { Session } from '../src/api/types';
 
 const session = { user: { company_id: 'company', user_id: 'employee', role: 'sales' } } as Session;
 const owner = types.ownerKey(session, 'https://crm.test/api');
+class TrackingBuildError extends Error {}
 function fixture() {
   const state = {
     foreground: true, permission: true, services: true, registered: false, nativeRunning: false,
-    setup: 0, started: 0, stopped: 0, exists: true, error: '', serviceError: '', oldBinary: false,
+    setup: 0, started: 0, stopped: 0, exists: true, error: '', serviceError: '', oldBinary: false, grantOnSetup: false,
     active: null as types.ActiveTrip | null, events: [] as types.TrackEvent[],
     wait: async () => {},
   };
@@ -42,9 +43,13 @@ function fixture() {
     'expo-task-manager': { isAvailableAsync: async () => true },
     '../api/runtime': { API_BASE: 'https://crm.test/api' }, './types': types, './store': store,
     './database': { trackingStoreExists: async () => state.exists }, './sync': {}, './status': { describeTracking },
-    './permissions': { trackingAccess: access, requireActiveApp: cancelled, setupTrackingPermissions: async () => { state.setup++; } },
+    './permissions': { trackingAccess: access, requireActiveApp: cancelled, setupTrackingPermissions: async () => {
+      state.setup++; if (state.grantOnSetup) state.permission = true;
+      if (!state.permission) throw new Error('Location not allowed');
+    } },
     './nativeService': {
-      nativeServiceHealth: async () => { if (state.oldBinary) throw new Error('Install new APK'); return { running: state.nativeRunning, error: state.serviceError }; },
+      TrackingBuildError,
+      nativeServiceHealth: async () => { if (state.oldBinary) throw new TrackingBuildError('Install new APK'); return { running: state.nativeRunning, error: state.serviceError }; },
       waitForNativeService: async (check: () => void) => { await state.wait(); check(); if (state.serviceError) throw new Error(state.serviceError); state.nativeRunning = true; },
     },
   };
@@ -57,16 +62,27 @@ function fixture() {
   return { state, engine: module.exports as typeof import('../src/tracking/engine') };
 }
 
-test('permission setup never starts recording and Start never requests permissions', async () => {
+test('Start requests missing permissions and records only after they are granted', async () => {
   const { state, engine } = fixture();
   await engine.prepareTracking(); assert.equal(state.setup, 1); assert.equal(state.events.length, 0); assert.equal(state.started, 0);
   state.permission = false;
-  await assert.rejects(engine.startTracking(session), /Set up location/);
-  assert.equal(state.setup, 1); assert.equal(state.events.length, 0);
-  state.permission = true;
+  await assert.rejects(engine.startTracking(session), /not allowed/);
+  assert.equal(state.setup, 2); assert.equal(state.events.length, 0);
+  state.grantOnSetup = true;
   await engine.startTracking(session);
-  assert.equal(state.started, 1); assert.equal(state.setup, 1);
+  assert.equal(state.started, 1); assert.equal(state.setup, 3);
   assert.equal((await engine.trackingState(session)).status, 'waiting_gps');
+});
+
+test('missing native method retains queue/status instead of leaving the screen checking forever', async () => {
+  const { state, engine } = fixture();
+  await engine.startTracking(session);
+  state.oldBinary = true;
+  const result = await engine.trackingState(session);
+  assert.equal(result.status, 'update_required'); assert.equal(result.running, false);
+  assert.equal(result.pending, 1); assert.equal(result.active?.sessionId, 'trip');
+  assert.match(result.serviceError || '', /new APK/);
+  await engine.stopTracking(); assert.equal(state.events.length, 2);
 });
 
 test('inactive app, old APK and disabled location do not create a trip', async () => {

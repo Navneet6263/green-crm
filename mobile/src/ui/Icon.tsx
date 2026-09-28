@@ -21,6 +21,7 @@ const paths = {
   refresh: 'M20 7a9 9 0 1 0 1 8M20 3v5h-5',
   logout: 'M10 3H4v18h6M9 12h12m-5-5 5 5-5 5',
   clock: 'M12 6v6l4 2',
+  bell: 'M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4',
 };
 export type IconName = keyof typeof paths;
 export function Icon({ name, size = 22, color = colors.ink }: { name: IconName; size?: number; color?: ColorValue }) {

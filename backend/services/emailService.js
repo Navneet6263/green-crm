@@ -217,7 +217,7 @@ function getTransporter(config) {
   return transporterCache.get(cacheKey);
 }
 
-async function sendEmail({ company = null, platformCompany = null, to, cc = [], subject, html, text, replyTo }) {
+async function sendEmail({ company = null, platformCompany = null, to, cc = [], subject, html, text, replyTo, redactErrors = false }) {
   const transportConfig = buildTransportConfig(company, platformCompany);
 
   if (!transportConfig) {
@@ -246,18 +246,18 @@ async function sendEmail({ company = null, platformCompany = null, to, cc = [], 
       message_id: info.messageId || null,
     };
   } catch (error) {
-    console.error("[email] delivery failed:", error.message);
+    console.error("[email] delivery failed:", redactErrors ? "Authentication email delivery failed" : error.message);
 
     return {
       delivery: "preview",
       provider: "preview-fallback",
       message_id: null,
-      error: error.message,
+      error: redactErrors ? "Authentication email delivery failed" : error.message,
     };
   }
 }
 
-async function sendCustomEmail({ company = null, platformCompany = null, to, cc = [], subject, body, heading = "GreenCRM" }) {
+async function sendCustomEmail({ company = null, platformCompany = null, to, cc = [], subject, body, heading = "GreenCRM", redactErrors = false }) {
   const safeHeading = escapeHtml(heading);
   const safeBody = convertTextToHtml(body);
 
@@ -268,6 +268,7 @@ async function sendCustomEmail({ company = null, platformCompany = null, to, cc 
     cc,
     subject,
     text: body,
+    redactErrors,
     html: `
       <div style="font-family:Arial,sans-serif;max-width:680px;margin:0 auto;padding:24px;background:#f3f6fb;">
         <div style="background:#ffffff;border-radius:22px;padding:32px;border:1px solid #dbe4ef;box-shadow:0 24px 60px rgba(15,23,42,0.08);">

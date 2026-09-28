@@ -1,6 +1,7 @@
 import { request } from './runtime';
 import { readPage, unwrap, ApiError } from './client';
 import type { Bucket, Lead, LeadNote, Profile, Session, Task, Team, Product } from './types';
+import { filterParams, type LeadFilters } from '../features/leads/leadFilters';
 
 export async function login(email: string, password: string) {
   const result = unwrap<Profile & { token: string }>(await request('/auth/login', '', { email: email.trim().toLowerCase(), password }));
@@ -12,10 +13,14 @@ export async function profile(token: string) {
   if (!result?.user?.user_id) throw new ApiError('Profile response is incomplete.');
   return result;
 }
-export async function getLeads(session: Session, search: string, page: number, status = '') {
+export async function getLeads(session: Session, search: string, page: number, status = '', filters: Partial<LeadFilters> = {}, pageSize = 20) {
   // /my-leads means "created by me" on this backend. Use /leads to retain
   // server-enforced assigned/shared visibility for the signed-in sales user.
-  return readPage<Lead>(await request(`/leads?${new URLSearchParams({ search, status, page: String(page), page_size: '15' })}`, session.token), page);
+  const query = filterParams(filters);
+  query.set('search', search); query.set('status', status || filters.status || '');
+  query.set('page', String(page)); query.set('page_size', String(Math.min(100, Math.max(1, pageSize))));
+  query.set('include_workflow_summary', '0');
+  return readPage<Lead>(await request(`/leads?${query}`, session.token), page);
 }
 export async function getFollowUps(session: Session, bucket: Bucket, page: number, pageSize = 10) {
   return readPage<Lead>(await request(`/leads/my-day?bucket=${bucket}&page=${page}&page_size=${pageSize}`, session.token), page);

@@ -8,9 +8,71 @@ process.env.EXPO_PUBLIC_API_URL = 'https://crm.example.test/api';
 Object.assign(globalThis, { __DEV__: false });
 let crm: typeof import('../src/api/crm');
 let sales: typeof import('../src/api/sales');
+let otp: typeof import('../src/api/emailOtp');
+let notifications: typeof import('../src/api/notifications');
 before(async () => { crm = await import('../src/api/crm'); sales = await import('../src/api/sales'); });
+before(async () => { otp = await import('../src/api/emailOtp'); });
+before(async () => { notifications = await import('../src/api/notifications'); });
 after(() => { globalThis.fetch = originalFetch; if (originalBase === undefined) delete process.env.EXPO_PUBLIC_API_URL; else process.env.EXPO_PUBLIC_API_URL = originalBase; });
 const live: Session = { user: { user_id: 'test-sales', company_id: 'test-company', name: 'Test Sales', email: 'test@example.test', role: 'sales' }, token: 'test-session-token' };
+
+test('lead filters and export batch size go to the scoped server endpoint without a client tenant override', async () => {
+  let requested = '';
+  globalThis.fetch = async url => { requested = String(url); return new Response(JSON.stringify({ items: [], meta: { total: 0, total_pages: 1 } })); };
+  await crm.getLeads(live, 'search value', 2, '', { status: 'qualified', priority: 'high', lead_source: 'referral', team_id: 't1', product_id: 'p1', from_date: '2026-09-01', to_date: '2026-09-24' }, 100);
+  const url = new URL(requested);
+  assert.equal(url.pathname, '/api/leads'); assert.equal(url.searchParams.get('status'), 'qualified');
+  assert.equal(url.searchParams.get('page'), '2'); assert.equal(url.searchParams.get('page_size'), '100');
+  assert.equal(url.searchParams.get('team_id'), 't1'); assert.equal(url.searchParams.get('priority'), 'high');
+  assert.equal(url.searchParams.get('include_workflow_summary'), '0'); assert.equal(url.searchParams.has('company_id'), false);
+});
+
+test('email OTP sends normalized email, challenge and code without client role or company claims', async () => {
+  const calls: { url: string; body: unknown; headers: HeadersInit | undefined }[] = [];
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url: String(url), body: JSON.parse(String(options?.body)), headers: options?.headers });
+    return new Response(JSON.stringify({ data: String(url).endsWith('/request') ? { challenge_id: 'challenge', expires_in: 300, retry_after: 60 } : live }));
+  };
+  const challenge = await otp.requestEmailOtp(' SALES@example.test ');
+  assert.equal(challenge.challenge_id, 'challenge');
+  await otp.verifyEmailOtp(' SALES@example.test ', challenge.challenge_id, '123456');
+  assert.deepEqual(calls[0].body, { email: 'sales@example.test' });
+  assert.deepEqual(calls[1].body, { email: 'sales@example.test', challenge_id: 'challenge', code: '123456' });
+  assert.equal(new Headers(calls[0].headers).has('Authorization'), false);
+});
+
+test('missing OTP backend offers password fallback and malformed responses cannot log in', async () => {
+  globalThis.fetch = async () => new Response(JSON.stringify({ error: 'Route missing' }), { status: 404 });
+  await assert.rejects(otp.requestEmailOtp('sales@example.test'), /use your password/);
+  globalThis.fetch = async () => new Response(JSON.stringify({ data: {} }));
+  await assert.rejects(otp.requestEmailOtp('sales@example.test'), /request a login code/);
+  await assert.rejects(otp.verifyEmailOtp('sales@example.test', 'challenge', '123456'), /incomplete/);
+});
+
+test('notification inbox stays personal and preserves the server-wide unread count', async () => {
+  let requested = '';
+  globalThis.fetch = async url => {
+    requested = String(url);
+    return new Response(JSON.stringify({ data: [{ notif_id: 'n1', title: 'Your lead' }], meta: { total: 31, total_pages: 3, unread_count: 25 } }));
+  };
+  const result = await notifications.getNotifications(live, 2);
+  const query = new URL(requested).searchParams;
+  assert.equal(query.get('mine'), '1'); assert.equal(query.get('page'), '2');
+  assert.equal(query.has('user_id'), false); assert.equal(query.has('company_id'), false);
+  assert.equal(result.unread, 25); assert.equal(result.items.length, 1);
+});
+
+test('notification reads use only the selected ID; failed requests do not report success', async () => {
+  let requested = '', method = '', body: unknown;
+  globalThis.fetch = async (url, options) => {
+    requested = String(url); method = options?.method || ''; body = JSON.parse(String(options?.body));
+    return new Response(JSON.stringify({ data: { is_read: true } }));
+  };
+  await notifications.markNotificationRead(live, 'n/1');
+  assert.ok(requested.endsWith('/notifications/n%2F1/read')); assert.equal(method, 'PATCH'); assert.deepEqual(body, {});
+  globalThis.fetch = async () => new Response(JSON.stringify({ error: 'Not allowed' }), { status: 403 });
+  await assert.rejects(notifications.markNotificationRead(live, 'n1'), /Not allowed/);
+});
 
 test('sales lead list uses the assigned/shared endpoint, not creator-only my-leads', async () => {
   let requested = '';

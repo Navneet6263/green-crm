@@ -56,6 +56,10 @@ function transform(name, input) {
   return result;
 }
 function patchLocation(projectRoot) {
+  const appPackage = JSON.parse(fs.readFileSync(path.join(projectRoot, 'package.json'), 'utf8'));
+  if (!appPackage.expo?.autolinking?.android?.buildFromSource?.includes('expo-location')) {
+    throw new Error('expo-location must build from source; prebuilt AARs do not include the tracking patch.');
+  }
   const packageFile = require.resolve('expo-location/package.json', { paths: [projectRoot] });
   if (JSON.parse(fs.readFileSync(packageFile, 'utf8')).version !== '57.0.19') {
     throw new Error('Tracking safety patch is reviewed only for expo-location 57.0.19. Review it before upgrading.');

@@ -4,11 +4,14 @@ const authenticate = require("../middlewares/authenticate");
 const { authRateLimiter } = require("../middlewares/rateLimiter");
 const asyncHandler = require("../utils/asyncHandler");
 const authController = require("../controllers/authController");
+const mobileOtpController = require("../controllers/mobileOtpController");
 
 const router = express.Router();
 
 router.post("/register", authRateLimiter, asyncHandler(authController.register));
 router.post("/login", authRateLimiter, asyncHandler(authController.login));
+router.post("/mobile-otp/request", authRateLimiter, asyncHandler(mobileOtpController.request));
+router.post("/mobile-otp/verify", authRateLimiter, asyncHandler(mobileOtpController.verify));
 router.post("/forgot-password", authRateLimiter, asyncHandler(authController.forgotPassword));
 router.post("/reset-password", authRateLimiter, asyncHandler(authController.resetPassword));
 router.get("/super-admin-status", asyncHandler(authController.superAdminStatus));

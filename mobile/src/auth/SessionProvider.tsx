@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { Alert } from 'react-native';
 import { ApiError } from '../api/client';
 import * as crm from '../api/crm';
+import { verifyEmailOtp } from '../api/emailOtp';
 import { onSessionExpired, request } from '../api/runtime';
 import type { Session } from '../api/types';
 import { forgetToken, loadToken, saveToken } from './storage';
@@ -11,6 +12,7 @@ import { nativeTracking, stopTracking } from '../tracking/engine';
 type Auth = {
   session: Session | null; restoring: boolean; restoreError: string;
   restore: () => Promise<void>; signIn: (email: string, password: string) => Promise<void>;
+  signInWithOtp: (email: string, challengeId: string, code: string) => Promise<void>;
   signOut: () => Promise<void>;
 };
 const Context = createContext<Auth | null>(null);
@@ -61,14 +63,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     return () => onSessionExpired(undefined);
   }, [assign, restore]);
 
-  const signIn = async (email: string, password: string) => {
-    const result = await crm.login(email, password);
+  const completeSignIn = async (result: Session) => {
     assertSales(result.user.role);
     if (nativeTracking) await stopTracking('Signed in again');
     await saveToken(result.token);
     await cacheVerifiedSession(result);
     assign(result); setRestoreError('');
   };
+  const signIn = async (email: string, password: string) => completeSignIn(await crm.login(email, password));
+  const signInWithOtp = async (email: string, challengeId: string, code: string) => completeSignIn(await verifyEmailOtp(email, challengeId, code));
   const signOut = async () => {
     const previous = current.current;
     if (nativeTracking) await stopTracking('Signed out');
@@ -80,7 +83,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       catch { Alert.alert('Signed out on this phone', 'Server session revocation could not be confirmed. Your token was removed from this device.'); }
     }
   };
-  return <Context.Provider value={{ session, restoring, restoreError, restore, signIn, signOut }}>{children}</Context.Provider>;
+  return <Context.Provider value={{ session, restoring, restoreError, restore, signIn, signInWithOtp, signOut }}>{children}</Context.Provider>;
 }
 export function useSession() {
   const value = useContext(Context);

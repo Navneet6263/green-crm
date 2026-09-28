@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import { execFileSync } from 'node:child_process';
 const require = createRequire(import.meta.url);
 const { transform, hashes } = require('../plugins/patch-location.cjs');
 
@@ -32,5 +33,16 @@ test('Android safety patch is included in prebuild, with a new installable versi
   const { expo } = JSON.parse(readFileSync('app.json', 'utf8'));
   assert.ok(expo.plugins.includes('./plugins/withTrackingSafety.cjs'));
   assert.equal(expo.android.package, 'com.greencall.field.dev');
-  assert.ok(expo.android.versionCode >= 2);
+  assert.ok(expo.android.versionCode >= 3);
+});
+
+test('real Android autolinking forces the patched location project to compile instead of using its prebuilt AAR', () => {
+  const config = JSON.parse(execFileSync(process.execPath, ['node_modules/expo-modules-autolinking/bin/expo-modules-autolinking.js', 'resolve', '--platform', 'android', '--json'], { encoding: 'utf8' }));
+  const location = config.modules.find((item: any) => item.packageName === 'expo-location');
+  assert.ok(location?.projects.length);
+  for (const project of location.projects) {
+    assert.ok(config.configuration.buildFromSource.some((pattern: string) => new RegExp(`^(?:${pattern})$`).test(project.name)));
+  }
+  const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
+  assert.equal(pkg.scripts['eas-build-post-install'], 'node scripts/check-tracking-native.cjs');
 });

@@ -132,3 +132,23 @@ test('server acknowledgement must exactly match the submitted batch, with capped
   assert.notEqual(types.ownerKey(session, 'https://a/api'), types.ownerKey(session, 'https://b/api'));
   assert.notEqual(types.ownerKey(session, 'https://a/api'), types.ownerKey({ user: { company_id: 'two', user_id: 'employee' } } as Session, 'https://a/api'));
 });
+
+test('selected route includes more than 500 events without leaking another owner or session', async () => {
+  const f = fixture();
+  try {
+    const trip = await f.store.beginTrip('owner');
+    const insert = f.database.prepare('INSERT INTO tracking_events(owner,event_id,session_id,payload,stored_at) VALUES(?,?,?,?,?)');
+    for (let index = 0; index < 610; index++) {
+      const event = { event_id: `event-${index}`, session_id: trip.sessionId, device_id: trip.deviceId, kind: 'point', captured_at: trip.startedAt, latitude: 0, longitude: index / 10000, accuracy: 5 };
+      insert.run('owner', event.event_id, trip.sessionId, JSON.stringify(event), Date.now());
+    }
+    insert.run('other', 'private', trip.sessionId, JSON.stringify({ event_id: 'private', session_id: trip.sessionId }), Date.now());
+    const state = await f.store.snapshot('owner');
+    assert.equal(state.events.length, 611); assert.equal(state.routeTruncated, false);
+    assert.equal(state.events[0].kind, 'start');
+    assert.ok(state.events.every(event => event.event_id !== 'private'));
+    await f.store.endTrip();
+    const next = await f.store.beginTrip('owner');
+    assert.deepEqual((await f.store.snapshot('owner')).events.map(event => event.session_id), [next.sessionId]);
+  } finally { f.database.close(); }
+});

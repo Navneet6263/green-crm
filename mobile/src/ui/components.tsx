@@ -3,6 +3,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { ReactNode } from 'react';
 import { colors, styles } from './theme';
 import { Icon, type IconName } from './Icon';
+import { Glass, GlassBackdrop } from './Glass';
 
 export function Button({ title, onPress, loading = false, disabled = false, secondary = false, icon }: {
   title: string; onPress: () => void; loading?: boolean; disabled?: boolean; secondary?: boolean; icon?: IconName;
@@ -21,22 +22,24 @@ export function Badge({ children, warm = false }: { children: ReactNode; warm?: 
   </View>;
 }
 export function Card({ children, style }: { children: ReactNode; style?: ViewStyle }) {
-  return <View style={[styles.card, style]}>{children}</View>;
+  return <Glass style={{ ...styles.card, ...style }}>{children}</Glass>;
 }
 export function Notice({ message, error = false }: { message: string; error?: boolean }) {
   return <View accessibilityRole={error ? 'alert' : undefined} style={{ borderRadius: 14, padding: 14, backgroundColor: error ? colors.error : colors.sand }}>
     <Text style={{ color: error ? colors.red : colors.orange, fontSize: 13, lineHeight: 20 }}>{message}</Text>
   </View>;
 }
-export function Screen({ title, eyebrow = 'GREENCRM  /  SALES', subtitle, children, scroll = true, action, onRefresh, refreshing = false }: {
+export function Screen({ title, eyebrow = '', subtitle, children, scroll = true, action, top, onRefresh, refreshing = false }: {
   title: string; eyebrow?: string; subtitle?: string; children: ReactNode; scroll?: boolean;
-  action?: ReactNode; onRefresh?: () => void; refreshing?: boolean;
+  action?: ReactNode; top?: ReactNode; onRefresh?: () => void; refreshing?: boolean;
 }) {
-  const header = <View style={{ paddingHorizontal: 20, paddingTop: 18, paddingBottom: 20, gap: 9 }}>
-    <Text style={styles.eyebrow}>{eyebrow}</Text><View style={styles.spread}><Text accessibilityRole="header" style={[styles.title, { flex: 1 }]}>{title}</Text>{action}</View>
+  const header = <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 16, gap: 7 }}>
+    {top}
+    {eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}<View style={styles.spread}><Text accessibilityRole="header" style={[styles.title, { flex: 1 }]}>{title}</Text>{action}</View>
     {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
   </View>;
   return <SafeAreaView style={styles.screen} edges={['top', 'left', 'right']}>
+    <GlassBackdrop />
     <View style={{ flex: 1, width: '100%', maxWidth: 760, alignSelf: 'center' }}>
       {scroll ? <ScrollView keyboardShouldPersistTaps="handled" refreshControl={onRefresh ? <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.green} /> : undefined}
         contentContainerStyle={{ paddingBottom: 20 }}>{header}<View style={styles.content}>{children}</View></ScrollView> : <>{header}{children}</>}

@@ -3,12 +3,13 @@ import { requireOptionalNativeModule } from 'expo';
 
 type ServiceHealth = { running: boolean; error: string };
 type LocationBridge = { getGreenCrmServiceHealthAsync?: () => Promise<ServiceHealth> };
+export class TrackingBuildError extends Error {}
 
 export async function nativeServiceHealth(): Promise<ServiceHealth | null> {
   if (Platform.OS !== 'android') return null;
   const bridge = requireOptionalNativeModule<LocationBridge>('ExpoLocation');
   if (!bridge?.getGreenCrmServiceHealthAsync) {
-    throw new Error('This Android build needs the tracking safety update. Install the new APK over this app; do not uninstall or clear pending routes.');
+    throw new TrackingBuildError('Tracking update missing. Install the new APK over this app; keep your saved routes.');
   }
   return bridge.getGreenCrmServiceHealthAsync();
 }

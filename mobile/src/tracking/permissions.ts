@@ -1,4 +1,4 @@
-import { AppState } from 'react-native';
+import { AppState, Linking } from 'react-native';
 import * as Location from 'expo-location';
 
 export type TrackingAccess = { foreground: boolean; background: boolean; services: boolean; ready: boolean };
@@ -14,13 +14,37 @@ export async function trackingAccess(): Promise<TrackingAccess> {
   return { foreground: foreground.granted, background: background.granted, services, ready: foreground.granted && background.granted };
 }
 
-// Permission setup NEVER creates a trip or starts GPS recording.
-export async function setupTrackingPermissions() {
+// Wait for the permission activity to finish; never start a service from Settings.
+export async function waitForActiveApp(timeoutMs = 30000) {
+  if (AppState.currentState === 'active') return;
+  await new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(() => { listener.remove(); reject(new Error('Return to the app and tap Start tracking again.')); }, timeoutMs);
+    const listener = AppState.addEventListener('change', next => {
+      if (next === 'active') { clearTimeout(timer); listener.remove(); resolve(); }
+    });
+    if (AppState.currentState === 'active') { clearTimeout(timer); listener.remove(); resolve(); }
+  });
+}
+
+// Called only by an explicit Start. Does not itself create a trip or record GPS.
+export async function setupTrackingPermissions(checkCancelled: () => void = () => {}) {
   requireActiveApp();
-  const foreground = await Location.requestForegroundPermissionsAsync();
-  if (!foreground.granted) throw new Error('Location was not allowed. You can still use leads and tasks. Enable location in Settings when you want to track a route.');
-  requireActiveApp();
-  const background = await Location.getBackgroundPermissionsAsync();
-  if (!background.granted) await Location.requestBackgroundPermissionsAsync();
-  // Android may still be showing Settings here. The explicit Start button is a separate action.
+  let foreground = await Location.getForegroundPermissionsAsync();
+  if (!foreground.granted) {
+    if (!foreground.canAskAgain) { await Linking.openSettings(); throw new Error('Allow location in Settings, then return and tap Start tracking.'); }
+    foreground = await Location.requestForegroundPermissionsAsync();
+    await waitForActiveApp(); checkCancelled();
+    if (!foreground.granted) throw new Error('Location not allowed. Tap Start tracking when you are ready.');
+  }
+  checkCancelled();
+  let background = await Location.getBackgroundPermissionsAsync();
+  if (!background.granted) {
+    if (!background.canAskAgain) { await Linking.openSettings(); throw new Error('Choose Always / Allow all the time, then return and tap Start tracking.'); }
+    background = await Location.requestBackgroundPermissionsAsync();
+    await waitForActiveApp(); checkCancelled();
+    // Read again after Settings; the activity result can contain the previous grant.
+    background = await Location.getBackgroundPermissionsAsync();
+    if (!background.granted) throw new Error('Allow all the time / Always is needed to continue your route with the screen locked.');
+  }
+  requireActiveApp(); checkCancelled();
 }

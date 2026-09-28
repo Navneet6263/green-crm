@@ -20,7 +20,7 @@ const emptyLead = {
 // Render the authored TSX with real React Native Web primitives. Only platform
 // integrations/navigation/data hooks are mocked. SVG primitives are DOM elements
 // so React development mode validates the real Icon component's web props.
-function loadScreen(entry: string, platform = 'web') {
+function loadScreen(entry: string, platform = 'web', mapsConfigured = false) {
   const cache = new Map<string, { exports: any }>();
   const session = { token: 'test-only', user: { user_id: 'test-user', name: 'Test', role: 'sales' } };
   function load(file: string): any {
@@ -28,17 +28,25 @@ function loadScreen(entry: string, platform = 'web') {
     const module = { exports: {} as any };
     cache.set(file, module);
     const localRequire = (name: string): any => {
+      if (name.endsWith('.png')) return { uri: 'https://assets.example.test/brand.png', width: 1249, height: 221 };
       if (name === 'react-native') return platform === 'web' ? web : { ...web, Platform: { ...web.Platform, OS: platform } };
       if (name === 'react-native-svg') return { __esModule: true, default: 'svg', Path: 'path', Circle: 'circle', Rect: 'rect', Polyline: 'polyline' };
       if (name === 'expo-linear-gradient') return { LinearGradient: web.View };
-      if (name === 'react-native-safe-area-context') return { SafeAreaView: web.View };
+      if (name === 'react-native-safe-area-context') return { SafeAreaView: web.View, useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }) };
+      if (name === 'expo-constants') return { __esModule: true, default: { expoConfig: { version: 'test-version', extra: { androidGoogleMapsConfigured: mapsConfigured } } } };
+      if (name === 'react-native-maps') return { __esModule: true, PROVIDER_GOOGLE: 'google',
+        default: ({ children, provider }: any) => React.createElement('div', { 'data-native-map': provider || 'apple' }, children),
+        Marker: ({ children, title }: any) => React.createElement('div', { 'data-marker-title': title }, children),
+        Polyline: ({ coordinates }: any) => React.createElement('div', { 'data-route-points': coordinates.length }),
+      };
       if (name === 'expo-router') return { router: {}, useLocalSearchParams: () => ({ id: emptyLead.lead_id }), useNavigation: () => ({}), useFocusEffect: () => {} };
       if (name === 'expo-router/react-navigation') return { usePreventRemove: () => {} };
-      if (name.endsWith('/auth/SessionProvider')) return { useSession: () => ({ session }) };
+      if (name.endsWith('/auth/SessionProvider') || (name === './SessionProvider' && file.includes('auth'))) return { useSession: () => ({ session }) };
       if (name.endsWith('/api/runtime')) return { API_BASE: 'https://crm.example.test/api' };
       if (name.endsWith('/api/crm')) return {};
-      if (name.endsWith('/tracking/engine')) return { nativeTracking: false };
+      if (name.endsWith('/tracking/engine') || (name === './engine' && file.includes('tracking'))) return { nativeTracking: false };
       if (name.endsWith('/photos/photoApi') || name === './photoApi') return {};
+      if (name === './shareExport') return { shareExport: async () => {} };
       if (name.endsWith('/hooks/useResource')) return { useResource: (key: string) => ({ data: key.startsWith('lead:') ? emptyLead : key.startsWith('photos:') ? [] : { items: [], total: 0, totalPages: 1 }, loading: false, error: '', reload: () => {} }) };
       if (name.endsWith('/features/leads/NoteHistory')) return { NoteHistory: () => null };
       if (!name.startsWith('.')) return nodeRequire(name);
@@ -72,11 +80,62 @@ test('web login renders its initially empty error without raw View text', contex
   const html = renderWithoutTextWarnings(context, React.createElement(Login));
   assert.match(html, /Welcome back/);
   assert.doesNotMatch(html, /Explore demo|sample data|Foundation preview/);
+  assert.match(html, /Email OTP/);
+  assert.match(html, /backdrop-filter:blur/);
+});
+
+test('sales home has a working profile and notification entry instead of repeated brand text', context => {
+  const Home = loadScreen('app/(tabs)/index.tsx').default;
+  const html = renderWithoutTextWarnings(context, React.createElement(Home));
+  assert.match(html, /Open your profile/); assert.match(html, /Notifications/);
+  assert.match(html, /Start visit/); assert.doesNotMatch(html, /GREENCRM  \/  SALES/);
+});
+
+test('notification empty state renders without a fake notification count', context => {
+  const Inbox = loadScreen('app/notifications.tsx').default;
+  const html = renderWithoutTextWarnings(context, React.createElement(Inbox));
+  assert.match(html, /Notifications/); assert.match(html, /caught up/);
 });
 
 test('web lead details tolerate empty optional fields, notice and error', context => {
   const Detail = loadScreen('app/leads/[id].tsx').default;
-  assert.match(renderWithoutTextWarnings(context, React.createElement(Detail)), /Test store/);
+  const html = renderWithoutTextWarnings(context, React.createElement(Detail));
+  assert.match(html, /Test store/); assert.match(html, /History/);
+  assert.doesNotMatch(html, /Not set|No photos attached|No follow-up scheduled/);
+});
+
+test('lead details omit empty sections/fields but retain meaningful zero values', context => {
+  const { LeadDetailsGrid } = loadScreen('src/features/leads/LeadDetailsGrid.tsx');
+  const html = renderWithoutTextWarnings(context, React.createElement(LeadDetailsGrid, { lead: { ...emptyLead, phone: ' ', team_name: null, active_users: 0, address_city: 'Delhi' } }));
+  assert.match(html, /Active users/); assert.match(html, /Delhi/);
+  assert.doesNotMatch(html, />Phone<|>Team<|>Product<|>Requirements</);
+});
+
+test('leads and tasks use infinite scrolling without visible page navigation', context => {
+  for (const file of ['app/(tabs)/leads.tsx', 'app/(tabs)/tasks.tsx']) {
+    const Screen = loadScreen(file).default;
+    const html = renderWithoutTextWarnings(context, React.createElement(Screen));
+    assert.doesNotMatch(html, /aria-label="Previous"|aria-label="Next"/);
+  }
+  const Screen = loadScreen('app/(tabs)/leads.tsx').default;
+  const html = renderWithoutTextWarnings(context, React.createElement(Screen));
+  assert.match(html, /Filters/); assert.match(html, /Export/);
+  for (const status of ['All', 'New', 'Pending', 'Contacted', 'Qualified', 'Proposal', 'Negotiation', 'On Hold', 'Booked Demo', 'Demo Done', 'Trial Started', 'Closed Won', 'Onboarded', 'Closed Lost']) {
+    assert.ok(html.includes(`>${status}</`), `Missing on-page status: ${status}`);
+  }
+});
+
+test('lead cards keep a neutral surface with useful contact, follow-up and note information', context => {
+  const { LeadCard } = loadScreen('src/features/leads/LeadCard.tsx');
+  const html = renderWithoutTextWarnings(context, React.createElement(LeadCard, { lead: { ...emptyLead,
+    status: 'proposal', phone: '0123456789', product_name: 'Staffing', address_city: 'Delhi',
+    follow_up_date: '2020-01-01T10:00:00Z', latest_note: 'Call\n tomorrow',
+  } }));
+  assert.match(html, /0123456789/); assert.match(html, /Staffing/); assert.match(html, /Delhi/);
+  assert.match(html, /Follow-up overdue/); assert.match(html, /Note: Call tomorrow/);
+  assert.doesNotMatch(html, /border-left-width:4px|114,81,166|240,234,251/);
+  const empty = renderWithoutTextWarnings(context, React.createElement(LeadCard, { lead: { ...emptyLead, phone: ' ', latest_note: ' ' } }));
+  assert.doesNotMatch(empty, /Note:|Follow-up|Not set/);
 });
 
 test('web lead cards and shared screens tolerate empty text props', context => {
@@ -102,6 +161,60 @@ test('decorative web icons use ARIA and never leak native accessibility props to
   assert.doesNotMatch(html, /importantForAccessibility|accessibilityElementsHidden/i);
 });
 
+test('tracker has one enabled Start action even when location permission is missing; no Agree gate', context => {
+  const { TrackerControls } = loadScreen('src/tracking/TrackerControls.tsx');
+  const state = { active: null, events: [], pending: 0, error: '', status: 'permission_required', access: { ready: false } };
+  const html = renderWithoutTextWarnings(context, React.createElement(TrackerControls, {
+    state, loading: false, busy: false, onStart: () => {}, onStop: () => {}, onSync: () => {},
+  }));
+  assert.match(html, /Start tracking/);
+  assert.doesNotMatch(html, /I agree|Set up location|aria-disabled="true"|tamper-proof|12-hour/);
+  assert.equal((html.match(/role="button"/g) || []).length, 1);
+});
+
+test('active tracker shows Stop and pending Sync with actual event counts', context => {
+  const { TrackerControls } = loadScreen('src/tracking/TrackerControls.tsx');
+  const state = { active: { sessionId: 'one', startedAt: new Date().toISOString() }, pending: 2, status: 'recording', events: [
+    { kind: 'point', session_id: 'one' }, { kind: 'reach', session_id: 'one' }, { kind: 'reach', session_id: 'old' },
+  ] };
+  const html = renderWithoutTextWarnings(context, React.createElement(TrackerControls, {
+    state, loading: false, busy: false, onStart: () => {}, onStop: () => {}, onSync: () => {},
+  }));
+  assert.match(html, /Stop tracking/); assert.match(html, /Sync now/);
+  assert.doesNotMatch(html, /Start tracking|I agree/);
+  assert.equal((html.match(/role="button"/g) || []).length, 2);
+});
+
+test('web tracker shows its layout but never offers functioning GPS controls', context => {
+  const Tracking = loadScreen('app/(tabs)/tracking.tsx').default;
+  const html = renderWithoutTextWarnings(context, React.createElement(Tracking));
+  assert.match(html, /Use the Android\/iOS app/);
+  assert.match(html, /Route preview/);
+  assert.match(html, /aria-label="Start tracking"[^>]*aria-disabled="true"|aria-disabled="true"[^>]*aria-label="Start tracking"/);
+  assert.doesNotMatch(html, /Your route is recording/);
+});
+
+test('route sketch filters bad GPS, handles a single point and labels itself as a sketch', context => {
+  const { RouteSketch } = loadScreen('src/tracking/RouteSketch.tsx');
+  const html = renderWithoutTextWarnings(context, React.createElement(RouteSketch, { events: [
+    { event_id: 'bad', latitude: NaN, longitude: 77.1 },
+    { event_id: 'good', latitude: 28.6, longitude: 77.2, kind: 'reach' },
+  ] }));
+  assert.match(html, /not a street map/); assert.doesNotMatch(html, /NaN|Infinity/);
+  assert.match(html, /cx="150" cy="88"/);
+  assert.match(renderWithoutTextWarnings(context, React.createElement(RouteSketch, { events: [] })), /first GPS fix/);
+});
+
+test('stop timeline has one map action per valid check-in and does not claim zero GPS uncertainty', context => {
+  const { StopHistory } = loadScreen('src/tracking/StopHistory.tsx');
+  const html = renderWithoutTextWarnings(context, React.createElement(StopHistory, { onError: () => {}, events: [
+    { event_id: 'reach', kind: 'reach', label: 'Actual store', captured_at: '2026-09-24T10:00:00Z', latitude: 28.6, longitude: 77.2, accuracy: 12 },
+    { event_id: 'missing', kind: 'reach', label: 'Missing GPS', captured_at: '2026-09-24T11:00:00Z' },
+  ] }));
+  assert.match(html, /Open Actual store in Maps/); assert.doesNotMatch(html, /Open Missing GPS in Maps/);
+  assert.match(html, /±12 m/); assert.doesNotMatch(html, /±0 m/);
+});
+
 test('native icons retain platform accessibility hiding without web-only props', () => {
   for (const platform of ['android', 'ios']) {
     const { Icon } = loadScreen('src/ui/Icon.tsx', platform);
@@ -110,5 +223,26 @@ test('native icons retain platform accessibility hiding without web-only props',
     assert.equal(element.props.importantForAccessibility, 'no-hide-descendants');
     assert.equal('aria-hidden' in element.props, false);
     assert.equal('focusable' in element.props, false);
+  }
+});
+
+test('native map missing-key guard keeps GPS working without mounting an unconfigured Google map', context => {
+  const { RouteMap } = loadScreen('src/tracking/RouteMap.native.tsx', 'android');
+  const route = { segments: [], stops: [], first: { latitude: 28.6, longitude: 77.2 } };
+  const html = renderWithoutTextWarnings(context, React.createElement(RouteMap, { route, onSelectStop: () => {} }));
+  assert.match(html, /Map setup pending/); assert.match(html, /Tracking and check-ins still work/);
+  assert.doesNotMatch(html, /data-native-map/);
+});
+
+test('configured map renders route and numbered visits; iOS selects Apple Maps', context => {
+  for (const platform of ['android', 'ios']) {
+    const { RouteMap } = loadScreen('src/tracking/RouteMap.native.tsx', platform, true);
+    const point = { latitude: 28.6, longitude: 77.2 };
+    const route = { segments: [[point, { latitude: 28.601, longitude: 77.201 }]], first: point, last: point,
+      stops: [{ number: 1, coordinate: point, event: { event_id: 'visit', label: 'Customer store', captured_at: '2026-09-24T10:00:00Z' } }] };
+    const html = renderWithoutTextWarnings(context, React.createElement(RouteMap, { route, onSelectStop: () => {} }));
+    assert.match(html, platform === 'android' ? /data-native-map="google"/ : /data-native-map="apple"/);
+    assert.match(html, /data-marker-title="1\. Customer store"/); assert.match(html, /data-route-points="2"/);
+    assert.match(html, /Fit route/); assert.match(html, /Full-screen map/);
   }
 });
