@@ -11,7 +11,7 @@ import LandingUseCases from "../components/landing/LandingUseCases";
 import LandingWorkflow from "../components/landing/LandingWorkflow";
 import FloatingCTA from "../components/landing/FloatingCTA";
 import { BRAND_ICONS, BRAND_NAME } from "../components/branding/brandConfig";
-import { FAQ_ITEMS } from "../components/landing/landing-data";
+import { COMPANY, FAQ_ITEMS } from "../components/landing/landing-data";
 import { absoluteUrl, buildMetadata } from "../lib/seo";
 
 const homeDescription =
@@ -72,17 +72,22 @@ export default function HomePage() {
       areaServed: ["Noida", "Delhi NCR", "India"],
       address: {
         "@type": "PostalAddress",
-        addressLocality: "Noida",
-        addressRegion: "Uttar Pradesh",
+        streetAddress: COMPANY.streetAddress,
+        addressLocality: COMPANY.locality,
+        addressRegion: COMPANY.region,
+        postalCode: COMPANY.postalCode,
         addressCountry: "IN",
       },
       contactPoint: {
         "@type": "ContactPoint",
         contactType: "sales",
+        telephone: COMPANY.phone,
+        email: COMPANY.email,
         url: absoluteUrl("/book-demo"),
         availableLanguage: ["English", "Hindi"],
       },
-      sameAs: [],
+      parentOrganization: { "@type": "Organization", name: COMPANY.name, url: COMPANY.website },
+      sameAs: COMPANY.socials.map((social) => social.href),
     },
     {
       "@context": "https://schema.org",

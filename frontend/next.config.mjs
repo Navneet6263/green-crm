@@ -7,6 +7,12 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  async redirects() {
+    return [
+      // Shareable link to our sister product GreenHR.
+      { source: "/greenhr", destination: "https://www.greenhr.in", permanent: false },
+    ];
+  },
 };
 
 export default nextConfig;

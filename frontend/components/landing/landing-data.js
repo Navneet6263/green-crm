@@ -91,13 +91,41 @@ export const WHY_ITEMS = [
 
 export const CTA_POINTS = ["Clean handoff between users", "One place for daily follow-up work", "Easy for small and growing teams"];
 
+const GREENCALL_SITE = "https://www.greencall.in";
+
+// Parent company details, as published on greencall.in.
+export const COMPANY = {
+  name: "Green Call Technology",
+  website: GREENCALL_SITE,
+  streetAddress: "A-43, Sector 67",
+  locality: "Noida",
+  region: "Uttar Pradesh",
+  postalCode: "201301",
+  address: "A-43, Sector 67, Noida, Gautam Buddha Nagar, UP 201301, India",
+  mapUrl: "https://maps.google.com/?q=A-43+Sector+67+Noida+Uttar+Pradesh+201301",
+  phone: "+91 120 310 1985",
+  phoneHref: "tel:+911203101985",
+  email: "reachus@greencall.in",
+  whatsappHref: "https://wa.me/917004023078?text=Hi%2C%20I%20want%20to%20know%20about%20GreenCRM",
+  socials: [
+    { name: "LinkedIn", href: "https://www.linkedin.com/company/green-call-technology" },
+    { name: "Facebook", href: "https://www.facebook.com/greencalltechnology" },
+    { name: "Instagram", href: "https://www.instagram.com/greencalltechnology/" },
+    { name: "X", href: "https://x.com/greencalltech" },
+    { name: "YouTube", href: "https://www.youtube.com/@greencalltechnology" },
+  ],
+};
+
 export const FOOTER_LINK_GROUPS = [
   {
     title: "Product",
     links: [
       { label: "Features", href: "/#features" },
-      { label: "Workflow", href: "/#workflow" },
+      { label: "Field Sales App", href: "/#field-app" },
+      { label: "How It Works", href: "/#workflow" },
       { label: "Why GreenCRM", href: "/#why-greencrm" },
+      { label: "FAQ", href: "/#faq" },
+      { label: "Book a Demo", href: "/book-demo" },
     ],
   },
   {
@@ -105,24 +133,47 @@ export const FOOTER_LINK_GROUPS = [
     links: [
       { label: "CRM Software India", href: "/crm-software-india" },
       { label: "CRM in Noida", href: "/crm-in-noida" },
+      { label: "CRM for Small Business", href: "/crm-for-small-business" },
+      { label: "CRM for Startups", href: "/crm-for-startups" },
+      { label: "CRM for Sales Teams", href: "/crm-for-sales-team" },
       { label: "CRM with Calling", href: "/crm-with-calling" },
       { label: "CRM with WhatsApp", href: "/crm-with-whatsapp" },
+      { label: "CRM with Attendance", href: "/crm-with-attendance" },
     ],
   },
   {
     title: "Resources",
     links: [
+      { label: "Blog", href: "/blog" },
       { label: "What is CRM Software", href: "/blog/what-is-crm-software" },
+      { label: "CRM vs Excel", href: "/blog/crm-vs-excel-for-sales" },
       { label: "Best CRM Tools India", href: "/blog/best-crm-tools-india" },
-      { label: "Why Sales Team Needs CRM", href: "/blog/why-sales-team-needs-crm" },
+      { label: "Why Sales Teams Need CRM", href: "/blog/why-sales-team-needs-crm" },
+      { label: "CRM for Startups", href: "/blog/benefits-of-crm-for-startups" },
     ],
   },
   {
-    title: "Actions",
+    title: "Company",
     links: [
-      { label: "Book Demo", href: "/book-demo" },
+      { label: "About Green Call", href: `${GREENCALL_SITE}/about-us.aspx`, external: true },
+      { label: "Careers", href: `${GREENCALL_SITE}/careers.aspx`, external: true },
+      { label: "Contact Us", href: `${GREENCALL_SITE}/contact-us.aspx`, external: true },
       { label: "Login", href: "/login" },
       { label: "Create Workspace", href: "/register" },
     ],
   },
+];
+
+export const SISTER_PRODUCTS = [
+  { label: "GreenHR", href: "https://www.greenhr.in" },
+  { label: "Payroll Management", href: `${GREENCALL_SITE}/payroll-management-software.aspx` },
+  { label: "Call Center CRM", href: `${GREENCALL_SITE}/call-center-crm.aspx` },
+  { label: "Green Comply", href: `${GREENCALL_SITE}/vendor-management.aspx` },
+  { label: "Job Portal", href: `${GREENCALL_SITE}/job-portal-software.aspx` },
+];
+
+export const LEGAL_LINKS = [
+  { label: "Privacy Policy", href: `${GREENCALL_SITE}/privacy-policy.aspx` },
+  { label: "Terms of Use", href: `${GREENCALL_SITE}/term-of-use.aspx` },
+  { label: "Disclaimer", href: `${GREENCALL_SITE}/disclaimer.aspx` },
 ];
