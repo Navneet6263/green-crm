@@ -2,16 +2,16 @@ import { buildMetadata } from "../../lib/seo";
 import SeoLandingShell from "../../components/landing/SeoLandingShell";
 
 export const metadata = buildMetadata({
-  title: "CRM with Attendance System | CRM with Geo Fencing India | GreenCRM",
+  title: "CRM with Attendance System | CRM with GPS Tracking India | GreenCRM",
   description:
-    "GreenCRM is a CRM with attendance system and geo fencing for field sales teams in India. Track check-in, check-out, and field movement from the same CRM. Free demo available.",
+    "GreenCRM is a CRM with attendance system and GPS route tracking for field sales teams in India. Record check-in, check-out, and field routes from the same CRM. Free demo available.",
   path: "/crm-with-attendance",
   keywords: [
     "CRM with attendance system",
-    "CRM with geo fencing",
+    "CRM with GPS tracking",
     "CRM for field sales India",
     "attendance CRM India",
-    "geo fencing CRM India",
+    "field tracking CRM India",
     "field sales CRM India",
     "CRM with attendance tracking",
     "CRM for field employees India",
@@ -26,9 +26,9 @@ const features = [
     points: ["Check-in / check-out", "Mobile attendance", "No separate app"],
   },
   {
-    title: "Geo Fencing for Field Teams",
-    copy: "Set geo fencing zones so employees can only check in when they are at the right location. Managers see real-time location updates.",
-    points: ["Geo fencing zones", "Location verification", "Real-time updates"],
+    title: "GPS Route Tracking for Field Teams",
+    copy: "Field staff tap Start tracking in the Android app and their route is recorded with GPS, even without internet. Each client visit is marked with a check-in.",
+    points: ["GPS route", "Visit check-ins", "Works offline"],
   },
   {
     title: "Field Sales CRM India",
@@ -47,7 +47,7 @@ const features = [
   },
   {
     title: "Attendance for Remote & Field Employees",
-    copy: "Whether your team is in the office, in the field, or working remotely, GreenCRM tracks attendance with geo fencing for all scenarios.",
+    copy: "Whether your team is in the office, in the field, or working remotely, GreenCRM records attendance with location for all scenarios.",
     points: ["Field employees", "Remote teams", "Office staff"],
   },
 ];
@@ -58,16 +58,16 @@ const faq = [
     a: "A CRM with attendance system combines customer relationship management with employee attendance tracking. GreenCRM includes both in one platform so your team uses one app for leads, calls, and attendance.",
   },
   {
-    q: "Does GreenCRM have geo fencing for attendance?",
-    a: "Yes. GreenCRM includes geo fencing for attendance. Employees can only check in when they are at the correct location, and managers see real-time location updates.",
+    q: "Does GreenCRM record location for attendance?",
+    a: "Yes. When employees punch in or out, GreenCRM saves the time and location so managers can review it in the attendance history.",
   },
   {
     q: "Is GreenCRM good for field sales teams in India?",
-    a: "Yes. GreenCRM is a CRM for field sales in India. Field reps can update leads, log calls, and check in with geo fencing from their mobile. Managers see field activity in real time.",
+    a: "Yes. GreenCRM is a CRM for field sales in India. Field reps use the Android app to update leads, add notes, record their route with GPS and mark each client visit.",
   },
   {
     q: "Can I track my field employees with GreenCRM?",
-    a: "Yes. GreenCRM tracks field employee attendance with geo fencing. You can see check-in times, locations, and daily attendance reports from the manager dashboard.",
+    a: "Yes. GreenCRM records field employee attendance with location. Managers can see check-in and check-out times and locations in the attendance history.",
   },
 ];
 
@@ -87,16 +87,16 @@ export default function CrmWithAttendancePage() {
       <SeoLandingShell
         hero={{
           eyebrow: "CRM with Attendance",
-          title: "CRM with Attendance System & Geo Fencing for Field Teams in India",
+          title: "CRM with Attendance System & GPS Tracking for Field Teams in India",
           description:
-            "GreenCRM is a CRM with attendance tracking and geo fencing built in. Track field employee check-in, check-out, and location from the same CRM you use for leads and calls. Built for Indian field sales teams.",
+            "GreenCRM is a CRM with attendance tracking and GPS route tracking built in. Record field employee check-in, check-out, and location from the same CRM you use for leads and calls. Built for Indian field sales teams.",
         }}
         features={features}
         faq={faq}
         cta={{
-          title: "See GreenCRM's attendance & geo fencing in action",
+          title: "See GreenCRM's attendance & field tracking in action",
           description:
-            "Book a free demo and see how GreenCRM tracks field attendance, geo fencing, and lead management from one platform.",
+            "Book a free demo and see how GreenCRM tracks field attendance, GPS routes, and lead management from one platform.",
         }}
       />
       <script

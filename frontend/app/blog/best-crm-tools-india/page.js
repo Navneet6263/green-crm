@@ -36,11 +36,11 @@ const sections = [
   },
   {
     heading: "GreenCRM: Best CRM Tool in India for Small Business",
-    body: "GreenCRM is built specifically for Indian small businesses, startups, and sales teams. It includes lead management, click-to-call, WhatsApp integration, SMS, attendance with geo fencing, and multi-role dashboards. It is affordable, fast, and easy to set up — making it one of the best CRM tools in India for growing teams.",
+    body: "GreenCRM is built specifically for Indian small businesses, startups, and sales teams. It includes lead management, click-to-call, WhatsApp integration, SMS, attendance with location, an Android field app with GPS route tracking, and multi-role dashboards. It is affordable, fast, and easy to set up — making it one of the best CRM tools in India for growing teams.",
   },
   {
     heading: "Key Features to Compare in CRM Tools India",
-    body: "When comparing CRM tools in India, check for: (1) Calling integration — does it have click-to-call and call logs? (2) WhatsApp integration — can you send WhatsApp from the CRM? (3) SMS integration — can you send SMS to leads? (4) Attendance — does it track field employee attendance with geo fencing? (5) Pricing — is it affordable for a small Indian business? GreenCRM scores well on all five.",
+    body: "When comparing CRM tools in India, check for: (1) Calling integration — does it have click-to-call and call logs? (2) WhatsApp integration — can you send WhatsApp from the CRM? (3) SMS integration — can you send SMS to leads? (4) Attendance — does it track field employee attendance and location? (5) Pricing — is it affordable for a small Indian business? GreenCRM scores well on all five.",
   },
   {
     heading: "CRM Tools India: Free Demo vs Paid Plans",

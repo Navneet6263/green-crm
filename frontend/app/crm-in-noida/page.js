@@ -42,9 +42,9 @@ const features = [
     points: ["WhatsApp integration", "SMS integration", "Quick follow-ups"],
   },
   {
-    title: "Attendance & Geo Fencing Noida",
-    copy: "Track your field team's check-in and check-out with geo fencing. Ideal for Noida businesses with field sales or service staff.",
-    points: ["Geo fencing", "Attendance tracking", "Field team management"],
+    title: "Attendance & Field Tracking Noida",
+    copy: "Record your field team's check-in and check-out with location, and their field route with GPS on the Android app. Ideal for Noida businesses with field sales or service staff.",
+    points: ["GPS route tracking", "Attendance tracking", "Field team management"],
   },
   {
     title: "Affordable CRM for Noida Startups",
@@ -68,7 +68,7 @@ const faq = [
   },
   {
     q: "Does GreenCRM support field teams in Noida?",
-    a: "Yes. GreenCRM includes geo fencing and attendance tracking for field sales teams in Noida and Delhi NCR.",
+    a: "Yes. GreenCRM includes attendance with location and GPS route tracking for field sales teams in Noida and Delhi NCR.",
   },
 ];
 

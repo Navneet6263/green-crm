@@ -1,9 +1,9 @@
 export const LANDING_NAV_ITEMS = [
-  { label: "Features", href: "#features" },
-  { label: "Field App", href: "#field-app" },
-  { label: "How It Works", href: "#workflow" },
-  { label: "Why GreenCRM", href: "#why-greencrm" },
-  { label: "FAQ", href: "#faq" },
+  { label: "Features", href: "/#features" },
+  { label: "Field App", href: "/#field-app" },
+  { label: "How It Works", href: "/#workflow" },
+  { label: "Why GreenCRM", href: "/#why-greencrm" },
+  { label: "FAQ", href: "/#faq" },
 ];
 
 // Shown on the page and reused for the FAQPage structured data, so both stay in sync.
@@ -95,9 +95,9 @@ export const FOOTER_LINK_GROUPS = [
   {
     title: "Product",
     links: [
-      { label: "Features", href: "#features" },
-      { label: "Workflow", href: "#workflow" },
-      { label: "Why GreenCRM", href: "#why-greencrm" },
+      { label: "Features", href: "/#features" },
+      { label: "Workflow", href: "/#workflow" },
+      { label: "Why GreenCRM", href: "/#why-greencrm" },
     ],
   },
   {

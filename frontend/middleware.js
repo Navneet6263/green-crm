@@ -1,6 +1,18 @@
 import { NextResponse } from "next/server";
 
 const PUBLIC_ROUTES = ["/", "/login", "/register", "/forgot-password", "/reset-password", "/book-demo"];
+// Marketing pages listed in app/sitemap.js; they must open without a login for visitors and search engines.
+const MARKETING_ROUTES = [
+  "/blog",
+  "/crm-software-india",
+  "/crm-in-noida",
+  "/crm-for-small-business",
+  "/crm-with-calling",
+  "/crm-with-whatsapp",
+  "/crm-for-sales-team",
+  "/crm-for-startups",
+  "/crm-with-attendance",
+];
 const AUTH_NOINDEX_ROUTES = ["/login", "/register", "/forgot-password", "/reset-password"];
 const PLATFORM_CONSOLE_ROLES = ["super-admin", "platform-admin", "platform-manager"];
 const LEGACY_DASHBOARD_REDIRECTS = {
@@ -25,7 +37,7 @@ export function middleware(request) {
   const token = request.cookies.get("authToken")?.value;
   const role = request.cookies.get("authRole")?.value;
 
-  if (PUBLIC_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`))) {
+  if ([...PUBLIC_ROUTES, ...MARKETING_ROUTES].some((route) => pathname === route || pathname.startsWith(`${route}/`))) {
     const response = NextResponse.next();
 
     if (AUTH_NOINDEX_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`))) {

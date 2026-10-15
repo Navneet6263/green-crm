@@ -47,8 +47,8 @@ const features = [
   },
   {
     title: "Attendance for Field Teams",
-    copy: "If your small business has field staff, GreenCRM tracks attendance with geo fencing so you always know who is where.",
-    points: ["Geo fencing", "Attendance tracking", "Field visibility"],
+    copy: "If your small business has field staff, GreenCRM records attendance with location, and the Android app records each rep's field route with GPS.",
+    points: ["GPS route tracking", "Attendance tracking", "Android field app"],
   },
 ];
 

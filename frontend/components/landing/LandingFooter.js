@@ -3,7 +3,7 @@ import AppLogo from "../branding/AppLogo";
 import { BRAND_NAME } from "../branding/brandConfig";
 
 const LINKS = [
-  { title: "Product", items: [{ l: "Features", h: "#features" }, { l: "Workflow", h: "#workflow" }, { l: "Pricing", h: "/book-demo" }, { l: "Book Demo", h: "/book-demo" }] },
+  { title: "Product", items: [{ l: "Features", h: "/#features" }, { l: "Field App", h: "/#field-app" }, { l: "How It Works", h: "/#workflow" }, { l: "FAQ", h: "/#faq" }, { l: "Book Demo", h: "/book-demo" }] },
   { title: "Solutions", items: [{ l: "CRM Software India", h: "/crm-software-india" }, { l: "CRM in Noida", h: "/crm-in-noida" }, { l: "CRM with Calling", h: "/crm-with-calling" }, { l: "CRM with WhatsApp", h: "/crm-with-whatsapp" }, { l: "CRM for Startups", h: "/crm-for-startups" }, { l: "CRM for Sales Team", h: "/crm-for-sales-team" }] },
   { title: "Resources", items: [{ l: "What is CRM", h: "/blog/what-is-crm-software" }, { l: "CRM vs Excel", h: "/blog/crm-vs-excel-for-sales" }, { l: "Best CRM India", h: "/blog/best-crm-tools-india" }, { l: "Why Sales Needs CRM", h: "/blog/why-sales-team-needs-crm" }, { l: "CRM for Small Business", h: "/blog/how-crm-helps-small-business" }] },
   { title: "Company", items: [{ l: "Login", h: "/login" }, { l: "Register", h: "/register" }, { l: "Blog", h: "/blog" }, { l: "Contact", h: "/book-demo" }] },
@@ -18,7 +18,7 @@ export default function LandingFooter() {
           <div>
             <AppLogo size="lg" variant="footer" />
             <p className="mt-4 max-w-md text-sm leading-relaxed text-slate-500">
-              GreenCRM is India's fastest-growing sales CRM. Manage leads, calls, WhatsApp, follow-ups, attendance, and analytics — all in one affordable platform built for Indian businesses.
+              GreenCRM is a sales CRM built for Indian businesses. Manage leads, calls, WhatsApp, follow-ups, attendance, and field team tracking — on the web and on your team&apos;s phones.
             </p>
             {/* Location */}
             <div className="mt-6 rounded-xl border border-slate-200 bg-white p-4">

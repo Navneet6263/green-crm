@@ -44,7 +44,7 @@ const DEFAULT_KEYWORDS = [
   "CRM for sales team with call tracking",
   "CRM for field sales India",
   "CRM for local business India",
-  "CRM with geo fencing",
+  "CRM with GPS tracking",
   "CRM with attendance system",
 ];
 

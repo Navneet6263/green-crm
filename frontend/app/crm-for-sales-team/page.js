@@ -42,8 +42,8 @@ const features = [
   },
   {
     title: "CRM for Field Sales India",
-    copy: "Field sales reps can update lead status, log calls, and check in with geo fencing from their mobile. Managers see field activity in real time.",
-    points: ["Mobile CRM", "Geo fencing", "Field activity tracking"],
+    copy: "Field sales reps use the Android app to update leads, add notes and follow-ups, record their route with GPS and mark each client visit.",
+    points: ["Android app", "GPS route tracking", "Visit check-ins"],
   },
   {
     title: "CRM Automation for Sales Teams",
@@ -63,7 +63,7 @@ const faq = [
   },
   {
     q: "Can GreenCRM be used for field sales in India?",
-    a: "Yes. GreenCRM is a CRM for field sales in India. Field reps can update leads, log calls, and check in with geo fencing from their mobile.",
+    a: "Yes. GreenCRM is a CRM for field sales in India. Field reps can update leads, add notes, record their route with GPS and mark visits from the Android app.",
   },
   {
     q: "Does GreenCRM support WhatsApp for sales teams?",
