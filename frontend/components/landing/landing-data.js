@@ -1,8 +1,53 @@
 export const LANDING_NAV_ITEMS = [
   { label: "Features", href: "#features" },
-  { label: "Workflow", href: "#workflow" },
+  { label: "Field App", href: "#field-app" },
+  { label: "How It Works", href: "#workflow" },
   { label: "Why GreenCRM", href: "#why-greencrm" },
-  { label: "Book Demo", href: "#book-demo" },
+  { label: "FAQ", href: "#faq" },
+];
+
+// Shown on the page and reused for the FAQPage structured data, so both stay in sync.
+export const FAQ_ITEMS = [
+  {
+    question: "What is GreenCRM?",
+    answer:
+      "GreenCRM is a sales CRM built for Indian businesses. It brings leads, follow-ups, calling, WhatsApp, tasks, attendance and field tracking into one workspace, with an Android app for sales staff.",
+  },
+  {
+    question: "Is there a mobile app for my sales team?",
+    answer:
+      "Yes. Sales staff get an Android app to work on their leads and tasks, add notes and follow-ups, attach photos to leads, and record their field route with GPS.",
+  },
+  {
+    question: "Does GPS tracking work without internet?",
+    answer:
+      "Yes. Route tracking and visit check-ins are saved on the phone in encrypted storage and upload automatically when the network is back. Tracking starts only when the employee taps Start tracking.",
+  },
+  {
+    question: "Does GreenCRM support WhatsApp and calling?",
+    answer:
+      "Yes. Your team can call, send WhatsApp messages, SMS and email from inside the CRM, and every conversation is logged on the lead.",
+  },
+  {
+    question: "Can I import my leads from Excel?",
+    answer:
+      "Yes. Download the template, fill in your leads and upload the CSV. You see a preview before importing and an error report for any row that needs fixing.",
+  },
+  {
+    question: "Who can see which data?",
+    answer:
+      "Access is role-based. Sales reps see their own leads, managers see their team, and admins see the whole company. Every company's data is kept separate and important actions are recorded in audit logs.",
+  },
+  {
+    question: "Can deals move from sales to legal and finance?",
+    answer:
+      "Yes. When sales marks a deal as won, it moves to the legal team for agreements and then to finance for invoices and payment, so everyone works from the same record.",
+  },
+  {
+    question: "How much does GreenCRM cost?",
+    answer:
+      "Pricing depends on your team size and the features you need. Book a free demo or message us on WhatsApp and we will share a plan for your team.",
+  },
 ];
 
 export const HERO_TAGS = ["Lead ownership", "Follow-up notes", "Role-based access"];

@@ -20,7 +20,7 @@ export default function LandingDemoCta() {
               </div>
             </div>
             <div className="grid gap-3">
-              {["✓ Live product walkthrough", "✓ Custom setup for your team size", "✓ See ROI in first 30 days", "✓ No technical knowledge needed"].map(p => (
+              {["✓ Live product walkthrough", "✓ Custom setup for your team size", "✓ Android field app included", "✓ No technical knowledge needed"].map(p => (
                 <div key={p} className="rounded-xl bg-white/5 border border-white/10 px-5 py-3 text-sm font-medium text-slate-200">{p}</div>
               ))}
             </div>

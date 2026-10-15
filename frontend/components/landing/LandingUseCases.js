@@ -4,7 +4,7 @@ import { sectionPadding, sectionTitle, sectionSub, iconBgSoft } from "./landing-
 const CASES = [
   { icon: "spark", title: "Sales Teams", desc: "Track every lead, call, and follow-up. Never miss a hot prospect again." },
   { icon: "pulse", title: "Startups", desc: "Affordable CRM that grows with you. No enterprise bloat, just what you need." },
-  { icon: "grid", title: "Field Sales", desc: "Attendance with geo-fencing, location tracking, and mobile-first design." },
+  { icon: "grid", title: "Field Sales", desc: "Android app with GPS route tracking, visit check-ins and attendance with location." },
   { icon: "shield", title: "Multi-Branch", desc: "Role-based access, team management, and branch-level reporting." },
 ];
 

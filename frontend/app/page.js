@@ -1,19 +1,21 @@
 import LandingDemoCta from "../components/landing/LandingDemoCta";
+import LandingFaq from "../components/landing/LandingFaq";
 import LandingFeatureHighlights from "../components/landing/LandingFeatureHighlights";
+import LandingFieldApp from "../components/landing/LandingFieldApp";
 import LandingFooter from "../components/landing/LandingFooter";
 import LandingHero from "../components/landing/LandingHero";
 import LandingNavbar from "../components/landing/LandingNavbar";
 import LandingProblem from "../components/landing/LandingProblem";
-import LandingTestimonials from "../components/landing/LandingTestimonials";
 import LandingTrustSection from "../components/landing/LandingTrustSection";
 import LandingUseCases from "../components/landing/LandingUseCases";
 import LandingWorkflow from "../components/landing/LandingWorkflow";
 import FloatingCTA from "../components/landing/FloatingCTA";
 import { BRAND_ICONS, BRAND_NAME } from "../components/branding/brandConfig";
+import { FAQ_ITEMS } from "../components/landing/landing-data";
 import { absoluteUrl, buildMetadata } from "../lib/seo";
 
 const homeDescription =
-  "GreenCRM is the best CRM software in Noida and India for small businesses, startups, and sales teams. Manage leads, calls, WhatsApp, SMS, attendance, and dashboards in one affordable CRM. Book a free demo today.";
+  "GreenCRM is the best CRM software in Noida and India for small businesses, startups, and sales teams. Manage leads, calls, WhatsApp, SMS, attendance, and field team GPS tracking with an Android sales app. Book a free demo today.";
 
 export const metadata = buildMetadata({
   title: "Best CRM Software India | CRM in Noida | Sales CRM for Small Business - GreenCRM",
@@ -42,7 +44,6 @@ export const metadata = buildMetadata({
     "CRM with calling",
     "CRM with WhatsApp",
     "CRM with SMS",
-    "CRM with automation",
     "CRM with pipeline management",
     "CRM in Noida",
     "CRM software in Noida",
@@ -52,7 +53,8 @@ export const metadata = buildMetadata({
     "CRM with calling and WhatsApp India",
     "CRM for sales team with call tracking",
     "CRM for field sales India",
-    "CRM with geo fencing",
+    "CRM with GPS tracking",
+    "CRM with mobile app India",
     "CRM with attendance system",
   ],
 });
@@ -89,7 +91,7 @@ export default function HomePage() {
       alternateName: "GreenCall CRM",
       applicationCategory: "BusinessApplication",
       applicationSubCategory: "CRM Software",
-      operatingSystem: "Web",
+      operatingSystem: "Web, Android",
       url: absoluteUrl("/"),
       description: homeDescription,
       inLanguage: ["en-IN", "hi-IN"],
@@ -101,12 +103,13 @@ export default function HomePage() {
       featureList: [
         "Lead management and pipeline tracking",
         "Click-to-call and call tracking",
-        "WhatsApp messaging and automation",
+        "WhatsApp messaging",
         "SMS integration",
         "Email integration",
-        "Attendance with geo fencing",
+        "Attendance with location capture",
+        "Android sales app with offline GPS route tracking",
         "Multi-dashboard system",
-        "CRM automation",
+        "Sales to legal to finance workflow",
         "Sales team performance tracking",
         "Field sales management",
       ],
@@ -126,53 +129,11 @@ export default function HomePage() {
     {
       "@context": "https://schema.org",
       "@type": "FAQPage",
-      mainEntity: [
-        {
-          "@type": "Question",
-          name: "What is GreenCRM?",
-          acceptedAnswer: {
-            "@type": "Answer",
-            text:
-              "GreenCRM is an affordable CRM software in India built for small businesses, startups, and sales teams. It combines lead management, calling, WhatsApp, SMS, attendance, and dashboards in one workspace.",
-          },
-        },
-        {
-          "@type": "Question",
-          name: "Is GreenCRM available in Noida?",
-          acceptedAnswer: {
-            "@type": "Answer",
-            text:
-              "Yes. GreenCRM is a CRM company based in Noida and serves businesses across India. You can book a free demo to see how it fits your team.",
-          },
-        },
-        {
-          "@type": "Question",
-          name: "Does GreenCRM support WhatsApp and calling?",
-          acceptedAnswer: {
-            "@type": "Answer",
-            text:
-              "Yes. GreenCRM includes CRM with calling (click-to-call), WhatsApp integration, and SMS integration so your sales team can follow up from one place.",
-          },
-        },
-        {
-          "@type": "Question",
-          name: "Is GreenCRM good for small businesses?",
-          acceptedAnswer: {
-            "@type": "Answer",
-            text:
-              "GreenCRM is designed as an affordable CRM for small businesses and startups in India. It is simple, fast, and includes all features a growing sales team needs.",
-          },
-        },
-        {
-          "@type": "Question",
-          name: "Does GreenCRM have geo fencing and attendance?",
-          acceptedAnswer: {
-            "@type": "Answer",
-            text:
-              "Yes. GreenCRM includes an attendance system with geo fencing for field sales teams, so managers can track check-in, check-out, and field movement.",
-          },
-        },
-      ],
+      mainEntity: FAQ_ITEMS.map((item) => ({
+        "@type": "Question",
+        name: item.question,
+        acceptedAnswer: { "@type": "Answer", text: item.answer },
+      })),
     },
   ];
 
@@ -183,10 +144,11 @@ export default function HomePage() {
         <LandingHero />
         <LandingTrustSection />
         <LandingProblem />
+        <LandingFieldApp />
         <LandingFeatureHighlights />
         <LandingWorkflow />
-        <LandingTestimonials />
         <LandingUseCases />
+        <LandingFaq />
         <LandingDemoCta />
       </main>
       <LandingFooter />

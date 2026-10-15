@@ -3,9 +3,9 @@ import { btnPrimary, btnSecondary } from "./landing-styles";
 
 const FLOW = ["New Lead", "Call", "Notes", "Follow-up", "Converted"];
 const STATS = [
-  { value: "10,000+", label: "Leads Managed" },
-  { value: "500+", label: "Sales Teams" },
-  { value: "99.9%", label: "Uptime" },
+  { value: "Web + App", label: "Android app for sales staff" },
+  { value: "GPS", label: "Route tracking, works offline" },
+  { value: "12", label: "Ready-made team roles" },
 ];
 
 export default function LandingHero() {
@@ -22,7 +22,7 @@ export default function LandingHero() {
           <div>
             <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3.5 py-1.5 text-[12px] font-semibold text-emerald-700">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              #1 Sales CRM for Indian Businesses
+              Sales CRM + Field App for Indian Businesses
             </span>
 
             <h1 className="mt-6 text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl lg:text-[3.5rem] lg:leading-[1.1]">
@@ -31,7 +31,7 @@ export default function LandingHero() {
             </h1>
 
             <p className="mt-6 max-w-lg text-lg leading-relaxed text-slate-600">
-              GreenCRM helps businesses manage leads, follow-ups, calling, notes, WhatsApp communication, attendance, and sales tracking — all in one place.
+              GreenCRM helps businesses manage leads, follow-ups, calling, WhatsApp, attendance and field team tracking — on the web and on your sales team&apos;s phones.
             </p>
 
             <div className="mt-8 flex flex-wrap gap-3">
@@ -40,7 +40,7 @@ export default function LandingHero() {
             </div>
 
             {/* Stats */}
-            <div className="mt-10 flex gap-8">
+            <div className="mt-10 flex flex-wrap gap-x-8 gap-y-4">
               {STATS.map(s => (
                 <div key={s.label}>
                   <p className="text-2xl font-bold text-slate-900">{s.value}</p>

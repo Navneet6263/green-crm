@@ -8,6 +8,9 @@ const FEATURES = [
   { icon: "history", title: "Activity Timeline", desc: "See every call, note, status change, and task in one chronological view." },
   { icon: "users", title: "Team & Role Access", desc: "Assign leads to the right person. Managers see everything, reps see their own." },
   { icon: "documents", title: "WhatsApp & Communication", desc: "Follow up via WhatsApp, email, and calls — all tracked inside the CRM." },
+  { icon: "path", title: "Sales → Legal → Finance", desc: "Won deals move to legal for agreements, then to finance for invoices and payment." },
+  { icon: "chart", title: "Analytics & Dashboards", desc: "Lead sources, status breakdown, pipeline value and team performance at a glance." },
+  { icon: "grid", title: "Bulk Import & Export", desc: "Bring leads in from Excel/CSV with a preview, and export filtered lists when you need them." },
 ];
 
 export default function LandingFeatureHighlights() {
