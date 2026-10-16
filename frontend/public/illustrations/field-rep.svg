@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 440" fill="none">
+  <title>Field sales rep on a tracked route</title>
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fffbea"/>
+      <stop offset="1" stop-color="#effaf9"/>
+    </linearGradient>
+    <filter id="sh" x="-20%" y="-20%" width="140%" height="170%">
+      <feDropShadow dx="0" dy="12" stdDeviation="12" flood-color="#0c605d" flood-opacity="0.2"/>
+    </filter>
+    <clipPath id="card"><rect x="20" y="20" width="560" height="400" rx="36"/></clipPath>
+  </defs>
+
+  <g clip-path="url(#card)">
+    <rect x="20" y="20" width="560" height="400" fill="url(#sky)"/>
+    <circle cx="470" cy="96" r="40" fill="#ffe785" opacity="0.8"/>
+
+    <!-- skyline -->
+    <g fill="#d5f1ee">
+      <rect x="40" y="150" width="56" height="140" rx="4"/>
+      <rect x="104" y="110" width="44" height="180" rx="4"/>
+      <rect x="156" y="170" width="60" height="120" rx="4"/>
+      <rect x="380" y="130" width="52" height="160" rx="4"/>
+      <rect x="440" y="170" width="70" height="120" rx="4"/>
+      <rect x="518" y="140" width="50" height="150" rx="4"/>
+    </g>
+    <g fill="#ace2dd">
+      <rect x="114" y="124" width="8" height="10" rx="1"/><rect x="130" y="124" width="8" height="10" rx="1"/>
+      <rect x="114" y="144" width="8" height="10" rx="1"/><rect x="130" y="144" width="8" height="10" rx="1"/>
+      <rect x="114" y="164" width="8" height="10" rx="1"/><rect x="130" y="164" width="8" height="10" rx="1"/>
+      <rect x="52" y="166" width="10" height="10" rx="1"/><rect x="72" y="166" width="10" height="10" rx="1"/>
+      <rect x="52" y="188" width="10" height="10" rx="1"/><rect x="72" y="188" width="10" height="10" rx="1"/>
+      <rect x="392" y="146" width="10" height="10" rx="1"/><rect x="410" y="146" width="10" height="10" rx="1"/>
+      <rect x="392" y="168" width="10" height="10" rx="1"/><rect x="410" y="168" width="10" height="10" rx="1"/>
+      <rect x="530" y="156" width="10" height="10" rx="1"/><rect x="548" y="156" width="10" height="10" rx="1"/>
+      <rect x="454" y="186" width="10" height="10" rx="1"/><rect x="474" y="186" width="10" height="10" rx="1"/><rect x="494" y="186" width="10" height="10" rx="1"/>
+    </g>
+
+    <!-- ground & road -->
+    <rect x="20" y="288" width="560" height="140" fill="#e7f3ef"/>
+    <path d="M20 360C140 310 260 400 380 350S560 300 600 320V440H20Z" fill="#e2e8f0"/>
+    <path d="M20 382C140 332 260 422 380 372S560 322 600 342" stroke="#cbd5e1" stroke-width="2"/>
+    <path d="M30 372C150 324 260 412 380 362S540 314 590 330" stroke="#fff" stroke-width="4" stroke-dasharray="14 12"/>
+
+    <!-- tracked route -->
+    <path d="M70 330C150 280 230 330 300 300S430 250 520 270" stroke="#157672" stroke-width="5" stroke-linecap="round" stroke-dasharray="2 10"/>
+    <g>
+      <path d="M150 300c0-12 9-20 20-20s20 8 20 20c0 14-20 32-20 32s-20-18-20-32z" fill="#157672"/>
+      <circle cx="170" cy="300" r="7" fill="#fff"/>
+      <path d="M380 252c0-12 9-20 20-20s20 8 20 20c0 14-20 32-20 32s-20-18-20-32z" fill="#157672"/>
+      <circle cx="400" cy="252" r="7" fill="#fff"/>
+      <path d="M500 240c0-12 9-20 20-20s20 8 20 20c0 14-20 32-20 32s-20-18-20-32z" fill="#e8bd00"/>
+      <path d="M513 240l5 5 9-9" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+
+    <!-- scooter + rider -->
+    <g transform="translate(210 300)">
+      <ellipse cx="60" cy="92" rx="70" ry="8" fill="#0c605d" opacity="0.15"/>
+      <circle cx="18" cy="76" r="16" fill="#1f2937"/><circle cx="18" cy="76" r="6" fill="#cbd5e1"/>
+      <circle cx="104" cy="76" r="16" fill="#1f2937"/><circle cx="104" cy="76" r="6" fill="#cbd5e1"/>
+      <path d="M8 66c4-20 24-30 50-30h20l14-26h10l-10 30c14 4 22 16 22 26H8z" fill="#e8bd00"/>
+      <rect x="86" y="4" width="26" height="6" rx="3" fill="#1f2937"/>
+      <path d="M40 40l6-36" stroke="#0d4d4b" stroke-width="14" stroke-linecap="round"/>
+      <path d="M44 0c0 0 10 34 30 40" stroke="#0d4d4b" stroke-width="12" stroke-linecap="round"/>
+      <rect x="30" y="-46" width="30" height="50" rx="12" fill="#23908b"/>
+      <path d="M54 -36c14 6 26 14 40 42" stroke="#23908b" stroke-width="10" stroke-linecap="round"/>
+      <circle cx="46" cy="-62" r="15" fill="#c68a62"/>
+      <path d="M30 -64a16 16 0 0 1 32 0z" fill="#157672"/>
+      <rect x="28" y="-66" width="36" height="5" rx="2.5" fill="#0c605d"/>
+    </g>
+  </g>
+
+  <!-- phone card -->
+  <g filter="url(#sh)">
+    <rect x="400" y="44" width="150" height="88" rx="18" fill="#fff"/>
+    <rect x="414" y="58" width="56" height="7" rx="3.5" fill="#0f172a"/>
+    <rect x="496" y="56" width="40" height="12" rx="6" fill="#effaf9"/>
+    <circle cx="504" cy="62" r="3" fill="#23908b"/>
+    <rect x="510" y="59" width="20" height="6" rx="3" fill="#45aca6"/>
+    <rect x="414" y="76" width="122" height="44" rx="10" fill="#fbf9f3"/>
+    <circle cx="430" cy="98" r="10" fill="#e8bd00"/>
+    <path d="M425 98l4 4 7-7" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="446" y="90" width="62" height="7" rx="3.5" fill="#0f172a"/>
+    <rect x="446" y="102" width="44" height="6" rx="3" fill="#94a3b8"/>
+  </g>
+  <!-- distance chip -->
+  <g filter="url(#sh)">
+    <rect x="50" y="48" width="130" height="50" rx="16" fill="#fff"/>
+    <circle cx="74" cy="73" r="13" fill="#effaf9"/>
+    <path d="M68 78c4-10 8-10 12 0M70 70l4-4 4 4" stroke="#157672" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="94" y="64" width="62" height="8" rx="4" fill="#0f172a"/>
+    <rect x="94" y="78" width="44" height="6" rx="3" fill="#94a3b8"/>
+  </g>
+</svg>

@@ -3,6 +3,12 @@ import { NextResponse } from "next/server";
 const PUBLIC_ROUTES = ["/", "/login", "/register", "/forgot-password", "/reset-password", "/book-demo"];
 // Marketing pages listed in app/sitemap.js; they must open without a login for visitors and search engines.
 const MARKETING_ROUTES = [
+  "/features",
+  "/field-sales-app",
+  "/security",
+  "/about",
+  "/contact",
+  "/services",
   "/blog",
   "/crm-software-india",
   "/crm-in-noida",

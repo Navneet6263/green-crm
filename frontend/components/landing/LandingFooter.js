@@ -3,7 +3,7 @@ import AppLogo from "../branding/AppLogo";
 import { BRAND_NAME } from "../branding/brandConfig";
 import { COMPANY, FOOTER_LINK_GROUPS, LEGAL_LINKS, SISTER_PRODUCTS } from "./landing-data";
 
-const linkClass = "text-sm text-slate-400 transition hover:text-emerald-400";
+const linkClass = "text-sm text-slate-600 transition hover:text-brand-700";
 
 const SOCIAL_ICONS = {
   LinkedIn: <path d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28ZM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13ZM7.12 20.45H3.56V9h3.56v11.45Z" />,
@@ -46,13 +46,15 @@ export default function LandingFooter() {
   const year = new Date().getFullYear();
 
   return (
-    <footer className="relative overflow-hidden bg-slate-950 text-slate-400">
-      <div className="pointer-events-none absolute -top-40 left-1/2 h-80 w-[48rem] -translate-x-1/2 rounded-full bg-emerald-500/10 blur-3xl" />
+    <footer className="relative overflow-hidden border-t border-brand-100 bg-gradient-to-b from-cream via-white to-brand-50/60 text-slate-600">
+      <div className="h-[3px] bg-gradient-to-r from-brand-700 via-gold-400 to-brand-500" />
+      <div className="pointer-events-none absolute -top-32 left-1/4 h-72 w-[36rem] rounded-full bg-gold-200/40 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-32 right-0 h-72 w-[36rem] rounded-full bg-brand-200/40 blur-3xl" />
 
       {/* Main */}
       <div className="relative mx-auto grid max-w-7xl gap-12 px-4 pb-14 pt-16 sm:px-6 lg:grid-cols-12 lg:px-8">
         <div className="lg:col-span-4">
-          <Link href="/" className="inline-flex rounded-2xl bg-white px-4 py-2.5 shadow-lg shadow-black/20">
+          <Link href="/" className="inline-flex">
             <AppLogo size="md" variant="footer" />
           </Link>
           <p className="mt-5 max-w-sm text-sm leading-relaxed">
@@ -60,14 +62,14 @@ export default function LandingFooter() {
           </p>
           <p className="mt-3 text-sm">
             A product of{" "}
-            <a href={COMPANY.website} {...externalProps} className="font-semibold text-emerald-400 hover:text-emerald-300">{COMPANY.name}</a>
+            <a href={COMPANY.website} {...externalProps} className="font-semibold text-brand-700 underline decoration-gold-400 decoration-2 underline-offset-4 hover:text-brand-800">{COMPANY.name}</a>
           </p>
 
           <ul className="mt-6 space-y-3">
             {CONTACTS.map((c) => (
               <li key={c.icon}>
-                <a href={c.href} {...(c.external ? externalProps : {})} className="group flex items-start gap-3 text-sm transition hover:text-white">
-                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-white/10 bg-white/5 text-emerald-400 group-hover:border-emerald-500/40">
+                <a href={c.href} {...(c.external ? externalProps : {})} className="group flex items-start gap-3 text-sm transition hover:text-brand-800">
+                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-brand-100 bg-white text-brand-600 shadow-sm group-hover:border-gold-400">
                     <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{CONTACT_ICONS[c.icon]}</svg>
                   </span>
                   <span className="pt-1.5 leading-snug">{c.label}</span>
@@ -78,7 +80,7 @@ export default function LandingFooter() {
 
           <div className="mt-6 flex gap-2.5">
             {COMPANY.socials.map((s) => (
-              <a key={s.name} href={s.href} {...externalProps} aria-label={`${COMPANY.name} on ${s.name}`} className="grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-white/5 text-slate-300 transition hover:-translate-y-0.5 hover:border-emerald-500/50 hover:bg-emerald-500/10 hover:text-emerald-400">
+              <a key={s.name} href={s.href} {...externalProps} aria-label={`${COMPANY.name} on ${s.name}`} className="grid h-10 w-10 place-items-center rounded-full border border-brand-100 bg-white text-brand-700 shadow-sm transition hover:-translate-y-0.5 hover:border-gold-400 hover:bg-gold-50 hover:text-brand-800">
                 <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="currentColor" aria-hidden="true">{SOCIAL_ICONS[s.name]}</svg>
               </a>
             ))}
@@ -88,7 +90,7 @@ export default function LandingFooter() {
         <nav aria-label="Footer" className="grid grid-cols-2 gap-x-6 gap-y-10 sm:grid-cols-4 lg:col-span-8">
           {FOOTER_LINK_GROUPS.map((group) => (
             <div key={group.title}>
-              <p className="text-xs font-bold uppercase tracking-widest text-white">{group.title}</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-slate-900">{group.title}</p>
               <ul className="mt-4 space-y-2.5">
                 {group.links.map((link) => (
                   <li key={link.href}><FooterLink link={link} /></li>
@@ -101,11 +103,11 @@ export default function LandingFooter() {
 
       {/* Sister products */}
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col gap-3 border-t border-white/10 py-6 sm:flex-row sm:items-center">
-          <p className="shrink-0 text-xs font-bold uppercase tracking-widest text-slate-500">More from {COMPANY.name}</p>
+        <div className="flex flex-col gap-3 border-t border-brand-100 py-6 sm:flex-row sm:items-center">
+          <p className="shrink-0 text-xs font-bold uppercase tracking-widest text-slate-400">More from {COMPANY.name}</p>
           <div className="flex flex-wrap gap-2">
             {SISTER_PRODUCTS.map((p) => (
-              <a key={p.label} href={p.href} {...externalProps} className="rounded-full border border-white/10 px-3 py-1 text-xs text-slate-400 transition hover:border-emerald-500/40 hover:text-emerald-400">
+              <a key={p.label} href={p.href} {...externalProps} className="rounded-full border border-brand-100 bg-white px-3 py-1 text-xs text-slate-600 shadow-sm transition hover:border-gold-400 hover:text-brand-700">
                 {p.label}
               </a>
             ))}
@@ -114,12 +116,12 @@ export default function LandingFooter() {
       </div>
 
       {/* Bottom bar */}
-      <div className="relative border-t border-white/10 bg-black/20">
+      <div className="relative border-t border-brand-100 bg-white/60">
         <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-5 pb-24 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:pb-5 lg:px-8">
           <p>© {year} {COMPANY.name}. All rights reserved. {BRAND_NAME} — made in Noida, India.</p>
           <div className="flex flex-wrap gap-x-5 gap-y-2">
             {LEGAL_LINKS.map((l) => (
-              <a key={l.label} href={l.href} {...externalProps} className="transition hover:text-emerald-400">{l.label}</a>
+              <a key={l.label} href={l.href} {...externalProps} className="transition hover:text-brand-700">{l.label}</a>
             ))}
           </div>
         </div>

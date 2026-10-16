@@ -18,7 +18,7 @@ export default function FloatingCTA() {
 
       {/* Sticky bottom CTA — mobile only */}
       <div className="fixed bottom-0 inset-x-0 z-40 border-t border-slate-100 bg-white/95 backdrop-blur-sm px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:hidden">
-        <Link href="/book-demo" className="flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 py-3 text-sm font-bold text-white shadow-lg">
+        <Link href="/book-demo" className="flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-brand-700 to-brand-500 py-3 text-sm font-bold text-white shadow-lg">
           Book Free Demo →
         </Link>
       </div>

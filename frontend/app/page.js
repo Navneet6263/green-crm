@@ -1,14 +1,14 @@
+import BeforeAfter from "../components/landing/home/BeforeAfter";
+import FeatureTabs from "../components/landing/home/FeatureTabs";
+import HomeHero from "../components/landing/home/HomeHero";
+import LiveDemo from "../components/landing/home/LiveDemo";
+import TeamsSection from "../components/landing/home/TeamsSection";
+import WorksWithStrip from "../components/landing/home/WorksWithStrip";
 import LandingDemoCta from "../components/landing/LandingDemoCta";
 import LandingFaq from "../components/landing/LandingFaq";
-import LandingFeatureHighlights from "../components/landing/LandingFeatureHighlights";
 import LandingFieldApp from "../components/landing/LandingFieldApp";
 import LandingFooter from "../components/landing/LandingFooter";
-import LandingHero from "../components/landing/LandingHero";
 import LandingNavbar from "../components/landing/LandingNavbar";
-import LandingProblem from "../components/landing/LandingProblem";
-import LandingTrustSection from "../components/landing/LandingTrustSection";
-import LandingUseCases from "../components/landing/LandingUseCases";
-import LandingWorkflow from "../components/landing/LandingWorkflow";
 import FloatingCTA from "../components/landing/FloatingCTA";
 import { BRAND_ICONS, BRAND_NAME } from "../components/branding/brandConfig";
 import { COMPANY, FAQ_ITEMS } from "../components/landing/landing-data";
@@ -143,16 +143,16 @@ export default function HomePage() {
   ];
 
   return (
-    <div className="min-h-screen bg-white text-slate-950">
+    <div className="marketing-root min-h-screen bg-white text-slate-950">
       <LandingNavbar />
       <main>
-        <LandingHero />
-        <LandingTrustSection />
-        <LandingProblem />
+        <HomeHero />
+        <WorksWithStrip />
+        <LiveDemo />
+        <FeatureTabs />
+        <BeforeAfter />
         <LandingFieldApp />
-        <LandingFeatureHighlights />
-        <LandingWorkflow />
-        <LandingUseCases />
+        <TeamsSection />
         <LandingFaq />
         <LandingDemoCta />
       </main>

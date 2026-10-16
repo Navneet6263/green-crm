@@ -3,33 +3,6 @@
 import Link from "next/link";
 
 import AppLogo from "../branding/AppLogo";
-import DashboardIcon from "../dashboard/icons";
-
-function FeatureCard({ icon, title, copy, tone = "bg-[#fff4d9] text-[#8d6e27]" }) {
-  return (
-    <div className="rounded-[24px] border border-[#eadfcd] bg-white/82 p-4 shadow-[0_12px_28px_rgba(79,58,22,0.06)]">
-      <div className="flex items-start gap-3">
-        <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl ${tone}`}>
-          <DashboardIcon name={icon} className="h-4 w-4" />
-        </span>
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-[#060710]">{title}</p>
-          <p className="mt-1 text-xs leading-6 text-[#8f816a]">{copy}</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function MetricCard({ label, value, copy }) {
-  return (
-    <div className="rounded-[24px] border border-[#eadfcd] bg-[#fffaf1] p-4">
-      <p className="text-[10px] font-black uppercase tracking-[0.24em] text-[#9a886d]">{label}</p>
-      <strong className="mt-3 block text-[1.8rem] font-black leading-none text-[#060710]">{value}</strong>
-      <p className="mt-2 text-xs leading-6 text-[#8f816a]">{copy}</p>
-    </div>
-  );
-}
 
 export default function AuthShell({
   modeLabel,
@@ -42,85 +15,74 @@ export default function AuthShell({
   sideEyebrow,
   sideTitle,
   sideCopy,
-  metrics = [],
   features = [],
 }) {
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(242,220,164,0.35),_rgba(255,250,242,0.85)_35%,_rgba(255,255,255,1)_100%)]">
-      <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-4 sm:px-6 lg:px-8">
-        <header className="flex items-center justify-between gap-4 py-2">
-          <Link href="/" className="inline-flex max-w-[min(56vw,11.5rem)] items-center sm:max-w-[12rem]">
-            <AppLogo
-              size="lg"
-              variant="auth"
-              priority
-            />
-          </Link>
+    <div className="marketing-root relative min-h-screen overflow-hidden bg-gradient-to-br from-brand-50 via-white to-gold-50">
+      <div className="pointer-events-none absolute -left-40 -top-40 h-[30rem] w-[30rem] rounded-full bg-brand-200/40 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-40 -right-40 h-[30rem] w-[30rem] rounded-full bg-gold-200/50 blur-3xl" />
 
-          <div className="flex items-center gap-2">
-            <Link href="/login" className="rounded-[18px] border border-[#eadfcd] bg-white px-4 py-2 text-sm font-semibold text-[#5d503c] transition hover:border-[#d7b258] hover:text-[#060710]">
-              Login
-            </Link>
-            <Link href="/register" className="rounded-[18px] border border-[#d7b258] bg-[#f3dfab] px-4 py-2 text-sm font-semibold text-[#060710] shadow-[0_14px_26px_rgba(203,169,82,0.18)] transition hover:-translate-y-0.5 hover:bg-[#efd48f]">
-              Sign Up
+      <div className="relative mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-5 sm:px-6 lg:px-8">
+        <header className="flex items-center justify-between gap-4">
+          <Link href="/" className="inline-flex max-w-[min(56vw,11.5rem)] items-center sm:max-w-[12rem]">
+            <AppLogo size="lg" variant="auth" priority />
+          </Link>
+          <div className="flex items-center gap-2 text-sm">
+            <Link href="/" className="hidden rounded-full px-4 py-2 font-semibold text-slate-600 transition hover:text-brand-700 sm:inline-flex">← Back to website</Link>
+            <Link href={switchHref} className="rounded-full bg-white px-4 py-2 font-semibold text-brand-700 shadow-sm ring-1 ring-brand-100 transition hover:ring-brand-300">
+              {switchLabel}
             </Link>
           </div>
         </header>
 
-        <main className="flex flex-1 items-center py-6">
-          <div className="w-full rounded-[42px] border border-[#ecd9b7] bg-[linear-gradient(135deg,rgba(245,233,201,0.88)_0%,rgba(255,248,235,0.96)_48%,rgba(245,226,174,0.78)_100%)] p-2 shadow-[0_32px_100px_rgba(79,58,22,0.12)]">
-            <section className="grid overflow-hidden rounded-[38px] border border-[#efe2c8] bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.96),_rgba(255,249,239,0.98)_50%,_rgba(250,238,207,0.92)_100%)] lg:grid-cols-[0.95fr_1.05fr]">
-              <aside className="border-b border-[#efe2c8] px-5 py-6 md:px-8 md:py-8 lg:border-b-0 lg:border-r">
-                <div className="space-y-5">
-                  <div className="space-y-3">
-                    <span className="inline-flex rounded-full border border-[#ddd3c2] bg-white/88 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.24em] text-[#7c6d55]">
-                      {sideEyebrow}
-                    </span>
-                    <div className="space-y-2">
-                      <h2 className="max-w-xl text-[2rem] font-semibold leading-[1.04] tracking-tight text-[#060710] md:text-[2.8rem]">
-                        {sideTitle}
-                      </h2>
-                      <p className="max-w-lg text-sm leading-7 text-[#746853] md:text-base">{sideCopy}</p>
-                    </div>
-                  </div>
+        <main className="flex flex-1 items-center py-8">
+          <div className="grid w-full items-center gap-10 lg:grid-cols-[1fr_1fr] lg:gap-16">
+            <aside className="hidden lg:block">
+              {sideEyebrow ? (
+                <span className="inline-flex items-center gap-2 rounded-full border border-gold-300 bg-gold-50 px-3.5 py-1.5 text-[12px] font-semibold text-gold-800">
+                  <span className="h-1.5 w-1.5 rounded-full bg-gold-500" />
+                  {sideEyebrow}
+                </span>
+              ) : null}
+              <h2 className="mt-5 text-4xl font-extrabold leading-[1.1] tracking-tight text-slate-900 xl:text-5xl">{sideTitle}</h2>
+              {sideCopy ? <p className="mt-4 max-w-lg text-lg leading-relaxed text-slate-600">{sideCopy}</p> : null}
 
-                  <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
-                    {metrics.map((item) => (
-                      <MetricCard key={item.label} label={item.label} value={item.value} copy={item.copy} />
-                    ))}
-                  </div>
+              <img src="/illustrations/sales-team.svg" alt="Sales team working together in GreenCRM" className="mt-8 w-full max-w-lg" />
 
-                  <div className="grid gap-3">
-                    {features.map((item) => (
-                      <FeatureCard key={item.title} icon={item.icon} title={item.title} copy={item.copy} tone={item.tone} />
-                    ))}
-                  </div>
-                </div>
-              </aside>
+              {features.length ? (
+                <ul className="mt-6 flex flex-wrap gap-2">
+                  {features.map((item) => (
+                    <li key={item.title} className="flex items-center gap-2 rounded-full bg-white/80 px-3.5 py-2 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-brand-100">
+                      <span className="grid h-5 w-5 place-items-center rounded-full bg-brand-100 text-[10px] font-bold text-brand-700">✓</span>
+                      {item.title}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </aside>
 
-              <div className="px-5 py-6 md:px-8 md:py-8 lg:px-10">
-                <div className="mx-auto w-full max-w-2xl">
-                  <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-                    <span className="inline-flex rounded-full border border-[#ddd3c2] bg-white/88 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.24em] text-[#7c6d55]">
-                      {modeLabel}
-                    </span>
-                    <div className="text-sm text-[#7c6d55]">
-                      <span>{switchText} </span>
-                      <Link href={switchHref} className="font-semibold text-[#060710] underline decoration-[#d7b258] underline-offset-4">
-                        {switchLabel}
-                      </Link>
-                    </div>
-                  </div>
+            <div className="relative mx-auto w-full max-w-xl">
+              <div className="absolute -inset-4 rounded-[2.5rem] bg-gradient-to-br from-brand-200/60 via-white to-gold-200/60 blur-2xl" />
+              <div className="relative overflow-hidden rounded-3xl border border-brand-100 bg-white shadow-[0_40px_100px_-30px_rgba(12,96,93,0.45)]">
+                <div className="h-1.5 bg-gradient-to-r from-brand-700 via-gold-400 to-brand-500" />
+                <div className="px-6 py-8 sm:px-10 sm:py-10">
+                  {modeLabel ? (
+                    <span className="inline-flex rounded-full bg-brand-50 px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-brand-700">{modeLabel}</span>
+                  ) : null}
+                  <h1 className="mt-4 text-3xl font-extrabold tracking-tight text-slate-900">{title}</h1>
+                  {description ? <p className="mt-2 text-sm leading-relaxed text-slate-500">{description}</p> : null}
 
-                  <div className="mb-6 space-y-2">
-                    <h1 className="text-[2rem] font-semibold tracking-tight text-[#060710] md:text-[2.6rem]">{title}</h1>
-                    <p className="max-w-2xl text-sm leading-7 text-[#746853] md:text-base">{description}</p>
-                  </div>
+                  <div className="mt-7">{children}</div>
 
-                  {children}
+                  <p className="mt-7 border-t border-slate-100 pt-5 text-center text-sm text-slate-500">
+                    {switchText}{" "}
+                    <Link href={switchHref} className="font-semibold text-brand-700 underline decoration-gold-400 decoration-2 underline-offset-4 hover:text-brand-800">
+                      {switchLabel}
+                    </Link>
+                  </p>
                 </div>
               </div>
-            </section>
+            </div>
           </div>
         </main>
       </div>

@@ -1,0 +1,117 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 460" fill="none">
+  <title>Sales team working with GreenCRM</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#effaf9"/>
+      <stop offset="1" stop-color="#fffbea"/>
+    </linearGradient>
+    <linearGradient id="bar" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#157672"/>
+      <stop offset="1" stop-color="#45aca6"/>
+    </linearGradient>
+    <filter id="sh" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="14" stdDeviation="14" flood-color="#0c605d" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+
+  <!-- backdrop -->
+  <path d="M60 120C60 60 120 30 200 40c90 12 140-30 230-10 80 18 120 80 110 160-8 70 20 120-30 170-60 60-180 50-280 46-110-4-180-20-200-90-14-50 30-90 30-196Z" fill="url(#bg)"/>
+  <circle cx="490" cy="80" r="34" fill="#ffe785" opacity="0.7"/>
+
+  <!-- floor -->
+  <ellipse cx="300" cy="418" rx="250" ry="18" fill="#0c605d" opacity="0.08"/>
+
+  <!-- monitor -->
+  <g filter="url(#sh)">
+    <rect x="170" y="92" width="290" height="196" rx="16" fill="#fff"/>
+    <rect x="170" y="92" width="290" height="26" rx="16" fill="#f8fafc"/>
+    <rect x="170" y="106" width="290" height="12" fill="#f8fafc"/>
+    <circle cx="188" cy="105" r="4" fill="#fb7185"/>
+    <circle cx="200" cy="105" r="4" fill="#e8bd00"/>
+    <circle cx="212" cy="105" r="4" fill="#45aca6"/>
+    <!-- sidebar -->
+    <rect x="182" y="128" width="56" height="148" rx="10" fill="#effaf9"/>
+    <rect x="190" y="138" width="40" height="8" rx="4" fill="#157672"/>
+    <rect x="190" y="154" width="32" height="6" rx="3" fill="#ace2dd"/>
+    <rect x="190" y="166" width="36" height="6" rx="3" fill="#ace2dd"/>
+    <rect x="190" y="178" width="28" height="6" rx="3" fill="#ace2dd"/>
+    <rect x="190" y="190" width="34" height="6" rx="3" fill="#ace2dd"/>
+    <!-- kpis -->
+    <rect x="248" y="128" width="62" height="40" rx="8" fill="#fbf9f3"/>
+    <rect x="256" y="137" width="30" height="5" rx="2.5" fill="#cbd5e1"/>
+    <rect x="256" y="148" width="22" height="11" rx="3" fill="#157672"/>
+    <rect x="318" y="128" width="62" height="40" rx="8" fill="#fbf9f3"/>
+    <rect x="326" y="137" width="30" height="5" rx="2.5" fill="#cbd5e1"/>
+    <rect x="326" y="148" width="18" height="11" rx="3" fill="#e8bd00"/>
+    <rect x="388" y="128" width="62" height="40" rx="8" fill="#fbf9f3"/>
+    <rect x="396" y="137" width="30" height="5" rx="2.5" fill="#cbd5e1"/>
+    <rect x="396" y="148" width="26" height="11" rx="3" fill="#6366f1"/>
+    <!-- chart -->
+    <rect x="248" y="178" width="132" height="98" rx="10" fill="#fbf9f3"/>
+    <rect x="262" y="236" width="12" height="30" rx="3" fill="url(#bar)"/>
+    <rect x="280" y="222" width="12" height="44" rx="3" fill="url(#bar)"/>
+    <rect x="298" y="240" width="12" height="26" rx="3" fill="url(#bar)"/>
+    <rect x="316" y="208" width="12" height="58" rx="3" fill="url(#bar)"/>
+    <rect x="334" y="214" width="12" height="52" rx="3" fill="url(#bar)"/>
+    <rect x="352" y="194" width="12" height="72" rx="3" fill="#e8bd00"/>
+    <!-- list -->
+    <rect x="388" y="178" width="62" height="98" rx="10" fill="#fbf9f3"/>
+    <circle cx="400" cy="194" r="5" fill="#45aca6"/>
+    <rect x="410" y="191" width="32" height="6" rx="3" fill="#cbd5e1"/>
+    <circle cx="400" cy="214" r="5" fill="#e8bd00"/>
+    <rect x="410" y="211" width="28" height="6" rx="3" fill="#cbd5e1"/>
+    <circle cx="400" cy="234" r="5" fill="#45aca6"/>
+    <rect x="410" y="231" width="34" height="6" rx="3" fill="#cbd5e1"/>
+    <circle cx="400" cy="254" r="5" fill="#6366f1"/>
+    <rect x="410" y="251" width="24" height="6" rx="3" fill="#cbd5e1"/>
+  </g>
+  <!-- stand -->
+  <rect x="300" y="288" width="30" height="40" fill="#cbd5e1"/>
+  <rect x="268" y="326" width="94" height="10" rx="5" fill="#94a3b8"/>
+
+  <!-- person left (with phone) -->
+  <g>
+    <path d="M92 410l8-92h44l8 92z" fill="#0d4d4b"/>
+    <rect x="84" y="232" width="76" height="96" rx="30" fill="#23908b"/>
+    <path d="M106 236h32l-16 20z" fill="#fff" opacity="0.9"/>
+    <rect x="114" y="216" width="16" height="22" rx="6" fill="#c68a62"/>
+    <circle cx="122" cy="196" r="26" fill="#c68a62"/>
+    <path d="M95 192c0-22 16-34 30-34 18 0 30 12 28 32-6-10-16-16-30-14-10 1-18 8-28 16z" fill="#1f2937"/>
+    <circle cx="150" cy="168" r="11" fill="#1f2937"/>
+    <path d="M150 262c18 6 28 18 30 28" stroke="#23908b" stroke-width="16" stroke-linecap="round"/>
+    <rect x="170" y="270" width="22" height="36" rx="5" fill="#0f172a"/>
+    <rect x="173" y="274" width="16" height="26" rx="3" fill="#ace2dd"/>
+    <circle cx="182" cy="306" r="7" fill="#c68a62"/>
+  </g>
+
+  <!-- person right (pointing) -->
+  <g>
+    <path d="M462 410l8-92h44l8 92z" fill="#1e293b"/>
+    <rect x="454" y="232" width="76" height="96" rx="30" fill="#e8bd00"/>
+    <rect x="484" y="216" width="16" height="22" rx="6" fill="#a86f48"/>
+    <circle cx="492" cy="196" r="26" fill="#a86f48"/>
+    <path d="M466 188c2-20 16-30 30-28 16 2 24 14 22 28-10-8-30-10-52 0z" fill="#111827"/>
+    <path d="M470 258c-24-8-38-20-44-40" stroke="#e8bd00" stroke-width="16" stroke-linecap="round"/>
+    <circle cx="424" cy="214" r="8" fill="#a86f48"/>
+  </g>
+
+  <!-- plant -->
+  <path d="M40 410h44l-6-40H46z" fill="#e8bd00"/>
+  <path d="M62 372c-20-20-22-46-8-60 6 20 10 40 8 60zm0 0c18-24 34-34 50-34-8 18-24 30-50 34zm0 0c-4-26 4-50 22-62 2 24-6 46-22 62z" fill="#157672"/>
+
+  <!-- floating chips -->
+  <g filter="url(#sh)">
+    <rect x="378" y="30" width="150" height="46" rx="14" fill="#fff"/>
+    <circle cx="402" cy="53" r="12" fill="#effaf9"/>
+    <path d="M396 53l4 4 8-8" stroke="#157672" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="422" y="44" width="70" height="7" rx="3.5" fill="#0f172a"/>
+    <rect x="422" y="57" width="48" height="6" rx="3" fill="#94a3b8"/>
+  </g>
+  <g filter="url(#sh)">
+    <rect x="70" y="70" width="128" height="44" rx="14" fill="#fff"/>
+    <circle cx="92" cy="92" r="12" fill="#fffbea"/>
+    <path d="M86 96h12M88 96v-6a4 4 0 0 1 8 0v6M90 99h4" stroke="#c49600" stroke-width="2" stroke-linecap="round"/>
+    <rect x="112" y="84" width="66" height="7" rx="3.5" fill="#0f172a"/>
+    <rect x="112" y="96" width="42" height="6" rx="3" fill="#94a3b8"/>
+  </g>
+</svg>

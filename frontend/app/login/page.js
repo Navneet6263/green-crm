@@ -5,13 +5,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 import AuthShell from "../../components/auth/AuthShell";
+import { AUTH_INPUT_CLASS as INPUT_CLASS, AUTH_PRIMARY_BUTTON_CLASS as PRIMARY_BUTTON_CLASS, AUTH_GHOST_BUTTON_CLASS as GHOST_BUTTON_CLASS } from "../../components/auth/authStyles";
 import { apiRequest } from "../../lib/api";
 import { ROLE_HOME_ROUTE } from "../../lib/roles";
 import { saveSession } from "../../lib/session";
 
-const INPUT_CLASS = "w-full rounded-[20px] border border-[#eadfcd] bg-white/90 px-4 py-3.5 text-sm text-[#060710] outline-none transition placeholder:text-[#9c8e76] focus:border-[#d7b258] focus:ring-4 focus:ring-[#f6ead0]";
-const PRIMARY_BUTTON_CLASS = "inline-flex min-h-[50px] items-center justify-center rounded-[20px] border border-[#10111d] bg-[#10111d] px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#1a1c2b] disabled:cursor-not-allowed disabled:opacity-60";
-const GHOST_BUTTON_CLASS = "inline-flex min-h-[50px] items-center justify-center rounded-[20px] border border-[#eadfcd] bg-white px-5 py-3 text-sm font-semibold text-[#5d503c] transition hover:-translate-y-0.5 hover:border-[#d7b258] hover:text-[#060710]";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -46,28 +44,23 @@ export default function LoginPage() {
       switchText="New workspace?"
       switchHref="/register"
       switchLabel="Sign up"
-      title="Open your company workspace"
-      description="Login with your GreenCRM email and password to enter the dashboard designed for your role."
-      sideEyebrow="Access Layer"
-      sideTitle="Access your GreenCRM workspace and continue daily CRM work from one account."
-      sideCopy="Open leads, customers, tasks, analytics, reminders, and workflow queues with the same role-based access used across your company."
-      metrics={[
-        { label: "Role Views", value: "7", copy: "Admin, manager, sales, marketing, support, legal, and finance." },
-        { label: "Secure", value: "100%", copy: "Session-based access with company-scoped workspace routing." },
-        { label: "Fast Entry", value: "< 1m", copy: "Sign in and land directly on the right dashboard." },
-      ]}
+      title="Welcome back"
+      description="Log in with your work email to open the dashboard for your role."
+      sideEyebrow="GreenCRM workspace"
+      sideTitle="Your whole sales day, one login away."
+      sideCopy="Leads, follow-ups, tasks and team activity — right where you left them."
       features={[
-        { icon: "dashboard", title: "Role-based access", copy: "Every account lands in the right CRM dashboard without extra routing steps.", tone: "bg-[#fff4d9] text-[#8d6e27]" },
-        { icon: "workflow", title: "Leads and workflow stay connected", copy: "Lead movement, tasks, reminders, and handoff stages remain visible after login.", tone: "bg-[#f6efe2] text-[#5d503c]" },
-        { icon: "security", title: "Recovery stays available", copy: "Password reset and secure access remain tied to the same company CRM account.", tone: "bg-[#ebf8ee] text-[#217346]" },
+        { icon: "dashboard", title: "Role-based access", copy: "Every account lands in the right CRM dashboard without extra routing steps.", tone: "bg-gold-50 text-brand-700" },
+        { icon: "workflow", title: "Leads and workflow stay connected", copy: "Lead movement, tasks, reminders, and handoff stages remain visible after login.", tone: "bg-cream text-slate-600" },
+        { icon: "security", title: "Recovery stays available", copy: "Password reset and secure access remain tied to the same company CRM account.", tone: "bg-brand-50 text-brand-700" },
       ]}
     >
       <div className="space-y-5">
-        {error ? <div className="rounded-[20px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div> : null}
+        {error ? <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div> : null}
 
         <form className="space-y-4" onSubmit={handleSubmit}>
           <label className="block space-y-2">
-            <span className="text-[10px] font-black uppercase tracking-[0.24em] text-[#9a886d]">Work Email</span>
+            <span className="text-xs font-semibold text-slate-600">Work Email</span>
             <input
               className={INPUT_CLASS}
               type="email"
@@ -81,8 +74,8 @@ export default function LoginPage() {
 
           <label className="block space-y-2">
             <div className="flex items-center justify-between gap-3">
-              <span className="text-[10px] font-black uppercase tracking-[0.24em] text-[#9a886d]">Password</span>
-              <Link href="/forgot-password" className="text-xs font-semibold text-[#8d6e27] hover:text-[#060710]">
+              <span className="text-xs font-semibold text-slate-600">Password</span>
+              <Link href="/forgot-password" className="text-xs font-semibold text-brand-700 hover:text-brand-800">
                 Forgot password?
               </Link>
             </div>

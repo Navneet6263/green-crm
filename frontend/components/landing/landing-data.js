@@ -1,9 +1,97 @@
-export const LANDING_NAV_ITEMS = [
-  { label: "Features", href: "/#features" },
-  { label: "Field App", href: "/#field-app" },
-  { label: "How It Works", href: "/#workflow" },
-  { label: "Why GreenCRM", href: "/#why-greencrm" },
-  { label: "FAQ", href: "/#faq" },
+const GREENCALL_SITE = "https://www.greencall.in";
+
+// Parent company services, as listed on greencall.in/our-services.aspx.
+export const GREENCALL_SERVICES = [
+  { label: "Website Development", desc: "Websites and web solutions that help a business grow and engage its users.", href: `${GREENCALL_SITE}/web-development-services.aspx` },
+  { label: "Mobile App Development", desc: "Design, build, testing and launch of Android and iOS apps.", href: `${GREENCALL_SITE}/mobile-application-development.aspx` },
+  { label: "Web App Development", desc: "Secure, scalable web applications that streamline business processes.", href: `${GREENCALL_SITE}/web-application-development.aspx` },
+  { label: "Custom AI Development", desc: "Conversational AI, automation tools and custom AI applications.", href: `${GREENCALL_SITE}/custom-ai-development-service.aspx` },
+  { label: "Digital Marketing", desc: "Online visibility and reach for your target audience.", href: `${GREENCALL_SITE}/digital-marketing-services.aspx` },
+  { label: "Managed Payroll Processing", desc: "Salary processing, tax, statutory compliance and employee records.", href: `${GREENCALL_SITE}/fully-managed-payroll-processing.aspx` },
+  { label: "IT Staffing", desc: "Hire developers, cloud, networking, cybersecurity and support professionals.", href: `${GREENCALL_SITE}/it-staffing.aspx` },
+  { label: "BPO Services", desc: "Customer support and back-office operations.", href: `${GREENCALL_SITE}/bpo-solution.aspx` },
+];
+
+export const SISTER_PRODUCTS = [
+  { label: "GreenHR", desc: "HR simplified: employee records, attendance, payroll and recruitment.", href: "https://www.greenhr.in" },
+  { label: "Payroll Management", desc: "Payroll software for salary runs and compliance.", href: `${GREENCALL_SITE}/payroll-management-software.aspx` },
+  { label: "Call Center CRM", desc: "CRM built for call center teams.", href: `${GREENCALL_SITE}/call-center-crm.aspx` },
+  { label: "Green Comply", desc: "Vendor management and compliance.", href: `${GREENCALL_SITE}/vendor-management.aspx` },
+  { label: "Job Portal", desc: "Job portal and job board software.", href: `${GREENCALL_SITE}/job-portal-software.aspx` },
+];
+
+export const NAV_MENUS = [
+  {
+    label: "Product",
+    columns: [
+      {
+        title: "Platform",
+        links: [
+          { label: "All Features", desc: "Leads, follow-ups, calling, WhatsApp and more", href: "/features" },
+          { label: "Field Sales App", desc: "Android app with offline GPS route tracking", href: "/field-sales-app" },
+          { label: "Security", desc: "How your company data stays protected", href: "/security" },
+          { label: "How It Works", desc: "From new lead to closed deal", href: "/#workflow" },
+        ],
+      },
+    ],
+  },
+  {
+    label: "Solutions",
+    columns: [
+      {
+        title: "By team",
+        links: [
+          { label: "Small Business", href: "/crm-for-small-business" },
+          { label: "Startups", href: "/crm-for-startups" },
+          { label: "Sales Teams", href: "/crm-for-sales-team" },
+          { label: "Field Teams & Attendance", href: "/crm-with-attendance" },
+        ],
+      },
+      {
+        title: "By need",
+        links: [
+          { label: "CRM with Calling", href: "/crm-with-calling" },
+          { label: "CRM with WhatsApp", href: "/crm-with-whatsapp" },
+          { label: "CRM Software India", href: "/crm-software-india" },
+          { label: "CRM in Noida", href: "/crm-in-noida" },
+        ],
+      },
+    ],
+  },
+  {
+    label: "Resources",
+    columns: [
+      {
+        title: "Learn",
+        links: [
+          { label: "Blog", desc: "Guides for Indian sales teams", href: "/blog" },
+          { label: "FAQ", desc: "Answers to common questions", href: "/#faq" },
+          { label: "Book a Demo", desc: "See GreenCRM with your workflow", href: "/book-demo" },
+        ],
+      },
+    ],
+  },
+  {
+    label: "Company",
+    columns: [
+      {
+        title: "Green Call Technology",
+        links: [
+          { label: "About Us", desc: "Who builds GreenCRM", href: "/about" },
+          { label: "Contact", desc: "Phone, email, WhatsApp and office", href: "/contact" },
+          { label: "Careers", desc: "Open roles at Green Call", href: `${GREENCALL_SITE}/careers.aspx`, external: true },
+        ],
+      },
+    ],
+  },
+  {
+    label: "More",
+    wide: true,
+    columns: [
+      { title: "Our Services", links: GREENCALL_SERVICES.map(({ label, href }) => ({ label, href, external: true })), footer: { label: "View all services →", href: "/services" } },
+      { title: "Our Products", links: SISTER_PRODUCTS.map(({ label, href }) => ({ label, href, external: true })) },
+    ],
+  },
 ];
 
 // Shown on the page and reused for the FAQPage structured data, so both stay in sync.
@@ -91,8 +179,6 @@ export const WHY_ITEMS = [
 
 export const CTA_POINTS = ["Clean handoff between users", "One place for daily follow-up work", "Easy for small and growing teams"];
 
-const GREENCALL_SITE = "https://www.greencall.in";
-
 // Parent company details, as published on greencall.in.
 export const COMPANY = {
   name: "Green Call Technology",
@@ -120,10 +206,10 @@ export const FOOTER_LINK_GROUPS = [
   {
     title: "Product",
     links: [
-      { label: "Features", href: "/#features" },
-      { label: "Field Sales App", href: "/#field-app" },
+      { label: "All Features", href: "/features" },
+      { label: "Field Sales App", href: "/field-sales-app" },
+      { label: "Security", href: "/security" },
       { label: "How It Works", href: "/#workflow" },
-      { label: "Why GreenCRM", href: "/#why-greencrm" },
       { label: "FAQ", href: "/#faq" },
       { label: "Book a Demo", href: "/book-demo" },
     ],
@@ -155,21 +241,14 @@ export const FOOTER_LINK_GROUPS = [
   {
     title: "Company",
     links: [
-      { label: "About Green Call", href: `${GREENCALL_SITE}/about-us.aspx`, external: true },
+      { label: "About Us", href: "/about" },
+      { label: "Contact Us", href: "/contact" },
+      { label: "Our Services", href: "/services" },
       { label: "Careers", href: `${GREENCALL_SITE}/careers.aspx`, external: true },
-      { label: "Contact Us", href: `${GREENCALL_SITE}/contact-us.aspx`, external: true },
       { label: "Login", href: "/login" },
       { label: "Create Workspace", href: "/register" },
     ],
   },
-];
-
-export const SISTER_PRODUCTS = [
-  { label: "GreenHR", href: "https://www.greenhr.in" },
-  { label: "Payroll Management", href: `${GREENCALL_SITE}/payroll-management-software.aspx` },
-  { label: "Call Center CRM", href: `${GREENCALL_SITE}/call-center-crm.aspx` },
-  { label: "Green Comply", href: `${GREENCALL_SITE}/vendor-management.aspx` },
-  { label: "Job Portal", href: `${GREENCALL_SITE}/job-portal-software.aspx` },
 ];
 
 export const LEGAL_LINKS = [

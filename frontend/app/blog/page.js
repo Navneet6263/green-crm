@@ -69,11 +69,11 @@ const posts = [
 
 export default function BlogIndexPage() {
   return (
-    <div className="min-h-screen bg-[linear-gradient(180deg,#f7fcf9_0%,#f5f7fb_34%,#ffffff_100%)] text-slate-950">
+    <div className="marketing-root min-h-screen bg-[linear-gradient(180deg,#f7fcf9_0%,#f5f7fb_34%,#ffffff_100%)] text-slate-950">
       <LandingNavbar />
       <main className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
         <div className="max-w-2xl">
-          <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[0.72rem] font-semibold uppercase tracking-[0.2em] text-emerald-700">
+          <span className="inline-flex rounded-full border border-brand-200 bg-brand-50 px-3 py-1 text-[0.72rem] font-semibold uppercase tracking-[0.2em] text-brand-700">
             GreenCRM Blog
           </span>
           <h1 className="mt-5 text-4xl font-semibold tracking-tight text-slate-950 sm:text-[2.8rem]">
@@ -89,16 +89,16 @@ export default function BlogIndexPage() {
             <Link
               key={post.href}
               href={post.href}
-              className="group rounded-[1.75rem] border border-slate-200/80 bg-white p-6 shadow-[0_18px_50px_rgba(15,23,42,0.06)] transition hover:shadow-[0_24px_64px_rgba(16,185,129,0.1)]"
+              className="group rounded-[1.75rem] border border-slate-200/80 bg-white p-6 shadow-[0_18px_50px_rgba(15,23,42,0.06)] transition hover:shadow-[0_24px_64px_rgba(12,96,93,0.1)]"
             >
-              <span className="inline-flex rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.15em] text-emerald-700">
+              <span className="inline-flex rounded-full border border-brand-100 bg-brand-50 px-3 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.15em] text-brand-700">
                 {post.tag}
               </span>
-              <h2 className="mt-4 text-base font-semibold leading-7 text-slate-950 group-hover:text-emerald-700">
+              <h2 className="mt-4 text-base font-semibold leading-7 text-slate-950 group-hover:text-brand-700">
                 {post.title}
               </h2>
               <p className="mt-3 text-sm leading-7 text-slate-600">{post.description}</p>
-              <p className="mt-4 text-sm font-semibold text-emerald-600">Read article →</p>
+              <p className="mt-4 text-sm font-semibold text-brand-600">Read article →</p>
             </Link>
           ))}
         </div>

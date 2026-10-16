@@ -2,21 +2,22 @@ import Link from "next/link";
 import LandingFooter from "./LandingFooter";
 import LandingNavbar from "./LandingNavbar";
 import FloatingCTA from "./FloatingCTA";
+import { CtaBanner } from "./MarketingPage";
 import { btnPrimary, btnSecondary, cardGlass, sectionPadding } from "./landing-styles";
 
 export default function SeoLandingShell({ hero, features, faq, cta }) {
   return (
-    <div className="min-h-screen bg-white text-slate-950">
+    <div className="marketing-root min-h-screen bg-white text-slate-950">
       <LandingNavbar />
       <main>
         {/* Hero */}
         <section className="relative overflow-hidden">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(16,185,129,0.06),transparent_50%)]" />
-          <div className="absolute top-10 right-20 h-60 w-60 rounded-full bg-emerald-100/30 blur-3xl" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(12,96,93,0.06),transparent_50%)]" />
+          <div className="absolute top-10 right-20 h-60 w-60 rounded-full bg-brand-100/30 blur-3xl" />
           <div className="relative mx-auto max-w-7xl px-4 pb-16 pt-14 sm:px-6 lg:px-8">
             <div className="max-w-3xl">
-              <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3.5 py-1.5 text-[12px] font-semibold text-emerald-700">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              <span className="inline-flex items-center gap-2 rounded-full border border-brand-200 bg-brand-50 px-3.5 py-1.5 text-[12px] font-semibold text-brand-700">
+                <span className="h-1.5 w-1.5 rounded-full bg-brand-500" />
                 {hero.eyebrow}
               </span>
               <h1 className="mt-6 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl lg:text-5xl lg:leading-[1.1]">{hero.title}</h1>
@@ -31,7 +32,7 @@ export default function SeoLandingShell({ hero, features, faq, cta }) {
 
         {/* Features */}
         {features?.length ? (
-          <section className={`${sectionPadding} bg-slate-50`}>
+          <section className={`${sectionPadding} bg-cream`}>
             <div className="mx-auto max-w-7xl">
               <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                 {features.map(item => (
@@ -42,7 +43,7 @@ export default function SeoLandingShell({ hero, features, faq, cta }) {
                       <ul className="mt-4 grid gap-1.5">
                         {item.points.map(p => (
                           <li key={p} className="flex items-center gap-2 text-sm text-slate-700">
-                            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />{p}
+                            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand-500" />{p}
                           </li>
                         ))}
                       </ul>
@@ -71,18 +72,10 @@ export default function SeoLandingShell({ hero, features, faq, cta }) {
           </section>
         ) : null}
 
-        {/* CTA */}
-        <section className="px-4 py-16 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-7xl">
-            <div className="rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-900 px-8 py-12 text-center sm:px-12 sm:py-16">
-              <h2 className="text-2xl font-bold text-white sm:text-3xl">{cta?.title || "Ready to see GreenCRM in action?"}</h2>
-              <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-slate-300">{cta?.description || "Book a free demo and see how GreenCRM helps your sales team manage leads, calls, WhatsApp, and attendance from one place."}</p>
-              <Link href="/book-demo" className="mt-8 inline-flex items-center gap-2 rounded-full bg-white px-7 py-3.5 text-sm font-bold text-emerald-700 shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl">
-                Book Free Demo — It's Free →
-              </Link>
-            </div>
-          </div>
-        </section>
+        <CtaBanner
+          title={cta?.title || "Ready to see GreenCRM in action?"}
+          description={cta?.description || "Book a free demo and see how GreenCRM helps your sales team manage leads, calls, WhatsApp, and attendance from one place."}
+        />
       </main>
       <LandingFooter />
       <FloatingCTA />

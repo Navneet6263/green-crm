@@ -1,5 +1,33 @@
 @import "tailwindcss";
 
+/* Marketing site palette, built from the logo: teal #0C605D (brand-700) and gold #E8BD00 (gold-500). */
+@theme {
+  --color-brand-50: #effaf9;
+  --color-brand-100: #d5f1ee;
+  --color-brand-200: #ace2dd;
+  --color-brand-300: #79cbc5;
+  --color-brand-400: #45aca6;
+  --color-brand-500: #23908b;
+  --color-brand-600: #157672;
+  --color-brand-700: #0c605d;
+  --color-brand-800: #0d4d4b;
+  --color-brand-900: #0e403f;
+  --color-brand-950: #032625;
+
+  --color-gold-50: #fffbea;
+  --color-gold-100: #fff3c4;
+  --color-gold-200: #ffe785;
+  --color-gold-300: #ffd746;
+  --color-gold-400: #f9c81a;
+  --color-gold-500: #e8bd00;
+  --color-gold-600: #c49600;
+  --color-gold-700: #9c6f02;
+  --color-gold-800: #81570a;
+  --color-gold-900: #6d480f;
+
+  --color-cream: #fbf9f3;
+}
+
 @layer base {
   body {
     @apply bg-[#eef4ff] text-slate-900 antialiased;

@@ -14,15 +14,15 @@ const VISITS = [
   { name: "Metro Builders", time: "3:30 pm" },
 ];
 
-function PhoneMock() {
+export function PhoneMock() {
   return (
     <div className="relative mx-auto w-[280px] rounded-[2.5rem] border-[10px] border-slate-900 bg-white shadow-2xl shadow-slate-900/20">
       <div className="mx-auto mt-2 h-1.5 w-16 rounded-full bg-slate-200" />
       <div className="px-4 pb-5 pt-3">
         <div className="flex items-center justify-between">
           <p className="text-sm font-bold text-slate-900">Today&apos;s route</p>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-semibold text-brand-700">
+            <span className="h-1.5 w-1.5 rounded-full bg-brand-500 animate-pulse" />
             Tracking
           </span>
         </div>
@@ -42,11 +42,11 @@ function PhoneMock() {
         </div>
 
         <div className="mt-3 grid grid-cols-2 gap-2">
-          <div className="rounded-xl bg-slate-50 px-3 py-2">
+          <div className="rounded-xl bg-cream px-3 py-2">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Distance</p>
             <p className="text-base font-bold text-slate-900">18.4 km</p>
           </div>
-          <div className="rounded-xl bg-slate-50 px-3 py-2">
+          <div className="rounded-xl bg-cream px-3 py-2">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Visits</p>
             <p className="text-base font-bold text-slate-900">3</p>
           </div>
@@ -55,7 +55,7 @@ function PhoneMock() {
         <div className="mt-3 space-y-2">
           {VISITS.map((v, i) => (
             <div key={v.name} className="flex items-center gap-2.5 rounded-xl border border-slate-100 px-3 py-2">
-              <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-emerald-600 text-[11px] font-bold text-white">{i + 1}</span>
+              <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-brand-600 text-[11px] font-bold text-white">{i + 1}</span>
               <p className="flex-1 truncate text-xs font-semibold text-slate-800">{v.name}</p>
               <p className="text-[11px] text-slate-400">{v.time}</p>
             </div>
@@ -68,20 +68,21 @@ function PhoneMock() {
 
 export default function LandingFieldApp() {
   return (
-    <section id="field-app" className={`${sectionPadding} bg-gradient-to-b from-white to-emerald-50/40`}>
-      <div className="mx-auto max-w-7xl">
+    <section id="field-app" className={`${sectionPadding} relative overflow-hidden bg-gradient-to-b from-white to-brand-50/50`}>
+      <div className="pointer-events-none absolute right-0 top-1/4 h-[28rem] w-[28rem] rounded-full bg-gold-200/40 blur-3xl" />
+      <div className="relative mx-auto max-w-7xl">
         <div className="grid gap-14 lg:grid-cols-2 lg:items-center">
           <div>
-            <p className="text-[12px] font-bold uppercase tracking-widest text-emerald-600">Field Sales App</p>
+            <p className="text-[12px] font-bold uppercase tracking-widest text-brand-600">Field Sales App</p>
             <h2 className={`${sectionTitle} mt-2`}>Your field team&apos;s whole day, recorded on their phone</h2>
             <p className={sectionSub}>
               GreenCRM comes with an Android app for your sales staff. Routes and visits are saved to your CRM, and leads and follow-ups stay in sync with the web workspace.
             </p>
             <div className="mt-8 grid gap-4 sm:grid-cols-2">
               {POINTS.map((p) => (
-                <div key={p.title} className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+                <div key={p.title} className="rounded-2xl border border-white bg-white p-5 shadow-[0_20px_50px_-30px_rgba(12,96,93,0.4)]">
                   <h3 className="flex items-center gap-2 text-base font-bold text-slate-900">
-                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                    <span className="h-2 w-2 rounded-full bg-brand-500" />
                     {p.title}
                   </h3>
                   <p className="mt-2 text-sm leading-relaxed text-slate-500">{p.desc}</p>
@@ -89,10 +90,15 @@ export default function LandingFieldApp() {
               ))}
             </div>
             <div className="mt-8">
-              <Link href="/book-demo" className={btnPrimary}>See the app in a demo →</Link>
+              <Link href="/field-sales-app" className={btnPrimary}>Explore the Field App →</Link>
             </div>
           </div>
-          <PhoneMock />
+          <div className="relative pb-10">
+            <img src="/illustrations/field-rep.svg" alt="Field sales rep on a GPS-tracked route" className="w-full drop-shadow-[0_30px_50px_rgba(12,96,93,0.18)]" />
+            <div className="absolute -bottom-6 right-0 hidden origin-bottom-right scale-[0.62] sm:block lg:-right-6">
+              <PhoneMock />
+            </div>
+          </div>
         </div>
       </div>
     </section>

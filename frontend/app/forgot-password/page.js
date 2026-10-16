@@ -4,11 +4,9 @@ import Link from "next/link";
 import { useState } from "react";
 
 import AuthShell from "../../components/auth/AuthShell";
+import { AUTH_INPUT_CLASS as INPUT_CLASS, AUTH_PRIMARY_BUTTON_CLASS as PRIMARY_BUTTON_CLASS, AUTH_GHOST_BUTTON_CLASS as GHOST_BUTTON_CLASS } from "../../components/auth/authStyles";
 import { apiRequest } from "../../lib/api";
 
-const INPUT_CLASS = "w-full rounded-[20px] border border-[#eadfcd] bg-white/90 px-4 py-3.5 text-sm text-[#060710] outline-none transition placeholder:text-[#9c8e76] focus:border-[#d7b258] focus:ring-4 focus:ring-[#f6ead0]";
-const PRIMARY_BUTTON_CLASS = "inline-flex min-h-[50px] items-center justify-center rounded-[20px] border border-[#10111d] bg-[#10111d] px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#1a1c2b] disabled:cursor-not-allowed disabled:opacity-60";
-const GHOST_BUTTON_CLASS = "inline-flex min-h-[50px] items-center justify-center rounded-[20px] border border-[#eadfcd] bg-white px-5 py-3 text-sm font-semibold text-[#5d503c] transition hover:-translate-y-0.5 hover:border-[#d7b258] hover:text-[#060710]";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -45,21 +43,16 @@ export default function ForgotPasswordPage() {
       sideEyebrow="Recovery Flow"
       sideTitle="Recover access to your GreenCRM workspace without losing CRM continuity."
       sideCopy="Reset the account that manages leads, customers, tasks, reminders, and workflow activity inside your company workspace."
-      metrics={[
-        { label: "Recovery Steps", value: "2", copy: "Verify email and set a new password." },
-        { label: "SMTP Ready", value: "Live", copy: "Email delivery works when the backend mail setup is active." },
-        { label: "Fallback", value: "Preview", copy: "Local reset preview appears when mail is not configured." },
-      ]}
       features={[
-        { icon: "security", title: "Safe reset flow", copy: "Recovery stays tied to the same company account used for CRM access.", tone: "bg-[#fff4d9] text-[#8d6e27]" },
-        { icon: "message", title: "Email-first delivery", copy: "Reset links are sent to the registered inbox whenever SMTP is active.", tone: "bg-[#f6efe2] text-[#5d503c]" },
-        { icon: "dashboard", title: "Back to the right workspace", copy: "After reset, users can return to their CRM dashboard, leads, and task queues quickly.", tone: "bg-[#ebf8ee] text-[#217346]" },
+        { icon: "security", title: "Safe reset flow", copy: "Recovery stays tied to the same company account used for CRM access.", tone: "bg-gold-50 text-brand-700" },
+        { icon: "message", title: "Email-first delivery", copy: "Reset links are sent to the registered inbox whenever SMTP is active.", tone: "bg-cream text-slate-600" },
+        { icon: "dashboard", title: "Back to the right workspace", copy: "After reset, users can return to their CRM dashboard, leads, and task queues quickly.", tone: "bg-brand-50 text-brand-700" },
       ]}
     >
       <div className="space-y-5">
-        {error ? <div className="rounded-[20px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div> : null}
+        {error ? <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div> : null}
         {result ? (
-          <div className="rounded-[20px] border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm text-emerald-700">
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm text-emerald-700">
             <strong className="block font-semibold">{result.message}</strong>
             {result.delivery === "email" ? <p className="mt-2">Reset link sent to the registered email address.</p> : null}
             {result.preview_reset_url ? (
@@ -77,7 +70,7 @@ export default function ForgotPasswordPage() {
 
         <form className="space-y-4" onSubmit={handleSubmit}>
           <label className="block space-y-2">
-            <span className="text-[10px] font-black uppercase tracking-[0.24em] text-[#9a886d]">Work Email</span>
+            <span className="text-xs font-semibold text-slate-600">Work Email</span>
             <input
               className={INPUT_CLASS}
               type="email"
