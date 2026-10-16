@@ -117,6 +117,7 @@ export const SIDEBAR_SECTIONS = {
       ITEM("Notes", "/notes", "notes", null, "_blank"),
       ITEM("Communications", "/communications", "message", "communications"),
       ITEM("Attendance", "/attendance", "attendance", "attendance"),
+      ITEM("Field Tracking", "/tracking", "map"),
     ]),
     SECTION("Insights", [
       ITEM("Analytics", "/analytics", "analytics", "analytics"),
@@ -132,6 +133,7 @@ export const SIDEBAR_SECTIONS = {
       ITEM("Tasks", "/tasks", "tasks", "tasks"),
       ITEM("Notes", "/notes", "notes", null, "_blank"),
       ITEM("Attendance", "/attendance", "attendance", "attendance"),
+      ITEM("Field Tracking", "/tracking", "map"),
     ]),
     SECTION("Team", [
       ITEM("Customers", "/customers", "customers", "customers"),
@@ -154,6 +156,7 @@ export const SIDEBAR_SECTIONS = {
       ITEM("Customers", "/customers", "customers", "customers"),
       ITEM("Communications", "/communications", "message", "communications"),
       ITEM("Attendance", "/attendance", "attendance", "attendance"),
+      ITEM("My Route", "/tracking", "map"),
       ITEM("Support", "/support", "support", "support"),
     ]),
   ],

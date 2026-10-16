@@ -26,6 +26,7 @@ const leadCountIntegrationRoutes = require("./leadCountIntegrationRoutes");
 
 const router = express.Router();
 router.use('/field-tracking', require('./fieldTrackingRoutes'));
+router.use('/team-tracking', require('./teamTrackingRoutes'));
 
 router.use("/integrations", leadCountIntegrationRoutes);
 router.use("/auth", authRoutes);
