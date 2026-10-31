@@ -61,6 +61,8 @@ function formatNotificationTime(value) {
   }).format(date);
 }
 
+const SIDEBAR_COLLAPSED_KEY = "greencrm:sidebar-collapsed";
+
 function cn(...values) {
   return values.filter(Boolean).join(" ");
 }
@@ -114,7 +116,7 @@ function getBlockedFeature(pathname, role, companyAccess) {
   return companyAccess[matchedRule.accessKey] === false ? matchedRule : null;
 }
 
-function SidebarNavItem({ item, active, exactActive }) {
+function SidebarNavItem({ item, active, exactActive, collapsed }) {
   const handleClick = (e) => {
     if (item.target === '_blank') {
       e.preventDefault();
@@ -130,27 +132,23 @@ function SidebarNavItem({ item, active, exactActive }) {
       prefetch={false}
       scroll={false}
       onClick={handleClick}
+      title={collapsed ? item.label : undefined}
+      aria-current={active ? "page" : undefined}
       className={cn(
-        "group flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-semibold transition",
+        "group relative flex items-center gap-3 rounded-[10px] px-3 py-2 text-[13.5px] transition",
+        collapsed && "lg:justify-center lg:px-0",
         active
-          ? "bg-[#fef3c7] text-slate-950 shadow-[0_12px_28px_rgba(251,191,36,0.16)]"
-          : "text-slate-700 hover:bg-slate-50 hover:text-slate-950"
+          ? "bg-brand-50 font-semibold text-brand-900"
+          : "font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900"
       )}
     >
-      <span
-        className={cn(
-          "grid h-9 w-9 place-items-center rounded-xl transition",
-          active
-            ? "bg-white text-[#f59e0b]"
-            : "bg-white text-slate-500 group-hover:text-[#f59e0b]"
-        )}
-      >
-        <DashboardIcon name={item.icon} className="h-3.5 w-3.5" />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className={active ? "font-semibold text-[13px]" : "font-medium text-[13px]"}>{item.label}</span>
-      </span>
-      {active ? <span className="h-2 w-2 rounded-full bg-[#f59e0b]" /> : null}
+      {active ? <span className="absolute -left-3 top-2 bottom-2 w-[3px] rounded-r-full bg-gold-500" /> : null}
+      <DashboardIcon
+        name={item.icon}
+        className={cn("h-[18px] w-[18px] shrink-0 transition", active ? "text-brand-700" : "text-slate-400 group-hover:text-brand-600")}
+      />
+      <span className={cn("min-w-0 flex-1 truncate", collapsed && "lg:hidden")}>{item.label}</span>
+      {item.target === "_blank" && !collapsed ? <span className="text-[11px] text-slate-300">↗</span> : null}
     </Link>
   );
 }
@@ -173,6 +171,34 @@ export default function DashboardShell({ session: initialSession, children, titl
   const notificationVersion = useRef(0);
   const accountRef = useRef(null);
   const sidebarRef = useRef(null);
+  const [collapsed, setCollapsed] = useState(false);
+  const [headerSearch, setHeaderSearch] = useState("");
+
+  useEffect(() => {
+    try {
+      setCollapsed(window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1");
+    } catch (_error) {
+      // Storage can be unavailable (private mode); the sidebar simply starts expanded.
+    }
+  }, []);
+
+  function toggleCollapsed() {
+    setCollapsed((current) => {
+      const next = !current;
+      try {
+        window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, next ? "1" : "0");
+      } catch (_error) {
+        // Ignore storage failures.
+      }
+      return next;
+    });
+  }
+
+  function submitHeaderSearch(event) {
+    event.preventDefault();
+    const query = headerSearch.trim();
+    router.push(query ? `/leads?search=${encodeURIComponent(query)}` : "/leads");
+  }
 
   const role = session?.user?.role || "viewer";
   const roleMeta = getRoleMeta(role);
@@ -393,56 +419,61 @@ export default function DashboardShell({ session: initialSession, children, titl
     }
   }
 
+  const userName = session?.user?.name || session?.user?.full_name || "Preview User";
+  const canSearchLeads = visibleSections.some((section) => section.items.some((item) => item.href === "/leads"));
+  const todayLabel = new Date().toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
+
   return (
-      <div className="min-h-screen bg-[#f8fafc] text-slate-900">
+      <div className="min-h-screen bg-[#f7f8f6] text-slate-900">
       <div
         className={cn(
-          "fixed inset-0 z-30 bg-[#060710]/45 backdrop-blur-sm transition lg:hidden",
+          "fixed inset-0 z-30 bg-slate-900/40 backdrop-blur-sm transition lg:hidden",
           navOpen ? "opacity-100" : "pointer-events-none opacity-0"
         )}
         onClick={() => setNavOpen(false)}
       />
 
       <aside
-        ref={sidebarRef}
         className={cn(
-          "fixed inset-y-0 left-0 z-40 flex w-[268px] flex-col overflow-y-auto border-r border-slate-200 bg-white px-5 py-6 shadow-[0_18px_55px_rgba(15,23,42,0.04)] transition-transform duration-300 lg:translate-x-0",
+          "tw-buttons fixed inset-y-0 left-0 z-40 flex w-[256px] flex-col border-r border-slate-200/80 bg-white transition-[transform,width] duration-300 lg:translate-x-0",
+          collapsed ? "lg:w-[76px]" : "lg:w-[248px]",
           navOpen ? "translate-x-0" : "-translate-x-[112%]"
         )}
       >
-        <div className="flex items-center justify-between gap-3">
-          <Link href={ROLE_HOME_ROUTE[role] || "/"} prefetch={false} className="inline-flex max-w-[10.5rem] items-center">
-            <AppLogo
-              size="md"
-              variant="sidebar"
-              priority
-            />
+        <div className={cn("flex h-[60px] shrink-0 items-center justify-between gap-2 border-b border-slate-100 px-4", collapsed && "lg:justify-center lg:px-2")}>
+          <Link href={ROLE_HOME_ROUTE[role] || "/"} prefetch={false} className={cn("inline-flex max-w-[9.5rem] items-center", collapsed && "lg:hidden")}>
+            <AppLogo size="sm" variant="sidebar" priority />
           </Link>
+          {collapsed ? (
+            <Link href={ROLE_HOME_ROUTE[role] || "/"} prefetch={false} className="hidden h-9 w-9 place-items-center rounded-[10px] bg-brand-700 text-sm font-black text-white lg:grid" title="GreenCRM">
+              G
+            </Link>
+          ) : null}
           <button
-            className="grid h-10 w-10 place-items-center rounded-2xl border border-[#e7dccb] bg-white text-[#6d604b] lg:hidden"
+            type="button"
+            className="grid h-9 w-9 place-items-center rounded-[10px] text-slate-500 hover:bg-slate-100 lg:hidden"
             onClick={() => setNavOpen(false)}
             aria-label="Close navigation"
           >
-            <span className="relative block h-4 w-4">
-              <span className="absolute left-0 top-1/2 block h-0.5 w-4 -translate-y-1/2 rotate-45 rounded-full bg-current" />
-              <span className="absolute left-0 top-1/2 block h-0.5 w-4 -translate-y-1/2 -rotate-45 rounded-full bg-current" />
-            </span>
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m6 6 12 12M18 6 6 18" /></svg>
           </button>
         </div>
 
-        <nav className="mt-8 flex-1 space-y-7">
+        <nav ref={sidebarRef} className="flex-1 space-y-5 overflow-y-auto px-3 py-4" aria-label="Main navigation">
           {visibleSections.map((section) => (
             <div key={section.title}>
-              <span className="px-3 text-[10px] font-black uppercase tracking-[0.22em] text-[#b45309]/70">
+              <p className={cn("px-3 pb-1.5 text-[10.5px] font-bold uppercase tracking-[0.14em] text-slate-400", collapsed && "lg:hidden")}>
                 {section.title}
-              </span>
-              <div className="mt-3 space-y-1">
+              </p>
+              {collapsed ? <div className="mx-auto mb-2 hidden h-px w-8 bg-slate-100 lg:block" /> : null}
+              <div className="space-y-0.5">
                 {section.items.map((item) => (
                   <SidebarNavItem
                     key={item.href}
                     exactActive={pathname === item.href}
                     item={item}
                     active={activeNavHref === item.href}
+                    collapsed={collapsed}
                   />
                 ))}
               </div>
@@ -450,142 +481,137 @@ export default function DashboardShell({ session: initialSession, children, titl
           ))}
         </nav>
 
-        <div className="mt-6 shrink-0 space-y-4 border-t border-slate-100 pt-5">
-          <Link
-            href="/settings/profile"
-            prefetch={false}
-            className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-3 shadow-[0_14px_35px_rgba(15,23,42,0.06)] transition hover:border-amber-200"
-          >
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-slate-100 text-sm font-black text-slate-700">
-              {getInitials(session?.user?.name || session?.user?.full_name || "Preview User")}
-            </span>
-            <span className="min-w-0 flex-1">
-              <strong className="block truncate text-sm font-bold text-slate-950">{session?.user?.name || session?.user?.full_name || "Preview User"}</strong>
-              <span className="block truncate text-xs font-medium text-slate-500">{session?.user?.talent_id || roleMeta.label}</span>
-            </span>
-            <DashboardIcon name="settings" className="h-4 w-4 shrink-0 text-slate-400" />
-          </Link>
-          <div className={cn("grid gap-2", showSeparateSettingsLink ? "grid-cols-2" : "grid-cols-1")}>
-            {showSeparateSettingsLink ? (
-              <Link href={settingsHref} prefetch={false} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-center text-xs font-bold text-slate-600 transition hover:bg-[#fef3c7] hover:text-[#b45309]">
-                Settings
-              </Link>
-            ) : null}
-            <button type="button" className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-100" onClick={logout}>
-              Logout
+        <div className="shrink-0 border-t border-slate-100 p-3">
+          <div className={cn("flex items-center gap-3 rounded-[12px] px-2 py-2", collapsed && "lg:justify-center lg:px-0")}>
+            <Link href="/settings/profile" prefetch={false} title={collapsed ? userName : undefined}
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-50 text-xs font-bold text-brand-800 ring-1 ring-brand-100">
+              {getInitials(userName)}
+            </Link>
+            <Link href="/settings/profile" prefetch={false} className={cn("min-w-0 flex-1", collapsed && "lg:hidden")}>
+              <strong className="block truncate text-[13px] font-semibold text-slate-900">{userName}</strong>
+              <span className="block truncate text-xs text-slate-500">{roleMeta.label}</span>
+            </Link>
+            <button type="button" onClick={logout} title="Logout" aria-label="Logout"
+              className={cn("grid h-8 w-8 shrink-0 place-items-center rounded-[8px] text-slate-400 transition hover:bg-rose-50 hover:text-rose-600", collapsed && "lg:hidden")}>
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" /></svg>
             </button>
           </div>
+          <button type="button" onClick={toggleCollapsed} aria-pressed={collapsed} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            className="mt-1 hidden w-full items-center justify-center gap-2 rounded-[8px] py-2 text-xs font-medium text-slate-400 transition hover:bg-slate-50 hover:text-slate-700 lg:flex">
+            <svg className={cn("h-4 w-4 transition-transform", collapsed ? "rotate-180" : "")} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m15 18-6-6 6-6" /></svg>
+            {collapsed ? null : "Collapse"}
+          </button>
         </div>
       </aside>
 
-      <div className="min-h-screen py-0 lg:pl-[268px]">
+      <div className={cn("min-h-screen py-0 transition-[padding] duration-300", collapsed ? "lg:pl-[76px]" : "lg:pl-[248px]")}>
         <div className="space-y-0">
-          <header
-            className={cn(
-              "sticky top-0 z-20 border-b border-slate-100 bg-white px-5 py-3 md:px-7",
-              hideTitle ? "" : ""
-            )}
-          >
-            <div className="flex items-center gap-3">
-              {/* Mobile menu */}
+          <header className="tw-buttons sticky top-0 z-20 border-b border-slate-200/80 bg-white/90 backdrop-blur-md">
+            <div className="flex h-[60px] items-center gap-3 px-4 md:px-6">
               <button
-                className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-slate-200 bg-white text-slate-500 lg:hidden"
+                type="button"
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] border border-slate-200 text-slate-500 lg:hidden"
                 onClick={() => setNavOpen(true)}
                 aria-label="Open navigation"
               >
-                <span className="flex flex-col gap-1">
-                  <span className="block h-0.5 w-4 rounded-full bg-current" />
-                  <span className="block h-0.5 w-4 rounded-full bg-current" />
-                  <span className="block h-0.5 w-4 rounded-full bg-current" />
-                </span>
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
               </button>
 
-              {/* Quick actions — Add Lead + Add Customer + Recent Updates */}
-              {role !== "expert" && (
-                <div className="hidden flex-1 items-center justify-center gap-2 md:flex">
-                  <Link
-                    href="/leads/new"
-                    prefetch={false}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2 text-[13px] font-semibold text-amber-900 transition hover:bg-amber-100"
-                  >
-                    <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" /></svg>
-                    Add Lead
-                  </Link>
-                  <Link
-                    href="/customers/new"
-                    prefetch={false}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-[13px] font-semibold text-slate-700 transition hover:border-amber-300 hover:text-amber-800"
-                  >
-                    <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" /></svg>
-                    Add Customer
-                  </Link>
-                  <Link
-                    href="/recent-updates"
-                    prefetch={false}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 text-[13px] font-semibold text-blue-700 transition hover:bg-blue-100 hover:border-blue-300"
-                  >
-                    <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                      <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
-                      <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" />
-                    </svg>
-                    Recent Updates
-                  </Link>
-                </div>
-              )}
+              <div className="hidden min-w-0 leading-tight sm:block">
+                <p className="text-[11px] font-medium text-slate-400">{todayLabel}</p>
+                <p className="truncate text-[15px] font-semibold text-slate-900">{title || roleMeta.label}</p>
+              </div>
 
-              <div className="ml-auto flex items-center gap-2">
-                {/* Bell */}
+              {canSearchLeads ? (
+                <form onSubmit={submitHeaderSearch} className="ml-2 hidden max-w-md flex-1 md:block" role="search">
+                  <label className="flex items-center gap-2 rounded-[10px] border border-slate-200 bg-slate-50 px-3 py-2 text-slate-400 transition focus-within:border-brand-300 focus-within:bg-white focus-within:ring-4 focus-within:ring-brand-50">
+                    <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+                    <input
+                      value={headerSearch}
+                      onChange={(event) => setHeaderSearch(event.target.value)}
+                      placeholder="Search leads by name, company or phone"
+                      aria-label="Search leads"
+                      className="min-w-0 flex-1 bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400"
+                    />
+                  </label>
+                </form>
+              ) : null}
+
+              <div className="ml-auto flex items-center gap-1.5">
+                {role !== "expert" ? (
+                  <div className="hidden items-center gap-1.5 lg:flex">
+                    <Link href="/leads/new" prefetch={false}
+                      className="inline-flex h-9 items-center gap-1.5 rounded-[10px] bg-brand-700 px-3.5 text-[13px] font-semibold text-white shadow-sm transition hover:bg-brand-800">
+                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M12 5v14M5 12h14" /></svg>
+                      Add Lead
+                    </Link>
+                    <Link href="/customers/new" prefetch={false}
+                      className="inline-flex h-9 items-center gap-1.5 rounded-[10px] border border-slate-200 bg-white px-3 text-[13px] font-semibold text-slate-700 transition hover:border-brand-200 hover:text-brand-800">
+                      Add Customer
+                    </Link>
+                  </div>
+                ) : null}
+
+                {role !== "expert" ? (
+                  <Link href="/recent-updates" prefetch={false} title="Recent updates" aria-label="Recent updates"
+                    className="grid h-9 w-9 place-items-center rounded-[10px] text-slate-500 transition hover:bg-slate-100 hover:text-slate-800">
+                    <DashboardIcon name="notes" className="h-[18px] w-[18px]" />
+                  </Link>
+                ) : null}
+                {role !== "expert" ? (
+                  <Link href="/communications" prefetch={false} title="Communications" aria-label="Open communications"
+                    className="grid h-9 w-9 place-items-center rounded-[10px] text-slate-500 transition hover:bg-slate-100 hover:text-slate-800">
+                    <DashboardIcon name="mail" className="h-[18px] w-[18px]" />
+                  </Link>
+                ) : null}
+
                 <div className="relative" ref={notificationRef}>
                   <button
-                    className="relative grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-white text-slate-500 shadow-sm"
+                    type="button"
+                    className={cn("relative grid h-9 w-9 place-items-center rounded-[10px] transition", showNotifications ? "bg-brand-50 text-brand-800" : "text-slate-500 hover:bg-slate-100 hover:text-slate-800")}
                     onClick={() => setShowNotifications((current) => !current)}
+                    aria-label="Notifications"
+                    aria-expanded={showNotifications}
                   >
-                    <DashboardIcon name="bell" className="h-5 w-5" />
+                    <DashboardIcon name="bell" className="h-[18px] w-[18px]" />
                     {unreadCount ? (
-                      <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#F59E0B] px-1 text-[10px] font-bold text-white">
+                      <span className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white ring-2 ring-white">
                         {unreadCount > 99 ? "99+" : unreadCount}
                       </span>
                     ) : null}
                   </button>
 
                   {showNotifications ? (
-                    <div className="fixed left-3 right-3 top-20 sm:absolute sm:left-auto sm:right-0 sm:top-[calc(100%+12px)] z-30 sm:w-[420px] max-h-[calc(100dvh-6rem)] overflow-y-auto rounded-[28px] border border-[#eadfcd] bg-white p-4 shadow-[0_28px_80px_rgba(79,58,22,0.16)]">
-                      <div className="flex items-start justify-between gap-3">
+                    <div className="fixed left-3 right-3 top-[68px] z-30 max-h-[calc(100dvh-6rem)] overflow-y-auto rounded-[16px] border border-slate-200 bg-white shadow-[0_24px_60px_-20px_rgba(15,23,42,0.35)] sm:absolute sm:left-auto sm:right-0 sm:top-[calc(100%+10px)] sm:w-[400px]">
+                      <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
                         <div>
-                          <strong className="block text-base text-slate-900">Notifications</strong>
-                          <span className="text-sm text-slate-400">{unreadCount} unread · latest 8</span>
+                          <strong className="block text-[15px] text-slate-900">Notifications</strong>
+                          <span className="text-xs text-slate-500">{unreadCount} unread</span>
                         </div>
-                        <div className="flex flex-wrap gap-2">
-                          <button
-                            className="rounded-full border border-[#eadfcd] px-3 py-1 text-xs font-semibold text-[#6f604a]"
-                            onClick={() => setNotificationFilter((f) => (f === "all" ? "unread" : "all"))}
-                          >
-                            Show {notificationFilter === "all" ? "Unread" : "All"}
+                        <div className="flex gap-1.5">
+                          <button type="button"
+                            className="rounded-full px-2.5 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50"
+                            onClick={() => setNotificationFilter((f) => (f === "all" ? "unread" : "all"))}>
+                            {notificationFilter === "all" ? "Unread only" : "Show all"}
                           </button>
-                          <button
-                            className="rounded-full border border-[#eadfcd] px-3 py-1 text-xs font-semibold text-[#6f604a] disabled:opacity-50"
+                          <button type="button"
+                            className="rounded-full px-2.5 py-1 text-xs font-semibold text-brand-700 ring-1 ring-brand-100 hover:bg-brand-50 disabled:opacity-40"
                             onClick={markAllNotificationsRead}
-                            disabled={!unreadCount || markingAllNotifications}
-                          >
-                            {markingAllNotifications ? "Updating..." : "Mark all read"}
+                            disabled={!unreadCount || markingAllNotifications}>
+                            {markingAllNotifications ? "Updating…" : "Mark all read"}
                           </button>
                         </div>
                       </div>
 
-                      <div className="mt-4 space-y-2">
-                        {loadingNotifications ? (
-                          <div className="rounded-2xl bg-[#fffaf1] px-4 py-8 text-center text-sm text-[#8f816a]">Loading notifications...</div>
+                      <div className="p-2">
+                        {loadingNotifications && !notifications.length ? (
+                          <div className="px-4 py-8 text-center text-sm text-slate-400">Loading notifications…</div>
                         ) : visibleNotifications.length ? (
                           visibleNotifications.map((item) => (
                             <button
                               key={item.notif_id}
                               type="button"
-                              className={cn(
-                                "flex w-full items-start gap-3 rounded-2xl border px-4 py-3 text-left transition",
-                                item.is_read
-                                  ? "border-slate-100 bg-slate-50"
-                                  : "border-amber-200 bg-amber-50"
-                              )}
+                              className={cn("flex w-full items-start gap-3 rounded-[12px] px-3 py-2.5 text-left transition hover:bg-slate-50", !item.is_read && "bg-brand-50/40")}
                               onClick={() => {
                                 void markNotificationRead(item.notif_id);
                                 const destination = item.action_url || (item.lead_id ? `/leads/${encodeURIComponent(item.lead_id)}` : "");
@@ -598,17 +624,17 @@ export default function DashboardShell({ session: initialSession, children, titl
                               }}
                               disabled={pendingNotificationIds.includes(item.notif_id)}
                             >
-                              <span className={cn("mt-1.5 h-2 w-2 shrink-0 rounded-full", item.is_read ? "bg-slate-300" : "bg-amber-500")} />
+                              <span className={cn("mt-1.5 h-2 w-2 shrink-0 rounded-full", item.is_read ? "bg-slate-200" : "bg-gold-500")} />
                               <div className="min-w-0 flex-1">
-                                <strong className="block truncate text-sm text-slate-900">{item.title}</strong>
-                                <span className="mt-0.5 block text-xs text-slate-500">{item.message}</span>
+                                <strong className={cn("block truncate text-[13px]", item.is_read ? "font-medium text-slate-600" : "text-slate-900")}>{item.title}</strong>
+                                <span className="mt-0.5 line-clamp-2 block text-xs text-slate-500">{item.message}</span>
                               </div>
-                              <span className="shrink-0 text-[11px] font-medium text-slate-400">{formatNotificationTime(item.created_at)}</span>
+                              <span className="shrink-0 text-[11px] text-slate-400">{formatNotificationTime(item.created_at)}</span>
                             </button>
                           ))
                         ) : (
-                          <div className="rounded-2xl bg-[#fffaf1] px-4 py-8 text-center text-sm text-[#8f816a]">
-                            {notificationFilter === "unread" ? "No unread notifications." : "No notifications yet."}
+                          <div className="px-4 py-8 text-center text-sm text-slate-400">
+                            {notificationFilter === "unread" ? "You are all caught up." : "No notifications yet."}
                           </div>
                         )}
                       </div>
@@ -616,56 +642,46 @@ export default function DashboardShell({ session: initialSession, children, titl
                   ) : null}
                 </div>
 
-                  <div className="relative flex items-center gap-2" ref={accountRef}>
-                  {role !== "expert" && (
-                  <Link
-                    href="/communications"
-                    prefetch={false}
-                    className="relative grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:border-amber-200 hover:text-amber-600"
-                    aria-label="Open communications"
-                  >
-                    <DashboardIcon name="mail" className="h-5 w-5" />
-                  </Link>
-                  )}
-
+                <div className="relative ml-1 border-l border-slate-200 pl-2.5" ref={accountRef}>
                   <button
                     type="button"
-                    className="flex h-10 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 shadow-sm"
+                    className="flex h-9 items-center gap-2 rounded-[10px] pl-1 pr-2 transition hover:bg-slate-100"
                     onClick={() => setShowAccountMenu((current) => !current)}
+                    aria-expanded={showAccountMenu}
+                    aria-label="Account menu"
                   >
-                    <DashboardIcon name="calendar" className="h-4 w-4 text-slate-500" />
-                    <span className="hidden sm:block">
-                      {new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                    <span className="grid h-8 w-8 place-items-center rounded-full bg-brand-700 text-[11px] font-bold text-white">{getInitials(userName)}</span>
+                    <span className="hidden text-left leading-tight xl:block">
+                      <span className="block max-w-[140px] truncate text-[13px] font-semibold text-slate-900">{userName}</span>
+                      <span className="block text-[11px] text-slate-500">{roleMeta.label}</span>
                     </span>
                     <svg className="h-4 w-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m6 9 6 6 6-6" /></svg>
                   </button>
 
                   {showAccountMenu ? (
-                    <div className="absolute right-0 top-[calc(100%+12px)] z-30 w-[min(92vw,320px)] rounded-[28px] border border-[#eadfcd] bg-white p-4 shadow-[0_28px_80px_rgba(79,58,22,0.16)]">
-                      <div className="rounded-2xl bg-[#fffaf1] px-4 py-4">
-                        <strong className="block text-base text-slate-900">{session?.user?.name || session?.user?.full_name || "Preview User"}</strong>
-                        <span className="mt-1 block text-sm text-[#6f604a]">{session?.user?.email || "workspace@greencrm.app"}</span>
-                        <span className="mt-2 inline-flex rounded-full bg-white px-3 py-1 text-[11px] font-bold text-[#8f816a]">
-                          {session?.user?.talent_id || "Workspace User"}
-                        </span>
+                    <div className="absolute right-0 top-[calc(100%+10px)] z-30 w-[min(92vw,280px)] overflow-hidden rounded-[16px] border border-slate-200 bg-white shadow-[0_24px_60px_-20px_rgba(15,23,42,0.35)]">
+                      <div className="flex items-center gap-3 border-b border-slate-100 bg-gradient-to-br from-brand-50 to-white px-4 py-4">
+                        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-brand-700 text-sm font-bold text-white">{getInitials(userName)}</span>
+                        <div className="min-w-0">
+                          <strong className="block truncate text-sm text-slate-900">{userName}</strong>
+                          <span className="block truncate text-xs text-slate-500">{session?.user?.email || roleMeta.label}</span>
+                        </div>
                       </div>
-
-                      <div className="mt-4 grid gap-2">
-                        <Link prefetch={false} href="/settings/profile" className="rounded-2xl border border-[#eadfcd] px-4 py-3 text-sm font-semibold text-[#5d503c]" onClick={() => setShowAccountMenu(false)}>Profile</Link>
+                      <div className="grid p-1.5">
+                        <Link prefetch={false} href="/settings/profile" className="rounded-[10px] px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50" onClick={() => setShowAccountMenu(false)}>My profile</Link>
                         {showSeparateSettingsLink ? (
-                          <Link prefetch={false} href={settingsHref} className="rounded-2xl border border-[#eadfcd] px-4 py-3 text-sm font-semibold text-[#5d503c]" onClick={() => setShowAccountMenu(false)}>Settings</Link>
+                          <Link prefetch={false} href={settingsHref} className="rounded-[10px] px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50" onClick={() => setShowAccountMenu(false)}>Settings</Link>
                         ) : null}
-                        <Link prefetch={false} href="/support" className="rounded-2xl border border-[#eadfcd] px-4 py-3 text-sm font-semibold text-[#5d503c]" onClick={() => setShowAccountMenu(false)}>Support</Link>
+                        <Link prefetch={false} href="/support" className="rounded-[10px] px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50" onClick={() => setShowAccountMenu(false)}>Help & support</Link>
                       </div>
-                      <button
-                        className="mt-4 inline-flex w-full items-center justify-center rounded-2xl bg-[#060710] px-4 py-3 text-sm font-semibold text-white"
-                        onClick={logout}
-                      >
-                        Logout
-                      </button>
+                      <div className="border-t border-slate-100 p-1.5">
+                        <button type="button" className="w-full rounded-[10px] px-3 py-2 text-left text-sm font-semibold text-rose-600 hover:bg-rose-50" onClick={logout}>
+                          Log out
+                        </button>
+                      </div>
                     </div>
                   ) : null}
-                  </div>
+                </div>
               </div>
             </div>
           </header>

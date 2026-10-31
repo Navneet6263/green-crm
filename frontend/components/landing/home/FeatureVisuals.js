@@ -47,7 +47,7 @@ function FollowUpsVisual() {
   return (
     <div className={`${card} p-4`}>
       <div className="flex items-center justify-between">
-        <p className="text-sm font-bold text-slate-900">My Day</p>
+        <p className="text-sm font-bold text-slate-900">Today</p>
         <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700">2 due soon</span>
       </div>
       <div className="mt-3 space-y-2">

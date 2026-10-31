@@ -1647,7 +1647,14 @@ async function listLeadNotes(auth, leadId, query) {
 
 async function listReminders(auth, query) {
   const pagination = parsePagination(query);
+  const dueFrom = query.due_from ? new Date(query.due_from) : null;
+  const dueTo = query.due_to ? new Date(query.due_to) : null;
+  if ((dueFrom && Number.isNaN(dueFrom.getTime())) || (dueTo && Number.isNaN(dueTo.getTime())) || (dueFrom && dueTo && dueFrom >= dueTo)) {
+    throw new AppError("Invalid follow-up date range.", 400);
+  }
   const filters = {
+    dueFrom,
+    dueTo,
     companyId: null,
     companyIds: null,
     viewerUserId: SHARED_ACCESS_ROLES.includes(auth.role) ? auth.userId : null,

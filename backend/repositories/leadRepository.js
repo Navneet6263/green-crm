@@ -770,6 +770,15 @@ async function listReminders(filters, pagination, executor) {
     }
   }
 
+  if (filters.dueFrom) {
+    conditions.push("l.follow_up_date >= ?");
+    params.push(filters.dueFrom);
+  }
+  if (filters.dueTo) {
+    conditions.push("l.follow_up_date < ?");
+    params.push(filters.dueTo);
+  }
+
   const whereClause = `WHERE ${conditions.join(" AND ")}`;
 
   if (pagination.cursor) {

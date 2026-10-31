@@ -35,7 +35,7 @@ const GROUPS = [
     desc: "The next step is always visible, so leads do not go cold.",
     points: [
       "Follow-up dates with reminders and notifications",
-      "Tasks, calendar and a My Day view for each rep",
+      "Calendar with month, week and agenda views for each rep",
       "Notes on leads and customers, with pins and tags",
       "Full history of every change, call and note",
       "Recent updates page across the team",

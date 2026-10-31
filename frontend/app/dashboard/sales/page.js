@@ -54,7 +54,7 @@ function SalesDashboardView({ data, error, loading, session }) {
             <div className="flex flex-wrap gap-2">
               <QuickLink href="/leads/new" icon="leads" label="New Lead" />
               <QuickLink href="/leads" icon="workflow" label="Pipeline" />
-              <QuickLink href="/tasks" icon="tasks" label="Tasks" />
+              <QuickLink href="/calendar" icon="tasks" label="Calendar" />
             </div>
           </div>
 

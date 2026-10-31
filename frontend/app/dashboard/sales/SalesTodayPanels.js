@@ -50,7 +50,7 @@ export function TodayFollowUps({ reminders, tasks }) {
   const todayTasks = tasks.filter(t => t.due_date && new Date(t.due_date).toDateString() === today && t.status === "pending");
   const combined = [
     ...todayReminders.map(r => ({ key: r.reminder_id, title: r.company_name || "Follow-up", sub: r.contact_person_name || "Lead", time: fmtDate(r.due_at, true), href: `/leads/${r.lead_id}`, type: "lead" })),
-    ...todayTasks.map(t => ({ key: t.task_id, title: t.title || "Task", sub: titleize(t.type || "task"), time: fmtDate(t.due_date, true), href: t.related_id ? `/leads/${t.related_id}` : "/tasks", type: "task" })),
+    ...todayTasks.map(t => ({ key: t.task_id, title: t.title || "Task", sub: titleize(t.type || "task"), time: fmtDate(t.due_date, true), href: t.related_id ? `/leads/${t.related_id}` : "/calendar", type: "task" })),
   ].slice(0, 6);
 
   return (
@@ -60,7 +60,7 @@ export function TodayFollowUps({ reminders, tasks }) {
           <p className={T.K}>Today's Follow-ups</p>
           <h3 className="mt-0.5 text-base font-bold text-slate-900">{combined.length} scheduled</h3>
         </div>
-        <Link href="/tasks" prefetch={false} className="text-xs font-semibold text-amber-700 hover:text-amber-900">Tasks →</Link>
+        <Link href="/calendar" prefetch={false} className="text-xs font-semibold text-amber-700 hover:text-amber-900">Calendar →</Link>
       </div>
 
       {combined.length ? (

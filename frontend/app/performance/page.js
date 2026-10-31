@@ -169,9 +169,9 @@ export default function PerformancePage() {
                               <DashboardIcon name="leads" className="h-4 w-4" />
                               Open Leads
                             </Link>
-                            <Link prefetch={false} href="/tasks" className="inline-flex min-h-[46px] items-center justify-center gap-2 rounded-[18px] border border-[#eadfcd] bg-white px-4 py-2.5 text-sm font-semibold text-[#5d503c] transition hover:-translate-y-0.5 hover:text-[#060710]">
+                            <Link prefetch={false} href="/calendar" className="inline-flex min-h-[46px] items-center justify-center gap-2 rounded-[18px] border border-[#eadfcd] bg-white px-4 py-2.5 text-sm font-semibold text-[#5d503c] transition hover:-translate-y-0.5 hover:text-[#060710]">
                               <DashboardIcon name="tasks" className="h-4 w-4" />
-                              Open Tasks
+                              Open Calendar
                             </Link>
                           </div>
                         </>

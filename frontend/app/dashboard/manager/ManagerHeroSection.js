@@ -18,7 +18,7 @@ const VALUE_COLOR = {
 
 const ACTIONS = [
   { href: "/leads",       icon: "leads",       title: "Lead Workspace",  copy: "Queue, ownership, stage movement",  dot: "bg-blue-500" },
-  { href: "/tasks",       icon: "tasks",       title: "Task Board",      copy: "Overdue execution at a glance",     dot: "bg-orange-500" },
+  { href: "/calendar",    icon: "tasks",       title: "Task Calendar",   copy: "Overdue execution at a glance",     dot: "bg-orange-500" },
   { href: "/analytics",   icon: "analytics",   title: "Analytics",       copy: "Source mix and stage performance",  dot: "bg-violet-500" },
   { href: "/performance", icon: "performance", title: "Performance",     copy: "Team load, wins, output compare",   dot: "bg-green-500" },
 ];

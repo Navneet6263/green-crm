@@ -17,7 +17,7 @@ const TABS = [
     label: "Follow-ups",
     title: "Never miss a callback again",
     desc: "Every lead has a next step. Reps see their day at a glance and get reminded before it is too late.",
-    points: ["Follow-up dates with reminders", "Tasks, calendar and My Day", "Notes with pins and tags"],
+    points: ["Follow-up dates with reminders", "Calendar with month, week and agenda", "Notes with pins and tags"],
   },
   {
     id: "communication",
