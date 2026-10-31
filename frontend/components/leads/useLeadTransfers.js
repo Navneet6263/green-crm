@@ -46,11 +46,13 @@ export function useLeadTransfers() {
   const acknowledgeTransfer = async (id, note) => {
     if (!token) return;
     try {
-      await apiRequest(`/lead-transfers/${id}/acknowledge`, {
+      const result = await apiRequest(`/lead-transfers/${id}/acknowledge`, {
         method: "POST",
         token,
         body: { note },
       });
+      // Acknowledged, but the lead could not be moved (e.g. team changed since the transfer).
+      if (result && result.assigned === false && result.message) alert(result.message);
 
       // Remove the acknowledged transfer from state
       setTransfers((prev) => {

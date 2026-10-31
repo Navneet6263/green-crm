@@ -120,10 +120,20 @@ router.post("/lead-transfers/:id/acknowledge", asyncHandler(async (req, res) => 
   if (String(transfer.to_user_id) !== String(req.auth.id)) {
     return res.status(403).json({ success: false, error: "You are not authorized to acknowledge this transfer" });
   }
-  // Re-check current ownership scope before ANY acknowledgment/assignment write.
+  // Re-check current ownership scope before assigning. If the recipient can no longer
+  // work on this lead (deleted, or team changed since the transfer), the transfer is
+  // still acknowledged so it stops reappearing, but the lead keeps its current owner.
   const [currentLeads] = await db.query("SELECT company_id, team_id FROM leads WHERE id = ? AND is_active = 1", [transfer.lead_id]);
-  await assertRecordTeamAccess(req.auth, currentLeads[0]);
-  await ensureUserBelongsToTeam(currentLeads[0].company_id, req.auth.userId, currentLeads[0].team_id, "Transfer recipient");
+  let blockedReason = "";
+  try {
+    await assertRecordTeamAccess(req.auth, currentLeads[0]);
+    await ensureUserBelongsToTeam(currentLeads[0].company_id, req.auth.userId, currentLeads[0].team_id, "Transfer recipient");
+  } catch (error) {
+    if (!(error instanceof AppError) || error.statusCode >= 500) throw error;
+    blockedReason = currentLeads[0]
+      ? "You are not in this lead's team any more, so it stays with its current owner. Ask your manager to move it."
+      : "This lead was deleted, so it could not be assigned to you.";
+  }
 
   console.log(`[TRANSFER DEBUG] Acknowledging transfer ${transferId} for lead ${transfer.lead_id}. Recipient user DB ID: ${transfer.to_user_id}`);
 
@@ -144,7 +154,7 @@ router.post("/lead-transfers/:id/acknowledge", asyncHandler(async (req, res) => 
   );
   const recipientUser = recipientUserRows[0];
 
-  if (recipientUser) {
+  if (recipientUser && !blockedReason) {
     let isWorkflow = 0;
     let workflowStatus = null;
     if (recipientUser.role === "expert") {
@@ -165,7 +175,7 @@ router.post("/lead-transfers/:id/acknowledge", asyncHandler(async (req, res) => 
     );
 
     console.log(`[TRANSFER DEBUG] Successfully updated assignment for lead ${transfer.lead_id} in leads table`);
-  } else {
+  } else if (!blockedReason) {
     console.warn(`[TRANSFER DEBUG] Recipient user with DB ID ${transfer.to_user_id} not found`);
   }
 
@@ -178,7 +188,7 @@ router.post("/lead-transfers/:id/acknowledge", asyncHandler(async (req, res) => 
 
   if (lead) {
     const toUserName = req.auth.name || req.auth.email || "Unknown User";
-    const ackNoteText = `Reviewed by ${toUserName} — Response: ${note || ""}`;
+    const ackNoteText = `Reviewed by ${toUserName} — Response: ${note || ""}${blockedReason ? " (not reassigned: recipient is outside the lead's team)" : ""}`;
     await db.query(
       `INSERT INTO lead_notes (company_id, lead_id, content, created_by, created_at, updated_at)
        VALUES (?, ?, ?, ?, SYSUTCDATETIME(), SYSUTCDATETIME())`,
@@ -186,7 +196,7 @@ router.post("/lead-transfers/:id/acknowledge", asyncHandler(async (req, res) => 
     );
   }
 
-  res.json({ success: true });
+  res.json({ success: true, data: { assigned: !blockedReason, message: blockedReason || "Lead assigned to you." } });
 }));
 
 module.exports = router;

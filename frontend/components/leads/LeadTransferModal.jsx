@@ -17,7 +17,7 @@ export default function LeadTransferModal({ transfer, totalPending, onAcknowledg
       await onAcknowledge(transfer.id, responseNote.trim());
       setResponseNote("");
     } catch (error) {
-      alert("Failed to acknowledge transfer. Please try again.");
+      alert(error?.message ? `Could not acknowledge the transfer: ${error.message}` : "Failed to acknowledge transfer. Please try again.");
     } finally {
       setSubmitting(false);
     }
