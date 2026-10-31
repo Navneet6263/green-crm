@@ -56,7 +56,9 @@
 
 /* base.css sets `button { font: inherit }` outside any layer, which beats Tailwind's
    text-* and font-* utilities. Inside .tw-buttons the utility values apply again. */
-.tw-buttons button {
+.tw-buttons button,
+.tw-buttons select,
+.tw-buttons input {
   font-size: revert-layer;
   font-weight: revert-layer;
   line-height: revert-layer;
