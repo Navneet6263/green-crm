@@ -44,11 +44,13 @@ class RecentActivityRepository {
           l.legal_approved_by,
           l.legal_approved_at,
           p.product_id,
-          p.name as product_name
+          p.name as product_name,
+          t.name as team_name
         FROM lead_notes ln
         LEFT JOIN users u ON ln.created_by = u.user_id AND u.company_id = ln.company_id
         INNER JOIN leads l ON ln.lead_id = l.lead_id AND l.company_id = ln.company_id
         LEFT JOIN products p ON l.product_id = p.product_id AND p.company_id = l.company_id
+        LEFT JOIN teams t ON l.team_id = t.team_id AND t.company_id = l.company_id
         WHERE ln.company_id = ?
           AND l.is_active = 1
       `;
@@ -113,11 +115,13 @@ class RecentActivityRepository {
           NULL as legal_approved_by,
           NULL as legal_approved_at,
           p.product_id,
-          p.name as product_name
+          p.name as product_name,
+          t.name as team_name
         FROM customer_notes cn
         LEFT JOIN users u ON cn.created_by = u.user_id AND u.company_id = cn.company_id
         INNER JOIN customers c ON cn.customer_id = c.customer_id AND c.company_id = cn.company_id
         LEFT JOIN products p ON c.product_id = p.product_id AND p.company_id = c.company_id
+        LEFT JOIN teams t ON c.team_id = t.team_id AND t.company_id = c.company_id
         WHERE cn.company_id = ?
           AND c.is_active = 1
       `;
