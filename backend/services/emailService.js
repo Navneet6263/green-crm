@@ -108,10 +108,15 @@ function shouldWaitForCredentialEmail() {
 
 function getTransportTimeouts() {
   return {
-    connectionTimeout: parseTimeout(process.env.SMTP_CONNECTION_TIMEOUT_MS, 3500),
-    greetingTimeout: parseTimeout(process.env.SMTP_GREETING_TIMEOUT_MS, 3500),
-    socketTimeout: parseTimeout(process.env.SMTP_SOCKET_TIMEOUT_MS, 5000),
+    connectionTimeout: parseTimeout(process.env.SMTP_CONNECTION_TIMEOUT_MS, 10000),
+    greetingTimeout: parseTimeout(process.env.SMTP_GREETING_TIMEOUT_MS, 10000),
+    socketTimeout: parseTimeout(process.env.SMTP_SOCKET_TIMEOUT_MS, 20000),
   };
+}
+
+// Server-wide mail account: SMTP_* or the older RESET_MAIL_* names.
+function envSmtp(name) {
+  return normalizeString(process.env[`SMTP_${name}`] || process.env[`RESET_MAIL_${name}`]);
 }
 
 function hasTenantSmtpTransport(company) {
@@ -161,10 +166,10 @@ function resolvePlatformTransportConfig(platformCompany, smtpProfile) {
     };
   }
 
-  const host = normalizeString(process.env.SMTP_HOST);
-  const port = Number(process.env.SMTP_PORT || 0);
-  const user = normalizeString(process.env.SMTP_USER);
-  const pass = normalizeString(process.env.SMTP_PASS);
+  const host = envSmtp("HOST");
+  const port = Number(envSmtp("PORT") || 0);
+  const user = envSmtp("USER");
+  const pass = envSmtp("PASS");
 
   if (!(host && port && user && pass)) {
     return null;
@@ -205,6 +210,8 @@ function getTransporter(config) {
         host: config.host,
         port: config.port,
         secure: config.secure,
+        // Port 587 (Microsoft 365, Gmail) must upgrade to TLS; never send the password in clear.
+        requireTLS: !config.secure && config.port === 587,
         auth: {
           user: config.user,
           pass: config.pass,
