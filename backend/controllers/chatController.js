@@ -2,6 +2,18 @@ const { query } = require("../db/connection");
 
 let activeClients = [];
 
+// Chat is limited to people in the same company, and group chat to group members.
+async function sameCompanyUser(companyId, id) {
+  if (!id) return false;
+  const [rows] = await query("SELECT id FROM users WHERE id = ? AND company_id = ?", [Number(id), companyId]);
+  return rows.length > 0;
+}
+
+async function groupMemberIds(groupId) {
+  const [rows] = await query("SELECT user_id FROM chat_group_members WHERE group_id = ?", [groupId]);
+  return rows.map((r) => Number(r.user_id));
+}
+
 class ChatController {
   /**
    * SSE Stream endpoint for real-time updates
@@ -26,14 +38,13 @@ class ChatController {
   /**
    * Broadcast message to relevant clients
    */
-  broadcast(message) {
+  broadcast(message, groupMembers = []) {
     const payload = `data: ${JSON.stringify(message)}\n\n`;
     activeClients.forEach((client) => {
-      // Send if recipient is client, sender is client, or it is a group message
+      // Direct messages go to the two people; group messages only to group members.
       if (
-        !message.recipient_id ||
-        Number(message.recipient_id) === client.userId ||
-        Number(message.sender_id) === client.userId
+        Number(message.sender_id) === client.userId ||
+        (message.recipient_id ? Number(message.recipient_id) === client.userId : groupMembers.includes(client.userId))
       ) {
         try {
           client.res.write(payload);
@@ -55,6 +66,18 @@ class ChatController {
 
       if (!text) {
         return res.status(400).json({ success: false, message: "Text content is required" });
+      }
+      if (!groupId && !recipientId) {
+        return res.status(400).json({ success: false, message: "Choose who to send the message to" });
+      }
+      let members = [];
+      if (groupId) {
+        members = await groupMemberIds(groupId);
+        if (!members.includes(Number(senderId))) {
+          return res.status(403).json({ success: false, message: "You are not a member of this group" });
+        }
+      } else if (!(await sameCompanyUser(req.auth.companyId, recipientId))) {
+        return res.status(404).json({ success: false, message: "User not found" });
       }
 
       // Save to database
@@ -78,7 +101,7 @@ class ChatController {
       };
 
       // Broadcast real-time message
-      new ChatController().broadcast(messageObj);
+      new ChatController().broadcast(messageObj, members);
 
       res.status(201).json({
         success: true,
@@ -95,9 +118,10 @@ class ChatController {
   async listUsers(req, res, next) {
     try {
       const currentUserId = req.auth.id;
+      // Only people from the same company can be messaged.
       const [users] = await query(
-        "SELECT id, name, email FROM users WHERE id != ? ORDER BY name ASC",
-        [currentUserId]
+        "SELECT id, user_id, name, email, role FROM users WHERE company_id = ? AND id != ? AND is_active = 1 ORDER BY name ASC",
+        [req.auth.companyId, currentUserId]
       );
       res.json({ success: true, data: users });
     } catch (error) {
@@ -136,7 +160,11 @@ class ChatController {
 
       // Add other members to group members
       if (Array.isArray(userIds)) {
+        const allowed = new Set();
         for (const userId of userIds) {
+          if (Number(userId) !== Number(creatorId) && (await sameCompanyUser(req.auth.companyId, userId))) allowed.add(Number(userId));
+        }
+        for (const userId of allowed) {
           await query("INSERT INTO chat_group_members (group_id, user_id) VALUES (?, ?)", [groupId, Number(userId)]);
         }
       }
@@ -171,8 +199,9 @@ class ChatController {
         `SELECT DISTINCT u.id, u.name, 'direct' as chat_type 
          FROM users u
          JOIN chat_messages cm ON (cm.sender_id = u.id AND cm.recipient_id = ?) 
-                              OR (cm.recipient_id = u.id AND cm.sender_id = ?)`,
-        [userId, userId]
+                              OR (cm.recipient_id = u.id AND cm.sender_id = ?)
+         WHERE u.company_id = ?`,
+        [userId, userId, req.auth.companyId]
       );
 
       res.json({
@@ -196,6 +225,9 @@ class ChatController {
       let messages = [];
 
       if (type === "group") {
+        if (!(await groupMemberIds(id)).includes(Number(userId))) {
+          return res.status(403).json({ success: false, message: "You are not a member of this group" });
+        }
         const [rows] = await query(
           `SELECT cm.id, cm.group_id, cm.sender_id, u.name as sender_name, cm.text, cm.created_at 
            FROM chat_messages cm 
@@ -246,8 +278,16 @@ class ChatController {
         isTyping: !!isTyping
       };
 
+      let members = [];
+      if (groupId) {
+        members = await groupMemberIds(groupId);
+        if (!members.includes(Number(senderId))) return res.json({ success: true });
+      } else if (!recipientId) {
+        return res.json({ success: true });
+      }
+
       // Broadcast real-time typing status
-      new ChatController().broadcast(payload);
+      new ChatController().broadcast(payload, members);
 
       res.json({ success: true });
     } catch (error) {

@@ -73,7 +73,7 @@ function TasksContent({ tasks, loadError, loading, session, refresh }) {
   // Set default assignee to current logged-in user when modal opens
   useEffect(() => {
     if (session?.user?.id && isCreateOpen) {
-      setFormAssignee(String(session.user.id));
+      setFormAssignee(String(session.user.user_id || session.user.id));
     }
   }, [session, isCreateOpen]);
 
@@ -104,7 +104,7 @@ function TasksContent({ tasks, loadError, loading, session, refresh }) {
           due_date: new Date(formDueDate).toISOString(),
           type: formType,
           priority: formPriority,
-          assigned_to: Number(formAssignee) || Number(session?.user?.id),
+          assigned_to: formAssignee || session?.user?.user_id,
           notes: formNotes.trim() || null
         }
       });
@@ -312,7 +312,7 @@ function TasksContent({ tasks, loadError, loading, session, refresh }) {
                     className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-slate-700 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-250 transition-colors bg-white"
                   >
                     {users.map(u => (
-                      <option key={u.id} value={u.id}>{u.name} ({u.email})</option>
+                      <option key={u.user_id || u.id} value={u.user_id || u.id}>{u.name} ({u.email})</option>
                     ))}
                   </select>
                 </div>
