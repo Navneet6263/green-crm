@@ -8,7 +8,7 @@ import { compact, formatDuration, money, titleize, when } from "./workflow-utils
 
 function MetricCell({ label, value }) {
   return (
-    <div className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-3">
+    <div className="rounded-[10px] bg-slate-50 border border-slate-100 px-3 py-3">
       <p className={T.kicker}>{label}</p>
       <p className="mt-1 text-sm font-bold text-slate-800">{value}</p>
     </div>
@@ -22,7 +22,7 @@ function Timeline({ title, items, empty }) {
       {items.length ? (
         <div className="space-y-2">
           {items.map((item, i) => (
-            <div key={i} className="flex gap-3 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
+            <div key={i} className="flex gap-3 rounded-[10px] border border-slate-100 bg-slate-50 px-4 py-3">
               <div className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-amber-400 mt-2" />
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-slate-800">{item.title}</p>
@@ -33,7 +33,7 @@ function Timeline({ title, items, empty }) {
           ))}
         </div>
       ) : (
-        <p className="rounded-xl border border-dashed border-slate-200 px-4 py-6 text-center text-xs text-slate-400">{empty}</p>
+        <p className="rounded-[10px] border border-dashed border-slate-200 px-4 py-6 text-center text-xs text-slate-400">{empty}</p>
       )}
     </div>
   );
@@ -43,7 +43,7 @@ export function WorkflowDetail({ selectedLead, analysis, detailLoading }) {
   if (!selectedLead) {
     return (
       <div className={`${T.panel} flex min-h-[320px] flex-col items-center justify-center gap-3 px-5 py-8 text-center`}>
-        <div className="grid h-12 w-12 place-items-center rounded-2xl bg-amber-50 text-amber-400">
+        <div className="grid h-12 w-12 place-items-center rounded-[14px] bg-amber-50 text-amber-400">
           <DashboardIcon name="workflow" className="h-6 w-6" />
         </div>
         <p className="text-sm font-semibold text-slate-700">Select a lead to inspect</p>
@@ -89,7 +89,7 @@ export function WorkflowDetail({ selectedLead, analysis, detailLoading }) {
       </div>
 
       {/* Attention score */}
-      <div className={`flex items-center gap-3 rounded-xl border px-4 py-3 ${scoreTone}`}>
+      <div className={`flex items-center gap-3 rounded-[10px] border px-4 py-3 ${scoreTone}`}>
         <div className="text-2xl font-bold">{score}</div>
         <div>
           <p className="text-xs font-bold uppercase tracking-widest">{analysis?.tone || "Stable"}</p>
@@ -109,11 +109,11 @@ export function WorkflowDetail({ selectedLead, analysis, detailLoading }) {
 
       {/* Signals */}
       <div className="grid gap-2 sm:grid-cols-2">
-        <div className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-3">
+        <div className="rounded-[10px] bg-slate-50 border border-slate-100 px-3 py-3">
           <p className={T.kicker}>Customer Signal</p>
           <p className="mt-1 text-xs leading-5 text-slate-600">{analysis?.customerSignal || "—"}</p>
         </div>
-        <div className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-3">
+        <div className="rounded-[10px] bg-slate-50 border border-slate-100 px-3 py-3">
           <p className={T.kicker}>Latest Note</p>
           <p className="mt-1 text-xs leading-5 text-slate-600">{selectedLead.latest_note || "No note yet."}</p>
         </div>
@@ -143,7 +143,7 @@ export function WorkflowDetail({ selectedLead, analysis, detailLoading }) {
         {docs.length ? (
           <div className="space-y-2">
             {docs.map((doc, i) => (
-              <div key={i} className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
+              <div key={i} className="flex items-center justify-between gap-3 rounded-[10px] border border-slate-100 bg-slate-50 px-4 py-3">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-slate-800">{doc.file_name || "Document"}</p>
                   <p className="text-xs text-slate-400">{doc.uploaded_by_name || "Team"} · {when(doc.uploaded_at, true)}</p>
@@ -157,7 +157,7 @@ export function WorkflowDetail({ selectedLead, analysis, detailLoading }) {
             ))}
           </div>
         ) : (
-          <p className="rounded-xl border border-dashed border-slate-200 px-4 py-6 text-center text-xs text-slate-400">No workflow documents uploaded yet.</p>
+          <p className="rounded-[10px] border border-dashed border-slate-200 px-4 py-6 text-center text-xs text-slate-400">No workflow documents uploaded yet.</p>
         )}
       </div>
 
@@ -166,8 +166,8 @@ export function WorkflowDetail({ selectedLead, analysis, detailLoading }) {
         <Link href={`/leads/${selectedLead.lead_id}`} className={T.gold}>
           <DashboardIcon name="leads" className="h-4 w-4" />Open Lead
         </Link>
-        <Link href="/analytics" className={T.btn}>
-          <DashboardIcon name="analytics" className="h-4 w-4" />Analytics
+        <Link href="/pipeline?tab=insights" className={T.btn}>
+          <DashboardIcon name="analytics" className="h-4 w-4" />Insights
         </Link>
       </div>
     </div>

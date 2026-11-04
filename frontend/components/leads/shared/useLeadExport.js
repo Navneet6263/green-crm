@@ -2,13 +2,7 @@
 
 import { useState } from "react";
 
-import {
-  buildLeadExportFilename,
-  downloadLeadCsv,
-  downloadLeadExcel,
-  downloadLeadHtmlSheet,
-  fetchLeadExportRows,
-} from "./leadExportUtils";
+import { buildLeadExportFilename, downloadLeadCsv, fetchLeadExportRows } from "./leadExportUtils";
 
 export function useLeadExport({ allMatchedLeads, leadQueryBase, setError, setNotice, token, totalMatched }) {
   const [exportingFormat, setExportingFormat] = useState("");
@@ -28,15 +22,9 @@ export function useLeadExport({ allMatchedLeads, leadQueryBase, setError, setNot
           ? allMatchedLeads
           : await fetchLeadExportRows({ token, leadQueryBase, totalMatched });
 
-      if (format === "csv") {
-        downloadLeadCsv(leads, buildLeadExportFilename("csv"));
-      } else if (format === "html") {
-        downloadLeadHtmlSheet(leads, buildLeadExportFilename("html"));
-      } else {
-        downloadLeadExcel(leads, buildLeadExportFilename("xls"));
-      }
+      downloadLeadCsv(leads, buildLeadExportFilename("csv"));
 
-      setNotice(`${leads.length} filtered leads exported as ${format === "csv" ? "CSV" : format === "html" ? "HTML Sheet" : "Excel"}.`);
+      setNotice(`${leads.length} filtered leads exported as CSV.`);
     } catch (requestError) {
       setError(requestError.message || "Could not export the current filtered leads.");
     } finally {
@@ -46,10 +34,6 @@ export function useLeadExport({ allMatchedLeads, leadQueryBase, setError, setNot
 
   return {
     exportCsv: () => runLeadExport("csv"),
-    exportExcel: () => runLeadExport("excel"),
-    exportHtml: () => runLeadExport("html"),
     exportingCsv: exportingFormat === "csv",
-    exportingExcel: exportingFormat === "excel",
-    exportingHtml: exportingFormat === "html",
   };
 }

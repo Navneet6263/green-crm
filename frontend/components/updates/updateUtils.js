@@ -64,7 +64,8 @@ export function parseNote(content) {
   const out = { kind: "note", statusFrom: "", statusTo: "", response: "", mode: "", callStatus: "", nextFollowUp: "", demoAt: "", requirement: "", assignedFrom: "", assignedTo: "", note: "" };
   let followUpLog = false;
   const rest = [];
-  const text = String(content || "").replace(/\r/g, "").replace(SPLIT_BEFORE, "\n");
+  const [written] = String(content || "").replace(/\r/g, "").split(/\n\s*Changes:\s*\n/i);
+  const text = written.replace(SPLIT_BEFORE, "\n");
   for (const raw of text.split("\n")) {
     const line = raw.trim();
     if (!line) continue;

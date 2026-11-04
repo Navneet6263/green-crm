@@ -9,6 +9,9 @@ const customerService = require("../customerService");
 const leadService = require("../leadService");
 const { sendManagedCustomEmail } = require("./managedEmailService");
 
+// Loaded when used, since the email log also loads leadService.
+const recordCustomerEmail = (...args) => require("../nudges/nudgeService").recordCustomerEmail(...args);
+
 function appendCustomerEmailNote(existingNotes, auth, subject, body, sentAt, ccRecipients = []) {
   const ccNote = ccRecipients.length ? ` | CC: ${ccRecipients.join(", ")}` : "";
   const entry = `[${sentAt.toISOString()}] ${auth.name || auth.email || "GreenCRM"}: Email sent | ${subject}${ccNote}\n${body}`;
@@ -74,6 +77,7 @@ async function sendLeadEmail(auth, payload) {
     return updatedLead;
   });
 
+  await recordCustomerEmail(auth, { leadId: lead.lead_id, to: payload.to, cc: ccRecipients, subject: payload.subject, body: payload.body, delivery });
   return { entity_type: "lead", entity, delivery };
 }
 
@@ -123,6 +127,7 @@ async function sendCustomerEmail(auth, payload) {
     return updatedCustomer;
   });
 
+  await recordCustomerEmail(auth, { customerId: customer.customer_id, to: payload.to, cc: ccRecipients, subject: payload.subject, body: payload.body, delivery });
   return { entity_type: "customer", entity, delivery };
 }
 

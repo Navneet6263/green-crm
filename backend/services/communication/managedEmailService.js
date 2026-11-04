@@ -67,6 +67,21 @@ async function sendManagedCustomEmail(companyId, payload) {
     : emailService.sendCustomEmail({ ...payload, company: null, platformCompany: platformRoute });
 }
 
+/** Any HTML email (with attachments) sent through the company's mail route. Also returns the sender address. */
+async function sendManagedEmail(companyId, payload) {
+  const context = await loadEmailContext(companyId);
+  const capability = resolveEmailCapabilityFromContext(context);
+  if (!capability.enabled) {
+    throw new AppError(MANAGED_SERVICE_DISABLED_MESSAGE, 403);
+  }
+  const route = capability.source === "tenant"
+    ? { company: context.company, platformCompany: null }
+    : { company: null, platformCompany: context.platformCompany || context.company };
+  const transport = emailService.buildTransportConfig(route.company, route.platformCompany);
+  const result = await emailService.sendEmail({ ...payload, ...route });
+  return { ...result, from: transport?.from || null, fromAddress: transport?.user || null };
+}
+
 async function sendManagedTestEmail(companyId, payload) {
   const context = await loadEmailContext(companyId);
   const capability = resolveEmailCapabilityFromContext(context);
@@ -84,5 +99,6 @@ async function sendManagedTestEmail(companyId, payload) {
 module.exports = {
   resolveEmailCapability,
   sendManagedCustomEmail,
+  sendManagedEmail,
   sendManagedTestEmail,
 };

@@ -19,7 +19,7 @@ import {
   removeLeadAcrossCaches,
 } from "./leadListCacheUtils";
 
-export function useLeadListData({ leadQueryBase, refreshSeed, session }) {
+export function useLeadListData({ leadQueryBase, pageSize = LEADS_PAGE_SIZE, refreshSeed, session }) {
   const [leadMeta, setLeadMeta] = useState({ page: 1, page_size: LEADS_PAGE_SIZE, total: 0, total_pages: 1 });
   const [leads, setLeads] = useState([]);
   const [listError, setListError] = useState("");
@@ -28,7 +28,7 @@ export function useLeadListData({ leadQueryBase, refreshSeed, session }) {
   const [pageRefreshing, setPageRefreshing] = useState(false);
   const leadPageCacheRef = useRef(new Map());
   const leadFullCacheRef = useRef(new Map());
-  const leadCacheKey = useMemo(() => JSON.stringify([session?.token, leadQueryBase]), [session?.token, leadQueryBase]);
+  const leadCacheKey = useMemo(() => JSON.stringify([session?.token, leadQueryBase, pageSize]), [session?.token, leadQueryBase, pageSize]);
 
   useEffect(() => {
     leadPageCacheRef.current.clear();
@@ -62,7 +62,7 @@ export function useLeadListData({ leadQueryBase, refreshSeed, session }) {
       try {
         setListError("");
         const response = await apiRequest(
-          buildQueryPath("/leads", { page, page_size: LEADS_PAGE_SIZE, ...leadQueryBase }),
+          buildQueryPath("/leads", { page, page_size: pageSize, ...leadQueryBase }),
           { token: session.token, fresh: true }
         );
 
@@ -98,7 +98,7 @@ export function useLeadListData({ leadQueryBase, refreshSeed, session }) {
     return () => {
       ignore = true;
     };
-  }, [leadCacheKey, leadQueryBase, page, refreshSeed, session?.token]);
+  }, [leadCacheKey, leadQueryBase, page, pageSize, refreshSeed, session?.token]);
 
   useEffect(() => {
     leadFullCacheRef.current.clear();

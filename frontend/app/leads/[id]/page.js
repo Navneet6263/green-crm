@@ -1,280 +1,168 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-
 import DashboardShell from "../../../components/dashboard/DashboardShell";
-import DashboardIcon from "../../../components/dashboard/icons";
-import LeadCollaboratorPanel from "../../../components/leads/details/LeadCollaboratorPanel";
 import LeadAssignmentFlow from "../../../components/leads/details/LeadAssignmentFlow";
+import LeadCallHistoryPanel from "../../../components/leads/details/LeadCallHistoryPanel";
+import LeadCollaboratorPanel from "../../../components/leads/details/LeadCollaboratorPanel";
 import LeadDocumentsPanel from "../../../components/leads/details/LeadDocumentsPanel";
-import LeadHistoryTimeline from "../../../components/leads/details/LeadHistoryTimeline";
-import LeadNotesPanel from "../../../components/leads/details/LeadNotesPanel";
+import LeadTasksPanel from "../../../components/leads/lead360/LeadTasksPanel";
+import LeadTimeline from "../../../components/leads/lead360/LeadTimeline";
+import { NextStepCard, PaymentCard, QuickNote, StagePath } from "../../../components/leads/lead360/LeadSummaryCards";
+import EmailButton from "../../../components/email/EmailButton";
+import LeadEmails from "../../../components/email/LeadEmails";
+import LeadDetailsCard, { Row } from "../../../components/leads/lead360/LeadDetailsCard";
 import LeadFollowUpStatusButton from "../../../components/leads/LeadFollowUpStatusButton";
-import LeadQuickStatusControl from "../../../components/leads/LeadQuickStatusControl";
+import TransferLeadButton from "../../../components/leads/TransferLeadButton";
 import WorkflowBadge from "../../../components/leads/WorkflowBadge";
 import { useLeadCollaboratorActions } from "../../../components/leads/shared/useLeadCollaboratorActions";
+import { LEAD_INPUT_CLASS, PRIORITY_TONE } from "../../../components/leads/shared/leadPageConstants";
+import { LeadAvatar, Pill, telHref, whatsappHref } from "../../../components/leads/workspace/LeadsTable";
 import { API_BASE, apiRequest } from "../../../lib/api";
 import { formatIndiaDateTime } from "../../../lib/dateTime";
 import { loadSession } from "../../../lib/session";
 import { useCustomization } from "../../../lib/useCustomization";
 import { getEnabledStatuses } from "../../../lib/leadStatusHelper";
-import {
-  formatScopedError,
-  loadUsersForScope,
-  scopedUsersEmptyMessage,
-  teamBadgeLabel,
-} from "../../../lib/teamScope";
+import { formatScopedError, loadUsersForScope, scopedUsersEmptyMessage, teamBadgeLabel } from "../../../lib/teamScope";
 import { AlertError, AlertSuccess } from "../../../components/ui/Alert";
-import {
-  formatWorkflowOwnerIdentity,
-  withAssignedWorkflowUser,
-  workflowUsersEmptyMessage,
-} from "../../../lib/workflowOwners";
+import { formatWorkflowOwnerIdentity, withAssignedWorkflowUser, workflowUsersEmptyMessage } from "../../../lib/workflowOwners";
 
-const STATUS_ACCENT = { new: ["rgba(79,140,255,.12)", "#2f6fdd"], contacted: ["rgba(56,189,248,.14)", "#0077b8"], qualified: ["rgba(167,139,250,.14)", "#6d46d6"], proposal: ["rgba(245,164,45,.14)", "#b96a00"], negotiation: ["rgba(251,146,60,.14)", "#c96200"], "booked-demo": ["rgba(137,92,246,.14)", "#7a3ef0"], "demo-done": ["rgba(16,185,129,.14)", "#0f8c53"], "trial-started": ["rgba(59,130,246,.14)", "#2d64dd"], "closed-won": ["rgba(31,199,120,.16)", "#0f8c53"], "closed-lost": ["rgba(224,82,82,.14)", "#b63b3b"] };
-const PRIORITY_ACCENT = { low: ["rgba(56,189,248,.12)", "#0077b8"], medium: ["rgba(245,164,45,.14)", "#b96a00"], high: ["rgba(255,108,156,.14)", "#c4356b"], urgent: ["rgba(224,82,82,.14)", "#b63b3b"] };
 const WORKFLOW = ["sales", "legal", "finance", "completed"];
 const WORKFLOW_DOC_VIEW_ROLES = ["super-admin", "platform-admin", "platform-manager", "admin", "manager"];
-const DOCUMENT_UPLOAD_ROLES = ["super-admin", "platform-admin", "platform-manager", "admin", "manager", "sales", "marketing", "legal-team", "finance-team", "support", "expert"];
-const LEGAL_TRANSFER_ROLES = ["super-admin", "platform-admin", "platform-manager", "admin", "manager", "sales"];
-const ACTIVITY_OPTIONS = ["call", "email", "meeting", "note", "task", "comment"];
-const PANEL_CLASS = "rounded-2xl border border-slate-100 bg-white p-5 shadow-sm md:p-6";
-const SOFT_PANEL_CLASS = "rounded-xl border border-slate-100 bg-slate-50 p-4";
-const INPUT_CLASS = "w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-amber-400 focus:ring-2 focus:ring-amber-50";
-const PRIMARY_BUTTON_CLASS = "inline-flex min-h-[40px] items-center justify-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-900 transition hover:bg-amber-100 hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60";
-const GHOST_BUTTON_CLASS = "inline-flex min-h-[40px] items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900 hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60";
-const KICKER_CLASS = "text-[10px] font-bold uppercase tracking-widest text-slate-400";
-const HERO_PANEL_CLASS = "rounded-2xl border border-slate-100 bg-white p-5 shadow-sm md:p-6";
-const PILL_CLASS = "inline-flex rounded-full border px-2.5 py-0.5 text-[11px] font-semibold";
-const HEADER_ACTION_BUTTON_CLASS = "inline-flex min-h-[38px] items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-slate-600 transition hover:border-amber-300 hover:bg-amber-50 hover:text-amber-800 disabled:cursor-not-allowed disabled:opacity-50";
+const DOCUMENT_UPLOAD_ROLES = ["super-admin", "platform-admin", "platform-manager", "admin", "manager", "sales", "marketing", "legal-team", "finance-team", "support"];
+const ASSIGNMENT_ROLES = ["super-admin", "platform-admin", "platform-manager", "admin", "manager", "sales"];
+const UPDATE_TYPES = [["call", "Call"], ["email", "Email"], ["meeting", "Meeting"], ["task", "Task"], ["comment", "Comment"]];
+const TABS = [["timeline", "Timeline"], ["tasks", "Tasks & follow-ups"], ["documents", "Documents"], ["workflow", "Workflow"]];
+const PRIMARY = "inline-flex h-9 items-center justify-center gap-2 rounded-[10px] bg-brand-700 px-3.5 text-[13px] font-semibold text-white shadow-sm transition hover:bg-brand-800 disabled:opacity-50";
+const GHOST = "inline-flex h-9 items-center justify-center gap-2 rounded-[10px] bg-white px-3 text-[13px] font-semibold text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-50 disabled:opacity-50";
+const KICKER = "text-[11px] font-semibold uppercase tracking-wide text-slate-400";
+const CARD = "rounded-[14px] bg-white p-4 ring-1 ring-slate-200";
+const ICONS = {
+  call: "M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2",
+  whatsapp: "M21 12a9 9 0 0 1-13.5 7.8L3 21l1.2-4.5A9 9 0 1 1 21 12",
+  mail: "M3 6h18v12H3zM3 7l9 6 9-6",
+  edit: "M12 20h9M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4Z",
+  back: "M19 12H5m6-6-6 6 6 6",
+};
+const Icon = ({ d }) => <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={d} /></svg>;
 const nice = (v) => String(v || "").replace(/_/g, "-").split("-").filter(Boolean).map((x) => x[0].toUpperCase() + x.slice(1)).join(" ");
-const money = (v) => `INR ${Number(v || 0).toLocaleString("en-IN")}`;
 const when = (v, full = false) => formatIndiaDateTime(v, full);
-const hrefForDoc = (fileUrl) => !fileUrl ? "#" : /^(https?:\/\/|blob:)/i.test(fileUrl) ? fileUrl : `${API_BASE}${fileUrl}`;
-const telHrefFor = (value) => {
-  const phone = String(value || "").replace(/[^\d+]/g, "");
-  return phone ? `tel:${phone}` : "";
-};
-const whatsappHrefFor = (value) => {
-  const phone = String(value || "").replace(/\D/g, "");
-  return phone ? `https://wa.me/${phone}` : "";
-};
-
-function buildLocalNote(content, createdByName) {
-  return {
-    id: `local-note-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    content,
-    created_at: new Date().toISOString(),
-    created_by_name: createdByName,
-  };
-}
-
-function buildLocalActivity(type, description, createdByName) {
-  return {
-    activity_id: `local-activity-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    type,
-    description,
-    created_at: new Date().toISOString(),
-    created_by_name: createdByName,
-  };
-}
-
-function DetailCell({ label, value, className = "" }) {
-  return (
-    <div className={`rounded-xl border border-slate-100 bg-slate-50 px-3 py-3 ${className}`}>
-      <span className={KICKER_CLASS}>{label}</span>
-      <strong className="mt-1 block text-sm text-slate-900">{value || "--"}</strong>
-    </div>
-  );
-}
-
-function unitText(value) {
-  return value === undefined || value === null || value === "" ? "--" : String(value);
-}
-
-function HeaderActionButton({ disabled = false, icon, label, onClick }) {
-  return (
-    <button
-      className={HEADER_ACTION_BUTTON_CLASS}
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      aria-label={label}
-      title={label}
-    >
-      {icon}
-      <span>{label}</span>
-    </button>
-  );
-}
+const hrefForDoc = (fileUrl) => (!fileUrl ? "#" : /^(https?:\/\/|blob:)/i.test(fileUrl) ? fileUrl : `${API_BASE}${fileUrl}`);
 
 export default function LeadDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const activityLockRef = useRef(false);
-  const [session, setSession] = useState(null), [lead, setLead] = useState(null), [notes, setNotes] = useState([]), [activity, setActivity] = useState([]), [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true), [savingActivity, setSavingActivity] = useState(false), [savingTask, setSavingTask] = useState(false), [transferring, setTransferring] = useState(false), [uploadingDocuments, setUploadingDocuments] = useState(false);
-  const [error, setError] = useState(""), [notice, setNotice] = useState(""), [activityType, setActivityType] = useState("call"), [activityText, setActivityText] = useState(""), [transferOwner, setTransferOwner] = useState(""), [transferNote, setTransferNote] = useState("");
-  const [task, setTask] = useState({ title: "", type: "call", priority: "medium", due_date: "", due_time: "", assigned_to: "", notes: "" });
-  const isNewLead = !lead || !lead.status || lead.status === "new";
+  const [session, setSession] = useState(null);
+  const [lead, setLead] = useState(null);
+  const [notes, setNotes] = useState([]);
+  const [activity, setActivity] = useState([]);
+  const [calls, setCalls] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [tab, setTab] = useState("timeline");
+  const [uploadingDocuments, setUploadingDocuments] = useState(false);
+  const [updateType, setUpdateType] = useState("call");
+  const [updateText, setUpdateText] = useState("");
+  const [savingUpdate, setSavingUpdate] = useState(false);
+  const [transferOwner, setTransferOwner] = useState("");
+  const [transferNote, setTransferNote] = useState("");
+  const [transferring, setTransferring] = useState(false);
   const { customization } = useCustomization(session?.token);
   const enabledStatuses = getEnabledStatuses(customization);
   const role = session?.user?.role || "";
+  const selfId = session?.user?.user_id;
+  const canEdit = role !== "viewer";
+  const isNewLead = !lead?.status || lead.status === "new";
   const canReviewWorkflowDocs = WORKFLOW_DOC_VIEW_ROLES.includes(role);
   const canUploadDocuments = DOCUMENT_UPLOAD_ROLES.includes(role);
-  const canManageAssignments = ["super-admin", "platform-admin", "platform-manager", "admin", "manager", "sales"].includes(role);
-  const canTransferToLegal = Boolean(lead?.can_transfer_to_legal) && LEGAL_TRANSFER_ROLES.includes(role);
+  const canManageAssignments = ASSIGNMENT_ROLES.includes(role);
+  const canTransferToLegal = Boolean(lead?.can_transfer_to_legal) && ASSIGNMENT_ROLES.includes(role);
   const scopedLegalUsers = useMemo(() => users.filter((user) => user.role === "legal-team"), [users]);
   const legalUsers = useMemo(
     () => withAssignedWorkflowUser(scopedLegalUsers, lead?.assigned_to_legal, lead?.legal_owner_name, "legal-team"),
     [lead?.assigned_to_legal, lead?.legal_owner_name, scopedLegalUsers]
   );
-  const leadName = lead?.contact_person || lead?.company_name || "Lead";
-  const hideWorkspaceTitle = ["sales", "marketing", "admin", "manager"].includes(role);
-  const scopedUsersMessage = scopedUsersEmptyMessage(lead);
-  const collaboratorUsersMessage = scopedUsersMessage;
-  const legalUsersMessage = workflowUsersEmptyMessage(lead?.team_name, "legal");
-  const currentUserName = session?.user?.name || session?.user?.full_name || "You";
-  const documentRecords = useMemo(
-    () => [
-      ...(lead?.documents || []).map((item) => ({ ...item, sourceLabel: "Lead file" })),
-      ...(canReviewWorkflowDocs ? (lead?.legal_documents || []).map((item) => ({ ...item, sourceLabel: "Legal" })) : []),
-      ...(canReviewWorkflowDocs ? (lead?.finance_documents || []).map((item) => ({ ...item, sourceLabel: "Finance" })) : []),
-    ],
-    [canReviewWorkflowDocs, lead?.documents, lead?.finance_documents, lead?.legal_documents]
-  );
+  const documentRecords = useMemo(() => [
+    ...(lead?.documents || []).map((item) => ({ ...item, sourceLabel: "Lead file" })),
+    ...(canReviewWorkflowDocs ? (lead?.legal_documents || []).map((item) => ({ ...item, sourceLabel: "Legal" })) : []),
+    ...(canReviewWorkflowDocs ? (lead?.finance_documents || []).map((item) => ({ ...item, sourceLabel: "Finance" })) : []),
+  ], [canReviewWorkflowDocs, lead?.documents, lead?.finance_documents, lead?.legal_documents]);
 
-  const mergeLeadState = useCallback((updatedLead) => {
-    if (!updatedLead?.lead_id) {
-      return;
-    }
-
-    setLead((current) => (current ? { ...current, ...updatedLead } : updatedLead));
+  const mergeLeadState = useCallback((updated) => {
+    if (updated?.lead_id) setLead((current) => (current ? { ...current, ...updated } : updated));
   }, []);
+  const collaboratorActions = useLeadCollaboratorActions({ activeLead: lead, mergeLead: mergeLeadState, session, setError, setNotice, teamUsers: users });
 
-  const prependNote = useCallback((content, { incrementLeadCount = true } = {}) => {
-    const trimmedContent = String(content || "").trim();
-    if (!trimmedContent) {
-      return;
-    }
-
-    setNotes((current) => [buildLocalNote(trimmedContent, currentUserName), ...current].slice(0, 12));
-    setLead((current) => (
-      current
-        ? {
-            ...current,
-            latest_note: trimmedContent,
-            note_count: incrementLeadCount ? Number(current.note_count || 0) + 1 : current.note_count,
-          }
-        : current
-    ));
-  }, [currentUserName]);
-
-  const prependActivity = useCallback((type, description) => {
-    const trimmedDescription = String(description || "").trim();
-    if (!trimmedDescription) {
-      return;
-    }
-
-    setActivity((current) => [buildLocalActivity(type, trimmedDescription, currentUserName), ...current].slice(0, 12));
-  }, [currentUserName]);
-  const collaboratorActions = useLeadCollaboratorActions({
-    activeLead: lead,
-    mergeLead: mergeLeadState,
-    session,
-    setError,
-    setNotice,
-    teamUsers: users,
-  });
-
-  async function loadLead(activeSession, { includeUsers = false } = {}) {
-    const [leadResponse, notesResponse, activityResponse] = await Promise.all([
-      apiRequest(`/leads/${params.id}`, { token: activeSession.token }),
-      apiRequest(`/leads/${params.id}/notes?page_size=12`, { token: activeSession.token }),
-      apiRequest(`/leads/${params.id}/activity?page_size=12`, { token: activeSession.token }),
+  const loadHistory = useCallback(async (token) => {
+    const [noteRes, activityRes, callRes] = await Promise.all([
+      apiRequest(`/leads/${params.id}/notes?page_size=50`, { token, fresh: true }),
+      apiRequest(`/leads/${params.id}/activity?page_size=50`, { token, fresh: true }),
+      apiRequest(`/leads/${params.id}/calls?page_size=10`, { token, fresh: true }).catch(() => ({ items: [] })),
     ]);
+    setNotes(noteRes.items || []);
+    setActivity(activityRes.items || []);
+    setCalls(callRes.items || callRes.data || []);
+  }, [params.id]);
 
+  const loadLead = useCallback(async (activeSession, includeUsers = false) => {
+    const leadResponse = await apiRequest(`/leads/${params.id}`, { token: activeSession.token, fresh: true });
+    await loadHistory(activeSession.token);
     setLead(leadResponse);
-    setNotes(notesResponse.items || []);
-    setActivity(activityResponse.items || []);
     setTransferOwner(leadResponse.assigned_to_legal || "");
-    setTask((current) => ({ ...current, assigned_to: current.assigned_to || leadResponse.assigned_to || activeSession.user?.user_id || "" }));
-
     if (includeUsers) {
-      void loadUsersForScope(activeSession.token, {
-        companyId: leadResponse.company_id,
-        teamId: leadResponse.team_id,
-        pageSize: 100,
-        path: "/users",
-      })
-        .then((usersResponse) => {
-          setUsers(usersResponse);
-        })
-        .catch(() => {
-          setUsers([]);
-        });
+      loadUsersForScope(activeSession.token, { companyId: leadResponse.company_id, teamId: leadResponse.team_id, pageSize: 100, path: "/users" })
+        .then(setUsers)
+        .catch(() => setUsers([]));
     }
-  }
+  }, [params.id, loadHistory]);
 
   useEffect(() => {
     const activeSession = loadSession();
-    if (!activeSession) return router.replace("/login");
+    if (!activeSession) { router.replace("/login"); return; }
     setSession(activeSession);
     setUsers([]);
-    loadLead(activeSession, { includeUsers: true }).catch((requestError) => setError(formatScopedError(requestError, "Could not load this lead."))).finally(() => setLoading(false));
-  }, [params.id, router]);
+    loadLead(activeSession, true)
+      .catch((requestError) => setError(formatScopedError(requestError, "Could not load this lead.")))
+      .finally(() => setLoading(false));
+  }, [params.id, router, loadLead]);
 
-  async function refreshLead() { if (session) await loadLead(session); }
+  const refreshHistory = useCallback(() => { if (session?.token) loadHistory(session.token).catch(() => {}); }, [session?.token, loadHistory]);
 
-  function saveNote(content) {
-    setError("");
-    prependNote(content);
-    setNotice("Follow-up note saved.");
+  const followUpSaved = useCallback((_leadId, content, updated) => {
+    setLead((current) => (current ? { ...current, ...(updated || {}), latest_note: content, note_count: Number(current.note_count || 0) + 1 } : current));
+    setNotice("Saved to the lead's timeline.");
+    refreshHistory();
+  }, [refreshHistory]);
 
-    apiRequest(`/leads/${params.id}/notes`, {
-        method: "POST",
-        token: session.token,
-        body: { content },
-    }).catch((requestError) => {
-        setError(formatScopedError(requestError, "Could not save this follow-up note."));
-    });
-  }
-
-  function handleFollowUpStatusSaved(_leadId, content) {
-    prependNote(content);
-    setNotice("Follow-up status saved.");
-  }
+  const statusUpdated = useCallback((updated, context = {}) => {
+    mergeLeadState(updated);
+    // The first call is the instant update; the final one has the saved lead.
+    if (!context.note && !context.activityDescription) {
+      setNotice(`Lead moved to ${nice(updated?.status || "new")}.`);
+      refreshHistory();
+    }
+  }, [mergeLeadState, refreshHistory]);
 
   async function uploadDocument(file) {
-    if (!session?.token || !lead?.lead_id || !file) {
-      return;
-    }
-
+    if (!session?.token || !lead?.lead_id || !file) return;
     setUploadingDocuments(true);
     setError("");
     setNotice("");
-
     try {
       const uploadResponse = await apiRequest(`/leads/${params.id}/documents/upload`, {
         method: "POST",
         token: session.token,
-        headers: {
-          "Content-Type": file.type || "application/octet-stream",
-          "x-file-name": encodeURIComponent(file.name || "document"),
-        },
+        headers: { "Content-Type": file.type || "application/octet-stream", "x-file-name": encodeURIComponent(file.name || "document") },
         rawBody: file,
       });
       const createdDocument = uploadResponse.document || uploadResponse;
-
-      setLead((current) => (
-        current
-          ? { ...current, documents: [createdDocument, ...(current.documents || [])] }
-          : current
-      ));
-      prependActivity("updated", `Document uploaded: ${createdDocument.file_name}`);
-      setNotice("Document uploaded successfully.");
+      setLead((current) => (current ? { ...current, documents: [createdDocument, ...(current.documents || [])] } : current));
+      setNotice("Document uploaded.");
+      refreshHistory();
     } catch (requestError) {
       setError(formatScopedError(requestError, "Could not upload this document."));
       throw requestError;
@@ -283,488 +171,230 @@ export default function LeadDetailPage() {
     }
   }
 
-  function addActivity(event) {
+  async function addUpdate(event) {
     event.preventDefault();
-    const description = activityText.trim();
-    if (!description || activityLockRef.current) return;
-    const type = activityType;
-    activityLockRef.current = true;
-    setSavingActivity(true); setError(""); setNotice("");
-    setActivityText("");
-    prependActivity(type, description);
-    setNotice("Follow-up history updated.");
-    setTimeout(() => { activityLockRef.current = false; setSavingActivity(false); }, 500);
-    apiRequest(`/leads/${params.id}/activity`, { method: "POST", token: session.token, body: { type, description } })
-      .catch((requestError) => setError(formatScopedError(requestError, "Could not update the follow-up history.")));
-  }
-
-  async function logQuick(type, description, href, { newTab = false } = {}) {
-    try { await apiRequest(`/leads/${params.id}/activity`, { method: "POST", token: session.token, body: { type, description } }); } catch (_error) {}
-    if (!href) {
-      return;
-    }
-    if (newTab && /^https?:\/\//i.test(href)) {
-      window.open(href, "_blank", "noopener,noreferrer");
-      return;
-    }
-    window.location.href = href;
-  }
-
-  async function createTask(event) {
-    event.preventDefault();
-    if (!task.title.trim() || !task.due_date || !task.due_time) return setError("Follow-up title, date, and time are required.");
-    setSavingTask(true); setError(""); setNotice("");
+    const description = updateText.trim();
+    if (!description) return;
+    setSavingUpdate(true);
+    setError("");
     try {
-      const due = `${task.due_date} ${task.due_time}:00`;
-      await apiRequest("/tasks", { method: "POST", token: session.token, body: { title: task.title.trim(), type: task.type, priority: task.priority, due_date: due, assigned_to: task.assigned_to || session.user?.user_id, related_to: "lead", related_id: lead.lead_id, team_id: lead.team_id || undefined, notes: task.notes || null } });
-      const taskActivity = `Follow-up scheduled: ${task.title.trim()} on ${when(due, true)}`;
-      await apiRequest(`/leads/${params.id}/activity`, { method: "POST", token: session.token, body: { type: "task", description: taskActivity } });
-      setTask({ title: "", type: "call", priority: "medium", due_date: "", due_time: "", assigned_to: session.user?.user_id || "", notes: "" });
-      prependActivity("task", taskActivity);
-      setNotice("Follow-up scheduled successfully.");
-    } catch (requestError) { setError(formatScopedError(requestError, "Could not schedule this follow-up.")); }
-    finally { setSavingTask(false); }
+      await apiRequest(`/leads/${params.id}/activity`, { method: "POST", token: session.token, body: { type: updateType, description } });
+      setUpdateText("");
+      refreshHistory();
+    } catch (requestError) {
+      setError(formatScopedError(requestError, "Could not add this update."));
+    } finally {
+      setSavingUpdate(false);
+    }
+  }
+
+  async function logQuick(type, description, href, newTab = false) {
+    if (!href) return;
+    apiRequest(`/leads/${params.id}/activity`, { method: "POST", token: session.token, body: { type, description } }).then(refreshHistory).catch(() => {});
+    if (newTab) window.open(href, "_blank", "noopener,noreferrer");
+    else window.location.href = href;
   }
 
   async function transferToLegal(event) {
     event.preventDefault();
-    if (!transferNote.trim()) return setError("Transfer note is required before moving a closed-won lead to legal.");
-    setTransferring(true); setError(""); setNotice("");
+    if (!transferNote.trim()) { setError("Write a transfer note before moving this lead to legal."); return; }
+    setTransferring(true);
+    setError("");
+    setNotice("");
     try {
       await apiRequest(`/workflow/${params.id}/transfer-to-legal`, { method: "POST", token: session.token, body: { assigned_to: transferOwner || null, notes: transferNote.trim() } });
       setTransferNote("");
-      setNotice("Lead transferred to legal successfully.");
-      await refreshLead();
-    } catch (requestError) { setError(formatScopedError(requestError, "Could not transfer this lead to legal.")); }
-    finally { setTransferring(false); }
-  }
-
-  const handleStatusUpdated = useCallback((updatedLead, statusContext = {}) => {
-    mergeLeadState(updatedLead);
-    const noteContent = updatedLead?.latest_note || statusContext.note;
-    if (noteContent) {
-      prependNote(noteContent, { incrementLeadCount: false });
+      setNotice("Lead transferred to legal.");
+      await loadLead(session);
+    } catch (requestError) {
+      setError(formatScopedError(requestError, "Could not transfer this lead to legal."));
+    } finally {
+      setTransferring(false);
     }
-    if (statusContext.activityDescription) {
-      prependActivity(statusContext.scheduled ? "task" : "updated", statusContext.activityDescription);
-    }
-    setNotice(`Lead status moved to ${nice(updatedLead?.status || "new")}.`);
-  }, [mergeLeadState, prependActivity, prependNote]);
-
-  function scrollToNotes() {
-    document.getElementById("follow-up-notes")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
-  function scrollToFollowUp() {
-    document.getElementById("schedule-follow-up")?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
-
-  const phoneHref = telHrefFor(lead?.phone);
-  const whatsappHref = whatsappHrefFor(lead?.phone);
-  const emailHref = lead?.email ? `mailto:${lead.email}` : "";
+  const name = lead ? lead.company_name || lead.contact_person || "Lead" : "Lead";
+  const stageIndex = WORKFLOW.indexOf(lead?.workflow_stage || "sales");
+  const taskPeople = users;
 
   return (
-    <DashboardShell session={session} title={lead ? lead.company_name : "Lead Detail"} hideTitle={hideWorkspaceTitle} heroStats={[]}>
-      <AlertError message={error} onDismiss={() => setError("")} />
-      {!error ? <AlertSuccess message={notice} onDismiss={() => setNotice("")} /> : null}
-      {loading ? <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3 text-sm text-slate-500">Loading lead details…</div> : null}
-      {!loading && lead ? (
-        <section className="space-y-5">
-          <article className={HERO_PANEL_CLASS}>
-            <div className="space-y-6">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <Link href="/leads" className={GHOST_BUTTON_CLASS}>← Back</Link>
-                <Link href={`/leads/${lead.lead_id}/edit`} className={PRIMARY_BUTTON_CLASS}>
-                  <DashboardIcon name="settings" className="h-4 w-4" />
-                  Edit Lead
-                </Link>
-              </div>
+    <DashboardShell session={session} title={name} hideTitle heroStats={[]}>
+      <div className="tw-buttons min-w-0 space-y-3 pb-10">
+        <AlertError message={error} onDismiss={() => setError("")} />
+        {!error ? <AlertSuccess message={notice} onDismiss={() => setNotice("")} /> : null}
+        {loading ? <div className="h-40 animate-pulse rounded-[14px] bg-white ring-1 ring-slate-200" /> : null}
 
-              <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px] xl:items-start">
-                <div className="space-y-5">
-                  <div className="flex items-start gap-4">
-                    <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-emerald-600 text-xl font-bold text-white">
-                      {leadName?.trim()?.slice(0, 1)?.toUpperCase() || "L"}
-                    </div>
-                    <div className="space-y-1">
-                      <p className={KICKER_CLASS}>Lead Profile</p>
-                      <h2 className="text-2xl font-bold tracking-tight text-slate-900">{leadName}</h2>
-                      <p className="text-sm text-slate-500">{lead.company_name && lead.company_name !== leadName ? lead.company_name : "Lead profile and workflow context"}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap gap-1.5">
-                    <span className={PILL_CLASS} style={{ background: (STATUS_ACCENT[lead.status] || STATUS_ACCENT.new)[0], color: (STATUS_ACCENT[lead.status] || STATUS_ACCENT.new)[1] }}>{nice(lead.status)}</span>
-                    <span className={PILL_CLASS} style={{ background: (PRIORITY_ACCENT[lead.priority] || PRIORITY_ACCENT.medium)[0], color: (PRIORITY_ACCENT[lead.priority] || PRIORITY_ACCENT.medium)[1] }}>{nice(lead.priority || "medium")}</span>
-                    {lead.product_name ? <span className="inline-flex rounded-full border border-amber-200 bg-amber-100 px-2.5 py-0.5 text-[11px] font-semibold text-amber-800">{lead.product_name}</span> : null}
-                    {teamBadgeLabel(lead) ? <span className="inline-flex rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-[11px] font-semibold text-slate-600">{teamBadgeLabel(lead)}</span> : null}
-                    <span className="inline-flex rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-[11px] font-semibold text-slate-600">Workflow · {nice(lead.workflow_stage || "sales")}</span>
-                    <span className="inline-flex rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-[11px] font-semibold text-slate-700">Est. {money(lead.estimated_value)}</span>
-                    <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700">Adv. {money(lead.advance_received)}</span>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-3">
-                    <HeaderActionButton
-                      label="Call"
-                      onClick={() => logQuick("call", `Called ${leadName}`, phoneHref)}
-                      disabled={!phoneHref}
-                      icon={<DashboardIcon name="phone" className="h-4 w-4" />}
-                    />
-                    <HeaderActionButton
-                      label="WhatsApp"
-                      onClick={() => logQuick("comment", `Opened WhatsApp chat for ${leadName}`, whatsappHref, { newTab: true })}
-                      disabled={!whatsappHref}
-                      icon={<DashboardIcon name="message" className="h-4 w-4" />}
-                    />
-                    <HeaderActionButton
-                      label="Email"
-                      onClick={() => logQuick("email", `Opened email draft for ${leadName}`, emailHref)}
-                      disabled={!emailHref}
-                      icon={<DashboardIcon name="mail" className="h-4 w-4" />}
-                    />
-                    <HeaderActionButton
-                      label="Schedule Follow-up"
-                      onClick={scrollToFollowUp}
-                      icon={<DashboardIcon name="calendar" className="h-4 w-4" />}
-                    />
-                    <HeaderActionButton
-                      label="Follow-up Notes"
-                      onClick={scrollToNotes}
-                      icon={<DashboardIcon name="documents" className="h-4 w-4" />}
-                    />
+        {!loading && lead ? (
+          <>
+            <section className={CARD}>
+              <div className="flex flex-wrap items-start gap-3">
+                <Link href="/leads" aria-label="Back to leads" title="Back to leads" className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] text-slate-500 ring-1 ring-slate-200 hover:bg-slate-50"><Icon d={ICONS.back} /></Link>
+                <LeadAvatar lead={lead} size="h-12 w-12 text-[15px]" />
+                <div className="min-w-[200px] flex-1">
+                  <h1 className="text-[20px] font-bold leading-tight tracking-tight text-slate-900">{name}</h1>
+                  <p className="text-[13px] text-slate-500">{[lead.company_name ? lead.contact_person : null, lead.phone, lead.email].filter(Boolean).join(" · ")}</p>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                    <Pill tone={PRIORITY_TONE[lead.priority] || PRIORITY_TONE.medium}>{lead.priority || "medium"}</Pill>
+                    {lead.product_name ? <span className="rounded-full bg-gold-50 px-2 py-0.5 text-[11px] font-semibold text-gold-800">{lead.product_name}</span> : null}
+                    {teamBadgeLabel(lead) ? <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">{teamBadgeLabel(lead)}</span> : null}
+                    <span className="text-[12px] text-slate-500">Owner: <b className="font-semibold text-slate-700">{lead.assigned_to_name || "Unassigned"}</b></span>
                   </div>
                 </div>
-
-                <div className="space-y-3">
-                  {lead.is_workflow ? (
-                    <div className="rounded-xl border border-blue-100 bg-blue-50 p-4">
-                      <span className={KICKER_CLASS}>Workflow Status</span>
-                      <div className="mt-3">
-                        <WorkflowBadge
-                          status={lead.workflow_status}
-                          leadId={lead.lead_id}
-                          role={session?.user?.role}
-                          lead={lead}
-                          onAction={refreshLead}
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="rounded-xl border border-amber-100 bg-amber-50 p-4">
-                      <span className={KICKER_CLASS}>Quick Status Update</span>
-                      <div className="mt-3">
-                        <LeadQuickStatusControl
-                          assigneeOptions={users}
-                          enabledStatuses={enabledStatuses}
-                          lead={lead}
-                          token={session?.token}
-                          onUpdated={handleStatusUpdated}
-                          hideLabel
-                          className="w-full"
-                          selectClassName="min-h-[40px] w-full bg-white pr-8 text-[11px] shadow-none"
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="rounded-xl border border-sky-100 bg-sky-50 p-4">
-                    <span className={KICKER_CLASS}>Follow-up Status</span>
-                    <p className="mt-1 text-xs text-slate-500">Log call, email, WhatsApp, or meeting outcome.</p>
-                    <LeadFollowUpStatusButton
-                      className={`${PRIMARY_BUTTON_CLASS} mt-3 w-full justify-center border-sky-200 bg-white text-sky-700 hover:bg-sky-100`}
-                      lead={lead}
-                      onSaved={handleFollowUpStatusSaved}
-                      token={session?.token}
-                    />
-                  </div>
-
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
-                      <span className={KICKER_CLASS}>Assignee</span>
-                      <strong className="mt-1 block text-sm font-bold text-slate-900">{lead.assigned_to_name || "Unassigned"}</strong>
-                    </div>
-                    <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
-                      <span className={KICKER_CLASS}>Follow-up</span>
-                      <strong className="mt-1 block text-sm font-bold text-slate-900">{when(lead.follow_up_date, true)}</strong>
-                    </div>
-                  </div>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <button type="button" className={GHOST} disabled={!lead.phone} onClick={() => logQuick("call", `Called ${name}`, telHref(lead.phone))}><Icon d={ICONS.call} />Call</button>
+                  <button type="button" className={GHOST} disabled={!lead.phone} onClick={() => logQuick("comment", `Opened WhatsApp chat for ${name}`, whatsappHref(lead.phone), true)}><Icon d={ICONS.whatsapp} />WhatsApp</button>
+                  <button type="button" className={GHOST} disabled={!lead.email} onClick={() => logQuick("email", `Opened email draft for ${name}`, lead.email ? `mailto:${lead.email}` : "")}><Icon d={ICONS.mail} />Email</button>
+                  {canEdit ? <Link href={`/leads/${lead.lead_id}/edit`} className={GHOST}><Icon d={ICONS.edit} />Edit</Link> : null}
+                  <TransferLeadButton leadId={lead.id || lead.lead_id} leadName={name} className={GHOST} label="Transfer" />
+                  <EmailButton session={session} label="Email owner" kind="lead" lead={lead} defaultTo={[lead.assigned_to]} />
+                  {canEdit ? <LeadFollowUpStatusButton className={PRIMARY} label="Log follow-up" lead={lead} onSaved={followUpSaved} token={session?.token} disabled={isNewLead} /> : null}
                 </div>
               </div>
-            </div>
-          </article>
+              <div className="mt-3 border-t border-slate-100 pt-3">
+                {lead.is_workflow ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={KICKER}>Workflow status</span>
+                    <WorkflowBadge status={lead.workflow_status} leadId={lead.lead_id} role={role} lead={lead} onAction={() => loadLead(session)} />
+                  </div>
+                ) : <StagePath lead={lead} enabledStatuses={enabledStatuses} token={session?.token} teamUsers={users} canEdit={canEdit} onUpdated={statusUpdated} />}
+              </div>
+            </section>
 
-          <div className="grid gap-5 xl:grid-cols-[1.06fr_0.94fr] xl:items-start">
-            <div className="space-y-5">
-              <article className={PANEL_CLASS} id="follow-up-notes">
-                <LeadNotesPanel
-                  inputClassName={INPUT_CLASS}
-                  notes={notes}
-                  onSave={saveNote}
-                  primaryButtonClassName={PRIMARY_BUTTON_CLASS}
-                  renderWhen={when}
-                />
-              </article>
+            <div className="grid items-start gap-3 lg:grid-cols-[330px_minmax(0,1fr)]">
+              <div className="min-w-0 space-y-3 lg:sticky lg:top-[72px]">
+                <NextStepCard lead={lead} token={session?.token} canEdit={canEdit} onSaved={followUpSaved} hideAction />
+                <PaymentCard lead={lead} />
+                <LeadEmails session={session} leadId={lead.lead_id} />
+                <LeadDetailsCard lead={lead} token={session?.token} canDelete={["super-admin", "admin", "manager"].includes(role)} onDeleted={() => router.push("/leads")} />
+                <LeadCollaboratorPanel addCollaborator={collaboratorActions.addCollaborator} canManage={canManageAssignments} collaboratorUsersMessage={scopedUsersEmptyMessage(lead)} lead={lead}
+                  pendingCollaborator={collaboratorActions.pendingCollaborator} removeCollaborator={collaboratorActions.removeCollaborator} removingCollaboratorId={collaboratorActions.removingCollaboratorId}
+                  savingCollaborators={collaboratorActions.savingCollaborators} setPendingCollaborator={collaboratorActions.setPendingCollaborator} teamUsers={users} />
+              </div>
 
-              <article className={PANEL_CLASS} id="follow-up-history">
-                <div className="mb-4">
-                  <span className={KICKER_CLASS}>Follow-up History</span>
-                  <h2 className="mt-0.5 text-lg font-bold text-slate-900">Activity Log</h2>
-                </div>
-                <form className="grid gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3 md:grid-cols-[0.9fr_1.2fr_auto]" onSubmit={addActivity}>
-                  <select className={INPUT_CLASS} value={activityType} onChange={(event) => setActivityType(event.target.value)}>
-                    {ACTIVITY_OPTIONS.map((option) => <option key={option} value={option}>{nice(option)}</option>)}
-                  </select>
-                  <input className={INPUT_CLASS} value={activityText} onChange={(event) => setActivityText(event.target.value)} placeholder="Add a follow-up update" />
-                  <div className="relative group inline-flex">
-                    <button 
-                      className={`${PRIMARY_BUTTON_CLASS} ${isNewLead ? "opacity-50 cursor-not-allowed" : ""}`} 
-                      type={isNewLead ? "button" : "submit"} 
-                      disabled={savingActivity}
-                    >
-                      {savingActivity ? "Saving..." : "Add Update"}
+              <div className="min-w-0 space-y-3">
+                <div className="flex gap-1 overflow-x-auto rounded-[12px] bg-white p-1 ring-1 ring-slate-200" role="tablist" aria-label="Lead sections">
+                  {TABS.map(([key, text]) => (
+                    <button key={key} type="button" role="tab" aria-selected={tab === key} onClick={() => setTab(key)}
+                      className={`whitespace-nowrap rounded-[9px] px-3 py-1.5 text-[13px] font-semibold transition ${tab === key ? "bg-brand-700 text-white" : "text-slate-600 hover:bg-slate-100"}`}>
+                      {text}{key === "documents" && documentRecords.length ? <span className="ml-1 opacity-70">{documentRecords.length}</span> : null}
                     </button>
-                    {isNewLead && (
-                      <div className="pointer-events-none absolute bottom-full left-1/2 mb-2 w-[240px] -translate-x-1/2 opacity-0 transition-opacity duration-200 group-hover:opacity-100 z-10">
-                        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-center text-[11px] font-bold leading-relaxed text-red-600 shadow-md">
-                          Follow-ups disabled. Please update the Lead Status from 'New' first.
-                        </div>
-                        <div className="absolute left-1/2 top-full h-0 w-0 -translate-x-1/2 border-x-[6px] border-t-[6px] border-x-transparent border-t-red-200"></div>
-                      </div>
-                    )}
-                  </div>
-                </form>
-                <div className="mt-4">
-                  <LeadHistoryTimeline items={activity} renderWhen={when} />
-                </div>
-              </article>
-
-              <article className={PANEL_CLASS}>
-                <div className="mb-4">
-                  <span className={KICKER_CLASS}>Workflow</span>
-                  <h2 className="mt-0.5 text-lg font-bold text-slate-900">Pipeline Stage</h2>
-                </div>
-                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                  {WORKFLOW.map((step, index) => {
-                    const current = WORKFLOW.indexOf(lead.workflow_stage || "sales");
-                    const state = index < current ? "done" : index === current ? "active" : "idle";
-                    return (
-                      <div key={step} className={`group relative overflow-hidden rounded-2xl border px-4 py-4 transition hover:-translate-y-0.5 ${
-                        state === "active" ? "border-amber-300 bg-amber-50" : state === "done" ? "border-emerald-200 bg-emerald-50" : "border-slate-100 bg-slate-50"
-                      }`}>
-                        <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/60 to-transparent transition-transform duration-500 group-hover:translate-x-full" />
-                        <span className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${
-                          state === "active" ? "bg-amber-500 text-white" : state === "done" ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-500"
-                        }`}>{index + 1}</span>
-                        <strong className="mt-3 block text-sm font-bold text-slate-900">{nice(step)}</strong>
-                        <p className={`mt-0.5 text-xs font-semibold ${
-                          state === "active" ? "text-amber-700" : state === "done" ? "text-emerald-700" : "text-slate-400"
-                        }`}>{state === "active" ? "Current" : state === "done" ? "Done ✓" : "Waiting"}</p>
-                      </div>
-                    );
-                  })}
-                </div>
-                {canReviewWorkflowDocs ? (
-                  <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                    <DetailCell label="Legal Owner" value={formatWorkflowOwnerIdentity(lead.legal_owner_name, lead.assigned_to_legal)} />
-                    <DetailCell label="Finance Owner" value={formatWorkflowOwnerIdentity(lead.finance_owner_name, lead.assigned_to_finance)} />
-                    <DetailCell label="Legal Docs" value={(lead.legal_documents || []).length} />
-                    <DetailCell label="Finance Docs" value={(lead.finance_documents || []).length} />
-                  </div>
-                ) : (
-                  <p className="mt-4 rounded-[22px] bg-[#fffaf1] px-4 py-4 text-sm leading-7 text-[#6f614c]">
-                    Workflow remains visible here, while uploaded document review stays limited to admin and manager screens.
-                  </p>
-                )}
-                <LeadAssignmentFlow activity={activity} lead={lead} renderWhen={when} />
-              </article>
-
-              <article className={PANEL_CLASS}>
-                <div className="mb-4">
-                  <span className={KICKER_CLASS}>Workflow History</span>
-                  <h2 className="mt-0.5 text-lg font-bold text-slate-900">Stage Movement</h2>
-                </div>
-                <div className="grid gap-4 xl:grid-cols-2">
-                  <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
-                    <strong className="block text-sm font-bold text-slate-900">Stage History</strong>
-                    <div className="mt-3 space-y-2">
-                      {(lead.stage_history || []).length ? lead.stage_history.map((item, index) => (
-                        <div className="rounded-xl border border-slate-100 bg-white px-3 py-3" key={`stage-${item.stage}-${index}`}>
-                          <div className="flex items-start justify-between gap-2">
-                            <div>
-                              <strong className="text-sm text-slate-900">{nice(item.stage)}</strong>
-                              <p className="mt-0.5 text-xs text-slate-400">Entered {when(item.entered_at, true)}{item.exited_at ? ` · Exited ${when(item.exited_at, true)}` : " · Active"}</p>
-                            </div>
-                            <span className="text-xs font-semibold text-amber-700">{item.duration ? `${item.duration}m` : "--"}</span>
-                          </div>
-                        </div>
-                      )) : <p className="rounded-xl border border-dashed border-slate-200 py-6 text-center text-xs text-slate-400">No stage history yet.</p>}
-                    </div>
-                  </div>
-                  <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
-                    <strong className="block text-sm font-bold text-slate-900">Transfer Log</strong>
-                    <div className="mt-3 space-y-2">
-                      {(lead.transfer_history || []).length ? lead.transfer_history.map((item, index) => (
-                        <div className="rounded-xl border border-slate-100 bg-white px-3 py-3" key={`transfer-${item.to_stage}-${index}`}>
-                          <strong className="text-sm text-slate-900">{nice(item.from_stage)} → {nice(item.to_stage)}</strong>
-                          <p className="mt-0.5 text-xs text-slate-400">{item.transferred_by_name || "User"} · {when(item.transferred_at, true)}{item.transferred_to_name ? ` · ${item.transferred_to_name}` : ""}</p>
-                          {item.notes ? <p className="mt-1.5 text-xs text-slate-600">{item.notes}</p> : null}
-                        </div>
-                      )) : <p className="rounded-xl border border-dashed border-slate-200 py-6 text-center text-xs text-slate-400">No transfer history yet.</p>}
-                    </div>
-                  </div>
-                </div>
-              </article>
-            </div>
-
-            <div className="space-y-5">
-              <article className={PANEL_CLASS}>
-                <div className="mb-4 flex items-center justify-between gap-3">
-                  <div>
-                    <span className={KICKER_CLASS}>Lead Summary</span>
-                    <h2 className="mt-0.5 text-lg font-bold text-slate-900">Account Overview</h2>
-                  </div>
-                  <div className="flex gap-2">
-                    <span className="rounded-full border border-amber-200 bg-amber-100 px-3 py-1 text-[11px] font-bold text-amber-800">
-                      Est. {money(lead.estimated_value)}
-                    </span>
-                    <span className="rounded-full border border-emerald-200 bg-emerald-100 px-3 py-1 text-[11px] font-bold text-emerald-800">
-                      Adv. {money(lead.advance_received)}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Contact identity block */}
-                <div className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-4">
-                  <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-emerald-600 text-base font-bold text-white">
-                    {(lead.contact_person || lead.company_name || "L").slice(0,1).toUpperCase()}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-bold text-slate-900">{lead.contact_person || "—"}</p>
-                    <p className="truncate text-xs text-slate-500">{lead.company_name || "—"}</p>
-                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-slate-400">
-                      {lead.email ? <a href={`mailto:${lead.email}`} className="hover:text-amber-700 hover:underline">{lead.email}</a> : null}
-                      {lead.phone ? <a href={`tel:${String(lead.phone).replace(/[^\d+]/g,"")}`} className="hover:text-amber-700 hover:underline">{lead.phone}</a> : null}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Key metrics row */}
-                <div className="mt-3 grid grid-cols-2 gap-2">
-                  {[
-                    ["Source",    nice(lead.lead_source || "website"),  "border-slate-100 bg-slate-50"],
-                    ["Priority",  nice(lead.priority || "medium"),      "border-amber-100 bg-amber-50"],
-                    ["Team",      teamBadgeLabel(lead) || "Auto team",  "border-slate-100 bg-slate-50"],
-                    ["Units",     unitText(lead.number_of_units),       "border-slate-100 bg-slate-50"],
-                    ["Employees", lead.no_of_employees || "—",          "border-slate-100 bg-slate-50"],
-                    ["Active Users", lead.active_users || "—",          "border-slate-100 bg-slate-50"],
-                    ["Payment Mode", nice(lead.payment_mode || "—"),    "border-emerald-100 bg-emerald-50"],
-                    ["Payment Date", lead.payment_date ? when(lead.payment_date).split(',')[0] : "—", "border-emerald-100 bg-emerald-50"],
-                    ["Sub Start", lead.subscription_start_date ? when(lead.subscription_start_date).split(',')[0] : "—", "border-slate-100 bg-slate-50"],
-                    ["Tenure",    lead.client_tenure ? when(lead.client_tenure).split(',')[0] : "—",            "border-slate-100 bg-slate-50"],
-                    ["Next Payment", lead.next_payment_date ? when(lead.next_payment_date).split(',')[0] : "—", "border-amber-100 bg-amber-50"],
-                    ["Created By",lead.created_by_name || "—",          "border-slate-100 bg-slate-50"],
-                    ["Lead ID",   lead.lead_id,                         "border-slate-100 bg-slate-50"],
-                  ].map(([label, value, accent]) => (
-                    <div key={label} className={`rounded-xl border px-3 py-2.5 ${accent}`}>
-                      <p className={KICKER_CLASS}>{label}</p>
-                      <p className="mt-0.5 text-sm font-semibold text-slate-800 break-words">{value}</p>
-                    </div>
                   ))}
                 </div>
 
-                {/* Requirements */}
-                {lead.requirements ? (
-                  <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-                    <div className="mb-1 flex items-center justify-between gap-2">
-                      <span className={KICKER_CLASS}>Requirements</span>
-                      {lead.product_name ? <span className="text-[11px] font-semibold text-amber-700">{lead.product_name}</span> : null}
-                    </div>
-                    <p className="text-sm leading-6 text-slate-700">{lead.requirements}</p>
-                  </div>
-                ) : (
-                  <div className="mt-3 rounded-xl border border-dashed border-slate-200 px-4 py-3 text-center">
-                    <p className="text-xs text-slate-400">No requirements added yet.</p>
-                  </div>
-                )}
-              </article>
+                {tab === "timeline" ? (
+                  <>
+                    {canEdit ? (
+                      <div className="space-y-2">
+                        <QuickNote lead={lead} token={session?.token} onSaved={followUpSaved} placeholder="Add a note for this lead" />
+                        <form onSubmit={addUpdate} className="flex flex-wrap items-center gap-2 rounded-[12px] bg-white p-2 ring-1 ring-slate-200">
+                          <select aria-label="Update type" value={updateType} onChange={(e) => setUpdateType(e.target.value)} className="h-8 rounded-[8px] border border-slate-200 bg-white px-1.5 text-[12.5px] font-semibold text-slate-700">
+                            {UPDATE_TYPES.map(([key, text]) => <option key={key} value={key}>{text}</option>)}
+                          </select>
+                          <input aria-label="Update" value={updateText} onChange={(e) => setUpdateText(e.target.value)} placeholder={isNewLead ? "Change the status from New to log updates" : "Log what happened, e.g. Spoke to the owner"} disabled={isNewLead}
+                            className="h-8 min-w-[180px] flex-1 border-0 bg-transparent px-1.5 text-[13.5px] text-slate-900 outline-none placeholder:text-slate-400 disabled:cursor-not-allowed" />
+                          <button type="submit" disabled={savingUpdate || isNewLead || !updateText.trim()} className="h-8 rounded-[8px] bg-slate-900 px-3 text-[12.5px] font-semibold text-white hover:bg-slate-700 disabled:opacity-40">{savingUpdate ? "Saving…" : "Log update"}</button>
+                        </form>
+                      </div>
+                    ) : null}
+                    <section className={CARD}><LeadTimeline notes={notes} activity={activity} /></section>
+                    {calls.length ? <LeadCallHistoryPanel calls={calls} panelClass={CARD} kickerClass={KICKER} /> : null}
+                  </>
+                ) : null}
 
-              <article className={PANEL_CLASS} id="schedule-follow-up">
-                <div className="mb-4">
-                  <span className={KICKER_CLASS}>Schedule Follow-up</span>
-                  <h2 className="mt-0.5 text-lg font-bold text-slate-900">Book Next Action</h2>
-                </div>
-                <form className="grid gap-4" onSubmit={createTask}>
-                  <label className="space-y-2"><span className={KICKER_CLASS}>Title</span><input className={INPUT_CLASS} value={task.title} onChange={(event) => setTask((current) => ({ ...current, title: event.target.value }))} placeholder="Follow-up call, proposal review, demo" /></label>
-                  <div className="grid gap-4 sm:grid-cols-2"><label className="space-y-2"><span className={KICKER_CLASS}>Communication Mode</span><select className={INPUT_CLASS} value={task.type} onChange={(event) => setTask((current) => ({ ...current, type: event.target.value }))}><option value="call">Call</option><option value="whatsapp">WhatsApp</option><option value="email">Email</option></select></label><label className="space-y-2"><span className={KICKER_CLASS}>Priority</span><select className={INPUT_CLASS} value={task.priority} onChange={(event) => setTask((current) => ({ ...current, priority: event.target.value }))}><option value="low">low</option><option value="medium">medium</option><option value="high">high</option><option value="urgent">urgent</option></select></label></div>
-                  <div className="grid gap-4 sm:grid-cols-2"><label className="space-y-2"><span className={KICKER_CLASS}>Date</span><input className={INPUT_CLASS} type="date" value={task.due_date} onChange={(event) => setTask((current) => ({ ...current, due_date: event.target.value }))} /></label><label className="space-y-2"><span className={KICKER_CLASS}>Time</span><input className={INPUT_CLASS} type="time" value={task.due_time} onChange={(event) => setTask((current) => ({ ...current, due_time: event.target.value }))} /></label></div>
-                  <label className="space-y-2"><span className={KICKER_CLASS}>Assignee</span><select className={INPUT_CLASS} value={task.assigned_to} onChange={(event) => setTask((current) => ({ ...current, assigned_to: event.target.value }))}><option value="">Select assignee</option>{users.map((user) => <option key={user.user_id} value={user.user_id}>{user.name} | {user.role}</option>)}</select>{!users.length ? <p className="text-xs font-medium text-[#8d6e27]">{scopedUsersMessage}</p> : null}</label>
-                  <label className="space-y-2"><span className={KICKER_CLASS}>Follow-up Notes</span><textarea className={`${INPUT_CLASS} min-h-[120px] resize-y`} rows="3" value={task.notes} onChange={(event) => setTask((current) => ({ ...current, notes: event.target.value }))} placeholder="Optional preparation notes" /></label>
-                  <div>
-                    <div className="relative group inline-flex">
-                      <button 
-                        className={`${PRIMARY_BUTTON_CLASS} ${isNewLead ? "opacity-50 cursor-not-allowed" : ""}`} 
-                        type={isNewLead ? "button" : "submit"} 
-                        disabled={savingTask}
-                      >
-                        {savingTask ? "Scheduling..." : "Schedule Follow-up"}
-                      </button>
-                      {isNewLead && (
-                        <div className="pointer-events-none absolute bottom-full left-1/2 mb-2 w-[240px] -translate-x-1/2 opacity-0 transition-opacity duration-200 group-hover:opacity-100 z-10">
-                          <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-center text-[11px] font-bold leading-relaxed text-red-600 shadow-md">
-                            Follow-ups disabled. Please update the Lead Status from 'New' first.
-                          </div>
-                          <div className="absolute left-1/2 top-full h-0 w-0 -translate-x-1/2 border-x-[6px] border-t-[6px] border-x-transparent border-t-red-200"></div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </form>
-              </article>
+                {tab === "tasks" ? (
+                  <section className={CARD}>
+                    <h2 className="mb-2 text-[15px] font-bold text-slate-900">Tasks & follow-ups</h2>
+                    <LeadTasksPanel lead={lead} token={session?.token} people={taskPeople} selfId={selfId} canEdit={canEdit} />
+                  </section>
+                ) : null}
 
-              <article className={PANEL_CLASS}>
-                <div className="mb-4">
-                  <span className={KICKER_CLASS}>Documents</span>
-                  <h2 className="mt-0.5 text-lg font-bold text-slate-900">Files & Attachments</h2>
-                </div>
-                <LeadDocumentsPanel
-                  canUpload={canUploadDocuments}
-                  documents={documentRecords}
-                  emptyMessage="No lead documents uploaded yet."
-                  ghostButtonClassName={GHOST_BUTTON_CLASS}
-                  helperText={
-                    canReviewWorkflowDocs
-                      ? "Upload PDF, image, DOC, or DOCX files. Legal and finance workflow files also appear here."
-                      : "Upload PDF, image, DOC, or DOCX files for this lead. Workflow documents remain limited to admin and manager screens."
-                  }
-                  kickerClassName={KICKER_CLASS}
-                  onUpload={uploadDocument}
-                  primaryButtonClassName={PRIMARY_BUTTON_CLASS}
-                  renderWhen={when}
-                  resolveHref={hrefForDoc}
-                  uploading={uploadingDocuments}
-                />
-              </article>
+                {tab === "documents" ? (
+                  <section className={CARD}>
+                    <h2 className="mb-2 text-[15px] font-bold text-slate-900">Documents</h2>
+                    <LeadDocumentsPanel canUpload={canUploadDocuments} documents={documentRecords} emptyMessage="No documents uploaded yet." ghostButtonClassName={GHOST}
+                      helperText={canReviewWorkflowDocs ? "Upload PDF, image, DOC or DOCX files. Legal and finance files also appear here." : "Upload PDF, image, DOC or DOCX files for this lead."}
+                      kickerClassName={KICKER} onUpload={uploadDocument} primaryButtonClassName={PRIMARY} renderWhen={when} resolveHref={hrefForDoc} uploading={uploadingDocuments} />
+                  </section>
+                ) : null}
 
-              {canTransferToLegal ? <article className={`${PANEL_CLASS} border-emerald-200 bg-emerald-50`}><div className="mb-4"><span className={KICKER_CLASS}>Closed Won</span><h2 className="mt-0.5 text-lg font-bold text-slate-900">Transfer to Legal</h2></div><form className="grid gap-4" onSubmit={transferToLegal}><label className="space-y-2"><span className={KICKER_CLASS}>Legal Owner</span><select className={INPUT_CLASS} value={transferOwner} onChange={(event) => setTransferOwner(event.target.value)}><option value="">Assign later</option>{legalUsers.map((user) => <option key={user.user_id} value={user.user_id}>{formatWorkflowOwnerIdentity(user.name, user.user_id, "Legal user")}</option>)}</select>{!scopedLegalUsers.length ? <p className="text-xs font-medium text-[#8d6e27]">{legalUsersMessage}</p> : null}</label><label className="space-y-2"><span className={KICKER_CLASS}>Transfer Note *</span><textarea className={`${INPUT_CLASS} min-h-[150px] resize-y`} rows="4" value={transferNote} onChange={(event) => setTransferNote(event.target.value)} placeholder="What is ready for legal and what should be checked next?" /></label><button className={PRIMARY_BUTTON_CLASS} type="submit" disabled={transferring || !transferNote.trim()}>{transferring ? "Transferring..." : "Transfer to Legal"}</button></form></article> : null}
+                {tab === "workflow" ? (
+                  <>
+                    <section className={CARD}>
+                      <h2 className="mb-3 text-[15px] font-bold text-slate-900">Workflow stage</h2>
+                      <ol className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                        {WORKFLOW.map((step, index) => {
+                          const state = index < stageIndex ? "done" : index === stageIndex ? "active" : "idle";
+                          return (
+                            <li key={step} className={`rounded-[10px] px-3 py-2.5 ring-1 ${state === "active" ? "bg-brand-50 ring-brand-200" : state === "done" ? "bg-emerald-50 ring-emerald-200" : "bg-slate-50 ring-slate-100"}`}>
+                              <p className="text-[13.5px] font-bold text-slate-900">{nice(step)}</p>
+                              <p className={`text-[12px] font-medium ${state === "active" ? "text-brand-800" : state === "done" ? "text-emerald-700" : "text-slate-400"}`}>{state === "active" ? "Current" : state === "done" ? "Done" : "Waiting"}</p>
+                            </li>
+                          );
+                        })}
+                      </ol>
+                      {canReviewWorkflowDocs ? (
+                        <dl className="mt-3 grid gap-x-6 sm:grid-cols-2">
+                          <Row name="Legal owner">{formatWorkflowOwnerIdentity(lead.legal_owner_name, lead.assigned_to_legal)}</Row>
+                          <Row name="Finance owner">{formatWorkflowOwnerIdentity(lead.finance_owner_name, lead.assigned_to_finance)}</Row>
+                          <Row name="Legal documents">{(lead.legal_documents || []).length}</Row>
+                          <Row name="Finance documents">{(lead.finance_documents || []).length}</Row>
+                        </dl>
+                      ) : null}
+                      <LeadAssignmentFlow activity={activity} lead={lead} renderWhen={when} />
+                    </section>
 
-              <article className={PANEL_CLASS}>
-                <LeadCollaboratorPanel
-                  addCollaborator={collaboratorActions.addCollaborator}
-                  canManage={canManageAssignments}
-                  collaboratorUsersMessage={collaboratorUsersMessage}
-                  lead={lead}
-                  pendingCollaborator={collaboratorActions.pendingCollaborator}
-                  removeCollaborator={collaboratorActions.removeCollaborator}
-                  removingCollaboratorId={collaboratorActions.removingCollaboratorId}
-                  savingCollaborators={collaboratorActions.savingCollaborators}
-                  setPendingCollaborator={collaboratorActions.setPendingCollaborator}
-                  teamUsers={users}
-                />
-              </article>
+                    {canTransferToLegal ? (
+                      <section className="rounded-[14px] bg-emerald-50 p-4 ring-1 ring-emerald-200">
+                        <h2 className="text-[15px] font-bold text-slate-900">Transfer to legal</h2>
+                        <p className="mb-3 text-[12.5px] text-slate-600">This lead is won. Send it to the legal team for the agreement.</p>
+                        <form className="grid gap-3" onSubmit={transferToLegal}>
+                          <label className="grid gap-1 text-[12px] font-semibold text-slate-600">Legal owner
+                            <select className={LEAD_INPUT_CLASS} value={transferOwner} onChange={(e) => setTransferOwner(e.target.value)}>
+                              <option value="">Assign later</option>
+                              {legalUsers.map((user) => <option key={user.user_id} value={user.user_id}>{formatWorkflowOwnerIdentity(user.name, user.user_id, "Legal user")}</option>)}
+                            </select>
+                            {!scopedLegalUsers.length ? <span className="font-normal text-slate-500">{workflowUsersEmptyMessage(lead.team_name, "legal")}</span> : null}
+                          </label>
+                          <label className="grid gap-1 text-[12px] font-semibold text-slate-600">Transfer note
+                            <textarea className={`${LEAD_INPUT_CLASS} min-h-[80px] resize-y`} value={transferNote} onChange={(e) => setTransferNote(e.target.value)} placeholder="Deal details the legal team should know" />
+                          </label>
+                          <div><button type="submit" className={PRIMARY} disabled={transferring}>{transferring ? "Transferring…" : "Transfer to legal"}</button></div>
+                        </form>
+                      </section>
+                    ) : null}
+
+                    <section className={CARD}>
+                      <h2 className="mb-2 text-[15px] font-bold text-slate-900">Stage history</h2>
+                      {(lead.stage_history || []).length ? (
+                        <ul className="divide-y divide-slate-100">
+                          {lead.stage_history.map((item, index) => (
+                            <li key={`stage-${item.stage}-${index}`} className="flex justify-between gap-3 py-2 text-[13px]">
+                              <span><b className="font-semibold text-slate-900">{nice(item.stage)}</b><span className="block text-[12px] text-slate-500">Entered {when(item.entered_at, true)}{item.exited_at ? ` · Exited ${when(item.exited_at, true)}` : ""}</span></span>
+                              {item.duration ? <span className="shrink-0 text-[12px] font-semibold text-brand-800">{item.duration}m</span> : null}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : <p className="text-[13px] text-slate-500">No stage history yet.</p>}
+                      <h2 className="mb-2 mt-4 text-[15px] font-bold text-slate-900">Transfer log</h2>
+                      {(lead.transfer_history || []).length ? (
+                        <ul className="divide-y divide-slate-100">
+                          {lead.transfer_history.map((item, index) => (
+                            <li key={`transfer-${item.to_stage}-${index}`} className="py-2 text-[13px]">
+                              <b className="font-semibold text-slate-900">{nice(item.from_stage)} → {nice(item.to_stage)}</b>
+                              <span className="block text-[12px] text-slate-500">{item.transferred_by_name || "User"} · {when(item.transferred_at, true)}{item.transferred_to_name ? ` · To ${item.transferred_to_name}` : ""}</span>
+                              {item.notes ? <p className="mt-0.5 text-[12.5px] text-slate-600">{item.notes}</p> : null}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : <p className="text-[13px] text-slate-500">No transfers yet.</p>}
+                    </section>
+                  </>
+                ) : null}
+              </div>
             </div>
-          </div>
-        </section>
-      ) : null}
+          </>
+        ) : null}
+      </div>
     </DashboardShell>
   );
 }

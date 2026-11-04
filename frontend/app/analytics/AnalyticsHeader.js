@@ -1,93 +1,68 @@
 "use client";
 
-import DashboardIcon from "../../components/dashboard/icons";
-import { compact, money, titleize } from "./analytics-utils";
+import { compact, money } from "./analytics-utils";
 
-const K = "text-[10px] font-bold uppercase tracking-widest text-slate-400";
-const INPUT = "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-50";
+const SELECT = "h-9 w-full min-w-0 rounded-[10px] border border-slate-200 bg-white px-2.5 text-[13px] text-slate-800 outline-none transition focus:border-brand-400 focus:ring-4 focus:ring-brand-50";
+const RANGES = [["week", "7 days"], ["month", "31 days"], ["quarter", "Quarter"], ["year", "Year"]];
 
-const KPI_ACCENT = [
-  "border-amber-200 bg-gradient-to-br from-amber-50 to-white",
-  "border-emerald-200 bg-gradient-to-br from-emerald-50 to-white",
-  "border-sky-200 bg-gradient-to-br from-sky-50 to-white",
-  "border-violet-200 bg-gradient-to-br from-violet-50 to-white",
-];
+/** A tiny line of the period, so a number shows its direction too. */
+function Spark({ values, color }) {
+  if (!values || values.length < 2) return null;
+  const max = Math.max(1, ...values);
+  const pts = values.map((v, i) => `${((i / (values.length - 1)) * 76 + 2).toFixed(1)},${(26 - (v / max) * 22).toFixed(1)}`).join(" ");
+  return <svg width="80" height="28" aria-hidden="true" className="shrink-0"><polyline points={pts} fill="none" stroke={color} strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" /></svg>;
+}
 
-export function AnalyticsHeader({ deck, range, filters, onRangeChange, onRefresh, onExport, onFilterChange, onResetFilters, exportDisabled }) {
-  const hasFilter = Object.values(filters).some(v => v && v !== "all" && v !== "");
+function Stat({ label, value, hint, color, spark }) {
+  return (
+    <div className="rounded-[14px] bg-white px-4 py-3.5 ring-1 ring-slate-200">
+      <p className="flex items-center gap-1.5 text-[12px] font-semibold text-slate-500"><i className="h-2 w-2 rounded-full" style={{ background: color }} />{label}</p>
+      <div className="mt-1.5 flex items-end justify-between gap-2">
+        <p className="min-w-0 break-words text-[18px] font-bold leading-tight tabular-nums tracking-tight text-slate-900 sm:text-[24px] sm:leading-none">{value}</p>
+        <Spark values={spark} color={color} />
+      </div>
+      {hint ? <p className="mt-1.5 truncate text-[11.5px] text-slate-500">{hint}</p> : null}
+    </div>
+  );
+}
+
+/** Period, filters and the four headline numbers for the Insights tab. */
+export function AnalyticsHeader({ deck, range, filters, onRangeChange, onRefresh, onFilterChange, onResetFilters, loading }) {
+  const hasFilter = Object.values(filters).some((v) => v && v !== "all");
+  const t = deck.totals || { leads: 0, won: 0, open: 0, wonValue: 0, openValue: 0, customers: null };
+  const series = deck.series || [];
+  const customers = t.customers === null || t.customers === undefined ? "" : ` · ${compact(t.customers)} customers`;
 
   return (
-    <div className="space-y-4">
-      {/* Title + actions */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className={K}>Analytics Desk</p>
-          <h1 className="mt-0.5 text-2xl font-bold tracking-tight text-slate-900">Pipeline Intelligence</h1>
-          <p className="mt-0.5 text-sm text-slate-400">Complete pipeline summaries for the selected creation-date range.</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {/* Range pills */}
-          <div className="flex rounded-xl border border-slate-200 bg-white p-1">
-            {["week","month","quarter","year"].map(r => (
-              <button key={r} type="button" onClick={() => onRangeChange(r)}
-                className={`rounded-lg px-3 py-1.5 text-xs font-bold uppercase tracking-wide transition ${range === r ? "bg-amber-50 text-amber-900 border border-amber-200" : "text-slate-500 hover:text-slate-800"}`}>
-                {r}
-              </button>
-            ))}
-          </div>
-          <button type="button" onClick={onRefresh} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300">
-            <DashboardIcon name="analytics" className="h-4 w-4" />Refresh
-          </button>
-          <button type="button" disabled={exportDisabled} onClick={onExport} className="inline-flex items-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50 px-3.5 py-2 text-sm font-semibold text-amber-900 transition hover:bg-amber-100 disabled:opacity-40">
-            <DashboardIcon name="documents" className="h-4 w-4" />Export CSV
-          </button>
-        </div>
-      </div>
-
-      {/* Top signal cards */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {deck.topCards.map((c, i) => (
-          <div key={c.label} className={`group relative overflow-hidden rounded-2xl border px-4 py-3.5 transition hover:-translate-y-0.5 hover:shadow-md ${KPI_ACCENT[i]}`}>
-            <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/60 to-transparent transition-transform duration-500 group-hover:translate-x-full" />
-            <p className={K}>{c.label}</p>
-            <p className="mt-1 text-xl font-bold leading-none text-slate-900">{c.value}</p>
-            <p className="mt-0.5 text-[11px] text-slate-400">{c.hint}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* KPI strip */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {deck.kpis.map((k, i) => (
-          <div key={k.label} className={`flex items-center gap-3 rounded-2xl border px-4 py-3.5 ${KPI_ACCENT[i]}`}>
-            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white shadow-sm">
-              <DashboardIcon name={k.icon} className="h-4 w-4 text-slate-500" />
-            </div>
-            <div className="min-w-0">
-              <p className={K}>{k.label}</p>
-              <p className="mt-0.5 text-base font-bold leading-none text-slate-900">{k.value}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Filters */}
-      <div className="rounded-2xl border border-slate-100 bg-white px-4 py-4 shadow-sm">
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-          <div className="relative sm:col-span-2 xl:col-span-1">
-            <DashboardIcon name="leads" className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input className={`${INPUT} pl-10`} value={filters.query} onChange={e => onFilterChange("query", e.target.value)} placeholder="Lead, owner, source…" />
-          </div>
-          {[["owner","owners","All owners"],["priority","priorities","All priorities"],["source","sources","All sources"],["product","products","All products"]].map(([field, optKey, placeholder]) => (
-            <select key={field} className={INPUT} value={filters[field]} onChange={e => onFilterChange(field, e.target.value)}>
-              <option value="all">{placeholder}</option>
-              {deck.filterOptions[optKey]?.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </select>
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2 rounded-[14px] bg-white p-2.5 ring-1 ring-slate-200">
+        <div className="flex rounded-[10px] bg-slate-100 p-0.5" role="group" aria-label="Period">
+          {RANGES.map(([key, name]) => (
+            <button key={key} type="button" onClick={() => onRangeChange(key)} aria-pressed={range === key}
+              className={`rounded-[8px] px-3 py-1.5 text-[12.5px] font-semibold transition ${range === key ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}>{name}</button>
           ))}
         </div>
-        {hasFilter ? (
-          <button type="button" onClick={onResetFilters} className="mt-2.5 text-xs font-semibold text-amber-700 hover:text-amber-900">✕ Clear filters</button>
-        ) : null}
+        <label className="flex h-9 min-w-[180px] flex-1 items-center gap-2 rounded-[10px] border border-slate-200 bg-slate-50 px-3 text-slate-400 focus-within:border-brand-300 focus-within:bg-white">
+          <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+          <input value={filters.query} onChange={(e) => onFilterChange("query", e.target.value)} placeholder="Search lead, owner or source" aria-label="Search" className="min-w-0 flex-1 bg-transparent text-[13px] text-slate-800 outline-none" />
+        </label>
+        {[["owner", "owners", "All owners"], ["priority", "priorities", "All priorities"], ["source", "sources", "All sources"], ["product", "products", "All products"]].map(([field, optKey, placeholder]) => (
+          <select key={field} className={`${SELECT} sm:w-auto sm:max-w-[170px]`} value={filters[field]} onChange={(e) => onFilterChange(field, e.target.value)} aria-label={placeholder}>
+            <option value="all">{placeholder}</option>
+            {deck.filterOptions[optKey]?.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        ))}
+        {hasFilter ? <button type="button" onClick={onResetFilters} className="h-9 rounded-[10px] px-2.5 text-[12.5px] font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-800">Clear</button> : null}
+        <button type="button" onClick={onRefresh} aria-label="Refresh" title="Refresh" className="grid h-9 w-9 place-items-center rounded-[10px] text-slate-500 ring-1 ring-slate-200 hover:bg-slate-50">
+          <svg className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-3-6.7L21 8" /><path d="M21 3v5h-5" /></svg>
+        </button>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Stat label="Leads" value={compact(t.leads)} hint={`${compact(t.open)} still open`} color="#009a8c" spark={series.map((p) => p.leads)} />
+        <Stat label="Won" value={compact(t.won)} hint={`${t.leads ? Math.round((t.won / t.leads) * 100) : 0}% of leads`} color="#3b6fd8" spark={series.map((p) => p.closed)} />
+        <Stat label="Won value" value={money(t.wonValue)} hint={`Avg deal ${money(t.won ? t.wonValue / t.won : 0)}`} color="#8a55e6" />
+        <Stat label="Open pipeline" value={money(t.openValue)} hint={`${deck.sourceMix.length} sources${customers}`} color="#b98300" />
       </div>
     </div>
   );

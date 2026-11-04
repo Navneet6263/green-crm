@@ -1,14 +1,14 @@
 "use client";
 
-const INPUT = "w-full rounded-[16px] border border-[#eadfcd] bg-white px-3 py-2.5 text-sm text-[#060710] outline-none focus:border-[#d7b258] focus:ring-4 focus:ring-[#f6ead0]";
-const LABEL = "text-[10px] font-black uppercase tracking-[0.22em] text-[#9a886d]";
+const INPUT = "w-full rounded-[10px] border border-slate-200 bg-white px-3 py-2 text-[13.5px] text-slate-800 outline-none focus:border-brand-400 focus:ring-4 focus:ring-brand-50";
+const LABEL = "text-[12px] font-semibold text-slate-600";
 
 export default function LeadDemoHandoffFields({ assigneeOptions = [], demo, setDemo }) {
   return (
-    <div className="mt-4 rounded-[22px] border border-[#d8c7ff] bg-[#faf7ff] p-4">
+    <div className="mt-4 rounded-[14px] bg-violet-50/60 p-4 ring-1 ring-violet-100">
       <div className="mb-4">
-        <span className={LABEL}>Demo handoff</span>
-        <p className="mt-1 text-sm text-[#6d5f86]">Capture requirement, demo slot, and new owner before booking the demo.</p>
+        <span className="text-[13px] font-bold text-violet-900">Demo handoff</span>
+        <p className="mt-0.5 text-[12.5px] text-violet-800">Capture requirement, demo slot, and new owner before booking the demo.</p>
       </div>
 
       <label className="block space-y-2">

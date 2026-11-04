@@ -25,9 +25,9 @@ export function WorkflowWorkspaceView({
   onResetFilters,
 }) {
   return (
-    <div className="mx-auto max-w-[1320px] space-y-5 px-1">
+    <div className="min-w-0 space-y-4">
       {error ? (
-        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+        <div role="alert" className="rounded-[12px] bg-rose-50 px-4 py-3 text-[13px] font-medium text-rose-700 ring-1 ring-rose-200">
           {error}
         </div>
       ) : null}
@@ -41,11 +41,9 @@ export function WorkflowWorkspaceView({
       />
 
       {loading ? (
-        <div className="flex min-h-[320px] items-center justify-center rounded-2xl border border-slate-100 bg-white text-sm text-slate-400">
-          Loading workflow desk…
-        </div>
+        <div className="grid gap-4 xl:grid-cols-[1fr_420px]"><div className="h-96 animate-pulse rounded-[14px] bg-white ring-1 ring-slate-200" /><div className="h-96 animate-pulse rounded-[14px] bg-white ring-1 ring-slate-200" /></div>
       ) : (
-        <div className="grid gap-5 xl:grid-cols-[1fr_420px] xl:items-start">
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_400px] xl:items-start">
           <WorkflowQueue
             deck={deck}
             pagedLeads={pagedLeads}

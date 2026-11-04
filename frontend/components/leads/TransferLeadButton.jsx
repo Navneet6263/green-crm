@@ -8,12 +8,14 @@ import { toast } from "react-hot-toast";
 import { apiRequest } from "../../lib/api";
 import { loadSession } from "../../lib/session";
 
-const INPUT = "w-full rounded-[16px] border border-[#eadfcd] bg-white px-3 py-2.5 text-sm text-[#060710] outline-none focus:border-[#d7b258] focus:ring-4 focus:ring-[#f6ead0]";
-const LABEL = "text-[10px] font-black uppercase tracking-[0.22em] text-[#9a886d]";
-const PRIMARY = "inline-flex min-h-[40px] items-center justify-center rounded-[16px] border border-[#d7b258] bg-[#f3dfab] px-4 py-2 text-sm font-semibold text-[#060710] disabled:cursor-not-allowed disabled:opacity-60";
-const GHOST = "inline-flex min-h-[40px] items-center justify-center rounded-[16px] border border-[#eadfcd] bg-white px-4 py-2 text-sm font-semibold text-[#5d503c]";
+const INPUT = "w-full rounded-[16px] border border-[#e2e8f0] bg-white px-3 py-2.5 text-sm text-[#0f172a] outline-none focus:border-[#8fd0cb] focus:ring-4 focus:ring-[#d9f0ee]";
+const LABEL = "text-[10px] font-black uppercase tracking-[0.22em] text-[#94a3b8]";
+const PRIMARY = "inline-flex min-h-[40px] items-center justify-center rounded-[16px] border border-[#8fd0cb] bg-[#d9f0ee] px-4 py-2 text-sm font-semibold text-[#0f172a] disabled:cursor-not-allowed disabled:opacity-60";
+const GHOST = "inline-flex min-h-[40px] items-center justify-center rounded-[16px] border border-[#e2e8f0] bg-white px-4 py-2 text-sm font-semibold text-[#475569]";
 
-export default function TransferLeadButton({ leadId, leadName }) {
+const TRIGGER = "inline-flex min-h-[32px] w-full items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-brand-300 hover:bg-brand-50 hover:text-brand-800 mb-2 shadow-sm";
+
+export default function TransferLeadButton({ leadId, leadName, className = TRIGGER, label = "Transfer Lead" }) {
   const [mounted, setMounted] = useState(false);
   const [step, setStep] = useState(null); // null, 'reasons', 'select'
   const [searchQuery, setSearchQuery] = useState("");
@@ -98,21 +100,21 @@ export default function TransferLeadButton({ leadId, leadName }) {
   };
 
   const dialog = step ? (
-    <div className="fixed inset-0 z-[120] flex items-end justify-center bg-[#060710]/35 p-3 sm:items-center backdrop-blur-sm">
-      <section className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-[28px] border border-[#eadfcd] bg-white p-5 shadow-[0_30px_80px_rgba(6,7,16,0.22)]">
+    <div className="fixed inset-0 z-[120] flex items-end justify-center bg-[#0f172a]/35 p-3 sm:items-center backdrop-blur-sm">
+      <section className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-[28px] border border-[#e2e8f0] bg-white p-5 shadow-[0_30px_80px_rgba(6,7,16,0.22)]">
         
         {/* STEP 2 - Reasons Modal */}
         {step === "reasons" && (
           <div className="space-y-4">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h2 className="text-2xl font-semibold tracking-tight text-[#060710]">Transfer Lead</h2>
-                <p className="mt-1 text-sm text-[#7a6b57]">Review verification checklist before initiating a lead transfer.</p>
+                <h2 className="text-2xl font-semibold tracking-tight text-[#0f172a]">Transfer Lead</h2>
+                <p className="mt-1 text-sm text-[#64748b]">Review verification checklist before initiating a lead transfer.</p>
               </div>
               <button className={GHOST} type="button" onClick={handleClose}>Close</button>
             </div>
 
-            <div className="mt-5 rounded-[18px] border border-[#eadfcd] bg-[#fffaf1] px-4 py-3 text-sm font-bold text-[#060710]">
+            <div className="mt-5 rounded-[18px] border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 text-sm font-bold text-[#0f172a]">
               Lead to Transfer: <span className="font-extrabold text-[#b45309]">{leadName}</span>
             </div>
 
@@ -125,8 +127,8 @@ export default function TransferLeadButton({ leadId, leadName }) {
                   "Wrong number or unable to reach",
                   "Another team member can follow up better"
                 ].map((reason, index) => (
-                  <div key={index} className="flex items-center gap-3 rounded-[16px] border border-[#eadfcd] bg-white px-4 py-3 text-sm font-semibold text-[#5d503c]">
-                    <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-[#f3dfab] text-[#060710] font-bold text-xs">
+                  <div key={index} className="flex items-center gap-3 rounded-[16px] border border-[#e2e8f0] bg-white px-4 py-3 text-sm font-semibold text-[#475569]">
+                    <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-[#d9f0ee] text-[#0f172a] font-bold text-xs">
                       ✓
                     </div>
                     <span>{reason}</span>
@@ -135,7 +137,7 @@ export default function TransferLeadButton({ leadId, leadName }) {
               </div>
             </div>
 
-            <div className="mt-4 rounded-[22px] border border-[#eadfcd] bg-[#fffaf1] p-4 text-xs leading-relaxed text-[#7a6b57] font-semibold flex gap-3">
+            <div className="mt-4 rounded-[22px] border border-[#e2e8f0] bg-[#f8fafc] p-4 text-xs leading-relaxed text-[#64748b] font-semibold flex gap-3">
               <span className="text-sm shrink-0">ℹ️</span>
               <span>
                 This transfer is fully safe. Lead assignment, status, history, and metrics remain untouched. Only a descriptive note will be added to the lead activity logs.
@@ -154,8 +156,8 @@ export default function TransferLeadButton({ leadId, leadName }) {
           <form onSubmit={handleTransfer} className="space-y-4">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h2 className="text-2xl font-semibold tracking-tight text-[#060710]">Who should review this lead?</h2>
-                <p className="mt-1 text-sm text-[#7a6b57]">Select recipient member and add transfer notes.</p>
+                <h2 className="text-2xl font-semibold tracking-tight text-[#0f172a]">Who should review this lead?</h2>
+                <p className="mt-1 text-sm text-[#64748b]">Select recipient member and add transfer notes.</p>
               </div>
               <button className={GHOST} type="button" onClick={handleClose}>Close</button>
             </div>
@@ -164,15 +166,15 @@ export default function TransferLeadButton({ leadId, leadName }) {
             {selectedUser ? (
               <div className="mt-5 space-y-2">
                 <span className={LABEL}>Assigned Recipient</span>
-                <div className="flex items-center justify-between rounded-[16px] border border-[#d7b258] bg-[#fffaf1] px-4 py-3 text-sm font-bold text-[#060710]">
+                <div className="flex items-center justify-between rounded-[16px] border border-[#8fd0cb] bg-[#f8fafc] px-4 py-3 text-sm font-bold text-[#0f172a]">
                   <div>
                     <span className="block font-bold">{selectedUser.name}</span>
-                    <span className="block text-xs font-semibold text-[#9a886d] capitalize mt-0.5">{selectedUser.role}</span>
+                    <span className="block text-xs font-semibold text-[#94a3b8] capitalize mt-0.5">{selectedUser.role}</span>
                   </div>
                   <button
                     type="button"
                     onClick={() => setSelectedUser(null)}
-                    className="rounded-full p-1 text-[#5d503c] hover:bg-[#eadfcd] transition duration-200"
+                    className="rounded-full p-1 text-[#475569] hover:bg-[#e2e8f0] transition duration-200"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -192,10 +194,10 @@ export default function TransferLeadButton({ leadId, leadName }) {
                 
                 {/* Search Results Dropdown */}
                 {(searching || searchQuery.trim()) && (
-                  <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-56 overflow-y-auto rounded-[16px] border border-[#eadfcd] bg-white py-1.5 shadow-lg">
+                  <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-56 overflow-y-auto rounded-[16px] border border-[#e2e8f0] bg-white py-1.5 shadow-lg">
                     {searching ? (
-                      <div className="flex items-center justify-center gap-2 py-4 text-xs font-bold text-[#9a886d]">
-                        <Loader2 className="h-4 w-4 animate-spin text-[#d7b258]" />
+                      <div className="flex items-center justify-center gap-2 py-4 text-xs font-bold text-[#94a3b8]">
+                        <Loader2 className="h-4 w-4 animate-spin text-[#8fd0cb]" />
                         Searching team members...
                       </div>
                     ) : users.length > 0 ? (
@@ -207,19 +209,19 @@ export default function TransferLeadButton({ leadId, leadName }) {
                             setSelectedUser(u);
                             setSearchQuery("");
                           }}
-                          className="flex w-full items-start justify-between px-4 py-2.5 text-left text-sm hover:bg-[#fffaf1] transition"
+                          className="flex w-full items-start justify-between px-4 py-2.5 text-left text-sm hover:bg-[#f8fafc] transition"
                         >
                           <div>
-                            <span className="block font-bold text-[#060710]">{u.name}</span>
-                            <span className="block text-xs font-medium text-[#7a6b57] mt-0.5">{u.email}</span>
+                            <span className="block font-bold text-[#0f172a]">{u.name}</span>
+                            <span className="block text-xs font-medium text-[#64748b] mt-0.5">{u.email}</span>
                           </div>
-                          <span className="rounded-full bg-white border border-[#eadfcd] px-2.5 py-0.5 text-[10px] font-bold text-[#5d503c] uppercase mt-0.5">
+                          <span className="rounded-full bg-white border border-[#e2e8f0] px-2.5 py-0.5 text-[10px] font-bold text-[#475569] uppercase mt-0.5">
                             {u.role}
                           </span>
                         </button>
                       ))
                     ) : (
-                      <div className="py-4 text-center text-xs font-bold text-[#9a886d]">No users found</div>
+                      <div className="py-4 text-center text-xs font-bold text-[#94a3b8]">No users found</div>
                     )}
                   </div>
                 )}
@@ -262,10 +264,10 @@ export default function TransferLeadButton({ leadId, leadName }) {
       <button
         type="button"
         onClick={handleOpen}
-        className="inline-flex min-h-[32px] w-full items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-amber-300 hover:bg-amber-50 hover:text-amber-800 mb-2 shadow-sm"
+        className={className}
       >
         <ArrowRightLeft className="h-3.5 w-3.5" />
-        Transfer Lead
+        {label}
       </button>
 
       {/* Render Portal under document.body to ensure backdrop blur works globally */}

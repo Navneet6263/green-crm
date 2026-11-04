@@ -1,11 +1,11 @@
 "use client";
 // workflow-tokens.js — shared design system for workflow UI
 export const T = {
-  panel:  "rounded-2xl border border-slate-100 bg-white shadow-sm",
-  kicker: "text-[10px] font-bold uppercase tracking-widest text-slate-400",
-  input:  "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-amber-400 focus:ring-2 focus:ring-amber-50",
-  btn:    "inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-[13px] font-semibold text-slate-700 transition hover:border-amber-300 hover:text-amber-800 disabled:opacity-50",
-  gold:   "inline-flex items-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2 text-[13px] font-semibold text-amber-900 transition hover:bg-amber-100 disabled:opacity-50",
+  panel:  "rounded-[14px] bg-white ring-1 ring-slate-200",
+  kicker: "text-[11.5px] font-semibold text-slate-500",
+  input:  "w-full rounded-[10px] border border-slate-200 bg-white px-3 py-2 text-[13.5px] text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-brand-400 focus:ring-4 focus:ring-brand-50",
+  btn:    "inline-flex h-9 items-center gap-1.5 rounded-[10px] bg-white px-3 text-[13px] font-semibold text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-50 disabled:opacity-50",
+  gold:   "inline-flex h-9 items-center gap-1.5 rounded-[10px] bg-brand-700 px-3.5 text-[13px] font-semibold text-white shadow-sm transition hover:bg-brand-800 disabled:opacity-50",
 };
 
 export const STAGE_DOT = {

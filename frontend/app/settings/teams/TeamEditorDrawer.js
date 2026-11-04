@@ -1,102 +1,53 @@
 "use client";
 
-import DashboardIcon from "../../../components/dashboard/icons";
-import { T } from "./teams-tokens";
+import SideDrawer from "../../../components/ui/SideDrawer";
+import { colorFor } from "../../../components/dashboard/home/widgetCatalog";
+import { T, initials } from "./teams-tokens";
 
-export function TeamEditorDrawer({ open, mode, form, saving, onClose, onSave, onChange }) {
-  if (!open) return null;
+const label = "block space-y-1 text-[12px] font-semibold text-slate-600";
 
+/** Side panel to create a team or change its name, code, description and status. */
+export function TeamEditorDrawer({ open, mode, form, saving, teamId, onClose, onSave, onChange }) {
+  const creating = mode === "create";
   return (
-    <div className="fixed inset-0 z-50">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
-
-      {/* Drawer */}
-      <aside className="absolute right-0 top-0 h-full w-full max-w-[520px] overflow-y-auto border-l border-slate-100 bg-white shadow-2xl">
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-              {mode === "create" ? "New Team" : "Edit Team"}
-            </p>
-            <h2 className="mt-0.5 text-lg font-bold text-slate-900">
-              {mode === "create" ? "Set up team identity" : "Update team details"}
-            </h2>
+    <SideDrawer open={open} onClose={onClose} title={creating ? "New team" : "Edit team"}
+      subtitle={creating ? "Save it first, then add members and managers" : "Name, code, description and status"}
+      footer={(
+        <div className="flex justify-end gap-2">
+          <button className={T.ghost} type="button" onClick={onClose}>Cancel</button>
+          <button className={T.gold} type="submit" form="team-editor" disabled={saving}>{saving ? (creating ? "Creating…" : "Saving…") : creating ? "Create team" : "Save changes"}</button>
+        </div>
+      )}>
+      <form id="team-editor" className="space-y-4" onSubmit={onSave}>
+        <div className="flex items-center gap-3 rounded-[12px] bg-white px-4 py-3 ring-1 ring-slate-200">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[10px] text-[14px] font-bold text-white" style={{ background: colorFor(teamId || form.name || "team") }}>{initials(form.name || "Team")}</span>
+          <div className="min-w-0">
+            <p className="truncate text-[14px] font-bold text-slate-900">{form.name || "Team name"}</p>
+            <p className="text-[12px] text-slate-500">{form.code || "Code is made from the name"}</p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="grid h-9 w-9 place-items-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-900"
-          >
-            <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <path d="M2 2l12 12M14 2L2 14" />
-            </svg>
-          </button>
         </div>
 
-        <form className="space-y-5 px-6 py-6" onSubmit={onSave}>
-          <p className="text-sm text-slate-500">
-            {mode === "create"
-              ? "Save the team first, then add members and managers from the detail panel."
-              : "Update name, code, description, or active status without leaving the workspace."}
-          </p>
-
-          <label className="block space-y-1.5">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Team Name *</span>
-            <input
-              className={T.input}
-              value={form.name}
-              onChange={e => onChange("name", e.target.value)}
-              placeholder="e.g. North Sales"
-              required
-            />
+        <div className="space-y-4 rounded-[14px] bg-white p-4 ring-1 ring-slate-200">
+          <label className={label}>Team name
+            <input className={T.input} value={form.name} onChange={(e) => onChange("name", e.target.value)} placeholder="e.g. North Sales" required />
           </label>
-
-          <label className="block space-y-1.5">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Team Code</span>
-            <input
-              className={T.input}
-              value={form.code}
-              onChange={e => onChange("code", e.target.value.toUpperCase().replace(/\s+/g, "_"))}
-              placeholder="Auto-generated if left blank"
-            />
-            <p className="text-xs text-slate-400">Leave blank to auto-generate from the team name.</p>
+          <label className={label}>Team code <span className="font-normal text-slate-400">(optional)</span>
+            <input className={T.input} value={form.code} onChange={(e) => onChange("code", e.target.value.toUpperCase().replace(/\s+/g, "_"))} placeholder="e.g. NORTH_SALES" />
           </label>
-
-          <label className="block space-y-1.5">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Description</span>
-            <textarea
-              className={`${T.input} min-h-[110px] resize-y`}
-              rows={4}
-              value={form.description}
-              onChange={e => onChange("description", e.target.value)}
-              placeholder="What does this team own, and how should users think about it?"
-            />
+          <label className={label}>Description
+            <textarea className={`${T.input} min-h-[96px] resize-y`} rows={3} value={form.description} onChange={(e) => onChange("description", e.target.value)} placeholder="What this team owns, e.g. all leads from Delhi NCR" />
           </label>
+        </div>
 
-          <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5">
-            <input
-              type="checkbox"
-              className="mt-0.5 h-4 w-4 rounded border-amber-300 accent-amber-500"
-              checked={form.is_active}
-              onChange={e => onChange("is_active", e.target.checked)}
-            />
-            <span>
-              <strong className="block text-sm text-slate-900">Active team</strong>
-              <span className="mt-0.5 block text-xs text-slate-400">
-                Active teams appear in CRM ownership pickers. Inactive teams are hidden from record assignment.
-              </span>
-            </span>
-          </label>
-
-          <div className="flex flex-wrap justify-end gap-3 border-t border-slate-100 pt-4">
-            <button className={T.ghost} type="button" onClick={onClose}>Cancel</button>
-            <button className={T.gold} type="submit" disabled={saving}>
-              <DashboardIcon name="settings" className="h-4 w-4" />
-              {saving ? (mode === "create" ? "Creating…" : "Saving…") : mode === "create" ? "Create Team" : "Save Team"}
-            </button>
-          </div>
-        </form>
-      </aside>
-    </div>
+        <label className="flex cursor-pointer items-center justify-between gap-3 rounded-[14px] bg-white px-4 py-3 ring-1 ring-slate-200">
+          <span>
+            <b className="block text-[13.5px] font-semibold text-slate-900">Active</b>
+            <span className="block text-[12px] text-slate-500">Inactive teams are hidden when assigning leads and customers.</span>
+          </span>
+          <input type="checkbox" role="switch" checked={form.is_active} onChange={(e) => onChange("is_active", e.target.checked)}
+            className="relative h-5 w-9 shrink-0 cursor-pointer appearance-none rounded-full bg-slate-300 transition before:absolute before:left-0.5 before:top-0.5 before:h-4 before:w-4 before:rounded-full before:bg-white before:shadow before:transition checked:bg-brand-600 checked:before:translate-x-4" />
+        </label>
+      </form>
+    </SideDrawer>
   );
 }

@@ -260,7 +260,10 @@ function buildBulkImportLeadPayload(row, defaultCompanyId = null) {
     address_zip: getImportValue(row, ["address_zip", "postal_code"]),
     address_country: getImportValue(row, ["address_country", "country"]) || "India",
     status: getImportValue(row, ["onboarded_date", "approval_date"]) ? "onboarded" : (getImportValue(row, ["status"]) || "new"),
-    requirements: null,
+    requirements: getImportValue(row, ["requirements", "requirement", "notes"]),
+    no_of_employees: getImportValue(row, ["no_of_employees", "employees"]) ?? undefined,
+    active_users: getImportValue(row, ["active_users"]),
+    advance_received: getImportNumber(row, ["advance_received", "advance"], 0),
     workflow_stage: "sales",
     onboarded_date: getImportValue(row, ["onboarded_date", "approval_date"]),
     row_number: Number(row.__row_number || row.row_number || 0) || null,
@@ -589,6 +592,10 @@ async function buildLeadFilters(auth, query) {
     dateFilterType: query.date_filter_type || "created_at",
     createdFrom,
     createdTo,
+    followUp: ["overdue", "today", "upcoming", "unscheduled"].includes(query.follow_up) ? query.follow_up : null,
+    stale: query.stale === "1" || query.stale === "true",
+    sort: query.sort || null,
+    sortDir: query.sort_dir === "desc" ? "desc" : "asc",
     hasPayment: query.has_payment === "true" || query.has_payment === true || query.hasPayment === "true" || query.hasPayment === true,
     teamIds: null,
   };
@@ -681,6 +688,65 @@ async function listLeads(auth, query) {
   }
 
   return result;
+}
+
+async function getLeadCounts(auth, query = {}) {
+  const filters = await buildLeadFilters(auth, { ...query, follow_up: undefined, stale: undefined });
+  if (filters.companyId) assertCompanyAccess(auth, filters.companyId);
+  const raw = await leadRepository.getLeadCounts(filters);
+  // Only admins and managers see (and can restore) deleted leads.
+  const counts = MANAGER_ROLES.includes(auth.role) || auth.role === ROLES.SUPER_ADMIN ? raw : { ...raw, deleted: 0 };
+  // Experts never see lead money (same rule as maskLeadForRole).
+  return auth.role === "expert" ? { ...counts, pipeline_value: 0, advance_received: 0, lead_value: 0, pending_amount: 0, paid_leads: 0 } : counts;
+}
+
+const BULK_MAX = 500;
+const BULK_BLOCKED_STATUSES = ["booked-demo", "onboarded"];
+
+/** Applies one change to many leads. Each lead goes through the normal update rules and history. */
+async function bulkUpdateLeads(auth, payload = {}) {
+  if (!MANAGER_ROLES.includes(auth.role)) {
+    throw new AppError("Only managers and admins can change leads in bulk.", 403);
+  }
+  const leadIds = normalizeUserIdList(payload.lead_ids);
+  const changeNote = String(payload.change_note || "").trim();
+  const action = payload.action === "delete" ? "delete" : "update";
+  if (!leadIds.length) throw new AppError("Choose at least one lead.", 400);
+  if (leadIds.length > BULK_MAX) throw new AppError(`You can change up to ${BULK_MAX} leads at a time.`, 400);
+  if (!changeNote) throw new AppError("A note is required whenever a lead is changed.", 400);
+
+  const changes = {};
+  if (action === "update") {
+    if (payload.status) {
+      if (!LEAD_STATUSES.includes(payload.status)) throw new AppError("Invalid lead status.", 400);
+      if (BULK_BLOCKED_STATUSES.includes(payload.status)) throw new AppError("This status needs details, so change it one lead at a time.", 400);
+      changes.status = payload.status;
+    }
+    if (payload.priority) {
+      if (!LEAD_PRIORITIES.includes(payload.priority)) throw new AppError("Invalid lead priority.", 400);
+      changes.priority = payload.priority;
+    }
+    if (payload.follow_up_date) {
+      const due = new Date(payload.follow_up_date);
+      if (Number.isNaN(due.getTime())) throw new AppError("Invalid follow-up date.", 400);
+      changes.follow_up_date = due;
+    }
+    if (!Object.keys(changes).length) throw new AppError("Choose what to change.", 400);
+  }
+
+  const failed = [];
+  let done = 0;
+  for (const leadId of leadIds) {
+    try {
+      if (action === "delete") await deleteLead(auth, leadId, { change_note: changeNote });
+      else await updateLead(auth, leadId, { ...changes, change_note: changeNote });
+      done += 1;
+    } catch (error) {
+      if (!(error instanceof AppError)) throw error;
+      failed.push({ lead_id: leadId, error: error.message });
+    }
+  }
+  return { done, failed };
 }
 
 async function getAnalytics(auth, query = {}, focus = false) {
@@ -943,6 +1009,13 @@ async function createLead(auth, payload) {
       transaction
     );
 
+    const paymentDetails = Object.fromEntries(
+      Object.entries({ payment_mode: lead.payment_mode, payment_date: lead.payment_date, next_payment_date: lead.next_payment_date }).filter(([, value]) => value)
+    );
+    if (Object.keys(paymentDetails).length) {
+      await leadRepository.updateLead(createdLead.lead_id, companyId, paymentDetails, transaction);
+    }
+
     await leadRepository.createActivity(
       {
         activity_id: await createPrefixedId("act"),
@@ -1140,6 +1213,10 @@ async function updateLead(auth, leadId, payload) {
 
     return leadRepository.getLeadById(leadId, lead.company_id, transaction);
   });
+
+  // A won lead with a plan end date gets a renewal task on the owner's calendar, 10 days before it ends.
+  await require("./renewals/renewalReminders").scheduleLeadRenewal(updatedLead, auth.userId)
+    .catch((error) => console.warn("[renewals] could not schedule:", error.message));
 
   const sharedUsers = await leadAssignmentRepository.listSharedUsersByLead(
     updatedLead.lead_id,
@@ -1738,8 +1815,10 @@ async function getUserProductHistory(auth, query = {}) {
   return leadRepository.getUserProductHistory(targetUserId, companyId, teamIds);
 }
 
+const BULK_IMPORT_ROLES = [ROLES.SUPER_ADMIN, ROLES.PLATFORM_ADMIN, ROLES.PLATFORM_MANAGER, ROLES.ADMIN, ROLES.MANAGER, ROLES.MARKETING];
+
 async function bulkUpload(auth, payload) {
-  if (![ROLES.SUPER_ADMIN, ROLES.PLATFORM_ADMIN, ROLES.PLATFORM_MANAGER, ROLES.ADMIN, ROLES.MANAGER, ROLES.MARKETING].includes(auth.role)) {
+  if (!BULK_IMPORT_ROLES.includes(auth.role)) {
     throw new AppError("Your role cannot bulk import leads.", 403);
   }
 
@@ -1779,8 +1858,8 @@ async function bulkUpload(auth, payload) {
     }
   }
 
-  // If any validation errors, return immediately — nothing inserted
-  if (errors.length) {
+  // Without `partial`, one bad row stops the file before anything is saved.
+  if (errors.length && !payload.partial) {
     return {
       imported: 0,
       failed: errors.length,
@@ -1792,53 +1871,80 @@ async function bulkUpload(auth, payload) {
     };
   }
 
-  // All rows valid — insert inside a single transaction for atomicity
+  // Each lead saves on its own, so the report says exactly which rows went in.
   const imported = [];
-  const insertErrors = [];
-
-  try {
-    await db.withTransaction(async (transaction) => {
-      for (const { mappedRow, rowNumber } of validRows) {
-        try {
-          const createdLead = await createLead(auth, mappedRow);
-          imported.push({
-            row: rowNumber,
-            lead_id: createdLead.lead_id,
-            company_id: createdLead.company_id,
-          });
-        } catch (error) {
-          insertErrors.push({
-            row: rowNumber,
-            field: null,
-            message: error.message || "Lead insert failed.",
-            phase: "insert",
-          });
-          // Throw to rollback the entire transaction
-          throw error;
-        }
-      }
-    });
-  } catch (_transactionError) {
-    // Transaction rolled back — report the first insert error
-    return {
-      imported: 0,
-      failed: insertErrors.length || 1,
-      items: [],
-      errors: insertErrors.length ? insertErrors : [{ row: null, message: "Transaction failed. No leads were imported.", phase: "insert" }],
-      lead_ids: [],
-      aborted: true,
-      message: "Import rolled back due to an error. No leads were saved.",
-    };
+  for (const { mappedRow, rowNumber } of validRows) {
+    try {
+      const createdLead = await createLead(auth, mappedRow);
+      imported.push({ row: rowNumber, lead_id: createdLead.lead_id, company_id: createdLead.company_id });
+    } catch (error) {
+      if (!(error instanceof AppError)) console.error("[lead import] row failed:", error.message);
+      errors.push({ row: rowNumber, field: null, message: error instanceof AppError ? error.message : "This row could not be saved.", phase: "insert" });
+    }
   }
 
   return {
     imported: imported.length,
-    failed: 0,
+    failed: errors.length,
     items: imported,
-    errors: [],
+    errors,
     lead_ids: imported.map((item) => item.lead_id),
     aborted: false,
-    message: `Successfully imported ${imported.length} lead(s).`,
+    message: errors.length ? `Imported ${imported.length} lead(s). ${errors.length} row(s) were not saved.` : `Successfully imported ${imported.length} lead(s).`,
+  };
+}
+
+/** Checks rows before import: the same rules as saving, plus phones already in the team. Saves nothing. */
+async function checkBulkImport(auth, payload = {}) {
+  if (!BULK_IMPORT_ROLES.includes(auth.role)) throw new AppError("Your role cannot bulk import leads.", 403);
+  const rows = Array.isArray(payload.rows) ? payload.rows : [];
+  if (!rows.length) throw new AppError("No rows to check.", 400);
+  if (rows.length > 250) throw new AppError("Check up to 250 rows at a time.", 400);
+  const companyId = auth.role === ROLES.SUPER_ADMIN || isPlatformOperatorRole(auth.role) ? payload.company_id || null : auth.companyId;
+  if (!companyId) throw new AppError("A company is required.", 400);
+  assertCompanyAccess(auth, companyId);
+
+  const placementCache = new Map();
+  const placement = (lead, mapped) => {
+    const owner = lead.assigned_to || auth.userId;
+    const key = [lead.product_id, owner, mapped.team_id].join("|");
+    if (!placementCache.has(key)) {
+      placementCache.set(key, (async () => {
+        await ensureLeadContext(companyId, lead.product_id);
+        if (!isManagerRole(auth.role) && owner !== auth.userId) throw new AppError("Only admins and managers can assign leads to someone else.", 403);
+        const user = await ensureSameCompanyUser(owner, companyId);
+        const teamId = await ensureTeamIdWhenTeamsConfigured(companyId, await resolveLeadTeamId(auth, companyId, { ...mapped, product_id: lead.product_id, assigned_to: user.user_id }));
+        await ensureUserBelongsToTeam(companyId, user.user_id, teamId, "Lead owner");
+        return teamId;
+      })());
+    }
+    return placementCache.get(key);
+  };
+
+  const prepared = [];
+  for (const [index, row] of rows.entries()) {
+    const mapped = buildBulkImportLeadPayload(row, companyId);
+    const rowNumber = mapped.row_number || index + 1;
+    try {
+      const lead = normalizeLeadPayload(mapped);
+      validateLeadPayload(lead);
+      prepared.push({ row: rowNumber, phone: lead.phone, teamId: await placement(lead, mapped) });
+    } catch (error) {
+      if (!(error instanceof AppError)) throw error;
+      prepared.push({ row: rowNumber, error: error.message });
+    }
+  }
+
+  const phones = [...new Set(prepared.filter((p) => p.phone).map((p) => p.phone))];
+  const existing = await leadRepository.findLeadsByPhones(companyId, phones);
+  return {
+    results: prepared.map((p) => {
+      if (p.error) return { row: p.row, status: "error", message: p.error };
+      const match = existing.find((lead) => lead.phone === p.phone && lead.team_id === p.teamId);
+      return match
+        ? { row: p.row, status: "duplicate", message: `This number is already in this team under ${match.contact_person || match.company_name}.`, lead_id: match.lead_id }
+        : { row: p.row, status: "ok" };
+    }),
   };
 }
 
@@ -1942,13 +2048,17 @@ async function convertLeadToCustomer(auth, leadId) {
 }
 
 module.exports = {
+  buildLeadFilters,
   getMyDay,
   getAnalytics,
   addLeadActivity,
   addLeadNote,
   assignLead,
   bulkAssignLeads,
+  bulkUpdateLeads,
+  getLeadCounts,
   bulkUpload,
+  checkBulkImport,
   convertLeadToCustomer,
   createLead,
   deleteLead,

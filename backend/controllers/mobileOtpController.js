@@ -16,5 +16,8 @@ exports.request = async (req, res) => {
 };
 exports.verify = async (req, res) => {
   res.set('Cache-Control', 'no-store');
-  res.json({ data: await service.verify(req.body) });
+  const data = await service.verify(req.body);
+  // A correct email code proves the email, the same as the web login's monthly check.
+  await require('../services/auth/loginOtp').markVerified(data?.user?.user_id).catch(() => {});
+  res.json({ data });
 };

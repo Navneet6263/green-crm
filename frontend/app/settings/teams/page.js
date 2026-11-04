@@ -3,8 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import DashboardShell from "../../../components/dashboard/DashboardShell";
-import DashboardIcon from "../../../components/dashboard/icons";
+import AdminPage from "../../../components/layout/AdminPage";
 import { apiRequest } from "../../../lib/api";
 import { loadSession } from "../../../lib/session";
 import { formatScopedError, isPlatformConsoleRole, loadTeamsForCompany, loadUsersForScope, resolveScopedCompanyId } from "../../../lib/teamScope";
@@ -204,30 +203,23 @@ export default function TeamSettingsPage() {
   }
 
   return (
-    <DashboardShell session={session} title="Teams" hideTitle heroStats={[]}>
-      <div className="mx-auto max-w-[1320px] space-y-5 px-1">
+    <AdminPage session={session} title="Teams" description="Group people, choose managers, and control who sees which leads"
+      actions={(
+        <>
+          {canOpenUserRoster ? <Link href="/settings/users" prefetch className={T.ghost}>Users</Link> : null}
+          {canCreateTeams ? <button className={T.gold} type="button" onClick={()=>{ setTeamForm(createDraft(scopedCompanyId)); setEditorMode("create"); setEditorOpen(true); }} disabled={!scopedCompanyId}>+ New team</button> : null}
+        </>
+      )}>
+      <div className="space-y-4">
         <AlertError message={error} onDismiss={()=>setError("")} />
         <AlertSuccess message={message} onDismiss={()=>setMessage("")} />
 
-        {/* Header */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className={T.kicker}>Settings · Teams</p>
-            <h1 className="mt-0.5 text-2xl font-bold tracking-tight text-slate-900">Team Workspace</h1>
-            <p className="mt-0.5 text-sm text-slate-400">Create teams, add members, assign managers — controls CRM ownership scoping.</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {canOpenUserRoster ? <Link href="/settings/users" className={T.ghost}><DashboardIcon name="users" className="h-4 w-4" />Workspace Users</Link> : null}
-            {canCreateTeams ? <button className={T.gold} type="button" onClick={()=>{ setTeamForm(createDraft(scopedCompanyId)); setEditorMode("create"); setEditorOpen(true); }} disabled={!scopedCompanyId}><DashboardIcon name="settings" className="h-4 w-4" />Create Team</button> : null}
-          </div>
-        </div>
-
         {/* Stats */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <StatCard label="Active Teams"     value={stats.teams}   accent="border-amber-200 bg-amber-100" />
-          <StatCard label="Members Linked"    value={stats.members} accent="border-emerald-200 bg-emerald-100" />
-          <StatCard label="Managers Assigned" value={stats.managers} accent="border-sky-200 bg-sky-100" />
-          <StatCard label="Workspace Users"   value={stats.users}   accent="border-slate-200 bg-slate-100" />
+          <StatCard label="Teams" value={stats.teams} accent="sky" />
+          <StatCard label="Members in teams" value={stats.members} accent="emerald" />
+          <StatCard label="Managers" value={stats.managers} accent="violet" />
+          <StatCard label="People in the company" value={stats.users} accent="amber" />
         </div>
 
         {/* Company selector (platform console) */}
@@ -242,7 +234,7 @@ export default function TeamSettingsPage() {
         ) : null}
 
         {/* Main layout */}
-        <div className="grid gap-5 xl:grid-cols-[340px_1fr] xl:items-start">
+        <div className="grid gap-4 xl:grid-cols-[320px_minmax(0,1fr)] xl:items-start">
           <TeamList
             teams={teams} filteredTeams={filteredTeams} selectedTeamId={selectedTeamId}
             teamQuery={teamQuery} loading={loading} scopedCompanyId={scopedCompanyId}
@@ -268,10 +260,10 @@ export default function TeamSettingsPage() {
       </div>
 
       <TeamEditorDrawer
-        open={editorOpen} mode={editorMode} form={teamForm} saving={savingTeam}
+        open={editorOpen} mode={editorMode} form={teamForm} saving={savingTeam} teamId={editorMode === "create" ? "" : selectedTeamId}
         onClose={()=>setEditorOpen(false)} onSave={saveTeam}
         onChange={(k,v)=>setTeamForm(f=>({...f,[k]:v}))}
       />
-    </DashboardShell>
+    </AdminPage>
   );
 }

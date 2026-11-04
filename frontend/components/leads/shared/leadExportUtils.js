@@ -62,12 +62,9 @@ export function formatLeadExportDate(value) {
   if (!value) return "";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
-  const dd = String(date.getDate()).padStart(2, "0");
-  const mm = String(date.getMonth() + 1).padStart(2, "0");
-  const yyyy = date.getFullYear();
-  const hh = String(date.getHours()).padStart(2, "0");
-  const min = String(date.getMinutes()).padStart(2, "0");
-  return `${dd}/${mm}/${yyyy} ${hh}:${min}`;
+  // Always India time, whatever the browser's timezone is.
+  const shifted = new Date(date.getTime() + 330 * 60000).toISOString();
+  return `${shifted.slice(8, 10)}/${shifted.slice(5, 7)}/${shifted.slice(0, 4)} ${shifted.slice(11, 16)}`;
 }
 
 export async function fetchLeadExportRows({ token, leadQueryBase, totalMatched = 0 }) {
@@ -140,11 +137,6 @@ export function buildLeadExportFilename(extension = "csv", prefix = "greencrm-le
   return `${prefix}-${dateStamp}-${timeStamp}.${extension}`;
 }
 
-export function downloadLeadHtml(leads = [], filename = buildLeadExportFilename("html")) {
-  const html = buildLeadHtmlReport(leads);
-  downloadBlob(filename, new Blob([html], { type: "text/html;charset=utf-8;" }));
-}
-
 export function downloadLeadCsv(leads = [], filename = buildLeadExportFilename("csv")) {
   function esc(value) {
     const text = String(value ?? "");
@@ -177,205 +169,6 @@ export function downloadLeadCsv(leads = [], filename = buildLeadExportFilename("
   });
 
   downloadBlob(filename, new Blob([`\uFEFF${headerRow}\n${rows.join("\n")}`], { type: "text/csv;charset=utf-8;" }));
-}
-
-export function downloadLeadExcel(leads = [], filename = buildLeadExportFilename("html")) {
-  const html = buildLeadHtmlReport(leads);
-  downloadBlob(filename, new Blob([html], { type: "text/html;charset=utf-8;" }));
-}
-
-export function downloadLeadHtmlSheet(leads = [], filename = buildLeadExportFilename("html")) {
-  const html = buildLeadHtmlSheet(leads);
-  downloadBlob(filename, new Blob([html], { type: "text/html;charset=utf-8;" }));
-}
-
-const MAX_NOTE_COLS = 5;
-
-const STATUS_COLORS = {
-  "new": { bg: "#dbeafe", text: "#1d4ed8", border: "#93c5fd" },
-  "contacted": { bg: "#d1fae5", text: "#065f46", border: "#6ee7b7" },
-  "qualified": { bg: "#ede9fe", text: "#5b21b6", border: "#c4b5fd" },
-  "proposal": { bg: "#fce7f3", text: "#9d174d", border: "#f9a8d4" },
-  "negotiation": { bg: "#fef3c7", text: "#92400e", border: "#fcd34d" },
-  "booked-demo": { bg: "#ede9fe", text: "#4c1d95", border: "#a78bfa" },
-  "demo-done": { bg: "#d1fae5", text: "#065f46", border: "#6ee7b7" },
-  "trial-started": { bg: "#dbeafe", text: "#1e40af", border: "#93c5fd" },
-  "closed-won": { bg: "#dcfce7", text: "#166534", border: "#86efac" },
-  "closed-lost": { bg: "#fee2e2", text: "#991b1b", border: "#fca5a5" },
-};
-
-const PRIORITY_COLORS = {
-  "low": { bg: "#f0fdf4", text: "#166534", border: "#86efac" },
-  "medium": { bg: "#fef9c3", text: "#854d0e", border: "#fde047" },
-  "high": { bg: "#fff7ed", text: "#9a3412", border: "#fdba74" },
-  "urgent": { bg: "#fee2e2", text: "#991b1b", border: "#fca5a5" },
-};
-
-function getBadgeStyle(colorMap, key) {
-  const c = colorMap[String(key || "").toLowerCase()] || { bg: "#f3f4f6", text: "#374151", border: "#d1d5db" };
-  return `background:${c.bg};color:${c.text};border:1px solid ${c.border};padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;display:inline-block;white-space:nowrap;`;
-}
-
-function buildLeadHtmlReport(leads = []) {
-  const now = new Date();
-  const generatedAt = now.toLocaleString("en-IN", { dateStyle: "long", timeStyle: "short" });
-
-  const maxNotes = Math.min(
-    leads.reduce((max, lead) => Math.max(max, resolveNotesList(lead).length), 0),
-    MAX_NOTE_COLS
-  );
-  const noteHeaders = Array.from({ length: maxNotes }, (_, i) => `Note ${i + 1}`);
-
-  const baseHeaders = [
-    "#", "Contact Person", "Company", "Email", "Phone",
-    "Product", "Status", "Priority", "Source", "Assigned To",
-    "Workflow Stage", "Est. Value (INR)", "Units",
-    "Created At", "Follow-up Date", "Created By", "Requirements", "Industry", "Last Updated",
-  ];
-
-  const thS = `background:#0f172a;color:#f8fafc;padding:10px 14px;text-align:left;font-size:11px;font-weight:700;white-space:nowrap;border:1px solid #1e293b;letter-spacing:.05em;`;
-  const thNote = `background:#78350f;color:#fef3c7;padding:10px 14px;text-align:left;font-size:11px;font-weight:700;white-space:nowrap;border:1px solid #92400e;letter-spacing:.05em;`;
-  const headerRow = [
-    ...baseHeaders.map((h) => `<th style="${thS}">${escapeHtml(h)}</th>`),
-    ...noteHeaders.map((h) => `<th style="${thNote}">${escapeHtml(h)}</th>`),
-  ].join("");
-
-  const bodyRows = leads.map((lead, idx) => {
-    const statusKey = String(lead.status || "new").toLowerCase();
-    const priorityKey = String(lead.priority || "medium").toLowerCase();
-    const rowBg = idx % 2 === 0 ? "#ffffff" : "#f8fafc";
-    const notes = resolveNotesList(lead);
-
-    const baseCells = [
-      `<td style="${tdBase}font-weight:700;color:#94a3b8;">${idx + 1}</td>`,
-      `<td style="${tdBase}font-weight:700;color:#0f172a;">${escapeHtml(lead.contact_person || "")}</td>`,
-      `<td style="${tdBase}font-weight:600;color:#1e293b;">${escapeHtml(lead.company_name || "")}</td>`,
-      `<td style="${tdBase}color:#2563eb;">${escapeHtml(lead.email || "")}</td>`,
-      `<td style="${tdBase}">${escapeHtml(lead.phone || "")}</td>`,
-      `<td style="${tdBase}">${escapeHtml(lead.product_name || lead.product_id || "")}</td>`,
-      `<td style="${tdBase}"><span style="${getBadgeStyle(STATUS_COLORS, statusKey)}">${escapeHtml(titleizeLeadValue(lead.status || "new"))}</span></td>`,
-      `<td style="${tdBase}"><span style="${getBadgeStyle(PRIORITY_COLORS, priorityKey)}">${escapeHtml(titleizeLeadValue(lead.priority || "medium"))}</span></td>`,
-      `<td style="${tdBase}">${escapeHtml(titleizeLeadValue(lead.lead_source || ""))}</td>`,
-      `<td style="${tdBase}">${escapeHtml(lead.assigned_to_name || lead.assigned_to || "")}</td>`,
-      `<td style="${tdBase}">${escapeHtml(titleizeLeadValue(lead.workflow_stage || "sales"))}</td>`,
-      `<td style="${tdBase}font-weight:700;color:#16a34a;">${Number(lead.estimated_value || 0).toLocaleString("en-IN")}</td>`,
-      `<td style="${tdBase}text-align:center;">${escapeHtml(String(lead.number_of_units ?? ""))}</td>`,
-      `<td style="${tdBase}color:#64748b;">${escapeHtml(formatLeadExportDate(lead.created_at))}</td>`,
-      `<td style="${tdBase}color:#64748b;">${escapeHtml(formatLeadExportDate(lead.follow_up_date))}</td>`,
-      `<td style="${tdBase}">${escapeHtml(lead.created_by_name || lead.created_by || "")}</td>`,
-      `<td style="${tdBase}max-width:200px;">${escapeHtml(lead.requirements || "")}</td>`,
-      `<td style="${tdBase}">${escapeHtml(lead.industry || "")}</td>`,
-      `<td style="${tdBase}color:#64748b;">${escapeHtml(formatLeadExportDate(lead.updated_at))}</td>`,
-    ];
-
-    const noteCells = Array.from({ length: maxNotes }, (_, i) => {
-      const raw = notes[i] || "";
-      if (!raw) return `<td style="${tdBase}color:#e2e8f0;"></td>`;
-      const { userText, changes } = parseNoteContent(raw);
-      const userHtml = userText
-        ? `<div style="font-weight:600;color:#1e293b;line-height:1.55;margin-bottom:${changes.length ? "8px" : "0"}">${escapeHtml(userText).replace(/\n/g, "<br/>")}</div>`
-        : "";
-      const changesHtml = changes.length
-        ? `<div style="font-size:10px;color:#78350f;background:#fef3c7;border-radius:6px;padding:5px 8px;line-height:1.7;">${changes.map((c) => {
-            const arrow = c.replace(" -> ", " → ");
-            const parts = arrow.split(": ");
-            const label = parts[0];
-            const val = parts.slice(1).join(": ");
-            return `<span style="font-weight:700;">${escapeHtml(label)}:</span> ${escapeHtml(val)}`;
-          }).join("<br/>")}</div>`
-        : "";
-      return `<td style="${tdBase}max-width:280px;background:#fefce8;border-left:3px solid #fbbf24;vertical-align:top;">${userHtml}${changesHtml}</td>`;
-    });
-
-    return `<tr style="background:${rowBg};">${[...baseCells, ...noteCells].join("")}</tr>`;
-  }).join("");
-
-  return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/><title>GreenCRM — Lead Export</title><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f8fafc;color:#1e293b;}.wrap{padding:24px 20px;}.table-wrap{overflow-x:auto;border-radius:12px;box-shadow:0 2px 16px rgba(0,0,0,.07);border:1px solid #e2e8f0;}table{width:100%;border-collapse:collapse;font-size:12px;}tr:hover td{background:#eff6ff!important;}.foot{margin-top:16px;text-align:right;font-size:10px;color:#94a3b8;}@media print{body{background:#fff;}.wrap{padding:8px;}}</style></head><body><div class="wrap"><div class="table-wrap"><table><thead><tr>${headerRow}</tr></thead><tbody>${bodyRows}</tbody></table></div><div class="foot">GreenCRM — ${escapeHtml(generatedAt)} — ${leads.length} leads</div></div></body></html>`;
-}
-
-function buildLeadHtmlSheet(leads = []) {
-  const now = new Date();
-  const generatedAt = now.toLocaleString("en-IN", { dateStyle: "long", timeStyle: "short" });
-
-  // Determine max notes columns needed (capped at MAX_NOTE_COLS)
-  const maxNotes = Math.min(
-    leads.reduce((max, lead) => Math.max(max, resolveNotesList(lead).length), 0),
-    MAX_NOTE_COLS
-  );
-
-  const baseHeaders = [
-    "#", "Contact Person", "Company", "Email", "Phone",
-    "Product", "Status", "Priority", "Source", "Assigned To",
-    "Workflow Stage", "Est. Value (INR)", "Units",
-    "Created At", "Follow-up Date", "Created By", "Requirements", "Last Updated",
-  ];
-  const noteHeaders = Array.from({ length: maxNotes }, (_, i) => `Note ${i + 1}`);
-  const allHeaders = [...baseHeaders, ...noteHeaders];
-
-  const thStyle = `background:#0f172a;color:#f8fafc;padding:10px 13px;text-align:left;font-size:11px;font-weight:700;white-space:nowrap;border:1px solid #1e293b;letter-spacing:.04em;`;
-  const headerRow = allHeaders.map((h) => `<th style="${thStyle}">${escapeHtml(h)}</th>`).join("");
-
-  const bodyRows = leads.map((lead, idx) => {
-    const statusKey = String(lead.status || "new").toLowerCase();
-    const priorityKey = String(lead.priority || "medium").toLowerCase();
-    const rowBg = idx % 2 === 0 ? "#ffffff" : "#f8fafc";
-    const notes = resolveNotesList(lead);
-
-    const baseCells = [
-      `<td style="${tdBase}font-weight:700;color:#64748b;">${idx + 1}</td>`,
-      `<td style="${tdBase}font-weight:700;color:#0f172a;">${escapeHtml(lead.contact_person || "")}</td>`,
-      `<td style="${tdBase}font-weight:600;color:#1e293b;">${escapeHtml(lead.company_name || "")}</td>`,
-      `<td style="${tdBase}color:#2563eb;">${escapeHtml(lead.email || "")}</td>`,
-      `<td style="${tdBase}">${escapeHtml(lead.phone || "")}</td>`,
-      `<td style="${tdBase}">${escapeHtml(lead.product_name || lead.product_id || "")}</td>`,
-      `<td style="${tdBase}"><span style="${getBadgeStyle(STATUS_COLORS, statusKey)}">${escapeHtml(titleizeLeadValue(lead.status || "new"))}</span></td>`,
-      `<td style="${tdBase}"><span style="${getBadgeStyle(PRIORITY_COLORS, priorityKey)}">${escapeHtml(titleizeLeadValue(lead.priority || "medium"))}</span></td>`,
-      `<td style="${tdBase}">${escapeHtml(titleizeLeadValue(lead.lead_source || ""))}</td>`,
-      `<td style="${tdBase}">${escapeHtml(lead.assigned_to_name || lead.assigned_to || "")}</td>`,
-      `<td style="${tdBase}">${escapeHtml(titleizeLeadValue(lead.workflow_stage || "sales"))}</td>`,
-      `<td style="${tdBase}font-weight:700;color:#16a34a;">${Number(lead.estimated_value || 0).toLocaleString("en-IN")}</td>`,
-      `<td style="${tdBase}text-align:center;">${escapeHtml(String(lead.number_of_units ?? ""))}</td>`,
-      `<td style="${tdBase}color:#64748b;font-size:11px;">${escapeHtml(formatLeadExportDate(lead.created_at))}</td>`,
-      `<td style="${tdBase}color:#64748b;font-size:11px;">${escapeHtml(formatLeadExportDate(lead.follow_up_date))}</td>`,
-      `<td style="${tdBase}">${escapeHtml(lead.created_by_name || lead.created_by || "")}</td>`,
-      `<td style="${tdBase}max-width:200px;">${escapeHtml(lead.requirements || "")}</td>`,
-      `<td style="${tdBase}color:#64748b;font-size:11px;">${escapeHtml(formatLeadExportDate(lead.updated_at))}</td>`,
-    ];
-
-    const noteCells = Array.from({ length: maxNotes }, (_, i) => {
-      const raw = notes[i] || "";
-      if (!raw) return `<td style="${tdBase}color:#e2e8f0;"></td>`;
-      const { userText, changes } = parseNoteContent(raw);
-      const userHtml = userText
-        ? `<div style="font-weight:600;color:#1e293b;line-height:1.55;margin-bottom:${changes.length ? "8px" : "0"}">${escapeHtml(userText).replace(/\n/g, "<br/>")}</div>`
-        : "";
-      const changesHtml = changes.length
-        ? `<div style="font-size:10px;color:#78350f;background:#fef3c7;border-radius:6px;padding:5px 8px;line-height:1.7;">${changes.map((c) => {
-            const arrow = c.replace(" -> ", " → ");
-            const parts = arrow.split(": ");
-            const label = parts[0];
-            const val = parts.slice(1).join(": ");
-            return `<span style="font-weight:700;">${escapeHtml(label)}:</span> ${escapeHtml(val)}`;
-          }).join("<br/>")}</div>`
-        : "";
-      return `<td style="${tdBase}max-width:280px;background:#fefce8;border-left:3px solid #fbbf24;vertical-align:top;">${userHtml}${changesHtml}</td>`;
-    });
-
-    return `<tr style="background:${rowBg};">${[...baseCells, ...noteCells].join("")}</tr>`;
-  }).join("");
-
-  return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/><title>GreenCRM — Lead Sheet</title><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f8fafc;color:#1e293b;}.wrap{padding:24px 20px;}.table-wrap{overflow-x:auto;border-radius:12px;box-shadow:0 2px 16px rgba(0,0,0,.07);border:1px solid #e2e8f0;}table{width:100%;border-collapse:collapse;font-size:12px;}tr:hover td{background:#eff6ff!important;}.foot{margin-top:16px;text-align:right;font-size:10px;color:#94a3b8;}@media print{body{background:#fff;}.wrap{padding:8px;}}</style></head><body><div class="wrap"><div class="table-wrap"><table><thead><tr>${headerRow}</tr></thead><tbody>${bodyRows}</tbody></table></div><div class="foot">GreenCRM &mdash; ${escapeHtml(generatedAt)} &mdash; ${leads.length} leads</div></div></body></html>`;
-}
-
-const tdBase = "padding:10px 14px;border:1px solid #e2e8f0;vertical-align:top;font-size:12px;word-break:break-word;";
-
-function escapeHtml(value) {
-  return String(value ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
 }
 
 function downloadBlob(filename, blob) {

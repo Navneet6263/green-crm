@@ -74,7 +74,7 @@ export default function SMTPConfigSection({ draft, setDraft, testing, onSendTest
           />
         </div>
 
-        <div className="rounded-[18px] border border-[#eadfcd] bg-[#fffaf1] p-4">
+        <div className="rounded-[18px] border border-slate-200 bg-slate-50 p-4">
           <p className={KICKER_CLASS}>Test Email Delivery</p>
           <div className="mt-3 flex flex-wrap gap-3">
             <input 

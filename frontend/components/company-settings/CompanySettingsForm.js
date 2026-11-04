@@ -14,7 +14,7 @@ export default function CompanySettingsForm({ draft, setDraft, saving, testing, 
     <form className={`${PANEL_CLASS} space-y-5`} onSubmit={onSubmit}>
       <div>
         <p className={KICKER_CLASS}>Company Profile</p>
-        <h3 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Tenant identity</h3>
+        <h3 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">Tenant identity</h3>
       </div>
       <div className="grid gap-4 md:grid-cols-2">
         <Field label="Name" value={draft.name} onChange={(value) => setDraft((current) => ({ ...current, name: value }))} />
@@ -30,7 +30,7 @@ export default function CompanySettingsForm({ draft, setDraft, saving, testing, 
 
       <div>
         <p className={KICKER_CLASS}>SMTP & Sender Identity</p>
-        <h3 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Delivery routing</h3>
+        <h3 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">Delivery routing</h3>
       </div>
       <div className="grid gap-4 md:grid-cols-2">
         <Field label="SMTP Host" value={draft.smtp_host} onChange={(value) => setDraft((current) => ({ ...current, smtp_host: value }))} placeholder="smtp.gmail.com" />
@@ -45,7 +45,7 @@ export default function CompanySettingsForm({ draft, setDraft, saving, testing, 
 
       <div>
         <p className={KICKER_CLASS}>Invite & Reset Copy</p>
-        <h3 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Auth delivery text</h3>
+        <h3 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">Auth delivery text</h3>
       </div>
       <div className="grid gap-4">
         <Field label="Login URL" value={draft.login_url} onChange={(value) => setDraft((current) => ({ ...current, login_url: value }))} placeholder="https://crm.greencall.in/login" />

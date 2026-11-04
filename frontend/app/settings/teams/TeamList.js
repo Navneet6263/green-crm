@@ -1,83 +1,51 @@
 "use client";
 
-import DashboardIcon from "../../../components/dashboard/icons";
-import { T, Avatar, initials } from "./teams-tokens";
-import { formatIndiaDateTime } from "../../../lib/dateTime";
+import { colorFor } from "../../../components/dashboard/home/widgetCatalog";
+import { T, initials } from "./teams-tokens";
 
-function when(v) { return formatIndiaDateTime(v, false); }
-
+/** The teams, searchable; the picked one is highlighted. */
 export function TeamList({ teams, filteredTeams, selectedTeamId, teamQuery, loading, scopedCompanyId, canCreateTeams, onSelect, onSearch, onCreateFirst }) {
   return (
-    <div className={`${T.panel} flex flex-col gap-4 px-5 py-5 xl:sticky xl:top-6`}>
-      <div>
-        <p className={T.kicker}>Teams</p>
-        <h2 className="mt-0.5 text-base font-bold text-slate-900">Active Teams</h2>
-        <p className="mt-0.5 text-xs text-slate-400">Only active teams appear in CRM ownership pickers.</p>
+    <section className={`${T.panel} flex min-w-0 flex-col overflow-hidden xl:sticky xl:top-[76px]`}>
+      <div className="border-b border-slate-100 p-3">
+        <label className="flex h-9 items-center gap-2 rounded-[10px] border border-slate-200 bg-slate-50 px-3 text-slate-400 focus-within:border-brand-300 focus-within:bg-white">
+          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+          <input value={teamQuery} onChange={(e) => onSearch(e.target.value)} placeholder="Search teams" aria-label="Search teams" className="min-w-0 flex-1 bg-transparent text-[13px] text-slate-800 outline-none" />
+        </label>
       </div>
-
-      <input
-        className={T.input}
-        value={teamQuery}
-        onChange={e => onSearch(e.target.value)}
-        placeholder="Search team name or code…"
-      />
-
-      <div className="max-h-[calc(100vh-280px)] space-y-2 overflow-y-auto pr-0.5">
+      <div className="max-h-[calc(100vh-300px)] overflow-y-auto p-1.5">
         {loading ? (
-          <div className="flex min-h-[200px] items-center justify-center text-sm text-slate-400">Loading teams…</div>
+          <div className="space-y-2 p-2">{[0, 1, 2].map((i) => <div key={i} className="h-14 animate-pulse rounded-[10px] bg-slate-100" />)}</div>
         ) : !scopedCompanyId ? (
-          <div className="flex min-h-[200px] items-center justify-center text-center text-sm text-slate-400">Choose a company to load its teams.</div>
+          <p className="px-4 py-10 text-center text-[13px] text-slate-400">Choose a company to see its teams.</p>
         ) : filteredTeams.length ? (
-          filteredTeams.map(team => {
-            const active = selectedTeamId === team.team_id;
+          filteredTeams.map((team) => {
+            const on = selectedTeamId === team.team_id;
             return (
-              <button
-                key={team.team_id}
-                type="button"
-                onClick={() => onSelect(team.team_id)}
-                className={`w-full rounded-2xl border px-4 py-3.5 text-left transition ${
-                  active
-                    ? "border-amber-300 bg-amber-50 shadow-sm"
-                    : "border-slate-100 bg-white hover:border-amber-200 hover:bg-amber-50/40"
-                }`}
-              >
-                <div className="flex items-start gap-3">
-                  <Avatar name={team.name} bg="bg-emerald-600" />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <p className="text-sm font-bold text-slate-900 truncate">{team.name}</p>
-                      {team.code ? (
-                        <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-800">{team.code}</span>
-                      ) : null}
-                    </div>
-                    <p className="mt-0.5 truncate text-xs text-slate-400">{team.description || "No description"}</p>
-                    <div className="mt-2 flex gap-3 text-xs text-slate-500">
-                      <span><strong className="text-slate-700">{team.member_count || 0}</strong> members</span>
-                      <span><strong className="text-slate-700">{team.manager_count || 0}</strong> managers</span>
-                      <span className="text-slate-400">{when(team.created_at)}</span>
-                    </div>
-                  </div>
-                </div>
+              <button key={team.team_id} type="button" onClick={() => onSelect(team.team_id)} aria-current={on ? "true" : undefined}
+                className={`flex w-full items-center gap-3 rounded-[10px] px-2.5 py-2.5 text-left transition ${on ? "bg-brand-50 ring-1 ring-brand-200" : "hover:bg-slate-50"}`}>
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[10px] text-[13px] font-bold text-white" style={{ background: colorFor(team.team_id) }}>{initials(team.name)}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-1.5">
+                    <b className="truncate text-[13.5px] font-semibold text-slate-900">{team.name}</b>
+                    {team.code ? <span className="shrink-0 rounded-full bg-slate-100 px-1.5 py-px text-[10px] font-bold text-slate-500">{team.code}</span> : null}
+                    {team.is_active === false ? <span className="shrink-0 rounded-full bg-rose-50 px-1.5 py-px text-[10px] font-semibold text-rose-600">Inactive</span> : null}
+                  </span>
+                  <span className="block truncate text-[11.5px] text-slate-500">{team.member_count || 0} members · {team.manager_count || 0} managers</span>
+                </span>
               </button>
             );
           })
         ) : teams.length ? (
-          <div className="flex min-h-[160px] items-center justify-center text-center text-sm text-slate-400">No teams matched the search.</div>
+          <p className="px-4 py-10 text-center text-[13px] text-slate-400">No team matches.</p>
         ) : (
-          <div className="flex min-h-[200px] flex-col items-center justify-center gap-3 text-center">
-            <div className="grid h-10 w-10 place-items-center rounded-2xl bg-amber-50 text-amber-400">
-              <DashboardIcon name="users" className="h-5 w-5" />
-            </div>
-            <p className="text-sm font-semibold text-slate-700">No teams yet</p>
-            <p className="max-w-[200px] text-xs text-slate-400">Create the first team to enable ownership scoping across CRM records.</p>
-            {canCreateTeams ? (
-              <button className={T.gold} type="button" onClick={onCreateFirst}>
-                <DashboardIcon name="settings" className="h-3.5 w-3.5" />Create First Team
-              </button>
-            ) : null}
+          <div className="px-4 py-10 text-center">
+            <p className="text-[14px] font-semibold text-slate-700">No teams yet</p>
+            <p className="mt-1 text-[12.5px] text-slate-400">Teams decide who sees which leads.</p>
+            {canCreateTeams ? <button className={`${T.gold} mt-3`} type="button" onClick={onCreateFirst}>+ Create the first team</button> : null}
           </div>
         )}
       </div>
-    </div>
+    </section>
   );
 }

@@ -88,12 +88,20 @@ async function listMyAssigned(auth, query) {
   return buildPaginatedResult(rows, total, pagination);
 }
 
+const TRACKER_ROLES = [ROLES.SUPER_ADMIN, ROLES.PLATFORM_ADMIN, ROLES.PLATFORM_MANAGER, ROLES.ADMIN, ROLES.MANAGER];
+
 async function getTracker(auth, query) {
-  if (![ROLES.SUPER_ADMIN, ROLES.PLATFORM_ADMIN, ROLES.PLATFORM_MANAGER, ROLES.ADMIN, ROLES.MANAGER].includes(auth.role)) {
+  const trackerFilters = await buildTrackerFilters(auth, query);
+  const pagination = parsePagination(query);
+  return listTracker(trackerFilters, pagination);
+}
+
+/** The tracker's scope (company, teams) and filters for this person; also used by the pipeline Excel report. */
+async function buildTrackerFilters(auth, query) {
+  if (!TRACKER_ROLES.includes(auth.role)) {
     throw new AppError("Only managers and admins can access workflow tracker.", 403);
   }
 
-  const pagination = parsePagination(query);
   const requestedTeamIds = parseRequestedTeamIds(query);
   const companyId =
     auth.role === ROLES.SUPER_ADMIN || isPlatformOperatorRole(auth.role)
@@ -122,7 +130,11 @@ async function getTracker(auth, query) {
     search: query.search || query.query || "",
     ownerName: query.owner || query.owner_name || null,
   };
+  return trackerFilters;
+}
 
+async function listTracker(trackerFilters, pagination) {
+  const { companyId, companyIds, teamIds } = trackerFilters;
   const { rows, total } = await workflowRepository.listWorkflowLeads({
     ...trackerFilters,
     pagination,
@@ -456,6 +468,8 @@ async function sendDocumentEmail(auth, payload) {
 }
 
 module.exports = {
+  TRACKER_ROLES,
+  buildTrackerFilters,
   completeWorkflow,
   deleteFinanceDocument,
   deleteLegalDocument,

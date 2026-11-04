@@ -1,4 +1,5 @@
 const db = require("../db/connection");
+const { MONEY_APPLY, MONEY_COLUMNS, SUMMARY_COLUMNS, moneyConditions } = require("./customerMoneySql");
 
 function getExecutor(executor) {
   return executor || db;
@@ -57,6 +58,9 @@ function buildWhere(filters) {
     params.push(`%${filters.search}%`, `%${filters.search}%`, `%${filters.search}%`, `%${filters.search}%`);
   }
 
+  // Money, onboarding and renewal filters; they read the pay/onb/ren joins (MONEY_APPLY).
+  conditions.push(...moneyConditions(filters));
+
   return {
     whereClause: `WHERE ${conditions.join(" AND ")}`,
     params,
@@ -65,20 +69,26 @@ function buildWhere(filters) {
 
 async function listCustomers(filters, pagination, executor) {
   const active = getExecutor(executor);
-  const sortColumns = { name: "c.company_name ASC", value: "c.total_value DESC", "follow-up": "CASE WHEN c.next_follow_up IS NULL THEN 1 ELSE 0 END, c.next_follow_up ASC" };
+  const sortColumns = {
+    name: "c.company_name ASC", value: "c.total_value DESC", "follow-up": "CASE WHEN c.next_follow_up IS NULL THEN 1 ELSE 0 END, c.next_follow_up ASC",
+    pending: "(COALESCE(c.total_value, 0) - pay.paid_amount) DESC",
+    "payment-date": "CASE WHEN c.next_payment_date IS NULL THEN 1 ELSE 0 END, c.next_payment_date ASC",
+    renewal: "CASE WHEN ren.next_renewal IS NULL THEN 1 ELSE 0 END, ren.next_renewal ASC",
+  };
   const orderBy = Object.hasOwn(sortColumns, filters.sort) ? sortColumns[filters.sort] : "COALESCE(c.updated_at, c.created_at) DESC";
   const { whereClause, params } = buildWhere(filters);
-  const summaryColumns = filters.includeSummary ? `,
-      COALESCE(SUM(CASE WHEN c.status = 'active' THEN 1 ELSE 0 END), 0) AS active,
-      COALESCE(SUM(CASE WHEN c.next_follow_up IS NOT NULL THEN 1 ELSE 0 END), 0) AS scheduled,
-      COALESCE(SUM(CASE WHEN c.next_follow_up < SYSUTCDATETIME() THEN 1 ELSE 0 END), 0) AS overdue,
-      COALESCE(SUM(c.total_value), 0) AS value` : "";
+  const summarySql = `,
+        COALESCE(SUM(CASE WHEN c.status = 'active' THEN 1 ELSE 0 END), 0) AS active,
+        COALESCE(SUM(CASE WHEN c.next_follow_up IS NOT NULL THEN 1 ELSE 0 END), 0) AS scheduled,
+        COALESCE(SUM(CASE WHEN c.next_follow_up < SYSUTCDATETIME() THEN 1 ELSE 0 END), 0) AS overdue,
+        COALESCE(SUM(c.total_value), 0) AS value ${SUMMARY_COLUMNS}`;
+  // The tiles show the whole scope; with a quick money/onboarding/renewal filter on they need their own query.
+  const quickFilter = moneyConditions(filters).length > 0;
   const [countRows] = await active.query(
-    `SELECT COUNT(*) AS total ${summaryColumns}
-     FROM customers c
-     ${whereClause}`,
+    `SELECT COUNT(*) AS total ${filters.includeSummary && !quickFilter ? summarySql : ""} FROM customers c ${MONEY_APPLY} ${whereClause}`,
     params
   );
+  let summary = filters.includeSummary && !quickFilter ? countRows[0] : undefined;
   const [rows] = await active.query(
     `
       SELECT
@@ -90,12 +100,13 @@ async function listCustomers(filters, pagination, executor) {
         p.name AS product_name,
         (SELECT TOP 1 cn.content FROM customer_notes cn
          WHERE cn.customer_id = c.customer_id AND cn.company_id = c.company_id
-         ORDER BY cn.created_at DESC, cn.id DESC) AS latest_note
+         ORDER BY cn.created_at DESC, cn.id DESC) AS latest_note${MONEY_COLUMNS}
       FROM customers c
       LEFT JOIN users u ON u.user_id = c.assigned_to
       LEFT JOIN users creator ON creator.user_id = c.created_by
       LEFT JOIN teams t ON t.team_id = c.team_id
       LEFT JOIN products p ON p.product_id = c.product_id
+      ${MONEY_APPLY}
       ${whereClause}
       ORDER BY ${orderBy}, c.customer_id DESC
       OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
@@ -105,15 +116,20 @@ async function listCustomers(filters, pagination, executor) {
 
   let creators;
   if (filters.includeSummary) {
-    const scope = buildWhere({ ...filters, search: "", status: null, createdBy: null, followUp: null });
+    const scope = buildWhere({ ...filters, search: "", status: null, createdBy: null, followUp: null, payment: null, onboarding: null, renewal: null, attention: null });
     [creators] = await active.query(`SELECT DISTINCT c.created_by AS user_id, creator.name
       FROM customers c INNER JOIN users creator ON creator.user_id = c.created_by
       ${scope.whereClause} ORDER BY creator.name, c.created_by`, scope.params);
   }
+  if (filters.includeSummary && quickFilter) {
+    const scope = buildWhere({ ...filters, payment: null, onboarding: null, renewal: null, attention: null });
+    const [summaryRows] = await active.query(`SELECT COUNT(*) AS total ${summarySql} FROM customers c ${MONEY_APPLY} ${scope.whereClause}`, scope.params);
+    summary = summaryRows[0];
+  }
   return {
     rows,
     total: countRows[0].total,
-    summary: filters.includeSummary ? countRows[0] : undefined,
+    summary,
     creators,
   };
 }
@@ -136,12 +152,13 @@ async function getCustomerById(customerId, companyId = null, executor) {
         creator.name AS created_by_name,
         t.name AS team_name,
         t.code AS team_code,
-        p.name AS product_name
+        p.name AS product_name${MONEY_COLUMNS}
       FROM customers c
       LEFT JOIN users u ON u.user_id = c.assigned_to
       LEFT JOIN users creator ON creator.user_id = c.created_by
       LEFT JOIN teams t ON t.team_id = c.team_id
       LEFT JOIN products p ON p.product_id = c.product_id
+      ${MONEY_APPLY}
       WHERE ${conditions.join(" AND ")}
     `,
     params
@@ -206,6 +223,9 @@ async function updateCustomer(customerId, companyId, updates, executor) {
     "product_id",
     "notes",
     "is_active",
+    "next_payment_date",
+    "billing_cycle",
+    "onboarding_completed_at",
   ].forEach((column) => {
     if (!Object.prototype.hasOwnProperty.call(updates, column)) {
       return;

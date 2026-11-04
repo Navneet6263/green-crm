@@ -29,11 +29,11 @@ export default function LeadOwnerControls({
 
   return (
     <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-      <div className="rounded-[24px] border border-[#eadfcd] bg-white p-4">
+      <div className="rounded-[24px] border border-[#e2e8f0] bg-white p-4">
         <p className={LEAD_KICKER_CLASS}>Assignment</p>
-        <h4 className="mt-2 text-lg font-semibold text-[#060710]">Lead owner control</h4>
+        <h4 className="mt-2 text-lg font-semibold text-[#0f172a]">Lead owner control</h4>
         {isPlatformConsole && company === "all" ? (
-          <p className="mt-4 text-sm text-[#7a6b57]">Select a company before updating ownership.</p>
+          <p className="mt-4 text-sm text-[#64748b]">Select a company before updating ownership.</p>
         ) : teamUsers.length ? (
           <div className="mt-4 grid gap-4">
             <label className="space-y-2">
@@ -60,14 +60,14 @@ export default function LeadOwnerControls({
             </div>
           </div>
         ) : (
-          <p className="mt-4 text-sm text-[#7a6b57]">{ownerUsersMessage}</p>
+          <p className="mt-4 text-sm text-[#64748b]">{ownerUsersMessage}</p>
         )}
       </div>
 
       <div className="rounded-[24px] border border-rose-200 bg-white p-4">
         <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-rose-500">Danger Zone</p>
-        <h4 className="mt-2 text-lg font-semibold text-[#060710]">Archive this lead</h4>
-        <p className="mt-3 text-sm leading-7 text-[#6f614c]">This action archives the lead instead of deleting it permanently.</p>
+        <h4 className="mt-2 text-lg font-semibold text-[#0f172a]">Archive this lead</h4>
+        <p className="mt-3 text-sm leading-7 text-[#64748b]">This action archives the lead instead of deleting it permanently.</p>
         <div className="mt-5">
           <button className={LEAD_DANGER_BUTTON_CLASS} type="button" disabled={deleting === lead.lead_id} onClick={() => archiveLead(lead.lead_id)}>
             {deleting === lead.lead_id ? "Archiving..." : "Archive Lead"}

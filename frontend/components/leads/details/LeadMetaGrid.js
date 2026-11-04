@@ -25,9 +25,9 @@ export default function LeadMetaGrid({ lead, teamBadgeLabel }) {
   return (
     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
       {items.map((item) => (
-        <div key={item.label} className="rounded-[22px] border border-[#eadfcd] bg-[#fffaf1] px-4 py-4">
+        <div key={item.label} className="rounded-[22px] border border-[#e2e8f0] bg-[#f8fafc] px-4 py-4">
           <p className={LEAD_KICKER_CLASS}>{item.label}</p>
-          <p className="mt-3 text-sm font-semibold text-[#060710]">{item.value}</p>
+          <p className="mt-3 text-sm font-semibold text-[#0f172a]">{item.value}</p>
         </div>
       ))}
     </div>

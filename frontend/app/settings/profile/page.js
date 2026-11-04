@@ -2,220 +2,107 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-
-import DashboardShell from "../../../components/dashboard/DashboardShell";
+import SettingsLayout, { S } from "../../../components/settings/SettingsLayout";
 import { apiRequest } from "../../../lib/api";
 import { loadSession, saveSession } from "../../../lib/session";
 
-const PANEL_CLASS = "rounded-[30px] border border-[#eadfcd] bg-white/82 p-5 shadow-[0_14px_36px_rgba(79,58,22,0.06)] md:p-6";
-const INPUT_CLASS = "w-full rounded-[18px] border border-[#eadfcd] bg-white px-4 py-3 text-sm text-[#060710] outline-none transition placeholder:text-[#9c8e76] focus:border-[#d7b258] focus:ring-4 focus:ring-[#f6ead0]";
-const PRIMARY_BUTTON_CLASS = "inline-flex min-h-[46px] items-center justify-center gap-2 rounded-[18px] border border-[#d7b258] bg-[#f3dfab] px-4 py-2.5 text-sm font-semibold text-[#060710] shadow-[0_16px_30px_rgba(203,169,82,0.18)] transition hover:-translate-y-0.5 hover:bg-[#efd48f] disabled:cursor-not-allowed disabled:opacity-60";
-const KICKER_CLASS = "text-[10px] font-black uppercase tracking-[0.28em] text-[#9a886d]";
+const initials = (v = "User") => String(v).split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase() || "").join("") || "U";
+const titleize = (v) => String(v || "").replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
-function initials(value = "User") {
-  return String(value)
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() || "")
-    .join("") || "U";
-}
-
+/** My profile: name, phone, department, password, and the account details. */
 export default function ProfileSettingsPage() {
   const router = useRouter();
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState({ name: "", phone: "", department: "" });
-  const [passwords, setPasswords] = useState({ current_password: "", new_password: "" });
+  const [passwords, setPasswords] = useState({ current_password: "", new_password: "", confirm: "" });
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
+  const [show, setShow] = useState(false);
 
   useEffect(() => {
-    const activeSession = loadSession();
-    if (!activeSession) {
-      router.replace("/login");
-      return;
-    }
-
-    setSession(activeSession);
-    apiRequest("/auth/profile", { token: activeSession.token })
-      .then((response) =>
-        setProfile({
-          name: response.user?.name || "",
-          phone: response.user?.phone || "",
-          department: response.user?.department || "",
-        })
-      )
-      .catch((requestError) => setError(requestError.message))
+    const s = loadSession();
+    if (!s) { router.replace("/login?next=/settings/profile"); return; }
+    setSession(s);
+    // Show what we already know at once; the server copy replaces it when it arrives.
+    setProfile({ name: s.user?.name || "", phone: s.user?.phone || "", department: s.user?.department || "" });
+    apiRequest("/auth/profile", { token: s.token })
+      .then((r) => setProfile({ name: r.user?.name || "", phone: r.user?.phone || "", department: r.user?.department || "" }))
+      .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, [router]);
 
-  async function updateProfile(event) {
-    event.preventDefault();
-    setError("");
-    setMessage("");
-    setSavingProfile(true);
-
+  async function updateProfile(e) {
+    e.preventDefault();
+    setError(""); setMessage(""); setSavingProfile(true);
     try {
-      const response = await apiRequest("/auth/profile", {
-        method: "PUT",
-        token: session.token,
-        body: profile,
-      });
-      saveSession({ ...session, user: { ...session.user, ...response.user } });
-      setSession((current) => ({ ...current, user: { ...current.user, ...response.user } }));
-      setMessage("Profile updated.");
-    } catch (requestError) {
-      setError(requestError.message);
-    } finally {
-      setSavingProfile(false);
-    }
+      const r = await apiRequest("/auth/profile", { method: "PUT", token: session.token, body: profile });
+      saveSession({ ...session, user: { ...session.user, ...r.user } });
+      setSession((c) => ({ ...c, user: { ...c.user, ...r.user } }));
+      setMessage("Profile saved.");
+    } catch (err) { setError(err.message); } finally { setSavingProfile(false); }
   }
 
-  async function changePassword(event) {
-    event.preventDefault();
-    setError("");
-    setMessage("");
-    setSavingPassword(true);
-
+  async function changePassword(e) {
+    e.preventDefault();
+    if (passwords.new_password !== passwords.confirm) { setError("The two new passwords do not match."); return; }
+    setError(""); setMessage(""); setSavingPassword(true);
     try {
-      await apiRequest("/auth/change-password", {
-        method: "PUT",
-        token: session.token,
-        body: passwords,
-      });
-      setPasswords({ current_password: "", new_password: "" });
+      await apiRequest("/auth/change-password", { method: "PUT", token: session.token, body: { current_password: passwords.current_password, new_password: passwords.new_password } });
+      setPasswords({ current_password: "", new_password: "", confirm: "" });
       setMessage("Password changed.");
-    } catch (requestError) {
-      setError(requestError.message);
-    } finally {
-      setSavingPassword(false);
-    }
+    } catch (err) { setError(err.message); } finally { setSavingPassword(false); }
   }
 
+  const user = session?.user || {};
+  const strong = passwords.new_password.length >= 8 && /\d/.test(passwords.new_password) && /[A-Za-z]/.test(passwords.new_password);
   return (
-    <DashboardShell session={session} title="Profile Settings" hideTitle heroStats={[]}>
-      {error ? <div className="rounded-[20px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div> : null}
-      {message ? <div className="rounded-[20px] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">{message}</div> : null}
-      {loading ? <div className="rounded-[20px] border border-[#eadfcd] bg-white px-4 py-3 text-sm font-medium text-[#6f614c]">Loading profile workspace...</div> : null}
-      {!loading ? (
-        <section className="space-y-5">
-          <article className="rounded-[34px] border border-[#eadfcd] bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.95),_rgba(247,240,227,0.96)_42%,_rgba(241,232,215,1)_100%)] p-5 shadow-[0_22px_60px_rgba(79,58,22,0.08)] md:p-7">
-            <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
-              <div className="space-y-4">
-                <div className="flex items-start gap-4">
-                  <div className="grid h-16 w-16 shrink-0 place-items-center rounded-[22px] bg-[#10111d] text-xl font-bold text-white shadow-[0_18px_32px_rgba(6,7,16,0.18)]">
-                    {initials(profile.name || session?.user?.name || "User")}
-                  </div>
-                  <div>
-                    <span className="inline-flex rounded-full border border-[#ddd3c2] bg-white/85 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.24em] text-[#7c6d55]">
-                      Account Desk
-                    </span>
-                    <h2 className="mt-4 text-4xl font-semibold tracking-tight text-[#060710] md:text-[3rem] md:leading-[1.04]">
-                      Profile, security, and workspace identity in one cleaner account surface.
-                    </h2>
-                    <p className="mt-3 max-w-3xl text-sm leading-7 text-[#746853] md:text-base">
-                      Keep your personal details current, rotate passwords safely, and review the key account identifiers without the older stacked forms.
-                    </p>
-                  </div>
-                </div>
-              </div>
+    <SettingsLayout session={session} active="profile">
+      {error ? <p role="alert" className="rounded-[12px] bg-rose-50 px-4 py-2.5 text-[13px] text-rose-700 ring-1 ring-rose-100">{error}</p> : null}
+      {message ? <p role="status" className="rounded-[12px] bg-emerald-50 px-4 py-2.5 text-[13px] font-medium text-emerald-800 ring-1 ring-emerald-100">✓ {message}</p> : null}
 
-              <div className="grid gap-3 xl:min-w-[420px] xl:max-w-[460px] xl:w-full sm:grid-cols-2">
-                {[
-                  { label: "Role", value: session?.user?.role || "member" },
-                  { label: "Talent ID", value: session?.user?.talent_id || "Not set" },
-                  { label: "Department", value: profile.department || "Not set" },
-                  { label: "Phone", value: profile.phone || "Add number" },
-                ].map((item, index) => (
-                  <div key={item.label} className={`rounded-[24px] border border-[#eadfcd] p-4 shadow-[0_12px_28px_rgba(79,58,22,0.05)] ${index === 0 ? "bg-[#fff6e4]" : "bg-white/88"}`}>
-                    <p className={KICKER_CLASS}>{item.label}</p>
-                    <p className="mt-4 text-2xl font-semibold tracking-tight text-[#060710]">{item.value}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </article>
+      <section className={`${S.cardPad} flex flex-wrap items-center gap-4`}>
+        <span className="grid h-14 w-14 place-items-center rounded-full bg-gradient-to-br from-brand-500 to-brand-700 text-[18px] font-bold text-white">{initials(profile.name || user.name)}</span>
+        <div className="min-w-0 flex-1">
+          <p className="text-[17px] font-bold text-slate-900">{profile.name || user.name || "Your name"}</p>
+          <p className="text-[13px] text-slate-500">{[user.email, titleize(user.role), profile.department].filter(Boolean).join(" · ")}</p>
+        </div>
+        <dl className="grid grid-cols-2 gap-x-6 gap-y-1 text-[12px]">
+          <dt className="text-slate-400">User ID</dt><dd className="font-medium text-slate-700">{user.user_id || "–"}</dd>
+          <dt className="text-slate-400">Company</dt><dd className="font-medium text-slate-700">{session?.company?.name || user.company_id || "–"}</dd>
+        </dl>
+      </section>
 
-          <div className="grid gap-5 xl:grid-cols-[1.08fr_0.92fr] xl:items-start">
-            <article className={PANEL_CLASS}>
-              <div className="mb-5">
-                <p className={KICKER_CLASS}>Profile</p>
-                <h3 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Personal details</h3>
-              </div>
-
-              <form className="grid gap-4 md:grid-cols-2" onSubmit={updateProfile}>
-                <label className="space-y-2">
-                  <span className={KICKER_CLASS}>Name</span>
-                  <input className={INPUT_CLASS} value={profile.name} onChange={(event) => setProfile((current) => ({ ...current, name: event.target.value }))} />
-                </label>
-                <label className="space-y-2">
-                  <span className={KICKER_CLASS}>Phone</span>
-                  <input className={INPUT_CLASS} value={profile.phone} onChange={(event) => setProfile((current) => ({ ...current, phone: event.target.value }))} />
-                </label>
-                <label className="space-y-2 md:col-span-2">
-                  <span className={KICKER_CLASS}>Department</span>
-                  <input className={INPUT_CLASS} value={profile.department} onChange={(event) => setProfile((current) => ({ ...current, department: event.target.value }))} />
-                </label>
-
-                <div className="flex flex-wrap justify-end gap-3 md:col-span-2">
-                  <button className={PRIMARY_BUTTON_CLASS} type="submit" disabled={savingProfile}>
-                    {savingProfile ? "Saving..." : "Save Profile"}
-                  </button>
-                </div>
-              </form>
-            </article>
-
-            <div className="space-y-5">
-              <article className={PANEL_CLASS}>
-                <div className="mb-5">
-                  <p className={KICKER_CLASS}>Security</p>
-                  <h3 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Change password</h3>
-                </div>
-
-                <form className="grid gap-4" onSubmit={changePassword}>
-                  <label className="space-y-2">
-                    <span className={KICKER_CLASS}>Current Password</span>
-                    <input className={INPUT_CLASS} type="password" value={passwords.current_password} onChange={(event) => setPasswords((current) => ({ ...current, current_password: event.target.value }))} />
-                  </label>
-                  <label className="space-y-2">
-                    <span className={KICKER_CLASS}>New Password</span>
-                    <input className={INPUT_CLASS} type="password" value={passwords.new_password} onChange={(event) => setPasswords((current) => ({ ...current, new_password: event.target.value }))} />
-                  </label>
-
-                  <button className={PRIMARY_BUTTON_CLASS} type="submit" disabled={savingPassword}>
-                    {savingPassword ? "Updating..." : "Update Password"}
-                  </button>
-                </form>
-              </article>
-
-              <article className={PANEL_CLASS}>
-                <div className="mb-5">
-                  <p className={KICKER_CLASS}>Workspace Identity</p>
-                  <h3 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Account snapshot</h3>
-                </div>
-
-                <div className="grid gap-3">
-                  {[
-                    ["Email", session?.user?.email || "Not available"],
-                    ["Role", session?.user?.role || "member"],
-                    ["Talent ID", session?.user?.talent_id || "Not set"],
-                    ["Department", profile.department || "Not set"],
-                    ["Phone", profile.phone || "Not set"],
-                  ].map(([label, value]) => (
-                    <div key={label} className="rounded-[22px] border border-[#eadfcd] bg-[#fffaf1] px-4 py-4">
-                      <span className={KICKER_CLASS}>{label}</span>
-                      <strong className="mt-3 block text-sm leading-6 text-[#060710]">{value}</strong>
-                    </div>
-                  ))}
-                </div>
-              </article>
-            </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <form className={`${S.cardPad} space-y-3`} onSubmit={updateProfile}>
+          <div>
+            <h2 className={S.sectionTitle}>Personal details</h2>
+            <p className="text-[12.5px] text-slate-500">Shown to your team on leads, tasks and chats.</p>
           </div>
-        </section>
-      ) : null}
-    </DashboardShell>
+          <label className="block space-y-1"><span className={S.label}>Full name</span><input className={S.input} value={profile.name} onChange={(e) => setProfile((c) => ({ ...c, name: e.target.value }))} disabled={loading && !profile.name} required /></label>
+          <label className="block space-y-1"><span className={S.label}>Phone</span><input className={S.input} value={profile.phone} onChange={(e) => setProfile((c) => ({ ...c, phone: e.target.value }))} placeholder="Your mobile number" /></label>
+          <label className="block space-y-1"><span className={S.label}>Department</span><input className={S.input} value={profile.department} onChange={(e) => setProfile((c) => ({ ...c, department: e.target.value }))} placeholder="e.g. Sales, Support" /></label>
+          <label className="block space-y-1"><span className={S.label}>Email</span><input className={`${S.input} bg-slate-50 text-slate-500`} value={user.email || ""} disabled /><span className="text-[11.5px] text-slate-400">Ask an admin to change your login email.</span></label>
+          <div className="flex justify-end"><button type="submit" disabled={savingProfile} className={S.primary}>{savingProfile ? "Saving…" : "Save details"}</button></div>
+        </form>
+
+        <form className={`${S.cardPad} space-y-3`} onSubmit={changePassword}>
+          <div>
+            <h2 className={S.sectionTitle}>Password</h2>
+            <p className="text-[12.5px] text-slate-500">Use at least 8 characters with letters and numbers.</p>
+          </div>
+          <label className="block space-y-1"><span className={S.label}>Current password</span><input className={S.input} type={show ? "text" : "password"} autoComplete="current-password" value={passwords.current_password} onChange={(e) => setPasswords((c) => ({ ...c, current_password: e.target.value }))} required /></label>
+          <label className="block space-y-1"><span className={S.label}>New password</span><input className={S.input} type={show ? "text" : "password"} autoComplete="new-password" value={passwords.new_password} onChange={(e) => setPasswords((c) => ({ ...c, new_password: e.target.value }))} required /></label>
+          {passwords.new_password ? <p className={`text-[11.5px] font-semibold ${strong ? "text-emerald-700" : "text-amber-700"}`}>{strong ? "Strong enough" : "Add more characters, with letters and numbers"}</p> : null}
+          <label className="block space-y-1"><span className={S.label}>New password again</span><input className={S.input} type={show ? "text" : "password"} autoComplete="new-password" value={passwords.confirm} onChange={(e) => setPasswords((c) => ({ ...c, confirm: e.target.value }))} required /></label>
+          <div className="flex items-center justify-between gap-2">
+            <label className="flex items-center gap-2 text-[12.5px] text-slate-600"><input type="checkbox" checked={show} onChange={(e) => setShow(e.target.checked)} />Show passwords</label>
+            <button type="submit" disabled={savingPassword || !passwords.current_password || !passwords.new_password} className={S.primary}>{savingPassword ? "Changing…" : "Change password"}</button>
+          </div>
+        </form>
+      </div>
+    </SettingsLayout>
   );
 }

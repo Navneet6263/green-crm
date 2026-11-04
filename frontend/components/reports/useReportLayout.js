@@ -6,7 +6,7 @@ import { apiRequest } from "../../lib/api";
 // layout: { sheets: [sheetKey…], columns: { sheetKey: [columnKey…] }, options: { sheetKey: { optionKey: value } } }
 export function defaultLayout(catalog) {
   return {
-    sheets: catalog.map((s) => s.key),
+    sheets: catalog.filter((s) => s.selectedByDefault !== false).map((s) => s.key),
     columns: Object.fromEntries(catalog.map((s) => [s.key, s.columns.filter((c) => c.selected).map((c) => c.key)])),
     options: Object.fromEntries(catalog.map((s) => [s.key, Object.fromEntries((s.options || []).map((o) => [o.key, o.choices[0][0]]))])),
   };

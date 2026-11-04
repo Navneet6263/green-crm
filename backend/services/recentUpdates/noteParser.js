@@ -22,7 +22,8 @@ function parseNote(content) {
   let followUpLog = false;
   const rest = [];
   // Older notes were saved on one line; break them at the known labels.
-  const text = String(content || '').replace(/\r/g, '').replace(SPLIT_BEFORE, '\n');
+  const [written] = String(content || '').replace(/\r/g, '').split(/\n\s*Changes:\s*\n/i);
+  const text = written.replace(SPLIT_BEFORE, '\n');
 
   for (const raw of text.split('\n')) {
     const line = raw.trim();

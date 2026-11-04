@@ -22,8 +22,10 @@ const FORMATS = {
   int: '#,##0',
   decimal: '#,##0.0',
   pct: '0%',
+  // Indian digit grouping: ₹1,00,000 and ₹1,00,00,000.
+  inr: '[>=10000000]"₹"##\\,##\\,##\\,##0;[>=100000]"₹"##\\,##\\,##0;"₹"#,##0',
 };
-const NUMERIC = ['int', 'decimal', 'pct'];
+const NUMERIC = ['int', 'decimal', 'pct', 'inr'];
 
 const fill = (argb) => ({ type: 'pattern', pattern: 'solid', fgColor: { argb } });
 const thin = { style: 'thin', color: { argb: LINE } };

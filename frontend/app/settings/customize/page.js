@@ -1,119 +1,94 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import DashboardShell from "../../../components/dashboard/DashboardShell";
+import CustomFieldsManager from "../../../components/customize/CustomFieldsManager";
+import LeadFormFieldsCustomizer from "../../../components/customize/LeadFormFieldsCustomizer";
+import LeadStatusCustomizer from "../../../components/customize/LeadStatusCustomizer";
+import SettingsLayout, { S } from "../../../components/settings/SettingsLayout";
 import { apiRequest } from "../../../lib/api";
 import { loadSession } from "../../../lib/session";
-import CustomizeHeader from "../../../components/customize/CustomizeHeader";
-import LeadStatusCustomizer from "../../../components/customize/LeadStatusCustomizer";
-import LeadFormFieldsCustomizer from "../../../components/customize/LeadFormFieldsCustomizer";
-import CustomFieldsManager from "../../../components/customize/CustomFieldsManager";
-import SaveCustomizationBar from "../../../components/customize/SaveCustomizationBar";
 
+const TABS = [
+  ["statuses", "Lead statuses", "Which stages a lead can move through"],
+  ["form", "Lead form", "Which fields show on the lead form, and which are required"],
+  ["custom", "Your own fields", "Extra fields only your company needs"],
+];
+
+/** Lead customization: statuses, form fields and custom fields, in tabs, saved together. */
 export default function CustomizePage() {
   const router = useRouter();
   const [session, setSession] = useState(null);
   const [settings, setSettings] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [saved, setSaved] = useState("");
+  const [tab, setTab] = useState("statuses");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    const activeSession = loadSession();
-    if (!activeSession) {
-      router.replace("/login");
-      return;
-    }
-    if (!["super-admin", "admin"].includes(activeSession.user?.role)) {
-      router.replace("/dashboard");
-      return;
-    }
-
-    setSession(activeSession);
-    loadCustomization(activeSession);
+    const s = loadSession();
+    if (!s) { router.replace("/login?next=/settings/customize"); return; }
+    if (!["super-admin", "admin"].includes(s.user?.role)) { router.replace("/settings"); return; }
+    setSession(s);
+    apiRequest("/customization", { token: s.token })
+      .then((data) => { setSettings(data); setSaved(JSON.stringify(data)); })
+      .catch((err) => setError(err.message));
   }, [router]);
 
-  async function loadCustomization(activeSession) {
-    setLoading(true);
-    setError("");
+  const dirty = useMemo(() => Boolean(settings) && JSON.stringify(settings) !== saved, [settings, saved]);
+  // Ask before leaving with unsaved changes.
+  useEffect(() => {
+    if (!dirty) return undefined;
+    const warn = (e) => { e.preventDefault(); e.returnValue = ""; };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
+
+  async function save() {
+    setSaving(true); setError(""); setMessage("");
     try {
-      const data = await apiRequest("/customization", { token: activeSession.token });
-      setSettings(data);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+      await apiRequest("/customization", { method: "PUT", token: session.token, body: settings });
+      setSaved(JSON.stringify(settings));
+      setMessage("Saved. New leads and forms use these settings now.");
+    } catch (err) { setError(err.message); } finally { setSaving(false); }
   }
 
-  async function handleSave() {
-    if (!session || !settings) return;
-    setSaving(true);
-    setError("");
-    setMessage("");
-
-    try {
-      await apiRequest("/customization", {
-        method: "PUT",
-        token: session.token,
-        body: settings,
-      });
-      setMessage("Customization settings saved successfully!");
-      setTimeout(() => setMessage(""), 3000);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  if (loading || !settings) {
-    return (
-      <DashboardShell session={session} title="Customize" hideTitle heroStats={[]}>
-        <div className="rounded-[20px] border border-[#eadfcd] bg-white px-4 py-3 text-sm font-medium text-[#6f614c]">
-          Loading customization settings...
-        </div>
-      </DashboardShell>
-    );
-  }
+  const counts = settings ? {
+    statuses: (settings.lead_statuses || []).length,
+    form: Object.values(settings.lead_form_fields || {}).filter((f) => f?.enabled).length,
+    custom: (settings.custom_fields || []).length,
+  } : {};
 
   return (
-    <DashboardShell session={session} title="Customize" hideTitle heroStats={[]}>
-      <div className="mx-auto max-w-[1400px] space-y-4 px-1 pb-20">
-        {error && (
-          <div className="rounded-[20px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
-            {error}
-          </div>
-        )}
-        {message && (
-          <div className="rounded-[20px] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
-            {message}
-          </div>
-        )}
+    <SettingsLayout session={session} active="customize">
+      {error ? <p role="alert" className="rounded-[12px] bg-rose-50 px-4 py-2.5 text-[13px] text-rose-700 ring-1 ring-rose-100">{error}</p> : null}
+      {message ? <p role="status" className="rounded-[12px] bg-emerald-50 px-4 py-2.5 text-[13px] font-medium text-emerald-800 ring-1 ring-emerald-100">✓ {message}</p> : null}
 
-        <CustomizeHeader />
-
-        <div className="space-y-4">
-          <LeadStatusCustomizer
-            statuses={settings.lead_statuses}
-            onChange={(statuses) => setSettings({ ...settings, lead_statuses: statuses })}
-          />
-
-          <LeadFormFieldsCustomizer
-            fields={settings.lead_form_fields}
-            onChange={(fields) => setSettings({ ...settings, lead_form_fields: fields })}
-          />
-
-          <CustomFieldsManager
-            customFields={settings.custom_fields}
-            onChange={(fields) => setSettings({ ...settings, custom_fields: fields })}
-          />
-        </div>
-
-        <SaveCustomizationBar saving={saving} onSave={handleSave} />
+      <div className="flex gap-1 overflow-x-auto rounded-[12px] bg-white p-1 ring-1 ring-slate-200 sm:inline-flex" role="tablist" aria-label="Customization">
+        {TABS.map(([key, name]) => (
+          <button key={key} type="button" role="tab" aria-selected={tab === key} onClick={() => setTab(key)}
+            className={`shrink-0 rounded-[9px] px-4 py-2 text-[13px] font-semibold ${tab === key ? "bg-brand-700 text-white" : "text-slate-600 hover:bg-slate-100"}`}>
+            {name}{settings ? <span className={`ml-1.5 ${tab === key ? "text-white/70" : "text-slate-400"}`}>{counts[key]}</span> : null}
+          </button>
+        ))}
       </div>
-    </DashboardShell>
+      <p className="text-[12.5px] text-slate-500">{TABS.find(([key]) => key === tab)[2]}</p>
+
+      {!settings && !error ? <div className="h-[320px] animate-pulse rounded-[14px] bg-white ring-1 ring-slate-200" /> : null}
+      {settings && tab === "statuses" ? <LeadStatusCustomizer statuses={settings.lead_statuses} onChange={(v) => setSettings({ ...settings, lead_statuses: v })} /> : null}
+      {settings && tab === "form" ? <LeadFormFieldsCustomizer fields={settings.lead_form_fields} onChange={(v) => setSettings({ ...settings, lead_form_fields: v })} /> : null}
+      {settings && tab === "custom" ? <CustomFieldsManager customFields={settings.custom_fields} onChange={(v) => setSettings({ ...settings, custom_fields: v })} /> : null}
+
+      {settings ? (
+        <div className={`sticky bottom-3 z-20 flex flex-wrap items-center justify-between gap-3 rounded-[14px] px-4 py-3 shadow-lg ring-1 transition ${dirty ? "bg-slate-900 text-white ring-slate-900" : "bg-white text-slate-500 ring-slate-200"}`}>
+          <p className="text-[13px]">{dirty ? "You have unsaved changes." : "All changes saved."}</p>
+          <span className="flex gap-2">
+            {dirty ? <button type="button" onClick={() => setSettings(JSON.parse(saved))} disabled={saving} className="rounded-[10px] px-3 py-2 text-[13px] font-semibold text-white/80 hover:bg-white/10">Undo</button> : null}
+            <button type="button" onClick={save} disabled={saving || !dirty} className={dirty ? "rounded-[10px] bg-white px-4 py-2 text-[13px] font-semibold text-slate-900 hover:bg-slate-100 disabled:opacity-50" : S.primary}>{saving ? "Saving…" : "Save changes"}</button>
+          </span>
+        </div>
+      ) : null}
+    </SettingsLayout>
   );
 }

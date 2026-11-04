@@ -12,14 +12,16 @@ import {
   LEAD_GHOST_BUTTON_CLASS,
   LEAD_INPUT_CLASS,
   LEAD_KICKER_CLASS,
+  LEADS_PAGE_SIZE,
   LEGAL_TRANSFER_ROLES,
   MANAGER_ROLES,
 } from "../../components/leads/shared/leadPageConstants";
 import {
-  formatLeadMoney,
+  buildQueryPath,
   titleizeLeadValue,
 } from "../../components/leads/shared/leadPageFormatters";
-import { useLeadBulkUpload } from "../../components/leads/shared/useLeadBulkUpload";
+import { apiRequest } from "../../lib/api";
+import { DEFAULT_CARDS, DEFAULT_COLUMNS, LEAD_COLUMNS, builtInViews } from "../../components/leads/workspace/leadWorkspaceConfig";
 import { useLeadCollaboratorActions } from "../../components/leads/shared/useLeadCollaboratorActions";
 import { useLeadExport } from "../../components/leads/shared/useLeadExport";
 import { fetchLeadExportRows } from "../../components/leads/shared/leadExportUtils";
@@ -43,6 +45,12 @@ import {
   workflowUsersEmptyMessage,
 } from "../../lib/workflowOwners";
 
+const IMPORT_ROLES = ["super-admin", "platform-admin", "platform-manager", "admin", "manager", "marketing"];
+const prefsKey = (userId) => `greencrm:leads-page:${userId || "me"}`;
+function readPrefs(userId) {
+  try { return JSON.parse(window.localStorage.getItem(prefsKey(userId)) || "{}") || {}; } catch (_error) { return {}; }
+}
+
 function LeadsPageContent() {
   const searchParams = useSearchParams();
   const [error, setError] = useState("");
@@ -51,6 +59,13 @@ function LeadsPageContent() {
   const [refreshSeed, setRefreshSeed] = useState(0);
   const [selectedLeadPool, setSelectedLeadPool] = useState([]);
   const [selectingAllFiltered, setSelectingAllFiltered] = useState(false);
+  const [pageSize, setPageSize] = useState(LEADS_PAGE_SIZE);
+  const [viewMode, setViewMode] = useState("table");
+  const [columns, setColumns] = useState(DEFAULT_COLUMNS);
+  const [cards, setCards] = useState(DEFAULT_CARDS);
+  const [customViews, setCustomViews] = useState([]);
+  const [counts, setCounts] = useState(null);
+  const [dataSeed, setDataSeed] = useState(0);
   const { accessError, booting, companies, session } = useLeadSessionAccess();
   
   // Load customization settings
@@ -71,7 +86,7 @@ function LeadsPageContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [searchParamsKey]
   );
-  const records = useLeadListData({ leadQueryBase: filters.leadQueryBase, refreshSeed, session });
+  const records = useLeadListData({ leadQueryBase: filters.leadQueryBase, pageSize, refreshSeed, session });
   const selection = useLeadSelection({
     leads: records.leads,
     resetKey: `${records.leadCacheKey}:${refreshSeed}`,
@@ -89,8 +104,58 @@ function LeadsPageContent() {
   }, [filters.setTeamFilter]);
   const resources = useLeadScopeResources({ canLoadScopedUsers, canManage, isPlatformConsole, onInvalidTeamFilter: handleInvalidTeamFilter, pickedTeamIds, refreshSeed, scopedCompanyId: filters.scopedCompanyId, scopedTeamId, session, teamCompanyId, teamFilter: filters.teamFilter });
   const leadFilterFields = useLeadFilterFields({ companies, enabledStatuses, filterUsers: resources.filterUsers, filters, leadOptionPool, productOptions: resources.productOptions, role, session, teams: resources.teams });
-  const bulkUpload = useLeadBulkUpload({ onImported: () => setRefreshSeed((current) => current + 1), setError, setNotice, token: session?.token });
   const leadExport = useLeadExport({ allMatchedLeads: records.allMatchedLeads, leadQueryBase: filters.leadQueryBase, setError, setNotice, token: session?.token, totalMatched: records.totalMatched });
+
+  // Each person's layout choices are kept on this device.
+  const prefsUser = session?.user?.user_id;
+  useEffect(() => {
+    if (!prefsUser) return;
+    const saved = readPrefs(prefsUser);
+    // The Deleted leads card is new: add it once for people who already picked their cards.
+    if (Array.isArray(saved.cards)) setCards(saved.cards.includes("deleted") || saved.deletedCardOffered ? saved.cards : [...saved.cards, "deleted"]);
+    if ([25, 50, 100].includes(saved.pageSize)) setPageSize(saved.pageSize);
+    if (saved.viewMode === "board") setViewMode("board");
+    if (Array.isArray(saved.columns) && saved.columns.includes("lead")) setColumns(saved.columns.filter((key) => LEAD_COLUMNS.some((c) => c.key === key)));
+    if (Array.isArray(saved.customViews)) setCustomViews(saved.customViews);
+  }, [prefsUser]);
+  const savePrefs = (change) => {
+    try { window.localStorage.setItem(prefsKey(prefsUser), JSON.stringify({ ...readPrefs(prefsUser), ...change })); } catch (_error) { /* storage unavailable */ }
+  };
+  const changeCards = (next) => { setCards(next); savePrefs({ cards: next, deletedCardOffered: true }); };
+  const changeColumns = (next) => { setColumns(next); savePrefs({ columns: next }); };
+  const changeViewMode = (next) => { setViewMode(next); savePrefs({ viewMode: next }); };
+  const changePageSize = (next) => { setPageSize(next); records.setPage(1); savePrefs({ pageSize: next }); };
+
+  // Card and view counts follow who/what is in scope, not the status or follow-up view chosen.
+  const { company_id: countCompany, team_ids: countTeam, assigned_to: countOwner, product_id: countProduct, lead_source: countSource } = filters.leadQueryBase;
+  useEffect(() => {
+    if (!session?.token) return undefined;
+    let cancelled = false;
+    apiRequest(buildQueryPath("/leads/counts", { company_id: countCompany, team_ids: countTeam, assigned_to: countOwner, product_id: countProduct, lead_source: countSource }), { token: session.token, fresh: true })
+      .then((data) => { if (!cancelled) setCounts(data); })
+      .catch(() => { if (!cancelled) setCounts(null); });
+    return () => { cancelled = true; };
+  }, [session?.token, countCompany, countTeam, countOwner, countProduct, countSource, refreshSeed, dataSeed]);
+
+  const views = useMemo(() => builtInViews({ canManage, userId: session?.user?.user_id }), [canManage, session?.user?.user_id]);
+  const activeView = useMemo(() => {
+    const defaults = { status: "all", priority: "all", source: "all", product: "all", workflowStage: "all", createdBy: "all", teamFilter: "all", followUp: "", stale: false, hasPayment: false, fromDate: "", toDate: "", dateFilterType: "created_at", assignedTo: filters.hasFixedAssigneeScope ? session?.user?.user_id || "all" : "all", search: "", notesSearch: "" };
+    const same = (view) => Object.keys(defaults).every((key) => (key in view.filters ? view.filters[key] : defaults[key]) === filters.snapshot[key]);
+    return [...views, ...customViews].find(same)?.key || "";
+  }, [views, customViews, filters.snapshot, filters.hasFixedAssigneeScope, session?.user?.user_id]);
+  const applyView = (view) => filters.applyQueryFilters(view.filters);
+  const saveView = (name) => {
+    const next = [...customViews.filter((v) => v.label !== name), { key: `custom-${Date.now()}`, label: name, filters: filters.snapshot }];
+    setCustomViews(next);
+    savePrefs({ customViews: next });
+    setNotice(`View "${name}" saved.`);
+  };
+  const deleteView = (key) => {
+    const next = customViews.filter((v) => v.key !== key);
+    setCustomViews(next);
+    savePrefs({ customViews: next });
+  };
+  const filterLabel = [...views, ...customViews].find((v) => v.key === activeView && v.key !== "all")?.label || (filters.activeFilterCount ? `${filters.activeFilterCount} filter${filters.activeFilterCount === 1 ? "" : "s"} on` : "");
 
   useEffect(() => { if (accessError) setError(accessError); }, [accessError]);
   useEffect(() => { if (records.listError) setError(records.listError); }, [records.listError]);
@@ -112,6 +177,7 @@ function LeadsPageContent() {
   function mergeLeadState(updatedLead) {
     records.mergeUpdatedLead(updatedLead);
     selection.mergeSelectedLead(updatedLead);
+    setDataSeed((current) => current + 1);
   }
 
   const collaboratorActions = useLeadCollaboratorActions({
@@ -161,32 +227,7 @@ function LeadsPageContent() {
     LEGAL_TRANSFER_ROLES.includes(role);
   const collaboratorUsersMessage = scopedUsersEmptyMessage(selectedScopeTeam);
   const legalUsersMessage = workflowUsersEmptyMessage(selection.activeLead?.team_name, "legal");
-  const ownershipLabel = ["sales", "marketing"].includes(role) ? "Assigned to you" : isPlatformConsole ? filters.company === "all" ? isSuper ? "Cross-tenant" : "Assigned companies" : "Single tenant" : "Tenant-wide";
-  const closedWonCount = filters.status === "closed-won" ? records.totalMatched : records.leads.filter((lead) => lead.status === "closed-won").length;
-  const transferredCount = filters.status === "transferred" ? records.totalMatched : records.leads.filter((lead) => ["legal", "finance", "completed"].includes(lead.workflow_stage || "sales")).length;
-  const heroStats = useMemo(() => {
-    const totalVal = records.leadMeta?.total_value || records.leads.reduce((sum, lead) => sum + Number(lead.estimated_value || 0), 0);
-    const closedWon = records.leadMeta?.total_closed_won ?? closedWonCount;
-    const advanceReceived = records.leadMeta?.total_advance_received || 0;
-
-    const stats = [
-      { label: "Total Team Leads", value: records.totalMatched },
-      { label: filters.hasPayment ? "Total Lead Value (Filtered)" : "Total Lead Value", value: formatLeadMoney(totalVal), color: "#0f8c53", onClick: () => filters.setHasPayment(!filters.hasPayment) },
-      { label: filters.hasPayment ? "Payment Advance (Filtered)" : "Payment Advance", value: formatLeadMoney(advanceReceived), color: "#2f6fdd", onClick: () => filters.setHasPayment(!filters.hasPayment) },
-      { label: "Closed Won", value: closedWon, color: "#0f8c53" }
-    ];
-
-    const wf = records.leadMeta?.workflow_summary;
-    if (wf && wf.total_workflow_leads > 0) {
-      stats.unshift(
-        { label: "Total Received", value: formatLeadMoney(wf.total_advance_received), color: "#0f8c53" },
-        { label: "Total Pending", value: formatLeadMoney(wf.total_remaining_payment), color: "#ea580c" },
-        { label: "Active Workflows", value: wf.active_workflow_leads, color: "#2f6fdd" },
-        { label: "Completed Workflows", value: wf.completed_workflow_leads, color: "#0f8c53" }
-      );
-    }
-    return stats;
-  }, [closedWonCount, records.leads, records.totalMatched, records.leadMeta?.workflow_summary, filters.hasPayment, filters.setHasPayment]);
+  const ownershipLabel = ["sales", "marketing"].includes(role) ? "Leads assigned to you and shared with you" : isPlatformConsole ? filters.company === "all" ? isSuper ? "All companies" : "Your assigned companies" : "This company" : role === "manager" ? "Leads in the teams you manage" : "Every lead in your company";
   const emptyLeadsMessage = filters.teamFilter !== "all" && selectedScopeTeam ? `No leads matched ${teamSelectLabel(selectedScopeTeam)}.` : "Adjust the search or filters to widen the result set.";
   const bulkUsersMessage = pickedTeamIds.length > 1 ? "Select leads from one team at a time before bulk assignment." : scopedUsersEmptyMessage(bulkScopeTeam);
   const allPicked = !!records.leads.length && records.leads.every((lead) => picked.includes(lead.lead_id));
@@ -221,12 +262,13 @@ function LeadsPageContent() {
     mergeLeadState(updatedLead);
     setNotice(`Lead status moved to ${titleizeLeadValue(updatedLead.status || "new")}.`);
   };
-  const handleInlineNoteSaved = useCallback((leadId, content) => {
+  const handleInlineNoteSaved = useCallback((leadId, content, updatedLead) => {
     const existingLead =
       (selection.activeLead?.lead_id === leadId ? selection.activeLead : null)
       || records.leads.find((item) => item.lead_id === leadId)
       || null;
     mergeLeadState({
+      ...(updatedLead || {}),
       lead_id: leadId,
       latest_note: content,
       note_count: Number(existingLead?.note_count || 0) + 1,
@@ -268,23 +310,26 @@ function LeadsPageContent() {
     transferLeadToLegal: ownershipActions.transferLeadToLegal,
     transferring: ownershipActions.transferring,
   };
-  const listRowActions = {
-    activeLead: selection.activeLead,
-    canTransferActiveLead,
-    closedWonCount,
-    allFilteredPicked,
-    onPageChange: records.setPage,
-    onPickToggle: (leadId) => setPicked((current) => current.includes(leadId) ? current.filter((id) => id !== leadId) : [...current, leadId]),
-    onSelectToggle: selection.toggleLeadSelection,
-    onSelectAllFiltered: handleSelectAllFiltered,
-    onToggleAllPicked: () => {
-      setSelectedLeadPool([]);
-      setPicked(allPicked ? [] : records.leads.map((lead) => lead.lead_id));
-    },
-    selectedId: selection.selectedId,
-    selectingAllFiltered,
-    sharedProps: rowSharedProps,
-    transferredCount,
+  const toggleAllPicked = () => {
+    setSelectedLeadPool([]);
+    setPicked(allPicked ? [] : records.leads.map((lead) => lead.lead_id));
+  };
+  const clearPicked = () => {
+    setSelectedLeadPool([]);
+    setPicked([]);
+  };
+  const onBulkDone = (result, action) => {
+    const verb = action === "delete" ? "deleted" : "updated";
+    setNotice(`${result.done} lead${result.done === 1 ? "" : "s"} ${verb}${result.failed?.length ? `, ${result.failed.length} could not be changed` : ""}.`);
+    if (!result.failed?.length) clearPicked();
+    setRefreshSeed((current) => current + 1);
+    setDataSeed((current) => current + 1);
+  };
+  const orderedIds = records.leads.map((lead) => lead.lead_id);
+  const drawerIndex = orderedIds.indexOf(selection.selectedId);
+  const drawerNav = {
+    prev: drawerIndex > 0 ? () => selection.toggleLeadSelection(orderedIds[drawerIndex - 1]) : undefined,
+    next: drawerIndex >= 0 && drawerIndex < orderedIds.length - 1 ? () => selection.toggleLeadSelection(orderedIds[drawerIndex + 1]) : undefined,
   };
   const filterWorkspaceProps = {
     search: filters.search,
@@ -306,49 +351,76 @@ function LeadsPageContent() {
     onReset: filters.resetLeadFilters,
     resetDisabled: !filters.activeFilterCount,
     onExportCsv: leadExport.exportCsv,
-    onExportExcel: leadExport.exportExcel,
-    onExportHtml: leadExport.exportHtml,
     exportDisabled: !records.totalMatched,
     exportingCsv: leadExport.exportingCsv,
-    exportingExcel: leadExport.exportingExcel,
-    exportingHtml: leadExport.exportingHtml,
     kickerClassName: LEAD_KICKER_CLASS,
     inputClassName: LEAD_INPUT_CLASS,
     buttonClassName: LEAD_GHOST_BUTTON_CLASS,
   };
 
   return (
-    <DashboardShell session={session} title={["sales", "marketing"].includes(role) ? "My Leads" : "Lead Pipeline"} hideTitle>
+    <DashboardShell session={session} title={["sales", "marketing"].includes(role) ? "My Leads" : "Leads"} hideTitle>
       <AlertError message={error} onDismiss={() => setError("")} />
       {!error ? <AlertSuccess message={notice} onDismiss={() => setNotice("")} /> : null}
       {showBlockingLoader ? <div className="alert">Loading leads workspace...</div> : null}
       {!booting ? (
         <LeadsWorkspaceContent
+          activeView={activeView}
+          allFilteredPicked={allFilteredPicked}
           allPicked={allPicked}
-          bulkUpload={bulkUpload}
+          boardSeed={`${refreshSeed}:${dataSeed}`}
           bulkUsersMessage={bulkUsersMessage}
           canCreate={canCreate}
+          canImport={IMPORT_ROLES.includes(role)}
+          companies={companies}
+          session={session}
+          cards={cards}
+          onCards={changeCards}
+          selfId={prefsUser}
           canEdit={canEdit}
           canManage={canManage}
+          canTransferActive={canTransferActiveLead}
+          columns={columns}
+          counts={counts}
+          customViews={customViews}
+          detailLoading={selection.detailLoading}
+          drawerLead={selection.selectedId ? selection.activeLead : null}
+          drawerNav={drawerNav}
           emptyLeadsMessage={emptyLeadsMessage}
           enabledStatuses={enabledStatuses}
+          filterLabel={filterLabel}
           filterWorkspaceProps={filterWorkspaceProps}
           filters={filters}
-          heroStats={heroStats}
           isPlatformConsole={isPlatformConsole}
-          isSuper={isSuper}
-          listRowActions={listRowActions}
+          onApplyView={applyView}
+          onBulkDone={onBulkDone}
+          onClearPicked={clearPicked}
+          onCloseDrawer={selection.clearSelection}
+          onColumns={changeColumns}
+          onDeleteView={deleteView}
+          onOpenLead={selection.toggleLeadSelection}
+          onPageSize={changePageSize}
+          onPickToggle={(leadId) => setPicked((current) => (current.includes(leadId) ? current.filter((id) => id !== leadId) : [...current, leadId]))}
+          onRefresh={() => setRefreshSeed((current) => current + 1)}
+          onSaveView={saveView}
+          onSelectAllFiltered={handleSelectAllFiltered}
+          onStatusUpdated={handleInlineStatusUpdate}
+          onToggleAllPicked={toggleAllPicked}
+          onViewMode={changeViewMode}
           ownershipActions={ownershipActions}
           ownershipLabel={ownershipLabel}
+          pageSize={pageSize}
           picked={picked}
           pickedTeamIds={pickedTeamIds}
           records={records}
           resources={resources}
-          setPicked={setPicked}
-          setSelectedLeadPool={setSelectedLeadPool}
-          setShowBulkUpload={bulkUpload.setShowBulkUpload}
-          showBulkUpload={bulkUpload.showBulkUpload}
-          teamBadgeLabel={teamBadgeLabel}
+          selectedId={selection.selectedId}
+          selectingAllFiltered={selectingAllFiltered}
+          sharedProps={rowSharedProps}
+          title={["sales", "marketing"].includes(role) ? "My leads" : "Leads"}
+          token={session?.token}
+          viewMode={viewMode}
+          views={views}
         />
       ) : null}
     </DashboardShell>

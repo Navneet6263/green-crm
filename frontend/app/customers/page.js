@@ -4,432 +4,194 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import DashboardShell from "../../components/dashboard/DashboardShell";
-import DashboardIcon from "../../components/dashboard/icons";
-import { CustomerFollowUpBadge, CustomerStatusBadge, OnboardingStatusBadge, isCustomerFollowUpOverdue } from "../../components/customers/CustomerStatusBits";
 import FollowUpActivityModal from "../../components/customers/FollowUpActivityModal";
-import { apiRequest } from "../../lib/api";
-import { stripCustomerProfile } from "../../lib/customerProfile";
-import { loadSession } from "../../lib/session";
-import { formatScopedError, isPlatformConsoleRole, loadTeamScopeResources, resolveSessionCompanyId, teamBadgeLabel, teamSelectLabel } from "../../lib/teamScope";
+import RecordPaymentModal from "../../components/customers/money/RecordPaymentModal";
+import CustomerKpis from "../../components/customers/workspace/CustomerKpis";
+import CustomerTable from "../../components/customers/workspace/CustomerTable";
+import { COLUMNS, DEFAULT_COLUMNS, QUICK_FILTERS, REPORT_PRESETS, SORTS } from "../../components/customers/workspace/customerConfig";
+import ReportDrawer, { DownloadIcon } from "../../components/reports/ReportDrawer";
+import { useReportLayout } from "../../components/reports/useReportLayout";
 import { AlertError, AlertSuccess } from "../../components/ui/Alert";
+import { API_BASE, apiRequest } from "../../lib/api";
+import { loadSession } from "../../lib/session";
+import { formatScopedError, isPlatformConsoleRole, loadTeamScopeResources, resolveSessionCompanyId, teamSelectLabel } from "../../lib/teamScope";
 
-const ALLOWED_ROLES = ["super-admin","platform-admin","platform-manager","admin","manager","sales","marketing","support","viewer"];
-const C = {
-  panel: "rounded-2xl border border-slate-100 bg-white shadow-sm",
-  input: "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-50",
-  btn: "inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-[13px] font-semibold transition disabled:opacity-50",
-  kicker: "text-[10px] font-bold uppercase tracking-widest text-slate-400",
-};
-const Btn = { gold: `${C.btn} border border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100 hover:border-amber-400`, ghost: `${C.btn} border border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:text-slate-900`, danger: `${C.btn} border border-rose-100 bg-rose-50 text-rose-600 hover:bg-rose-100` };
+const ALLOWED_ROLES = ["super-admin", "platform-admin", "platform-manager", "admin", "manager", "sales", "marketing", "support", "viewer", "finance-team"];
+const DELETE_ROLES = ["super-admin", "platform-admin", "platform-manager", "admin", "manager"];
+const SELECT = "h-9 rounded-[10px] border border-slate-200 bg-white px-2.5 text-[13px] font-medium text-slate-700 outline-none focus:border-brand-400";
+const LABELS = Object.fromEntries(COLUMNS.map((c) => [c.key, c.label]));
+const colsKey = (id) => `greencrm:customer-columns:${id || "me"}`;
 
-function money(v) { return `₹${Number(v||0).toLocaleString("en-IN")}`; }
-function latestNote(notes) {
-  const clean = stripCustomerProfile(notes);
-  if (!clean) return "";
-  return String(clean).split("\n").map(l=>l.trim()).filter(Boolean).reverse()[0]?.replace(/^\[.+?\]\s+[^:]+:\s*/,"") || "";
-}
-function initials(name="C") { return String(name).split(" ").filter(Boolean).slice(0,2).map(p=>p[0]?.toUpperCase()||"").join(""); }
-function buildPath(path, params={}) {
-  const q = new URLSearchParams();
-  Object.entries(params).forEach(([k,v])=>{ if(v&&v!=="all") q.set(k,v); });
-  const s = q.toString(); return s ? `${path}?${s}` : path;
-}
-
-const STAT_CFG = [
-  { key:"total",    label:"Total",     icon:"customers", bg:"bg-slate-100",   text:"text-slate-500"   },
-  { key:"active",   label:"Active",    icon:"company",   bg:"bg-emerald-100", text:"text-emerald-700" },
-  { key:"scheduled",label:"Scheduled", icon:"calendar",  bg:"bg-sky-100",     text:"text-sky-700"     },
-  { key:"overdue",  label:"Overdue",   icon:"tasks",     bg:"bg-rose-100",    text:"text-rose-600"    },
-  { key:"value",    label:"Value",     icon:"finance",   bg:"bg-amber-100",   text:"text-amber-700",  money:true },
-];
-
+/** Customers: who is onboarding, who owes money, whose plan is ending, with Excel for all of it. */
 export default function CustomersPage() {
   const router = useRouter();
   const [session, setSession] = useState(null);
-  const [companies, setCompanies] = useState([]);
-  const [teams, setTeams] = useState([]);
-  const [customers, setCustomers] = useState([]);
+  const [rows, setRows] = useState([]);
+  const [meta, setMeta] = useState({ total: 0, total_pages: 1 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [followUpFilter, setFollowUpFilter] = useState("all");
-  const [sortBy, setSortBy] = useState("recent");
-  const [companyFilter, setCompanyFilter] = useState("all");
-  const [teamFilter, setTeamFilter] = useState("all");
+  const [debounced, setDebounced] = useState("");
+  const [quick, setQuick] = useState("all");
+  const [kpi, setKpi] = useState(null);
+  const [filters, setFilters] = useState({ status: "all", sort: "recent", team: "all", company: "all", created_by: "all" });
+  const [page, setPage] = useState(1);
+  const [teams, setTeams] = useState([]);
+  const [companies, setCompanies] = useState([]);
+  const [columns, setColumns] = useState(DEFAULT_COLUMNS);
+  const [colMenu, setColMenu] = useState(false);
+  const [payFor, setPayFor] = useState(null);
+  const [logFor, setLogFor] = useState(null);
+  const [savingLog, setSavingLog] = useState(false);
   const [saving, setSaving] = useState("");
-  const [createdByFilter, setCreatedByFilter] = useState("all");
-  const [quickAdd, setQuickAdd] = useState(null);
-  const [quickAddUser, setQuickAddUser] = useState("");
-  const [quickAddSaving, setQuickAddSaving] = useState(false);
-  const [showActivityModal, setShowActivityModal] = useState(false);
-  const [selectedCustomer, setSelectedCustomer] = useState(null);
-  const [savingActivity, setSavingActivity] = useState(false);
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [meta, setMeta] = useState({ total: 0, total_pages: 1 });
-  const [createdByOptions, setCreatedByOptions] = useState([]);
-  const requestRef = useRef({ version: 0, controller: null });
-  const filterKey = JSON.stringify([debouncedSearch, statusFilter, followUpFilter, sortBy, companyFilter, teamFilter, createdByFilter]);
-  const [pageState, setPageState] = useState({ key: "", value: 1 });
-  const page = pageState.key === filterKey ? pageState.value : 1;
-  const setPage = (value) => setPageState({ key: filterKey, value });
+  const [reportOpen, setReportOpen] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [reportError, setReportError] = useState("");
+  const [seed, setSeed] = useState(0);
+  const request = useRef(0);
 
   const role = session?.user?.role || "viewer";
-  const isPlatformConsole = isPlatformConsoleRole(role);
+  const platform = isPlatformConsoleRole(role);
   const canManage = role !== "viewer";
-  const canDelete = ["super-admin","platform-admin","platform-manager","admin","manager"].includes(role);
-  const teamCompanyId = isPlatformConsole ? (companyFilter !== "all" ? companyFilter : "") : resolveSessionCompanyId(session);
-  const selectedTeam = useMemo(()=>teams.find(t=>t.team_id===teamFilter)||null,[teamFilter,teams]);
-
-  const filtered = customers;
-  const stats = meta.summary || { total: 0, active: 0, scheduled: 0, overdue: 0, value: 0 };
+  const report = useReportLayout({ token: session?.token, catalogPath: "/customers/export/columns", storageKey: `greencrm:customer-report:${session?.user?.user_id || "me"}`, presets: REPORT_PRESETS });
 
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 300);
-    return () => clearTimeout(timer);
-  }, [search]);
-
-  async function loadCustomers(s, cf="all", tf="all") {
-    requestRef.current.controller?.abort();
-    const controller = new AbortController();
-    const version = ++requestRef.current.version;
-    requestRef.current.controller = controller;
-    setLoading(true); setError("");
-    try {
-      const r = await apiRequest(buildPath("/customers",{page, page_size:25, include_summary:1, search:debouncedSearch, status:statusFilter, follow_up:followUpFilter, sort:sortBy, created_by:createdByFilter, company_id:isPlatformConsole?cf:undefined,team_ids:tf}),{token:s.token, signal:controller.signal});
-      if (version !== requestRef.current.version) return;
-      if (page > Number(r.meta?.total_pages || 1)) { setPage(Number(r.meta?.total_pages || 1)); return; }
-      setCustomers(r.items||[]);
-      setMeta(r.meta || { total: 0, total_pages: 1 });
-      setCreatedByOptions(r.meta?.creators || []);
-    } catch(e) { if (version === requestRef.current.version && e.name !== "AbortError") { setError(formatScopedError(e,"Could not load customers.")); setCustomers([]); setMeta({ total: 0, total_pages: 1 }); } }
-    finally { if (version === requestRef.current.version) setLoading(false); }
-  }
-
-  useEffect(()=>{
     const s = loadSession();
-    if(!s) return router.replace("/login");
-    if(!ALLOWED_ROLES.includes(s.user?.role)) return router.replace("/dashboard");
+    if (!s) { router.replace("/login?next=/customers"); return; }
+    if (!ALLOWED_ROLES.includes(s.user?.role)) { router.replace("/dashboard"); return; }
     setSession(s);
-    if(isPlatformConsoleRole(s.user?.role)){
-      apiRequest("/companies?page_size=120",{token:s.token}).then(r=>{
-        setCompanies(r.items||[]);
-        setCompanyFilter(s.company?.company_id||s.user?.company_id||"all");
-      }).catch(e=>setError(formatScopedError(e,"Could not load companies.")));
-    }
-  },[router]);
+    try { const saved = JSON.parse(window.localStorage.getItem(colsKey(s.user?.user_id)) || "null"); if (Array.isArray(saved) && saved.length) setColumns(["customer", ...saved.filter((k) => LABELS[k] && k !== "customer")]); } catch (_e) { /* ignore */ }
+    if (isPlatformConsoleRole(s.user?.role)) apiRequest("/companies?page_size=120", { token: s.token }).then((r) => setCompanies(r.items || [])).catch(() => {});
+  }, [router]);
 
-  useEffect(()=>{
-    if(session) loadCustomers(session,companyFilter,teamFilter);
-    return () => { requestRef.current.version += 1; requestRef.current.controller?.abort(); };
-  },[filterKey,page,isPlatformConsole,session?.token]);
+  useEffect(() => { const t = setTimeout(() => setDebounced(search.trim()), 300); return () => clearTimeout(t); }, [search]);
+  const quickParams = useMemo(() => ({ ...(QUICK_FILTERS.find(([k]) => k === quick)?.[2] || {}), ...(kpi?.filter || {}) }), [quick, kpi]);
+  const params = useMemo(() => Object.fromEntries(Object.entries({
+    search: debounced, status: filters.status, sort: filters.sort, team_ids: filters.team, created_by: filters.created_by,
+    company_id: platform ? filters.company : undefined, ...quickParams,
+  }).filter(([, v]) => v && v !== "all")), [debounced, filters, quickParams, platform]);
+  const paramKey = JSON.stringify(params);
+  useEffect(() => { setPage(1); }, [paramKey]);
 
-  useEffect(()=>{
-    if(!session?.token||!teamCompanyId){ setTeams([]); setTeamFilter("all"); return; }
-    let ignore=false;
-    (async()=>{
-      try {
-        const {teams:t}=await loadTeamScopeResources(session.token,{companyId:teamCompanyId});
-        if(ignore) return;
-        setTeams(t||[]);
-        if(teamFilter!=="all"&&!(t||[]).some(x=>x.team_id===teamFilter)) setTeamFilter("all");
-      } catch(_){ if(!ignore){ setTeams([]); setTeamFilter("all"); } }
-    })();
-    return ()=>{ ignore=true; };
-  },[session,teamCompanyId,teamFilter]);
+  useEffect(() => {
+    if (!session?.token) return;
+    const version = ++request.current;
+    setLoading(true);
+    apiRequest(`/customers?${new URLSearchParams({ ...params, page: String(page), page_size: "25", include_summary: "1" })}`, { token: session.token, fresh: true })
+      .then((r) => { if (version !== request.current) return; setRows(r.items || []); setMeta(r.meta || { total: 0, total_pages: 1 }); setError(""); })
+      .catch((e) => { if (version === request.current) { setError(formatScopedError(e, "Could not load customers.")); setRows([]); } })
+      .finally(() => { if (version === request.current) setLoading(false); });
+  }, [session?.token, paramKey, page, seed]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function deleteCustomer(id, name) {
-    if(!canDelete||!session?.token) return;
-    if(!window.confirm(`Delete customer "${name}"?`)) return;
-    setSaving(id); setError("");
+  const teamCompany = platform ? (filters.company !== "all" ? filters.company : "") : resolveSessionCompanyId(session);
+  useEffect(() => {
+    if (!session?.token || !teamCompany) { setTeams([]); return; }
+    loadTeamScopeResources(session.token, { companyId: teamCompany }).then(({ teams: t }) => setTeams(t || [])).catch(() => setTeams([]));
+  }, [session?.token, teamCompany]);
+
+  const setFilter = (key) => (e) => setFilters((f) => ({ ...f, [key]: e.target.value }));
+  const saveColumns = (next) => { setColumns(next); try { window.localStorage.setItem(colsKey(session?.user?.user_id), JSON.stringify(next)); } catch (_e) { /* ignore */ } };
+  const refresh = () => setSeed((s) => s + 1);
+
+  async function remove(c) {
+    if (!window.confirm(`Delete customer "${c.company_name}"?`)) return;
+    setSaving(c.customer_id);
+    try { await apiRequest(`/customers/${c.customer_id}`, { method: "DELETE", token: session.token }); setNotice(`${c.company_name} deleted.`); refresh(); } catch (e) { setError(formatScopedError(e, "Could not delete this customer.")); } finally { setSaving(""); }
+  }
+
+  async function saveLog({ activityType, remarks }) {
+    setSavingLog(true);
     try {
-      await apiRequest(`/customers/${id}`,{method:"DELETE",token:session.token});
-      await loadCustomers(session, companyFilter, teamFilter);
-    } catch(e){ setError(formatScopedError(e,"Could not delete this customer.")); }
-    finally { setSaving(""); }
+      await apiRequest(`/customers/${logFor.customer_id}/notes`, { method: "POST", token: session.token, body: { content: `[${activityType.toUpperCase()}] ${remarks.trim()}` } });
+      setNotice(`Saved for ${logFor.company_name}.`); setLogFor(null); refresh();
+    } catch (e) { setError(formatScopedError(e, "Could not save activity.")); return false; } finally { setSavingLog(false); }
   }
 
-  function exportCsv() {
-    if(!filtered.length){ setError("No data to export."); return; }
-    const rows=[["Customer","Company","Email","Phone","Status","Owner","Team","Total Value","Next Follow-up","Latest Note"],...filtered.map(c=>[c.name||"",c.company_name||"",c.email||"",c.phone||"",c.status||"",c.assigned_to_name||"Unassigned",teamBadgeLabel(c)||"",Number(c.total_value||0),c.next_follow_up||"",latestNote(c.notes)||""])];
-    const blob=new Blob([rows.map(r=>r.map(cell=>`"${String(cell).replace(/"/g,'""')}"`).join(",")).join("\n")],{type:"text/csv;charset=utf-8;"});
-    const url=window.URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download=`customers-${new Date().toISOString().slice(0,10)}.csv`; a.click(); window.URL.revokeObjectURL(url);
-  }
-
-  async function openQuickAdd(customer) {
-    setQuickAdd({ customerId: customer.customer_id, users: [], loading: true });
-    setQuickAddUser("");
+  async function download() {
+    setDownloading(true);
+    setReportError("");
     try {
-      const res = await apiRequest(`/users?page_size=100&company_id=${customer.company_id}`, { token: session.token });
-      const all = res?.items || res?.data || [];
-      // Fetch existing members to exclude them
-      const membersRes = await apiRequest(`/customers/${customer.customer_id}/members`, { token: session.token }).catch(() => []);
-      const memberIds = new Set((Array.isArray(membersRes) ? membersRes : (membersRes?.data || membersRes?.items || [])).map(m => m.user_id));
-      const available = all.filter(u => u.user_id !== customer.assigned_to && !memberIds.has(u.user_id));
-      setQuickAdd(q => ({ ...q, users: available, loading: false }));
-    } catch (_) {
-      setQuickAdd(q => ({ ...q, loading: false }));
-    }
-  }
-
-  async function submitQuickAdd(customerId) {
-    if (!quickAddUser) return;
-    setQuickAddSaving(true); setError("");
-    try {
-      await apiRequest(`/customers/${customerId}/members`, { method: "POST", token: session.token, body: { user_id: quickAddUser } });
-      setQuickAdd(null); setQuickAddUser("");
-    } catch (e) { setError(formatScopedError(e, "Could not add person.")); }
-    finally { setQuickAddSaving(false); }
-  }
-
-  function openFollowUpModal(customer) {
-    setSelectedCustomer(customer);
-    setShowActivityModal(true);
-  }
-
-  async function saveFollowUpActivity({ activityType, remarks }) {
-    if (!selectedCustomer) return;
-    setSavingActivity(true);
-    setError("");
-    setNotice("");
-    try {
-      await apiRequest(`/customers/${selectedCustomer.customer_id}/notes`, {
-        method: "POST",
-        token: session.token,
-        body: {
-          content: `[${activityType.toUpperCase()}] ${remarks.trim()}`,
-        },
-      });
-      
-      setNotice(`Follow-up activity saved for ${selectedCustomer.company_name || selectedCustomer.name}.`);
-      setShowActivityModal(false);
-      setSelectedCustomer(null);
-      await loadCustomers(session, companyFilter, teamFilter);
-    } catch (err) {
-      setError(formatScopedError(err, "Could not save activity."));
-      return false;
-    } finally {
-      setSavingActivity(false);
-    }
-  }
-
-  function exportHtml() {
-    if(!filtered.length){ setError("No data to export."); return; }
-    const esc=v=>String(v??"").replace(/[&<>"']/g,c=({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-    const rows=filtered.map(c=>`<tr><td>${esc(c.name)}</td><td>${esc(c.company_name)}</td><td>${esc(c.email)}</td><td>${esc(c.phone)}</td><td>${esc(c.status)}</td><td>${esc(c.assigned_to_name||"Unassigned")}</td><td>${esc(teamBadgeLabel(c))}</td><td>${esc(money(c.total_value))}</td><td>${esc(c.next_follow_up)}</td></tr>`).join("");
-    const html=`<!doctype html><html><head><meta charset="utf-8"><title>Customers</title><style>body{font-family:Arial,sans-serif}table{border-collapse:collapse;width:100%}th,td{border:1px solid #e2e8f0;padding:8px;font-size:13px}th{background:#f8fafc}</style></head><body><h2>Customers Export</h2><table><thead><tr><th>Customer</th><th>Company</th><th>Email</th><th>Phone</th><th>Status</th><th>Owner</th><th>Team</th><th>Value</th><th>Next Follow-up</th></tr></thead><tbody>${rows}</tbody></table></body></html>`;
-    const blob=new Blob([html],{type:"application/vnd.ms-excel;charset=utf-8;"}); const url=window.URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download=`customers-${new Date().toISOString().slice(0,10)}.xls`; a.click(); window.URL.revokeObjectURL(url);
+      const label = [QUICK_FILTERS.find(([k]) => k === quick)?.[1], kpi?.label, debounced && `“${debounced}”`].filter((x) => x && x !== "All").join(" · ");
+      const response = await fetch(`${API_BASE}/customers/export?${new URLSearchParams({ ...params, filter_label: label })}&${report.query}`, { headers: { Authorization: `Bearer ${session.token}` }, cache: "no-store" });
+      if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || "The Excel could not be created.");
+      const url = URL.createObjectURL(await response.blob());
+      const link = Object.assign(document.createElement("a"), { href: url, download: /filename="([^"]+)"/.exec(response.headers.get("Content-Disposition") || "")?.[1] || "GreenCRM-customers.xlsx" });
+      document.body.appendChild(link); link.click(); link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (e) { setReportError(e.message); } finally { setDownloading(false); }
   }
 
   return (
     <DashboardShell session={session} title="Customers" hideTitle heroStats={[]}>
-      <div className="mx-auto max-w-[1320px] space-y-5 px-1">
-        {error ? <AlertError message={error} onDismiss={()=>setError("")} /> : null}
-        {!error && notice ? <AlertSuccess message={notice} onDismiss={()=>setNotice("")} /> : null}
+      <div className="tw-buttons min-w-0 space-y-4 pb-10">
+        <AlertError message={error} onDismiss={() => setError("")} />
+        {!error && notice ? <AlertSuccess message={notice} onDismiss={() => setNotice("")} /> : null}
 
-        {/* ── Header ── */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-end justify-between gap-3 pt-1">
           <div>
-            <p className={C.kicker}>Customer Desk</p>
-            <h1 className="mt-0.5 text-2xl font-bold tracking-tight text-slate-900">Customers</h1>
+            <h1 className="text-[22px] font-bold tracking-tight text-slate-900">Customers</h1>
+            <p className="text-[13px] text-slate-500">Onboarding, money received and pending, renewals and health, for every customer</p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <button className={Btn.ghost} type="button" disabled={loading} onClick={()=>loadCustomers(session,companyFilter,teamFilter)}>Refresh</button>
-            <button className={Btn.ghost} type="button" disabled={loading || !filtered.length} onClick={exportCsv}><DashboardIcon name="documents" className="h-4 w-4" />CSV (page)</button>
-            <button className={Btn.ghost} type="button" disabled={loading || !filtered.length} onClick={exportHtml}><DashboardIcon name="documents" className="h-4 w-4" />Excel (page)</button>
-            {canManage ? <Link href="/customers/new" className={Btn.gold}><DashboardIcon name="customers" className="h-4 w-4" />Add Customer</Link> : null}
+          <div className="flex flex-wrap items-center gap-2">
+            <button type="button" onClick={() => setReportOpen(true)} className="inline-flex h-9 items-center gap-2 rounded-[10px] bg-white px-3 text-[13px] font-semibold text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50"><DownloadIcon />Excel</button>
+            {canManage ? <Link href="/customers/new" prefetch={false} className="inline-flex h-9 items-center gap-1.5 rounded-[10px] bg-brand-700 px-3.5 text-[13px] font-semibold text-white shadow-sm hover:bg-brand-800">+ Add customer</Link> : null}
           </div>
         </div>
 
-        {/* ── Stats ── */}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
-          {STAT_CFG.map(s=>(
-            <div key={s.key} className={`${C.panel} flex items-center gap-3 px-4 py-3.5`}>
-              <div className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${s.bg} ${s.text}`}>
-                <DashboardIcon name={s.icon} className="h-4 w-4" />
-              </div>
-              <div className="min-w-0">
-                <p className={C.kicker}>{s.label}</p>
-                <p className="mt-0.5 text-lg font-bold text-slate-900 leading-none">{loading ? "…" : s.money ? money(stats[s.key]) : stats[s.key]}</p>
-              </div>
-            </div>
-          ))}
-        </div>
+        <CustomerKpis summary={meta.summary} loading={loading} active={kpi?.key} onPick={(k) => { setKpi(k && Object.keys(k.filter).length ? k : null); if (k) setQuick("all"); }} />
 
-        {/* ── Filters ── */}
-        <div className={`${C.panel} px-4 py-4`}>
-          <div className={`grid gap-3 ${isPlatformConsole||teams.length>1?"xl:grid-cols-7":"xl:grid-cols-5"}`}>
-            <div className="relative xl:col-span-2">
-              <DashboardIcon name="leads" className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <input className={`${C.input} pl-10`} value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search name, company, email, phone…" />
+        <section className="min-w-0 rounded-[14px] bg-white ring-1 ring-slate-200">
+          <div className="space-y-3 border-b border-slate-100 p-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="flex h-9 min-w-[220px] flex-1 items-center gap-2 rounded-[10px] border border-slate-200 bg-slate-50 px-3 text-slate-400 focus-within:border-brand-300 focus-within:bg-white">
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+                <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search company, contact, email or phone" aria-label="Search customers" className="min-w-0 flex-1 bg-transparent text-[13px] text-slate-800 outline-none" />
+              </label>
+              {platform ? <select aria-label="Company" value={filters.company} onChange={setFilter("company")} className={SELECT}><option value="all">All companies</option>{companies.map((c) => <option key={c.company_id} value={c.company_id}>{c.name}</option>)}</select> : null}
+              {teams.length > 1 ? <select aria-label="Team" value={filters.team} onChange={setFilter("team")} className={SELECT}><option value="all">All teams</option>{teams.map((t) => <option key={t.team_id} value={t.team_id}>{teamSelectLabel(t)}</option>)}</select> : null}
+              <select aria-label="Status" value={filters.status} onChange={setFilter("status")} className={SELECT}><option value="all">Any status</option><option value="active">Active</option><option value="inactive">Inactive</option><option value="suspended">Suspended</option></select>
+              {DELETE_ROLES.includes(role) && (meta.creators || []).length > 1 ? <select aria-label="Created by" value={filters.created_by} onChange={setFilter("created_by")} className={SELECT}><option value="all">Anyone</option>{meta.creators.map((n) => <option key={n.user_id} value={n.user_id}>{n.name}</option>)}</select> : null}
+              <select aria-label="Sort" value={filters.sort} onChange={setFilter("sort")} className={SELECT}>{SORTS.map(([k, n]) => <option key={k} value={k}>{n}</option>)}</select>
+              <div className="relative">
+                <button type="button" onClick={() => setColMenu((v) => !v)} aria-expanded={colMenu} className="h-9 rounded-[10px] px-3 text-[13px] font-semibold text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50">Columns</button>
+                {colMenu ? (
+                  <div className="absolute right-0 top-10 z-20 w-56 rounded-[12px] bg-white p-2 shadow-lg ring-1 ring-slate-200">
+                    {COLUMNS.filter((c) => !c.fixed).map((c) => (
+                      <label key={c.key} className="flex cursor-pointer items-center gap-2 rounded-[8px] px-2 py-1.5 text-[13px] text-slate-700 hover:bg-slate-50">
+                        <input type="checkbox" checked={columns.includes(c.key)} onChange={() => saveColumns(columns.includes(c.key) ? columns.filter((k) => k !== c.key) : COLUMNS.map((x) => x.key).filter((k) => k === c.key || columns.includes(k)))} />{c.label}
+                      </label>
+                    ))}
+                    <button type="button" onClick={() => saveColumns(DEFAULT_COLUMNS)} className="mt-1 w-full rounded-[8px] py-1.5 text-[12px] font-semibold text-brand-700 hover:bg-slate-50">Reset</button>
+                  </div>
+                ) : null}
+              </div>
             </div>
-            {isPlatformConsole ? (
-              <select className={C.input} value={companyFilter} onChange={e=>setCompanyFilter(e.target.value)}>
-                <option value="all">All companies</option>
-                {companies.map(c=><option key={c.company_id} value={c.company_id}>{c.name}</option>)}
-              </select>
-            ) : null}
-            {teams.length>1 ? (
-              <select className={C.input} value={teamFilter} onChange={e=>setTeamFilter(e.target.value)}>
-                <option value="all">All teams</option>
-                {teams.map(t=><option key={t.team_id} value={t.team_id}>{teamSelectLabel(t)}</option>)}
-              </select>
-            ) : null}
-            <select className={C.input} value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}>
-              <option value="all">All statuses</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-              <option value="suspended">Suspended</option>
-            </select>
-            <select className={C.input} value={followUpFilter} onChange={e=>setFollowUpFilter(e.target.value)}>
-              <option value="all">All follow-ups</option>
-              <option value="upcoming">Upcoming</option>
-              <option value="overdue">Overdue</option>
-              <option value="none">No follow-up</option>
-            </select>
-            {canDelete && createdByOptions.length>1 ? (
-              <select className={C.input} value={createdByFilter} onChange={e=>setCreatedByFilter(e.target.value)}>
-                <option value="all">All creators</option>
-                {createdByOptions.map(n=><option key={n.user_id} value={n.user_id}>{n.name}</option>)}
-              </select>
-            ) : null}
-            <select className={C.input} value={sortBy} onChange={e=>setSortBy(e.target.value)}>
-              <option value="recent">Most recent</option>
-              <option value="name">Company name</option>
-              <option value="value">Highest value</option>
-              <option value="follow-up">Nearest follow-up</option>
-            </select>
+            <div className="flex gap-1.5 overflow-x-auto pb-0.5">
+              {QUICK_FILTERS.map(([key, name]) => (
+                <button key={key} type="button" aria-pressed={quick === key && !kpi} onClick={() => { setQuick(key); setKpi(null); }}
+                  className={`shrink-0 rounded-full px-3 py-1.5 text-[12.5px] font-semibold ${quick === key && !kpi ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>{name}</button>
+              ))}
+              {kpi ? <button type="button" onClick={() => setKpi(null)} className="shrink-0 rounded-full bg-gold-100 px-3 py-1.5 text-[12.5px] font-semibold text-gold-900">{kpi.label} ×</button> : null}
+            </div>
           </div>
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500" aria-live="polite">
-            <p>{loading ? "Searching all accessible customers…" : `${filtered.length} shown · ${meta.total || 0} matching customers. Cards cover all matches.`}</p>
-            <div className="flex items-center gap-2">
-              <button className={Btn.ghost} disabled={loading || page <= 1} onClick={()=>setPage(page-1)}>Previous</button>
+          <CustomerTable rows={rows} columns={columns} labels={LABELS} loading={loading} onPayment={setPayFor} onFollowUp={setLogFor} onDelete={remove}
+            canManage={canManage} canDelete={DELETE_ROLES.includes(role)} saving={saving} />
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 px-4 py-3 text-[12.5px] text-slate-500">
+            <span>{Number(meta.total || 0).toLocaleString("en-IN")} customers</span>
+            <span className="flex items-center gap-2">
+              <button type="button" disabled={loading || page <= 1} onClick={() => setPage(page - 1)} className="rounded-[8px] px-3 py-1.5 font-semibold ring-1 ring-slate-200 hover:bg-slate-50 disabled:opacity-40">Previous</button>
               <span>Page {page} of {meta.total_pages || 1}</span>
-              <button className={Btn.ghost} disabled={loading || page >= (meta.total_pages || 1)} onClick={()=>setPage(page+1)}>Next</button>
-            </div>
+              <button type="button" disabled={loading || page >= (meta.total_pages || 1)} onClick={() => setPage(page + 1)} className="rounded-[8px] px-3 py-1.5 font-semibold ring-1 ring-slate-200 hover:bg-slate-50 disabled:opacity-40">Next</button>
+            </span>
           </div>
-        </div>
-
-        {/* ── List ── */}
-        {loading ? (
-          <div className={`${C.panel} px-5 py-4 text-sm text-slate-500`}>Loading customers…</div>
-        ) : filtered.length ? (
-          <div className="space-y-2.5">
-            {filtered.map(customer=>{
-              const overdue = isCustomerFollowUpOverdue(customer.next_follow_up);
-              const note = customer.latest_note || latestNote(customer.notes);
-              return (
-                <article key={customer.customer_id} className={`${C.panel} px-5 py-4`}>
-                  <div className="flex items-start justify-between gap-4">
-                    {/* Left: Avatar + Identity */}
-                    <div className="flex min-w-0 items-center gap-3.5">
-                      <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-600 text-sm font-bold text-white">
-                        {initials(customer.name||customer.company_name)}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="truncate text-sm font-bold text-slate-900">{customer.name||"Unnamed"}</h3>
-                          <CustomerStatusBadge status={customer.status} />
-                          <OnboardingStatusBadge status={customer.onboarding_status} />
-                        </div>
-                        <p className="truncate text-xs text-slate-500">{customer.company_name||"No company"}{customer.product_name ? ` · ${customer.product_name}` : ""}</p>
-                        <p className="truncate text-xs text-slate-400">{[customer.email,customer.phone].filter(Boolean).join(" · ")||"No contact"}</p>
-                      </div>
-                    </div>
-                    {/* Right: Actions */}
-                    <div className="flex shrink-0 gap-2">
-                      <button 
-                        className={`${Btn.gold} text-xs`}
-                        type="button" 
-                        onClick={() => openFollowUpModal(customer)}
-                        title="Add follow-up activity"
-                      >
-                        <DashboardIcon name="plus" className="h-3.5 w-3.5" />
-                        Follow-up
-                      </button>
-                      <Link className={Btn.ghost} href={`/customers/${customer.customer_id}`}><DashboardIcon name="message" className="h-3.5 w-3.5" />View</Link>
-                      {canManage ? <Link className={Btn.ghost} href={`/customers/${customer.customer_id}/edit`}><DashboardIcon name="settings" className="h-3.5 w-3.5" />Edit</Link> : null}
-                      {canManage ? (
-                        <button
-                          className={Btn.ghost}
-                          type="button"
-                          title="Add person to this customer"
-                          onClick={() => quickAdd?.customerId === customer.customer_id ? setQuickAdd(null) : openQuickAdd(customer)}
-                        >
-                          <DashboardIcon name="customers" className="h-3.5 w-3.5" />
-                          People
-                        </button>
-                      ) : null}
-                      {canDelete ? <button className={Btn.danger} type="button" onClick={()=>deleteCustomer(customer.customer_id,customer.company_name||customer.name||"customer")} disabled={saving===customer.customer_id}><DashboardIcon name="audit" className="h-3.5 w-3.5" /></button> : null}
-                    </div>
-                  </div>
-
-                  {/* Quick-add people inline panel */}
-                  {quickAdd?.customerId === customer.customer_id ? (
-                    <div className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3">
-                      <p className="mb-2 text-xs font-bold uppercase tracking-widest text-emerald-700">Add Person to This Customer</p>
-                      {quickAdd.loading ? (
-                        <p className="text-xs text-slate-400">Loading team members…</p>
-                      ) : quickAdd.users.length ? (
-                        <div className="flex gap-2">
-                          <select
-                            className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-400"
-                            value={quickAddUser}
-                            onChange={e => setQuickAddUser(e.target.value)}
-                          >
-                            <option value="">Select team member…</option>
-                            {quickAdd.users.map(u => <option key={u.user_id} value={u.user_id}>{u.name} · {u.role}</option>)}
-                          </select>
-                          <button
-                            className="rounded-xl border border-emerald-300 bg-emerald-100 px-4 py-2 text-sm font-semibold text-emerald-800 hover:bg-emerald-200 disabled:opacity-50 transition"
-                            type="button"
-                            disabled={!quickAddUser || quickAddSaving}
-                            onClick={() => submitQuickAdd(customer.customer_id)}
-                          >
-                            {quickAddSaving ? "Adding…" : "Add"}
-                          </button>
-                          <button className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-500 hover:text-slate-800 transition" type="button" onClick={() => setQuickAdd(null)}>✕</button>
-                        </div>
-                      ) : (
-                        <p className="text-xs text-slate-400">No available team members to add.</p>
-                      )}
-                    </div>
-                  ) : null}
-                  {/* Meta Grid */}
-                  <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-slate-50 pt-3 sm:grid-cols-3 lg:grid-cols-5">
-                    <div><p className={C.kicker}>Owner</p><p className="text-xs font-semibold text-slate-700 truncate">{customer.assigned_to_name||"Unassigned"}</p></div>
-                    <div><p className={C.kicker}>Team</p><p className="text-xs font-semibold text-slate-700 truncate">{teamBadgeLabel(customer)||"—"}</p></div>
-                    <div><p className={C.kicker}>Product</p><p className="text-xs font-semibold text-slate-700 truncate">{customer.product_name||"—"}</p></div>
-                    <div><p className={C.kicker}>Value</p><p className="text-xs font-semibold text-slate-700">{money(customer.total_value)}</p></div>
-                    <div><p className={C.kicker}>Follow-up</p><CustomerFollowUpBadge value={customer.next_follow_up} /></div>
-                  </div>
-                  {note ? <p className="mt-2 truncate text-xs text-slate-400" title={note}>💬 {note}</p> : null}
-                </article>
-              );
-            })}
-          </div>
-        ) : (
-          <div className={`${C.panel} flex min-h-[260px] flex-col items-center justify-center gap-3 text-center`}>
-            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-slate-100 text-slate-400">
-              <DashboardIcon name="customers" className="h-6 w-6" />
-            </div>
-            <p className="text-sm font-semibold text-slate-700">No customers matched</p>
-            <p className="max-w-sm text-xs text-slate-400">{teamFilter!=="all"&&selectedTeam?`Try clearing the ${teamSelectLabel(selectedTeam)} filter.`:"Adjust search or filters to see results."}</p>
-          </div>
-        )}
+        </section>
       </div>
 
-      {/* Follow-up Activity Modal */}
-      <FollowUpActivityModal
-        isOpen={showActivityModal}
-        onClose={() => {
-          setShowActivityModal(false);
-          setSelectedCustomer(null);
-        }}
-        onSave={saveFollowUpActivity}
-        saving={savingActivity}
-      />
+      <RecordPaymentModal open={Boolean(payFor)} onClose={() => setPayFor(null)} token={session?.token} customer={payFor} onSaved={() => { setNotice(`Payment saved for ${payFor.company_name}.`); refresh(); }} />
+      <FollowUpActivityModal isOpen={Boolean(logFor)} onClose={() => setLogFor(null)} onSave={saveLog} saving={savingLog} />
+      <ReportDrawer open={reportOpen} onClose={() => setReportOpen(false)} title="Customers report" report={report} onDownload={download} downloading={downloading} error={reportError}
+        subtitle={`${Number(meta.total || 0).toLocaleString("en-IN")} customers · uses the filters on the page`} />
     </DashboardShell>
   );
 }

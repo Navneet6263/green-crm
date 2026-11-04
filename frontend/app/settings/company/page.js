@@ -7,10 +7,9 @@ import CompanyLeadershipPanel from "../../../components/company-settings/Company
 import CompanySnapshotPanel from "../../../components/company-settings/CompanySnapshotPanel";
 import CompactCompanySettingsForm from "../../../components/company-settings/CompactCompanySettingsForm";
 import CompactHero from "../../../components/company-settings/CompactHero";
-import CollapsibleSection from "../../../components/company-settings/CollapsibleSection";
 import { buildDraft } from "../../../components/company-settings/utils";
-import DashboardShell from "../../../components/dashboard/DashboardShell";
-import CommunicationSettingsSection from "../../../components/integrations/CommunicationSettingsSection";
+import Link from "next/link";
+import SettingsLayout from "../../../components/settings/SettingsLayout";
 import { apiRequest } from "../../../lib/api";
 import { loadSession } from "../../../lib/session";
 
@@ -131,27 +130,23 @@ export default function CompanySettingsPage() {
     }
   }
 
-  const isPlatformRoot = company?.company_id === "platform-root";
-  const canEditPermissions = session?.user?.role === "super-admin" && !isPlatformRoot;
 
   return (
-    <DashboardShell session={session} title="Company Settings" hideTitle heroStats={[]}>
-      <div className="mx-auto max-w-[1400px] space-y-4 px-1">
+    <SettingsLayout session={session} active="company" wide>
+      <div className="space-y-4">
         {error && (
-          <div className="rounded-[20px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+          <div role="alert" className="rounded-[12px] bg-rose-50 px-4 py-2.5 text-[13px] font-medium text-rose-700 ring-1 ring-rose-100">
             {error}
           </div>
         )}
         {message && (
-          <div className="rounded-[20px] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
+          <div role="status" className="rounded-[12px] bg-emerald-50 px-4 py-2.5 text-[13px] font-medium text-emerald-800 ring-1 ring-emerald-100">
             {message}
           </div>
         )}
         
         {!company ? (
-          <div className="rounded-[20px] border border-[#eadfcd] bg-white px-4 py-3 text-sm font-medium text-[#6f614c]">
-            Loading company settings...
-          </div>
+          <div className="space-y-3">{[0, 1].map((i) => <div key={i} className="h-28 animate-pulse rounded-[14px] bg-white ring-1 ring-slate-200" />)}</div>
         ) : (
           <>
             <CompactHero company={company} draft={draft} />
@@ -172,28 +167,13 @@ export default function CompanySettingsPage() {
               </div>
             </div>
 
-            <CollapsibleSection
-              title={isPlatformRoot ? "Platform Communication Providers" : "Communication Providers"}
-              subtitle="Manage call, SMS, and WhatsApp integrations"
-              defaultOpen={false}
-            >
-              <CommunicationSettingsSection
-                companyId={company.company_id}
-                token={session?.token}
-                title=""
-                description={
-                  isPlatformRoot
-                    ? "Define the shared provider credentials and office attendance IP policy used when companies are approved for platform-managed channels."
-                    : "Manage tenant credentials, review managed paid service status, and see the backend-resolved capability for each communication channel."
-                }
-                canEditIntegrations={["super-admin", "admin"].includes(session?.user?.role)}
-                canEditPermissions={canEditPermissions}
-                platformRoot={isPlatformRoot}
-              />
-            </CollapsibleSection>
+            <Link href="/settings/integrations" prefetch className="flex items-center justify-between gap-3 rounded-[14px] bg-white p-4 ring-1 ring-slate-200 hover:ring-slate-300">
+              <span><b className="block text-[14px] font-semibold text-slate-900">WhatsApp, SMS, calling and Microsoft 365 inbox</b><span className="text-[12.5px] text-slate-500">Moved to Integrations, with their status in one place.</span></span>
+              <span className="text-[13px] font-semibold text-brand-700">Open →</span>
+            </Link>
           </>
         )}
       </div>
-    </DashboardShell>
+    </SettingsLayout>
   );
 }

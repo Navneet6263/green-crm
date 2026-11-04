@@ -8,8 +8,7 @@ import LeadSearchInput from "./LeadSearchInput";
 
 export default function LeadFiltersSection({
   search, onSearchChange, searchPlaceholder, filters, dateFilters,
-  activeCount, onReset, resetDisabled, onExportCsv, onExportExcel, onExportHtml,
-  exportDisabled, exportingCsv, exportingExcel, exportingHtml, kickerClassName, inputClassName, buttonClassName,
+  activeCount, onReset, resetDisabled, onExportCsv, exportDisabled, exportingCsv, kickerClassName, inputClassName, buttonClassName,
 }) {
   const [open, setOpen] = useState(false);
 
@@ -23,10 +22,9 @@ export default function LeadFiltersSection({
         <button
           type="button"
           onClick={() => setOpen(o => !o)}
-          className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl border px-3.5 py-2.5 text-[13px] font-semibold transition ${
-            open || activeCount
-              ? "border-amber-300 bg-amber-50 text-amber-900"
-              : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+          aria-expanded={open}
+          className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-[10px] px-3 text-[13px] font-semibold ring-1 transition ${
+            open || activeCount ? "bg-brand-50 text-brand-900 ring-brand-200" : "bg-white text-slate-700 ring-slate-200 hover:bg-slate-50"
           }`}
         >
           <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
@@ -34,7 +32,7 @@ export default function LeadFiltersSection({
           </svg>
           Filters
           {activeCount ? (
-            <span className="grid h-4 w-4 place-items-center rounded-full bg-amber-500 text-[10px] font-bold text-white">
+            <span className="grid h-4 w-4 place-items-center rounded-full bg-brand-500 text-[10px] font-bold text-white">
               {activeCount}
             </span>
           ) : null}
@@ -81,12 +79,8 @@ export default function LeadFiltersSection({
                 onReset={onReset}
                 disabled={resetDisabled}
                 onExportCsv={onExportCsv}
-                onExportExcel={onExportExcel}
-                onExportHtml={onExportHtml}
                 exportDisabled={exportDisabled}
                 exportingCsv={exportingCsv}
-                exportingExcel={exportingExcel}
-                exportingHtml={exportingHtml}
                 buttonClassName={buttonClassName}
               />
             </div>

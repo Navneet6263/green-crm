@@ -4,14 +4,15 @@ export const ROLE_HOME_ROUTE = {
   "super-admin": "/super-admin",
   "platform-admin": "/super-admin",
   "platform-manager": "/super-admin",
-  admin: "/dashboard/admin",
-  manager: "/dashboard/manager",
-  sales: "/dashboard/sales",
-  marketing: "/dashboard/marketing",
-  "legal-team": "/dashboard/legal",
-  "finance-team": "/dashboard/finance",
-  support: "/dashboard/support",
-  viewer: "/dashboard/viewer",
+  // One dashboard for every company role; its widgets follow the role.
+  admin: "/dashboard",
+  manager: "/dashboard",
+  sales: "/dashboard",
+  marketing: "/dashboard",
+  "legal-team": "/dashboard",
+  "finance-team": "/dashboard",
+  support: "/dashboard",
+  viewer: "/dashboard",
   expert: "/dashboard/expert",
 };
 

@@ -17,20 +17,10 @@ export function CreateUserForm({
   onCompanyChange
 }) {
   return (
-    <div className={`${T.panel} px-5 py-5`}>
-      <div className="mb-4 flex items-center gap-3">
-        <div className="grid h-8 w-8 place-items-center rounded-xl bg-amber-50 text-amber-600 border border-amber-200">
-          <DashboardIcon name="users" className="h-4 w-4" />
-        </div>
-        <div>
-          <p className={T.kicker}>Add Member</p>
-          <h2 className="text-base font-bold text-slate-900">Create new team member</h2>
-        </div>
-      </div>
-
-      <form className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" onSubmit={onSubmit}>
+    <div>
+      <form className="grid gap-3 sm:grid-cols-2" onSubmit={onSubmit}>
         {isSuperAdmin && (
-          <label className="block space-y-1.5 sm:col-span-2 xl:col-span-3">
+          <label className="block space-y-1.5 sm:col-span-2">
             <span className={T.kicker}>Company</span>
             <select 
               className={`${T.input} max-w-[280px]`} 
@@ -48,7 +38,7 @@ export function CreateUserForm({
         )}
 
         {isManager && (
-          <label className="block space-y-1.5 sm:col-span-2 xl:col-span-3">
+          <label className="block space-y-1.5 sm:col-span-2">
             <span className={T.kicker}>Employee team *</span>
             <select className={T.input} value={createForm.team_id || ""} required
               disabled={teamsLoading || !managedTeams.length}
@@ -135,7 +125,7 @@ export function CreateUserForm({
           />
         </label>
 
-        <div className="flex items-end sm:col-span-2 xl:col-span-3">
+        <div className="flex items-end sm:col-span-2">
           <button 
             className={T.gold} 
             type="submit" 

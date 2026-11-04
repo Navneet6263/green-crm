@@ -102,6 +102,7 @@ async function listUsers({ companyId, companyIds = null, role, search, teamIds =
         u.is_active,
         u.is_temporary_password,
         u.last_login_at,
+        u.email_verified_at,
         u.created_at,
         c.name AS company_name
       FROM users u

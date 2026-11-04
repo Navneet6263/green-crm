@@ -54,7 +54,7 @@ export default function WorkflowReviewModal({ lead, onClose, onAction }) {
   const statusMeta = {
     in_progress:      { label: "Expert Working",      dot: "bg-blue-500",   text: "text-blue-700",   bg: "bg-blue-50" },
     pending_qa:       { label: "Pending Your Review",  dot: "bg-purple-500", text: "text-purple-700", bg: "bg-purple-50" },
-    revisions_needed: { label: "Revision Requested",   dot: "bg-amber-500",  text: "text-amber-700",  bg: "bg-amber-50" },
+    revisions_needed: { label: "Revision Requested",   dot: "bg-brand-500",  text: "text-brand-700",  bg: "bg-brand-50" },
     approved:         { label: "Work Approved",         dot: "bg-green-500",  text: "text-green-700",  bg: "bg-green-50" },
     completed:        { label: "Delivered",             dot: "bg-emerald-500",text: "text-emerald-700",bg: "bg-emerald-50" },
   };
@@ -238,14 +238,14 @@ export default function WorkflowReviewModal({ lead, onClose, onAction }) {
                   <button
                     type="button"
                     onClick={() => setReviewAction("reject")}
-                    className="flex-1 rounded-xl border border-amber-300 bg-amber-500 py-2.5 text-sm font-bold text-white transition hover:bg-amber-600"
+                    className="flex-1 rounded-xl border border-brand-300 bg-brand-500 py-2.5 text-sm font-bold text-white transition hover:bg-brand-600"
                   >
                     ↩ Request Revision
                   </button>
                 </div>
               ) : (
                 <form onSubmit={submitReview} className="space-y-3">
-                  <div className={`rounded-xl border px-3 py-2 text-xs font-bold ${reviewAction === "approve" ? "border-green-200 bg-green-50 text-green-700" : "border-amber-200 bg-amber-50 text-amber-700"}`}>
+                  <div className={`rounded-xl border px-3 py-2 text-xs font-bold ${reviewAction === "approve" ? "border-green-200 bg-green-50 text-green-700" : "border-brand-200 bg-brand-50 text-brand-700"}`}>
                     {reviewAction === "approve" ? "✓ Approving this submission" : "↩ Requesting revision"}
                   </div>
                   <div>
@@ -274,7 +274,7 @@ export default function WorkflowReviewModal({ lead, onClose, onAction }) {
                       type="submit"
                       disabled={loading}
                       className={`flex-1 rounded-xl py-2 text-xs font-bold text-white transition disabled:opacity-60 ${
-                        reviewAction === "approve" ? "bg-green-600 hover:bg-green-700" : "bg-amber-500 hover:bg-amber-600"
+                        reviewAction === "approve" ? "bg-green-600 hover:bg-green-700" : "bg-brand-500 hover:bg-brand-600"
                       }`}
                     >
                       {loading ? "Submitting..." : reviewAction === "approve" ? "Confirm Approval" : "Send for Revision"}

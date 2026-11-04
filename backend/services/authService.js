@@ -4,6 +4,7 @@ const platformAccessRepository = require("../repositories/platformAccessReposito
 const userRepository = require("../repositories/userRepository");
 const auditRepository = require("../repositories/auditRepository");
 const emailService = require("./emailService");
+const loginOtp = require("./auth/loginOtp");
 const { MAX_SUPER_ADMINS, ROLES } = require("../constants/roles");
 const { PLATFORM_COMPANY_ID } = require("../db/schema");
 const { buildAuthToken, buildTimedToken, hashPassword, verifyPassword, verifyToken } = require("../utils/auth");
@@ -184,6 +185,16 @@ async function login(payload) {
     throw new AppError("User account is not active.", 401);
   }
 
+  // The web app asks for the monthly email code; older clients (the mobile app) send no flag and sign in as before.
+  if (payload.email_otp === true && loginOtp.needsCheck(user)) {
+    const company = await companyRepository.getCompanyWithSettings(user.company_id);
+    const challenge = await loginOtp.start(user, { company, platformCompany: await getPlatformCompany() });
+    if (challenge) return { otp_required: true, ...challenge };
+  }
+  return completeLogin(user);
+}
+
+async function completeLogin(user) {
   await userRepository.updateLastLogin(user.user_id);
   const company = await companyRepository.getCompanyWithSettings(user.company_id);
 
@@ -192,6 +203,14 @@ async function login(payload) {
     company,
     token: buildAuthToken(user),
   };
+}
+
+/** Second step of the web login: the code from the email. */
+async function verifyLoginCode(payload) {
+  const userId = await loginOtp.verify(payload.challenge_id, payload.code);
+  const user = await userRepository.getUserById(userId);
+  if (!user?.is_active) throw new AppError("User account is not active.", 401);
+  return completeLogin(user);
 }
 
 async function getProfile(auth) {
@@ -425,4 +444,5 @@ module.exports = {
   resetPassword,
   updateProfile,
   verify,
+  verifyLoginCode,
 };

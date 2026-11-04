@@ -54,7 +54,8 @@ export function useCommunicationWorkspace() {
   useEffect(() => {
     const session = loadSession();
     if (!session) return void router.replace("/login");
-    if (!ALLOWED_ROLES.includes(session.user?.role)) return void router.replace("/dashboard");
+    // This sits inside the Email page now, so other roles see a note instead of being sent away.
+    if (!ALLOWED_ROLES.includes(session.user?.role)) return void setState((current) => ({ ...current, session, loading: false, error: "Your role cannot write to customers from here." }));
 
     async function loadWorkspace() {
       setState((current) => ({ ...current, session, loading: true, error: "", message: "" }));

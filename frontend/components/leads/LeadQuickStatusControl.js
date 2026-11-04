@@ -6,8 +6,9 @@ import { apiRequest } from "../../lib/api";
 import { LEAD_STATUS_ORDER, getLeadStatusLabel } from "../../lib/leadStatus";
 import LeadStatusUpdateDialog from "./LeadStatusUpdateDialog";
 import { buildStatusActivityDescription } from "./LeadStatusUpdateUtils";
+import { wonPayload } from "./LeadWonFields";
 const SELECT_CLASS =
-  "min-h-[38px] rounded-full border border-[#eadfcd] bg-white px-3 py-2 text-xs font-semibold text-[#5d503c] outline-none transition focus:border-[#d7b258] focus:ring-4 focus:ring-[#f6ead0]";
+  "min-h-[38px] rounded-full border border-[#e2e8f0] bg-white px-3 py-2 text-xs font-semibold text-[#475569] outline-none transition focus:border-[#8fd0cb] focus:ring-4 focus:ring-[#d9f0ee]";
 
 export default function LeadQuickStatusControl({
   assigneeOptions = [],
@@ -19,6 +20,9 @@ export default function LeadQuickStatusControl({
   hideLabel = false,
   className = "",
   selectClassName = "",
+  requestedStatus = "",
+  hideSelect = false,
+  onDialogClosed,
 }) {
   const currentStatus = String(lead?.status || "new").toLowerCase();
   const [nextStatus, setNextStatus] = useState(currentStatus);
@@ -36,10 +40,19 @@ export default function LeadQuickStatusControl({
     setError("");
   }, [lead?.lead_id, currentStatus]);
 
+  // Dragging a card on the board asks for a status without using the dropdown.
+  useEffect(() => {
+    if (requestedStatus && requestedStatus !== currentStatus) {
+      setNextStatus(requestedStatus);
+      setDialogOpen(true);
+    }
+  }, [requestedStatus, currentStatus]);
+
   function cancelDialog() {
     setNextStatus(currentStatus);
     setDialogOpen(false);
     setError("");
+    onDialogClosed?.();
   }
 
   async function createNextFollowUp(followUp, note, statusValue = nextStatus) {
@@ -69,12 +82,15 @@ export default function LeadQuickStatusControl({
     return { due, title };
   }
 
-  function saveStatusUpdate({ demo = {}, followUp, isDemoStatus = false, onboardedDate, note }) {
+  function saveStatusUpdate({ demo = {}, followUp, isDemoStatus = false, onboardedDate, note, won }) {
     if (!token || !lead?.lead_id || saveLockRef.current || nextStatus === currentStatus) {
       return;
     }
 
     const submittedStatus = nextStatus;
+    const wonData = won ? wonPayload(won) : null;
+    if (wonData) note = `${note}
+${wonData.note}`;
     const demoFollowUp = isDemoStatus ? { assignee: demo.assignee, date: demo.date, mode: "meeting", required: true, time: demo.time } : followUp;
     const description = buildStatusActivityDescription({ assigneeOptions, currentStatus, demo, followUp: demoFollowUp, lead, nextStatus: submittedStatus, note });
     const optimisticLead = {
@@ -102,6 +118,7 @@ export default function LeadQuickStatusControl({
           requirements: isDemoStatus ? demo.requirement.trim() : undefined,
           onboarded_date: onboardedDate,
           status: submittedStatus,
+          ...(wonData ? wonData.body : {}),
         },
       });
       const scheduled = await createNextFollowUp(demoFollowUp, description, submittedStatus);
@@ -114,6 +131,7 @@ export default function LeadQuickStatusControl({
 
       setNextStatus(String(updatedLead.status || submittedStatus).toLowerCase());
       onUpdated?.(updatedLead, {});
+      onDialogClosed?.();
     })().catch((requestError) => {
       setError(requestError.message);
       setDialogOpen(true);
@@ -125,8 +143,8 @@ export default function LeadQuickStatusControl({
 
   return (
     <div className={`relative min-w-0 ${className}`.trim()}>
-      <div className="flex flex-wrap items-center gap-2">
-        {!hideLabel ? <span className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#9a886d]">Status</span> : null}
+      <div className={`flex flex-wrap items-center gap-2 ${hideSelect ? "hidden" : ""}`.trim()}>
+        {!hideLabel ? <span className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#94a3b8]">Status</span> : null}
         <select
           className={`${SELECT_CLASS} ${selectClassName}`.trim()}
           value={nextStatus}

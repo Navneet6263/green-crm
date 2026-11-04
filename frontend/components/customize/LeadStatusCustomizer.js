@@ -27,25 +27,25 @@ export default function LeadStatusCustomizer({ statuses, onChange }) {
   };
 
   return (
-    <div className="rounded-[24px] border border-[#eadfcd] bg-white shadow-sm overflow-hidden">
+    <div className="rounded-[14px] border border-slate-200 bg-white overflow-hidden">
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between gap-4 px-5 py-4 text-left hover:bg-[#fffaf1] transition-colors"
+        className="w-full flex items-center justify-between gap-4 px-5 py-4 text-left hover:bg-slate-50 transition-colors"
       >
         <div>
-          <h3 className="text-lg font-semibold text-[#060710]">Lead Statuses</h3>
-          <p className="mt-1 text-xs text-[#8f816a]">
+          <h3 className="text-lg font-semibold text-slate-900">Lead Statuses</h3>
+          <p className="mt-1 text-xs text-slate-500">
             Select which statuses to show in your lead pipeline
           </p>
         </div>
         <div className={`transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}>
-          <DashboardIcon name="chevron-down" className="h-5 w-5 text-[#7c6d55]" />
+          <DashboardIcon name="chevron-down" className="h-5 w-5 text-brand-700" />
         </div>
       </button>
 
       {isOpen && (
-        <div className="px-5 pb-5 border-t border-[#eadfcd]/50">
+        <div className="px-5 pb-5 border-t border-slate-100">
           <div className="pt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {DEFAULT_STATUSES.map((status) => {
               const isEnabled = statuses.includes(status.value);
@@ -54,17 +54,17 @@ export default function LeadStatusCustomizer({ statuses, onChange }) {
                   key={status.value}
                   className={`flex items-center gap-3 rounded-[16px] border px-4 py-3 cursor-pointer transition-all ${
                     isEnabled
-                      ? "border-[#7c6d55] bg-[#fffaf1]"
-                      : "border-[#eadfcd] bg-white hover:bg-[#fffaf1]/50"
+                      ? "border-slate-300 bg-slate-50"
+                      : "border-slate-200 bg-white hover:bg-slate-50"
                   }`}
                 >
                   <input
                     type="checkbox"
                     checked={isEnabled}
                     onChange={() => toggleStatus(status.value)}
-                    className="h-4 w-4 rounded border-[#7c6d55] text-[#7c6d55] focus:ring-[#7c6d55]"
+                    className="h-4 w-4 rounded border-slate-300 text-brand-700 focus:ring-brand-200"
                   />
-                  <span className="text-sm font-medium text-[#060710]">{status.label}</span>
+                  <span className="text-sm font-medium text-slate-900">{status.label}</span>
                 </label>
               );
             })}

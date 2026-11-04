@@ -1,6 +1,14 @@
 const taskRepository = require("../repositories/taskRepository");
 const userRepository = require("../repositories/userRepository");
 const auditRepository = require("../repositories/auditRepository");
+const meetingReminders = require("./reminders/meetingReminders");
+const taskReminders = require("./reminders/taskReminders");
+
+/** Adds each task's email reminder (minutes before, or null) for the task form. Never fails the list. */
+async function withReminders(rows) {
+  const map = await taskReminders.minutesFor(rows.map((r) => r.task_id)).catch(() => new Map());
+  return rows.map((r) => ({ ...r, remind_before: map.has(r.task_id) ? map.get(r.task_id) : null }));
+}
 const { ROLES } = require("../constants/roles");
 const { createPrefixedId } = require("../utils/ids");
 const { buildPaginatedResult, parsePagination } = require("../utils/pagination");
@@ -131,7 +139,7 @@ async function listTasks(auth, query) {
   }
 
   const { rows, total } = await taskRepository.listTasks(filters, pagination);
-  return buildPaginatedResult(rows, total, pagination);
+  return buildPaginatedResult(await withReminders(rows), total, pagination);
 }
 
 async function getTask(auth, taskId) {
@@ -152,7 +160,7 @@ async function getTask(auth, taskId) {
     throw new AppError("You can only access your own tasks.", 403);
   }
 
-  return task;
+  return (await withReminders([task]))[0];
 }
 
 async function createTask(auth, payload) {
@@ -170,6 +178,7 @@ async function createTask(auth, payload) {
   if (!payload.title || !payload.due_date) {
     throw new AppError("Task title and due date are required.");
   }
+  if (payload.remind_before !== undefined) taskReminders.parseMinutes(payload.remind_before);
 
   let assignee = payload.assigned_to || auth.userId;
   if (assignee) {
@@ -206,6 +215,8 @@ async function createTask(auth, payload) {
     created_by: auth.userId,
     notes: payload.notes || null,
   });
+  await meetingReminders.track(task).catch((e) => console.warn("[meetings] tracking skipped:", e.message));
+  if (payload.remind_before !== undefined) await taskReminders.setReminder(task, payload.remind_before);
 
   await auditRepository.createLog({
     audit_id: await createPrefixedId("aud"),
@@ -272,6 +283,10 @@ async function updateTask(auth, taskId, payload) {
   };
 
   const updated = await taskRepository.updateTask(task.task_id, task.company_id, updates);
+  const moved = new Date(updated.due_date).getTime() !== new Date(task.due_date).getTime();
+  await meetingReminders.track(updated, { moved }).catch((e) => console.warn("[meetings] tracking skipped:", e.message));
+  if (payload.remind_before !== undefined) await taskReminders.setReminder(updated, payload.remind_before);
+  else if (moved) await taskReminders.followTask(updated).catch((e) => console.warn("[reminders] move skipped:", e.message));
   await auditRepository.createLog({
     audit_id: await createPrefixedId("aud"),
     company_id: task.company_id,

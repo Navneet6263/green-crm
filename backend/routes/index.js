@@ -50,6 +50,9 @@ router.use("/dashboard", dashboardRoutes);
 router.use("/notes", noteRoutes);
 router.use("/recent-activity", recentActivityRoutes);
 router.use("/chat", chatRoutes);
+router.use("/discuss", require("./discussRoutes"));
+router.use("/nudges", require("./nudgeRoutes"));
+router.use("/reports", require("./reportRoutes"));
 router.use("/", leadTransferRoutes);
 
 module.exports = router;

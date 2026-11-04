@@ -46,7 +46,7 @@ export default function LeadTransferModal({ transfer, totalPending, onAcknowledg
         {/* Top Badges */}
         <div className="flex items-center justify-between">
           <div className="mx-auto flex items-center justify-center">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-4 py-1.5 text-xs font-bold text-amber-800 uppercase tracking-wider">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-100 px-4 py-1.5 text-xs font-bold text-brand-800 uppercase tracking-wider">
               📋 Action Required
             </span>
           </div>
@@ -80,8 +80,8 @@ export default function LeadTransferModal({ transfer, totalPending, onAcknowledg
           <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
             Their Note
           </label>
-          <div className="rounded-2xl border border-amber-200 bg-amber-50/50 p-4 text-sm leading-relaxed text-amber-900 font-semibold max-h-36 overflow-y-auto">
-            {transfer.transfer_note || <span className="italic text-amber-500">No notes provided.</span>}
+          <div className="rounded-2xl border border-brand-200 bg-brand-50/50 p-4 text-sm leading-relaxed text-brand-900 font-semibold max-h-36 overflow-y-auto">
+            {transfer.transfer_note || <span className="italic text-brand-500">No notes provided.</span>}
           </div>
         </div>
 

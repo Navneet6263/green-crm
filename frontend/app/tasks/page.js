@@ -10,6 +10,7 @@ import { TaskCard } from "./TaskCard";
 import { TaskFilters } from "./TaskFilters";
 import { TaskTimeline } from "./TaskTimeline";
 import { T, nice } from "./task-tokens";
+import ReminderField from "../../components/calendar/ReminderField";
 
 function when(v) {
   return formatIndiaCustom(v, { day:"numeric", month:"short", hour:"2-digit", minute:"2-digit" });
@@ -57,6 +58,7 @@ function TasksContent({ tasks, loadError, loading, session, refresh }) {
   const [formPriority, setFormPriority] = useState("medium");
   const [formAssignee, setFormAssignee] = useState("");
   const [formNotes, setFormNotes] = useState("");
+  const [formRemind, setFormRemind] = useState("10");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Load CRM users on mount for assignee selector
@@ -105,7 +107,8 @@ function TasksContent({ tasks, loadError, loading, session, refresh }) {
           type: formType,
           priority: formPriority,
           assigned_to: formAssignee || session?.user?.user_id,
-          notes: formNotes.trim() || null
+          notes: formNotes.trim() || null,
+          remind_before: formRemind === "none" ? null : Number(formRemind)
         }
       });
       setActionNotice("Task created successfully!");
@@ -116,6 +119,7 @@ function TasksContent({ tasks, loadError, loading, session, refresh }) {
       setFormType("call");
       setFormPriority("medium");
       setFormNotes("");
+      setFormRemind("10");
       if (refresh) await refresh();
     } catch (err) {
       setActionError(err.message || "Failed to create task");
@@ -302,6 +306,7 @@ function TasksContent({ tasks, loadError, loading, session, refresh }) {
                     type="datetime-local" required value={formDueDate} onChange={e => setFormDueDate(e.target.value)}
                     className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-slate-700 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-250 transition-colors"
                   />
+                  <div className="mt-3"><ReminderField value={formRemind} onChange={setFormRemind} allDay={false} /></div>
                 </div>
 
                 {/* Assignee */}

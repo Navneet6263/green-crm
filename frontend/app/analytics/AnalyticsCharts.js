@@ -2,7 +2,7 @@
 
 import { compact, money } from "./analytics-utils";
 
-const K = "text-[10px] font-bold uppercase tracking-widest text-slate-400";
+const K = "text-[11.5px] font-semibold text-slate-500";
 
 // ── Trend Bar Chart ──────────────────────────────────────────────────────────
 export function TrendChart({ trend }) {
@@ -21,7 +21,7 @@ export function TrendChart({ trend }) {
               <div className="relative flex w-full flex-col items-center justify-end" style={{ height: "120px" }}>
                 {/* Leads bar */}
                 <div
-                  className="w-full rounded-t-lg bg-amber-200 transition-all duration-500 group-hover:bg-amber-300"
+                  className="w-full rounded-t-lg bg-brand-200 transition-all duration-500 group-hover:bg-brand-300"
                   style={{ height: `${leadsH}%` }}
                   title={`${item.leads} leads`}
                 />
@@ -43,7 +43,7 @@ export function TrendChart({ trend }) {
       {/* Legend + summary row */}
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-50 pt-3">
         <div className="flex gap-4 text-xs">
-          <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-amber-200" />Leads</span>
+          <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-brand-200" />Leads</span>
           <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-emerald-400" />Closed</span>
         </div>
         <div className="flex gap-4 text-xs text-slate-400">
@@ -55,11 +55,11 @@ export function TrendChart({ trend }) {
       {/* Data table */}
       <div className="mt-3 space-y-1.5">
         {trend.map((item, i) => (
-          <div key={i} className="flex items-center gap-3 rounded-xl border border-slate-50 bg-slate-50 px-3 py-2">
+          <div key={i} className="flex items-center gap-3 rounded-[10px] border border-slate-50 bg-slate-50 px-3 py-2">
             <span className="w-10 text-xs font-semibold text-slate-500">{item.label}</span>
             <div className="flex-1">
               <div className="h-1.5 overflow-hidden rounded-full bg-slate-200">
-                <div className="h-full rounded-full bg-amber-400 transition-all" style={{ width: `${Math.max(4, Math.round((item.leads/maxLeads)*100))}%` }} />
+                <div className="h-full rounded-full bg-brand-500 transition-all" style={{ width: `${Math.max(4, Math.round((item.leads/maxLeads)*100))}%` }} />
               </div>
             </div>
             <span className="w-8 text-right text-xs font-bold text-slate-700">{item.leads}</span>
@@ -111,7 +111,7 @@ export function SourceDonut({ sourceMix }) {
           <div className="grid h-[116px] w-[116px] place-items-center rounded-full bg-white text-center" style={{ boxShadow: "inset 0 2px 8px rgba(0,0,0,0.06)" }}>
             <div>
               <strong className="block text-2xl font-bold text-slate-900">{compact(total)}</strong>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">leads</span>
+              <span className="text-[11px] font-semibold text-slate-400">leads</span>
             </div>
           </div>
         </div>
@@ -122,7 +122,7 @@ export function SourceDonut({ sourceMix }) {
         {colored.length ? colored.map(item => {
           const pct = total ? Math.round((item.value / total) * 100) : 0;
           return (
-            <div key={item.key} className="flex items-center gap-2.5 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
+            <div key={item.key} className="flex items-center gap-2.5 rounded-[10px] border border-slate-100 bg-slate-50 px-3 py-2">
               <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: item.color }} />
               <span className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-700">{item.label}</span>
               {/* Progress bar */}

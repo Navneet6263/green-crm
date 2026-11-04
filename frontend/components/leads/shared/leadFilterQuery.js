@@ -23,6 +23,8 @@ export function parseLeadFilterSearchParams(searchParams) {
     toDate: readValue(searchParams, "to_date"),
     dateFilterType: readValue(searchParams, "date_filter_type") || "created_at",
     workflowStage: readValue(searchParams, "workflow_stage") || "all",
+    followUp: readValue(searchParams, "follow_up"),
+    stale: readValue(searchParams, "stale") === "1",
     syncKey: searchParams?.toString?.() || "",
   };
 }

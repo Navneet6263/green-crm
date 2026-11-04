@@ -9,28 +9,40 @@ import { AUTH_INPUT_CLASS as INPUT_CLASS, AUTH_PRIMARY_BUTTON_CLASS as PRIMARY_B
 import { apiRequest } from "../../lib/api";
 import { ROLE_HOME_ROUTE } from "../../lib/roles";
 import { saveSession } from "../../lib/session";
+import LoginCodeStep from "./LoginCodeStep";
 
+// The page to open after login (from ?next=), only if it is a page inside this app.
+function safeNext() {
+  if (typeof window === "undefined") return "";
+  const next = new URLSearchParams(window.location.search).get("next") || "";
+  return /^\/(?!\/)[^\s\\]*$/.test(next) && !next.startsWith("/login") ? next : "";
+}
 
 export default function LoginPage() {
   const router = useRouter();
   const [form, setForm] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  // Set when the server asks for the monthly email code: { challenge_id, email_hint }.
+  const [challenge, setChallenge] = useState(null);
 
-  async function handleSubmit(event) {
-    event.preventDefault();
+  function finish(session) {
+    saveSession(session);
+    const role = session?.user?.role || "";
+    router.push(safeNext() || ROLE_HOME_ROUTE[role] || "/dashboard");
+  }
+
+  async function signIn() {
+    const result = await apiRequest("/auth/login", { method: "POST", body: { ...form, email_otp: true } });
+    if (result?.otp_required) setChallenge(result);
+    else finish(result);
+  }
+
+  async function run(action) {
     setLoading(true);
     setError("");
-
     try {
-      const session = await apiRequest("/auth/login", {
-        method: "POST",
-        body: form,
-      });
-
-      saveSession(session);
-      const role = session?.user?.role || "";
-      router.push(ROLE_HOME_ROUTE[role] || "/dashboard");
+      await action();
     } catch (requestError) {
       setError(requestError.message);
     } finally {
@@ -38,14 +50,22 @@ export default function LoginPage() {
     }
   }
 
+  function handleSubmit(event) {
+    event.preventDefault();
+    run(signIn);
+  }
+
+  const verifyCode = (code) => run(async () => finish(await apiRequest("/auth/login/verify-code", { method: "POST", body: { challenge_id: challenge.challenge_id, code } })));
+  const backToPassword = () => { setChallenge(null); setError(""); setForm((current) => ({ ...current, password: "" })); };
+
   return (
     <AuthShell
       modeLabel="Login"
       switchText="New workspace?"
       switchHref="/register"
       switchLabel="Sign up"
-      title="Welcome back"
-      description="Log in with your work email to open the dashboard for your role."
+      title={challenge ? "Check your email" : "Welcome back"}
+      description={challenge ? "Enter the code we just sent to finish signing in." : "Log in with your work email to open the dashboard for your role."}
       sideEyebrow="GreenCRM workspace"
       sideTitle="Your whole sales day, one login away."
       sideCopy="Leads, follow-ups, tasks and team activity — right where you left them."
@@ -58,6 +78,9 @@ export default function LoginPage() {
       <div className="space-y-5">
         {error ? <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div> : null}
 
+        {challenge ? (
+          <LoginCodeStep emailHint={challenge.email_hint} loading={loading} onVerify={verifyCode} onResend={() => run(signIn)} onBack={backToPassword} />
+        ) : (
         <form className="space-y-4" onSubmit={handleSubmit}>
           <label className="block space-y-2">
             <span className="text-xs font-semibold text-slate-600">Work Email</span>
@@ -99,6 +122,7 @@ export default function LoginPage() {
             </Link>
           </div>
         </form>
+        )}
       </div>
     </AuthShell>
   );

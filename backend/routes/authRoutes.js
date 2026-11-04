@@ -10,6 +10,7 @@ const router = express.Router();
 
 router.post("/register", authRateLimiter, asyncHandler(authController.register));
 router.post("/login", authRateLimiter, asyncHandler(authController.login));
+router.post("/login/verify-code", authRateLimiter, asyncHandler(authController.verifyLoginCode));
 router.post("/mobile-otp/request", authRateLimiter, asyncHandler(mobileOtpController.request));
 router.post("/mobile-otp/verify", authRateLimiter, asyncHandler(mobileOtpController.verify));
 router.post("/forgot-password", authRateLimiter, asyncHandler(authController.forgotPassword));

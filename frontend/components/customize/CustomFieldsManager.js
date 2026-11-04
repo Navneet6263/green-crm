@@ -25,25 +25,25 @@ export default function CustomFieldsManager({ customFields, onChange }) {
   };
 
   return (
-    <div className="rounded-[24px] border border-[#eadfcd] bg-white shadow-sm overflow-hidden">
+    <div className="rounded-[14px] border border-slate-200 bg-white overflow-hidden">
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between gap-4 px-5 py-4 text-left hover:bg-[#fffaf1] transition-colors"
+        className="w-full flex items-center justify-between gap-4 px-5 py-4 text-left hover:bg-slate-50 transition-colors"
       >
         <div>
-          <h3 className="text-lg font-semibold text-[#060710]">Custom Fields</h3>
-          <p className="mt-1 text-xs text-[#8f816a]">
+          <h3 className="text-lg font-semibold text-slate-900">Custom Fields</h3>
+          <p className="mt-1 text-xs text-slate-500">
             Add custom fields to capture additional lead information
           </p>
         </div>
         <div className={`transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}>
-          <DashboardIcon name="chevron-down" className="h-5 w-5 text-[#7c6d55]" />
+          <DashboardIcon name="chevron-down" className="h-5 w-5 text-brand-700" />
         </div>
       </button>
 
       {isOpen && (
-        <div className="px-5 pb-5 border-t border-[#eadfcd]/50">
+        <div className="px-5 pb-5 border-t border-slate-100">
           <div className="pt-4 space-y-4">
             {/* Existing Custom Fields */}
             {customFields.length > 0 && (
@@ -51,11 +51,11 @@ export default function CustomFieldsManager({ customFields, onChange }) {
                 {customFields.map((field) => (
                   <div
                     key={field.id}
-                    className="flex items-center justify-between gap-4 rounded-[16px] border border-[#eadfcd] bg-[#fffaf1] px-4 py-3"
+                    className="flex items-center justify-between gap-4 rounded-[16px] border border-slate-200 bg-slate-50 px-4 py-3"
                   >
                     <div className="flex-1">
-                      <p className="text-sm font-medium text-[#060710]">{field.name}</p>
-                      <p className="text-xs text-[#8f816a]">
+                      <p className="text-sm font-medium text-slate-900">{field.name}</p>
+                      <p className="text-xs text-slate-500">
                         Type: {field.type} {field.required && "• Required"}
                       </p>
                     </div>
@@ -72,8 +72,8 @@ export default function CustomFieldsManager({ customFields, onChange }) {
             )}
 
             {/* Add New Field */}
-            <div className="rounded-[18px] border border-[#eadfcd] bg-[#fffaf1] p-4">
-              <p className="text-xs font-bold uppercase tracking-wider text-[#8f816a] mb-3">
+            <div className="rounded-[18px] border border-slate-200 bg-slate-50 p-4">
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">
                 Add New Field
               </p>
               <div className="grid gap-3 sm:grid-cols-2">
@@ -82,12 +82,12 @@ export default function CustomFieldsManager({ customFields, onChange }) {
                   placeholder="Field Name"
                   value={newField.name}
                   onChange={(e) => setNewField({ ...newField, name: e.target.value })}
-                  className="rounded-[12px] border border-[#eadfcd] bg-white px-3 py-2 text-sm text-[#060710] focus:border-[#7c6d55] focus:outline-none focus:ring-1 focus:ring-[#7c6d55]"
+                  className="rounded-[12px] border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-200"
                 />
                 <select
                   value={newField.type}
                   onChange={(e) => setNewField({ ...newField, type: e.target.value })}
-                  className="rounded-[12px] border border-[#eadfcd] bg-white px-3 py-2 text-sm text-[#060710] focus:border-[#7c6d55] focus:outline-none focus:ring-1 focus:ring-[#7c6d55]"
+                  className="rounded-[12px] border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-200"
                 >
                   <option value="text">Text</option>
                   <option value="number">Number</option>
@@ -103,15 +103,15 @@ export default function CustomFieldsManager({ customFields, onChange }) {
                     type="checkbox"
                     checked={newField.required}
                     onChange={(e) => setNewField({ ...newField, required: e.target.checked })}
-                    className="h-3.5 w-3.5 rounded border-[#7c6d55] text-[#7c6d55] focus:ring-[#7c6d55]"
+                    className="h-3.5 w-3.5 rounded border-slate-300 text-brand-700 focus:ring-brand-200"
                   />
-                  <span className="text-xs text-[#8f816a]">Required</span>
+                  <span className="text-xs text-slate-500">Required</span>
                 </label>
                 <button
                   type="button"
                   onClick={addField}
                   disabled={!newField.name.trim()}
-                  className="rounded-[12px] bg-[#7c6d55] px-4 py-2 text-xs font-semibold text-white hover:bg-[#6f614c] disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="rounded-[12px] bg-brand-700 px-4 py-2 text-xs font-semibold text-white hover:bg-brand-800 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Add Field
                 </button>

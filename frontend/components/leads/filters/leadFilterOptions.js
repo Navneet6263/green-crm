@@ -43,7 +43,7 @@ export const LEAD_PRIORITY_OPTIONS = [
   { value: "low", label: "Low" },
   { value: "medium", label: "Medium" },
   { value: "high", label: "High" },
-  { value: "urgent", label: "Urgent" },
+  { value: "high-urgent", label: "High (incl. urgent)" },
 ];
 
 export const LEAD_WORKFLOW_STAGE_OPTIONS = [

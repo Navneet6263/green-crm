@@ -52,11 +52,11 @@ export default function LeadDocumentsPanel({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-[24px] bg-[#fffaf1] p-4">
+      <div className="rounded-[24px] bg-[#f8fafc] p-4">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <span className={kickerClassName}>Upload Documents</span>
-            <p className="mt-2 text-sm leading-6 text-[#6f614c]">
+            <p className="mt-2 text-sm leading-6 text-[#64748b]">
               {helperText || "Upload PDF, image, DOC, or DOCX files for this lead."}
             </p>
           </div>
@@ -74,7 +74,7 @@ export default function LeadDocumentsPanel({
               />
             </label>
           ) : (
-            <div className="rounded-[18px] border border-[#eadfcd] bg-white px-4 py-3 text-sm font-medium text-[#7a6b57]">
+            <div className="rounded-[18px] border border-[#e2e8f0] bg-white px-4 py-3 text-sm font-medium text-[#64748b]">
               Upload access is not available for this role.
             </div>
           )}
@@ -91,22 +91,22 @@ export default function LeadDocumentsPanel({
           {documents.map((file, index) => (
             <div
               key={file.id || `${file.file_name}-${index}`}
-              className="rounded-[22px] bg-[#fffaf1] px-4 py-4"
+              className="rounded-[22px] bg-[#f8fafc] px-4 py-4"
             >
               <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div className="min-w-0">
                   <div className="flex flex-wrap gap-2">
-                    <span className="inline-flex rounded-full border border-[#eadfcd] bg-[#fffaf1] px-3 py-1 text-[11px] font-bold text-[#7c6d55]">
+                    <span className="inline-flex rounded-full border border-[#e2e8f0] bg-[#f8fafc] px-3 py-1 text-[11px] font-bold text-[#64748b]">
                       {file.sourceLabel || "Lead file"}
                     </span>
                     {file.document_type ? (
-                      <span className="inline-flex rounded-full border border-[#eadfcd] bg-white px-3 py-1 text-[11px] font-bold text-[#7c6d55]">
+                      <span className="inline-flex rounded-full border border-[#e2e8f0] bg-white px-3 py-1 text-[11px] font-bold text-[#64748b]">
                         {file.document_type}
                       </span>
                     ) : null}
                   </div>
-                  <strong className="mt-3 block truncate text-sm text-[#060710]">{file.file_name || "Document"}</strong>
-                  <span className="mt-1 block text-xs text-[#7a6b57]">
+                  <strong className="mt-3 block truncate text-sm text-[#0f172a]">{file.file_name || "Document"}</strong>
+                  <span className="mt-1 block text-xs text-[#64748b]">
                     {file.uploaded_by_name || "Team"} | {renderWhen(file.uploaded_at, true)} | {formatFileSize(file.file_size)}
                   </span>
                 </div>
@@ -123,7 +123,7 @@ export default function LeadDocumentsPanel({
           ))}
         </div>
       ) : (
-        <div className="rounded-[22px] border border-dashed border-[#ddd0bb] bg-[#fffaf1] px-4 py-10 text-center text-sm text-[#7a6b57]">
+        <div className="rounded-[22px] border border-dashed border-[#e2e8f0] bg-[#f8fafc] px-4 py-10 text-center text-sm text-[#64748b]">
           {emptyMessage}
         </div>
       )}

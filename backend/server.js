@@ -23,9 +23,11 @@ async function startServer() {
   // Start background jobs
   try {
     const { startCleanupJob } = require("./jobs/cleanupJob");
-    const { startSubscriptionExpiryJob } = require("./jobs/subscriptionExpiryJob");
     startCleanupJob();
-    startSubscriptionExpiryJob();
+    // Plan renewals (won leads and customer subscriptions) are reminded by the renewal job below.
+    require("./jobs/inboxSyncJob").startInboxSyncJob();
+    require("./jobs/renewalReminderJob").startRenewalReminderJob();
+    require("./jobs/reminderEmailJob").startReminderEmailJob();
   } catch (jobError) {
     console.error("Failed to start background jobs:", jobError.message);
   }

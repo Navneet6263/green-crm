@@ -69,6 +69,8 @@ function createApp() {
   app.use(express.json({
     limit: "1mb",
     verify: captureRawBody,
+    // Admin emails carry a screenshot; their route reads the body with a larger limit.
+    type: (req) => Boolean(req.is("application/json")) && !/^\/api\/nudges\/?(\?|$)/.test(req.originalUrl || ""),
   }));
   app.use(express.urlencoded({ extended: false, limit: "1mb", verify: captureRawBody }));
   app.use(globalRateLimiter);

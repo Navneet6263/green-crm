@@ -94,3 +94,9 @@ test('only the chosen sheets and columns are written, in order', async () => {
 test('unknown sheets are rejected', async () => {
   await assert.rejects(() => buildUpdatesWorkbook(rows, { from: '2026-10-26', to: '2026-10-28', filters: [], total: 3, generatedBy: 'A' }, { sheets: 'nope' }), /Unknown report sheet/);
 });
+
+test('the system change list is not treated as what the person wrote', () => {
+  const p = parseNote('Follow-up Status\nCalling status: Connected\n\nNotes:\nWill confirm Friday\n\nChanges:\nFollow-up date: a -> b');
+  assert.equal(p.note, 'Will confirm Friday');
+  assert.equal(p.kind, 'followup');
+});

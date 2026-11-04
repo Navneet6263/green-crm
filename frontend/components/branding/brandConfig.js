@@ -9,6 +9,9 @@ export const BRAND_LOGO = {
   alt: `${BRAND_NAME} logo`,
 };
 
+// The same logo for dark backgrounds (navy sidebar): green letters in white, gold CRM unchanged.
+export const BRAND_LOGO_ON_DARK = "/brand/greencrm-logo-on-dark.svg";
+
 export const BRAND_ICONS = {
   icon192: {
     src: "/brand/crm-icon-192.png",

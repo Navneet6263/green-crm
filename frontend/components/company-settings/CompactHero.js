@@ -1,53 +1,29 @@
-import { KICKER_CLASS } from "./constants";
-
 export default function CompactHero({ company, draft }) {
   const stats = company
     ? [
-        { label: "Currency", value: company.settings_currency || "INR" },
-        { label: "Timezone", value: company.settings_timezone || "Asia/Kolkata" },
-        { label: "SMTP", value: company.smtp_host ? "Custom" : "Platform" },
-        { label: "Login", value: draft.login_url ? "Custom" : "Default" },
+        ["Currency", company.settings_currency || "INR"],
+        ["Time zone", company.settings_timezone || "Asia/Kolkata"],
+        ["Email sending", company.smtp_host ? "Own mail server" : "GreenCRM mail"],
+        ["Login page", draft.login_url ? "Custom" : "Default"],
       ]
     : [];
-
   return (
-    <div className="rounded-[24px] border border-[#eadfcd] bg-gradient-to-br from-white via-[#fffaf1] to-[#fff6e4] p-5 shadow-sm">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <span className={`${KICKER_CLASS} inline-block mb-2`}>Company Settings</span>
-          <h1 className="text-2xl font-bold text-[#060710] lg:text-3xl">
-            {company?.name || "Company Configuration"}
-          </h1>
-          <p className="mt-2 text-sm text-[#746853] max-w-2xl">
-            Manage tenant identity, SMTP delivery, and authentication settings
-          </p>
-        </div>
-
-        <div className="flex flex-col gap-3">
-          <div className="grid grid-cols-2 gap-2 lg:grid-cols-4 lg:gap-3">
-            {stats.map((item) => (
-              <div 
-                key={item.label} 
-                className="rounded-[16px] border border-[#eadfcd] bg-white/80 px-3 py-2.5 text-center"
-              >
-                <p className="text-[10px] font-bold uppercase tracking-wider text-[#8f816a]">
-                  {item.label}
-                </p>
-                <p className="mt-1 text-sm font-semibold text-[#060710]">
-                  {item.value}
-                </p>
-              </div>
-            ))}
-          </div>
-          
-          <a
-            href="/settings/customize"
-            className="rounded-[16px] border border-[#7c6d55] bg-[#7c6d55] px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-[#6f614c] transition-colors"
-          >
-            🎨 Customize CRM
-          </a>
-        </div>
+    <section className="flex flex-wrap items-center gap-4 rounded-[14px] bg-white p-4 ring-1 ring-slate-200 sm:p-5">
+      <span className="grid h-12 w-12 shrink-0 place-items-center rounded-[12px] bg-gradient-to-br from-brand-500 to-brand-700 text-[17px] font-bold text-white">
+        {String(company?.name || "C").slice(0, 1).toUpperCase()}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-[17px] font-bold text-slate-900">{company?.name || "Your company"}</p>
+        <p className="text-[12.5px] text-slate-500">Company ID {company?.company_id}</p>
       </div>
-    </div>
+      <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {stats.map(([label, value]) => (
+          <div key={label} className="rounded-[10px] bg-slate-50 px-3 py-2 ring-1 ring-slate-100">
+            <dt className="text-[11px] font-semibold text-slate-500">{label}</dt>
+            <dd className="text-[13px] font-semibold text-slate-900">{value}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
   );
 }

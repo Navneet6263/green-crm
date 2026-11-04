@@ -224,7 +224,7 @@ function getTransporter(config) {
   return transporterCache.get(cacheKey);
 }
 
-async function sendEmail({ company = null, platformCompany = null, to, cc = [], subject, html, text, replyTo, redactErrors = false }) {
+async function sendEmail({ company = null, platformCompany = null, to, cc = [], subject, html, text, replyTo, attachments, messageId, headers, redactErrors = false }) {
   const transportConfig = buildTransportConfig(company, platformCompany);
 
   if (!transportConfig) {
@@ -245,6 +245,9 @@ async function sendEmail({ company = null, platformCompany = null, to, cc = [], 
       html,
       text,
       replyTo: replyTo || transportConfig.replyTo || transportConfig.from,
+      ...(attachments?.length ? { attachments } : {}),
+      ...(messageId ? { messageId } : {}),
+      ...(headers ? { headers } : {}),
     });
 
     return {
@@ -478,7 +481,9 @@ async function dispatchUserCredentialsEmail(payload) {
 }
 
 module.exports = {
+  buildTransportConfig,
   buildPasswordResetUrl,
+  escapeHtml,
   dispatchUserCredentialsEmail,
   getFrontendUrl,
   getLoginUrl,

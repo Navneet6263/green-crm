@@ -12,6 +12,7 @@ router.post(
 );
 
 router.use(asyncHandler(authenticate));
+router.use(asyncHandler(require("../middlewares/requireCommunicationsPlan")));
 
 router.post("/send", asyncHandler(communicationsController.send));
 router.post("/email", asyncHandler(communicationsController.send));

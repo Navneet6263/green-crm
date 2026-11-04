@@ -8,8 +8,10 @@ import { apiRequest } from "../../lib/api";
 import { PLATFORM_CONSOLE_ROLES, ROLE_HOME_ROUTE } from "../../lib/roles";
 import { clearSession } from "../../lib/session";
 import { useLiveSessionProfile } from "../../lib/useLiveSessionProfile";
-import AppLogo from "../branding/AppLogo";
+import { BRAND_ICONS, BRAND_LOGO_ON_DARK } from "../branding/brandConfig";
 import DashboardIcon from "./icons";
+import HeaderQuickActions from "./HeaderQuickActions";
+import ThemeToggle from "../ui/ThemeToggle";
 import { getRoleMeta } from "./shell-config";
 import { useLeadTransfers } from "../leads/useLeadTransfers";
 import LeadTransferModal from "../leads/LeadTransferModal";
@@ -78,7 +80,7 @@ const ACCESS_ROUTE_RULES = [
   { prefix: "/calendar", accessKey: "tasks", label: "Calendar" },
   { prefix: "/communications", accessKey: "communications", label: "Communications" },
   { prefix: "/attendance", accessKey: "attendance", label: "Attendance" },
-  { prefix: "/analytics", accessKey: "analytics", label: "Analytics" },
+  { prefix: "/pipeline", accessKey: ["analytics", "workflow"], label: "Pipeline" },
   { prefix: "/support", accessKey: "support", label: "Support" },
   { prefix: "/documents", accessKey: "documents", label: "Documents" },
   { prefix: "/performance", accessKey: "performance", label: "Performance" },
@@ -113,7 +115,14 @@ function getBlockedFeature(pathname, role, companyAccess) {
     return null;
   }
 
-  return companyAccess[matchedRule.accessKey] === false ? matchedRule : null;
+  return isAccessOff(companyAccess, matchedRule.accessKey) ? matchedRule : null;
+}
+
+/** A page with a list of features (like Pipeline: analytics and workflow) is off only when all of them are off. */
+function isAccessOff(companyAccess, accessKey) {
+  if (!accessKey) return false;
+  const keys = Array.isArray(accessKey) ? accessKey : [accessKey];
+  return keys.every((key) => companyAccess[key] === false);
 }
 
 function SidebarNavItem({ item, active, exactActive, collapsed }) {
@@ -138,17 +147,17 @@ function SidebarNavItem({ item, active, exactActive, collapsed }) {
         "group relative flex items-center gap-3 rounded-[10px] px-3 py-2 text-[13.5px] transition",
         collapsed && "lg:justify-center lg:px-0",
         active
-          ? "bg-brand-50 font-semibold text-brand-900"
-          : "font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+          ? "bg-white/[0.09] font-semibold text-white"
+          : "font-medium text-[#b8c4dc] hover:bg-white/[0.05] hover:text-white"
       )}
     >
       {active ? <span className="absolute -left-3 top-2 bottom-2 w-[3px] rounded-r-full bg-gold-500" /> : null}
       <DashboardIcon
         name={item.icon}
-        className={cn("h-[18px] w-[18px] shrink-0 transition", active ? "text-brand-700" : "text-slate-400 group-hover:text-brand-600")}
+        className={cn("h-[18px] w-[18px] shrink-0 transition", active ? "text-gold-400" : "text-[#7f8db0] group-hover:text-white")}
       />
       <span className={cn("min-w-0 flex-1 truncate", collapsed && "lg:hidden")}>{item.label}</span>
-      {item.target === "_blank" && !collapsed ? <span className="text-[11px] text-slate-300">↗</span> : null}
+      {item.target === "_blank" && !collapsed ? <span className="text-[11px] text-[#7f8db0]">↗</span> : null}
     </Link>
   );
 }
@@ -172,7 +181,6 @@ export default function DashboardShell({ session: initialSession, children, titl
   const accountRef = useRef(null);
   const sidebarRef = useRef(null);
   const [collapsed, setCollapsed] = useState(false);
-  const [headerSearch, setHeaderSearch] = useState("");
 
   useEffect(() => {
     try {
@@ -194,18 +202,12 @@ export default function DashboardShell({ session: initialSession, children, titl
     });
   }
 
-  function submitHeaderSearch(event) {
-    event.preventDefault();
-    const query = headerSearch.trim();
-    router.push(query ? `/leads?search=${encodeURIComponent(query)}` : "/leads");
-  }
-
   const role = session?.user?.role || "viewer";
   const roleMeta = getRoleMeta(role);
   const settingsHref = PLATFORM_CONSOLE_ROLES.includes(role)
     ? "/super-admin"
     : ["admin"].includes(role)
-      ? "/settings/company"
+      ? "/settings"
       : "/settings/profile";
   const showSeparateSettingsLink = settingsHref !== "/settings/profile";
   const unreadNotifications = notifications.filter((item) => !item.is_read);
@@ -219,7 +221,7 @@ export default function DashboardShell({ session: initialSession, children, titl
         .map((section) => ({
           ...section,
           items: section.items.filter(
-            (item) => !item.accessKey || companyAccess[item.accessKey] !== false
+            (item) => !isAccessOff(companyAccess, item.accessKey)
           ),
         }))
         .filter((section) => section.items.length),
@@ -420,8 +422,6 @@ export default function DashboardShell({ session: initialSession, children, titl
   }
 
   const userName = session?.user?.name || session?.user?.full_name || "Preview User";
-  const canSearchLeads = visibleSections.some((section) => section.items.some((item) => item.href === "/leads"));
-  const todayLabel = new Date().toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
 
   return (
       <div className="min-h-screen bg-[#f7f8f6] text-slate-900">
@@ -435,23 +435,24 @@ export default function DashboardShell({ session: initialSession, children, titl
 
       <aside
         className={cn(
-          "tw-buttons fixed inset-y-0 left-0 z-40 flex w-[256px] flex-col border-r border-slate-200/80 bg-white transition-[transform,width] duration-300 lg:translate-x-0",
+          "theme-light tw-buttons fixed inset-y-0 left-0 z-40 flex w-[256px] flex-col bg-[#0a1430] bg-gradient-to-b from-[#0c1a38] to-[#060d1f] text-white shadow-[4px_0_24px_-12px_rgba(11,22,48,0.6)] transition-[transform,width] duration-300 lg:translate-x-0",
           collapsed ? "lg:w-[76px]" : "lg:w-[248px]",
           navOpen ? "translate-x-0" : "-translate-x-[112%]"
         )}
       >
-        <div className={cn("flex h-[60px] shrink-0 items-center justify-between gap-2 border-b border-slate-100 px-4", collapsed && "lg:justify-center lg:px-2")}>
-          <Link href={ROLE_HOME_ROUTE[role] || "/"} prefetch={false} className={cn("inline-flex max-w-[9.5rem] items-center", collapsed && "lg:hidden")}>
-            <AppLogo size="sm" variant="sidebar" priority />
+        <div className={cn("flex h-[60px] shrink-0 items-center justify-between gap-2 border-b border-black/40 px-4", collapsed && "lg:justify-center lg:px-2")}>
+          {/* The landing logo with its dark green turned white, so it reads on navy. Gold CRM is unchanged. */}
+          <Link href={ROLE_HOME_ROUTE[role] || "/"} prefetch={false} aria-label="GreenCRM home" className={cn("inline-flex items-center", collapsed && "lg:hidden")}>
+            <img src={BRAND_LOGO_ON_DARK} alt="GreenCRM logo" width={136} height={24} className="h-auto w-[136px]" />
           </Link>
           {collapsed ? (
-            <Link href={ROLE_HOME_ROUTE[role] || "/"} prefetch={false} className="hidden h-9 w-9 place-items-center rounded-[10px] bg-brand-700 text-sm font-black text-white lg:grid" title="GreenCRM">
-              G
+            <Link href={ROLE_HOME_ROUTE[role] || "/"} prefetch={false} className="hidden lg:block" title="GreenCRM">
+              <img src={BRAND_ICONS.icon192.src} alt="GreenCRM" width={36} height={36} className="h-9 w-9 rounded-[10px]" />
             </Link>
           ) : null}
           <button
             type="button"
-            className="grid h-9 w-9 place-items-center rounded-[10px] text-slate-500 hover:bg-slate-100 lg:hidden"
+            className="grid h-9 w-9 place-items-center rounded-[10px] text-[#b8c4dc] hover:bg-white/10 lg:hidden"
             onClick={() => setNavOpen(false)}
             aria-label="Close navigation"
           >
@@ -459,13 +460,13 @@ export default function DashboardShell({ session: initialSession, children, titl
           </button>
         </div>
 
-        <nav ref={sidebarRef} className="flex-1 space-y-5 overflow-y-auto px-3 py-4" aria-label="Main navigation">
+        <nav ref={sidebarRef} className="flex-1 space-y-5 overflow-y-auto overscroll-contain px-3 py-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Main navigation">
           {visibleSections.map((section) => (
             <div key={section.title}>
-              <p className={cn("px-3 pb-1.5 text-[10.5px] font-bold uppercase tracking-[0.14em] text-slate-400", collapsed && "lg:hidden")}>
+              <p className={cn("px-3 pb-1.5 text-[10.5px] font-bold uppercase tracking-[0.14em] text-[#6f7fa3]", collapsed && "lg:hidden")}>
                 {section.title}
               </p>
-              {collapsed ? <div className="mx-auto mb-2 hidden h-px w-8 bg-slate-100 lg:block" /> : null}
+              {collapsed ? <div className="mx-auto mb-2 hidden h-px w-8 bg-white/10 lg:block" /> : null}
               <div className="space-y-0.5">
                 {section.items.map((item) => (
                   <SidebarNavItem
@@ -481,23 +482,10 @@ export default function DashboardShell({ session: initialSession, children, titl
           ))}
         </nav>
 
-        <div className="shrink-0 border-t border-slate-100 p-3">
-          <div className={cn("flex items-center gap-3 rounded-[12px] px-2 py-2", collapsed && "lg:justify-center lg:px-0")}>
-            <Link href="/settings/profile" prefetch={false} title={collapsed ? userName : undefined}
-              className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-50 text-xs font-bold text-brand-800 ring-1 ring-brand-100">
-              {getInitials(userName)}
-            </Link>
-            <Link href="/settings/profile" prefetch={false} className={cn("min-w-0 flex-1", collapsed && "lg:hidden")}>
-              <strong className="block truncate text-[13px] font-semibold text-slate-900">{userName}</strong>
-              <span className="block truncate text-xs text-slate-500">{roleMeta.label}</span>
-            </Link>
-            <button type="button" onClick={logout} title="Logout" aria-label="Logout"
-              className={cn("grid h-8 w-8 shrink-0 place-items-center rounded-[8px] text-slate-400 transition hover:bg-rose-50 hover:text-rose-600", collapsed && "lg:hidden")}>
-              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" /></svg>
-            </button>
-          </div>
+        {/* Name and log out live in the top-right account menu; the sidebar only keeps Collapse. */}
+        <div className="hidden shrink-0 border-t border-black/40 p-3 lg:block">
           <button type="button" onClick={toggleCollapsed} aria-pressed={collapsed} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            className="mt-1 hidden w-full items-center justify-center gap-2 rounded-[8px] py-2 text-xs font-medium text-slate-400 transition hover:bg-slate-50 hover:text-slate-700 lg:flex">
+            className="hidden w-full items-center justify-center gap-2 rounded-[8px] py-2 text-xs font-medium text-[#7f8db0] transition hover:bg-white/[0.05] hover:text-white lg:flex">
             <svg className={cn("h-4 w-4 transition-transform", collapsed ? "rotate-180" : "")} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m15 18-6-6 6-6" /></svg>
             {collapsed ? null : "Collapse"}
           </button>
@@ -517,25 +505,7 @@ export default function DashboardShell({ session: initialSession, children, titl
                 <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
               </button>
 
-              <div className="hidden min-w-0 leading-tight sm:block">
-                <p className="text-[11px] font-medium text-slate-400">{todayLabel}</p>
-                <p className="truncate text-[15px] font-semibold text-slate-900">{title || roleMeta.label}</p>
-              </div>
-
-              {canSearchLeads ? (
-                <form onSubmit={submitHeaderSearch} className="ml-2 hidden max-w-md flex-1 md:block" role="search">
-                  <label className="flex items-center gap-2 rounded-[10px] border border-slate-200 bg-slate-50 px-3 py-2 text-slate-400 transition focus-within:border-brand-300 focus-within:bg-white focus-within:ring-4 focus-within:ring-brand-50">
-                    <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
-                    <input
-                      value={headerSearch}
-                      onChange={(event) => setHeaderSearch(event.target.value)}
-                      placeholder="Search leads by name, company or phone"
-                      aria-label="Search leads"
-                      className="min-w-0 flex-1 bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400"
-                    />
-                  </label>
-                </form>
-              ) : null}
+              <span className="sr-only">{title || roleMeta.label}</span>
 
               <div className="ml-auto flex items-center gap-1.5">
                 {role !== "expert" ? (
@@ -552,6 +522,8 @@ export default function DashboardShell({ session: initialSession, children, titl
                   </div>
                 ) : null}
 
+                <ThemeToggle />
+                {role !== "expert" ? <HeaderQuickActions token={session?.token} /> : null}
                 {role !== "expert" ? (
                   <Link href="/recent-updates" prefetch={false} title="Recent updates" aria-label="Recent updates"
                     className="grid h-9 w-9 place-items-center rounded-[10px] text-slate-500 transition hover:bg-slate-100 hover:text-slate-800">
@@ -559,7 +531,7 @@ export default function DashboardShell({ session: initialSession, children, titl
                   </Link>
                 ) : null}
                 {role !== "expert" ? (
-                  <Link href="/communications" prefetch={false} title="Communications" aria-label="Open communications"
+                  <Link href="/email" prefetch={false} title="Email" aria-label="Open email"
                     className="grid h-9 w-9 place-items-center rounded-[10px] text-slate-500 transition hover:bg-slate-100 hover:text-slate-800">
                     <DashboardIcon name="mail" className="h-[18px] w-[18px]" />
                   </Link>

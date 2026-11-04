@@ -12,16 +12,15 @@ export default function CompanySnapshotPanel({ company, draft }) {
 
   return (
     <article className={PANEL_CLASS}>
-      <div className="mb-5">
-        <p className={KICKER_CLASS}>Company Snapshot</p>
-        <h3 className="mt-2 text-2xl font-semibold tracking-tight text-[#060710]">Tenant reference</h3>
+      <div className="mb-3">
+        <h3 className="text-[14.5px] font-bold text-slate-900">At a glance</h3>
       </div>
 
-      <div className="grid gap-3">
+      <div className="grid gap-2">
         {items.map(([label, value]) => (
-          <div key={label} className="rounded-[22px] border border-[#eadfcd] bg-[#fffaf1] px-4 py-4">
+          <div key={label} className="rounded-[10px] bg-slate-50 px-3 py-2 ring-1 ring-slate-100">
             <span className={KICKER_CLASS}>{label}</span>
-            <strong className="mt-3 block text-sm leading-6 text-[#060710]">{value || "--"}</strong>
+            <strong className="mt-0.5 block text-[13px] text-slate-900">{value || "--"}</strong>
           </div>
         ))}
       </div>

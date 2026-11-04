@@ -28,7 +28,7 @@ export default function LeadTransferPanel({
       <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
         <div>
           <p className={LEAD_KICKER_CLASS}>Closed Won</p>
-          <h4 className="mt-2 text-lg font-semibold text-[#060710]">Transfer this lead to legal</h4>
+          <h4 className="mt-2 text-lg font-semibold text-[#0f172a]">Transfer this lead to legal</h4>
         </div>
         <div className="grid gap-3 xl:min-w-[420px] xl:grid-cols-[0.9fr_1.1fr_auto]">
           <label className="space-y-2">
@@ -41,7 +41,7 @@ export default function LeadTransferPanel({
                 </option>
               ))}
             </select>
-            {!scopedLegalUsers.length ? <p className="text-xs font-medium text-[#8d6e27]">{legalUsersMessage}</p> : null}
+            {!scopedLegalUsers.length ? <p className="text-xs font-medium text-[#0c605d]">{legalUsersMessage}</p> : null}
           </label>
           <label className="space-y-2">
             <span className={LEAD_KICKER_CLASS}>Transfer Note *</span>

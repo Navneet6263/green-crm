@@ -11,6 +11,12 @@ async function login(req, res) {
   res.json({ data });
 }
 
+async function verifyLoginCode(req, res) {
+  res.set("Cache-Control", "no-store");
+  const data = await authService.verifyLoginCode(req.body);
+  res.json({ data });
+}
+
 async function checkAuth(req, res) {
   const data = await authService.checkAuth(req.auth);
   res.json({ data });
@@ -98,4 +104,5 @@ module.exports = {
   updateProfile,
   updateUser,
   verify,
+  verifyLoginCode,
 };

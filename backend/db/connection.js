@@ -249,6 +249,8 @@ async function initializeDatabase() {
       await ensureLeadTransferTable(pool).catch((error) => {
         console.warn("Lead transfer table bootstrapping failed:", error.message);
       });
+      // After the chat tables, since Discuss adds columns to them.
+      await require("./featureTables").ensureFeatureTables(pool);
       return pool;
     })().catch((error) => {
       poolPromise = null;

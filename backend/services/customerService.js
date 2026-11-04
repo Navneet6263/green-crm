@@ -69,6 +69,10 @@ async function buildCustomerFilters(auth, query) {
     followUp: query.follow_up || null,
     sort: query.sort || "recent",
     includeSummary: query.include_summary === "1",
+    payment: query.payment || null,
+    onboarding: query.onboarding || null,
+    renewal: query.renewal || null,
+    attention: query.attention || null,
     assignedTo: null,
     teamIds: null,
   };
@@ -110,7 +114,8 @@ async function listCustomers(auth, query) {
   }
 
   const { rows, total, summary, creators } = await customerRepository.listCustomers(filters, pagination);
-  const result = buildPaginatedResult(rows, total, pagination);
+  const { customerHealth } = require("./customers/customerHealth");
+  const result = buildPaginatedResult(rows.map((row) => ({ ...row, health: customerHealth(row) })), total, pagination);
   if (summary) result.meta.summary = summary;
   if (creators) result.meta.creators = creators;
   return result;
@@ -515,6 +520,9 @@ async function addCustomerSubscription(auth, customerId, payload) {
     total_value: newTotal
   });
 
+  await require("./renewals/renewalReminders").scheduleSubscriptionRenewal(customer, subscription, auth.userId)
+    .catch((error) => console.warn("[renewals] could not schedule:", error.message));
+
   // Log activity
   await customerActivityRepository.createActivity({
     company_id: customer.company_id,
@@ -528,6 +536,7 @@ async function addCustomerSubscription(auth, customerId, payload) {
 }
 
 module.exports = {
+  buildCustomerFilters,
   addCustomerFollowUp,
   addCustomerMember,
   addCustomerNote,

@@ -38,7 +38,7 @@ export default function LeadFilterSelect({
           ))}
         </select>
       )}
-      {helperText ? <p className="text-xs font-medium text-[#8f816a]">{helperText}</p> : null}
+      {helperText ? <p className="text-xs font-medium text-[#94a3b8]">{helperText}</p> : null}
     </label>
   );
 }

@@ -129,9 +129,55 @@ function inferTotalFromPage(rows, pagination) {
   return null;
 }
 
+// Sort choices for the leads list. Only these columns can reach the SQL.
+const LEAD_SORTS = {
+  created_at: "l.created_at",
+  updated_at: "l.updated_at",
+  follow_up_date: "l.follow_up_date",
+  estimated_value: "l.estimated_value",
+  company_name: "l.company_name",
+  contact_person: "l.contact_person",
+  status: "l.status",
+  priority: "CASE l.priority WHEN 'urgent' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 ELSE 1 END",
+  assigned_to_name: "assignee.name",
+};
+const STALE_DAYS = 7;
+
+function buildLeadOrder(filters) {
+  const column = LEAD_SORTS[filters.sort];
+  if (!column) return "l.created_at DESC, l.id DESC";
+  const direction = filters.sortDir === "desc" ? "DESC" : "ASC";
+  // Leads without a follow-up date or owner always go last.
+  const nullsLast = ["follow_up_date", "assigned_to_name"].includes(filters.sort) ? `CASE WHEN ${column} IS NULL THEN 1 ELSE 0 END, ` : "";
+  return `${nullsLast}${column} ${direction}, l.id DESC`;
+}
+
+function staleCutoff(now = new Date()) {
+  return new Date(now.getTime() - STALE_DAYS * 86400000);
+}
+
 function buildWhere(filters) {
-  const conditions = ["l.is_active = 1"];
+  // Deleted (archived) leads only show in the Deleted leads list.
+  const conditions = [filters.deletedOnly ? "l.is_active = 0" : "l.is_active = 1"];
   const params = [];
+
+  if (filters.followUp) {
+    const due = require("../utils/workQueue").buildDuePredicate("l.follow_up_date", filters.followUp);
+    conditions.push(`(${due.clause})`);
+    params.push(...due.params);
+    if (filters.followUp === "overdue") {
+      conditions.push("l.follow_up_date IS NOT NULL");
+      conditions.push(`l.status IN (${OPEN_PIPELINE_STATUSES.map(() => "?").join(", ")})`);
+      params.push(...OPEN_PIPELINE_STATUSES);
+    }
+  }
+
+  if (filters.stale) {
+    conditions.push("l.updated_at < ?");
+    params.push(staleCutoff());
+    conditions.push(`l.status IN (${OPEN_PIPELINE_STATUSES.map(() => "?").join(", ")})`);
+    params.push(...OPEN_PIPELINE_STATUSES);
+  }
 
   if (filters.companyId) {
     conditions.push("l.company_id = ?");
@@ -219,7 +265,9 @@ function buildWhere(filters) {
     params.push("legal", "finance", "completed");
   }
 
-  if (filters.priority) {
+  if (filters.priority === "high-urgent") {
+    conditions.push("l.priority IN ('high', 'urgent')");
+  } else if (filters.priority) {
     conditions.push("l.priority = ?");
     params.push(filters.priority);
   }
@@ -264,6 +312,46 @@ function buildWhere(filters) {
     whereClause: `WHERE ${conditions.join(" AND ")}`,
     params,
   };
+}
+
+/** Counts behind the Leads page cards, for the same people and filters as the list. */
+async function getLeadCounts(filters, executor) {
+  const active = getExecutor(executor);
+  const { whereClause, params } = buildWhere(filters);
+  const { getIndiaDayStartUtc } = require("../utils/indiaDateBuckets");
+  const todayStart = getIndiaDayStartUtc(new Date());
+  const tomorrow = new Date(todayStart.getTime() + 86400000);
+  const weekAgo = new Date(todayStart.getTime() - 6 * 86400000);
+  const open = OPEN_PIPELINE_STATUSES.map(() => "?").join(", ");
+  const openParams = OPEN_PIPELINE_STATUSES;
+  const [rows] = await active.query(
+    `
+      SELECT
+        COUNT(*) AS total,
+        SUM(CASE WHEN l.status IN (${open}) THEN 1 ELSE 0 END) AS open_leads,
+        SUM(CASE WHEN l.status IN (${open}) AND l.follow_up_date < ? THEN 1 ELSE 0 END) AS overdue,
+        SUM(CASE WHEN l.follow_up_date >= ? AND l.follow_up_date < ? THEN 1 ELSE 0 END) AS today,
+        SUM(CASE WHEN l.assigned_to IS NULL THEN 1 ELSE 0 END) AS unassigned,
+        SUM(CASE WHEN l.created_at >= ? THEN 1 ELSE 0 END) AS new_this_week,
+        SUM(CASE WHEN l.status IN (${open}) AND l.updated_at < ? THEN 1 ELSE 0 END) AS stale,
+        SUM(CASE WHEN l.status IN (${open}) AND l.priority IN ('high', 'urgent') THEN 1 ELSE 0 END) AS high_priority,
+        SUM(CASE WHEN l.status = 'closed-won' THEN 1 ELSE 0 END) AS won,
+        SUM(CASE WHEN l.status = 'closed-lost' THEN 1 ELSE 0 END) AS lost,
+        SUM(CASE WHEN l.status IN (${open}) THEN COALESCE(l.estimated_value, 0) ELSE 0 END) AS pipeline_value,
+        SUM(COALESCE(l.advance_received, 0)) AS advance_received,
+        SUM(COALESCE(l.estimated_value, 0)) AS lead_value,
+        SUM(CASE WHEN COALESCE(l.total_lead_value, l.estimated_value, 0) > COALESCE(l.advance_received, 0)
+          THEN COALESCE(l.total_lead_value, l.estimated_value, 0) - COALESCE(l.advance_received, 0) ELSE 0 END) AS pending_amount,
+        SUM(CASE WHEN COALESCE(l.advance_received, 0) > 0 THEN 1 ELSE 0 END) AS paid_leads
+      FROM leads l
+      ${whereClause}
+    `,
+    [...openParams, ...openParams, todayStart, todayStart, tomorrow, weekAgo, ...openParams, staleCutoff(), ...openParams, ...openParams, ...params]
+  );
+  const row = rows[0] || {};
+  const deletedScope = buildWhere({ ...filters, deletedOnly: true });
+  const [deletedRows] = await active.query(`SELECT COUNT(*) AS deleted FROM leads l ${deletedScope.whereClause}`, deletedScope.params);
+  return Object.fromEntries(Object.entries({ ...row, deleted: deletedRows[0]?.deleted }).map(([key, value]) => [key, Number(value || 0)]));
 }
 
 async function getLeadById(leadId, companyId, executor) {
@@ -399,7 +487,7 @@ async function listLeads(filters, pagination, executor) {
       LEFT JOIN users creator ON creator.user_id = l.created_by
       LEFT JOIN teams team ON team.team_id = l.team_id
       ${whereClause}
-      ORDER BY l.created_at DESC, l.id DESC
+      ORDER BY ${buildLeadOrder(filters)}
       OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
     `,
     [...params, pagination.offset, pagination.limit]
@@ -925,6 +1013,20 @@ async function getUserProductHistory(userId, companyId, teamIds = null, executor
   return rows;
 }
 
+async function findLeadsByPhones(companyId, phones, executor) {
+  const active = getExecutor(executor);
+  const found = [];
+  for (let i = 0; i < phones.length; i += 500) {
+    const part = phones.slice(i, i + 500);
+    const [rows] = await active.query(
+      `SELECT lead_id, phone, team_id, contact_person, company_name FROM leads WHERE company_id = ? AND is_active = 1 AND phone IN (${part.map(() => "?").join(", ")})`,
+      [companyId, ...part]
+    );
+    found.push(...rows);
+  }
+  return found;
+}
+
 async function findLeadByPhoneInTeam(phone, teamId, excludeLeadId = null, executor) {
   const active = getExecutor(executor);
   const params = [phone, teamId];
@@ -953,10 +1055,13 @@ module.exports = {
   getProductStats,
   getUserProductHistory,
   listActivities,
+  getLeadCounts,
   listLeads,
   listNotes,
   listReminders,
   softDeleteLead,
   updateLead,
   findLeadByPhoneInTeam,
+  findLeadsByPhones,
+  buildLeadWhere: buildWhere,
 };

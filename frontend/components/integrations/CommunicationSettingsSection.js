@@ -46,7 +46,7 @@ export default function CommunicationSettingsSection({
           <h2 className="mt-2 text-[clamp(1.35rem,1.8vw,1.9rem)] font-black leading-tight text-slate-900">{title}</h2>
           <p className="mt-3 text-sm leading-6 text-slate-600">{description}</p>
         </div>
-        <div className="rounded-[20px] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+        <div className="rounded-[14px] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
           <strong className="block text-slate-900">Company</strong>
           <span>{companyId}</span>
         </div>
@@ -58,7 +58,7 @@ export default function CommunicationSettingsSection({
 
       {!settings.loading ? (
         <div className="mt-6 space-y-5">
-          <div className="rounded-[20px] border border-slate-200 bg-slate-50 px-4 py-4 text-sm leading-6 text-slate-600">
+          <div className="rounded-[14px] border border-slate-200 bg-slate-50 px-4 py-4 text-sm leading-6 text-slate-600">
             Module access decides whether tenants see the workspace. Managed services decide whether cost-based actions can actually execute after backend priority checks finish.
           </div>
           <CapabilityOverview capabilities={settings.draft.capabilities} />
@@ -124,7 +124,7 @@ export default function CommunicationSettingsSection({
             />
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-[20px] border border-slate-200 bg-slate-50 px-4 py-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-[14px] border border-slate-200 bg-slate-50 px-4 py-4">
             <p className="text-sm leading-6 text-slate-600">
               Provider credentials stay backend-side only. The frontend saves drafts through the secured company settings API and capabilities resolve from backend rules.
             </p>

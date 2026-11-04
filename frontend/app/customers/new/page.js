@@ -29,7 +29,7 @@ function initials(v = "C") { return String(v).split(" ").filter(Boolean).slice(0
 function field(form, key, val) { return { ...form, [key]: val }; }
 
 function createForm(companyId = "") {
-  return { company_id: companyId, name: "", company_name: "", email: "", phone: "", team_id: "", assigned_to: "", product_id: "", total_value: "", website: "", industry: "", business_summary: "", address_street: "", address_city: "", address_state: "", address_zip: "", country: "India", notes: "", onboarding_date: "", onboarding_status: "pending" };
+  return { company_id: companyId, name: "", company_name: "", email: "", phone: "", team_id: "", assigned_to: "", product_id: "", total_value: "", website: "", industry: "", business_summary: "", address_street: "", address_city: "", address_state: "", address_zip: "", country: "India", notes: "", onboarding_date: "", onboarding_status: "pending", billing_cycle: "", next_payment_date: "", advance_amount: "", advance_mode: "upi", advance_reference: "", start_checklist: true };
 }
 
 function Section({ step, title, sub, children }) {
@@ -147,6 +147,13 @@ export default function NewCustomerPage() {
       if (members.length) {
         await Promise.all(members.map(uid => apiRequest(`/customers/${r.customer_id}/members`, { method: "POST", token: session.token, body: { user_id: uid } })));
       }
+      // Billing, the first payment and the onboarding checklist. The customer is saved already, so these never block it.
+      const base = `/customers/${r.customer_id}`;
+      const follow = [];
+      if (form.billing_cycle || form.next_payment_date) follow.push(apiRequest(`${base}/billing`, { method: "PATCH", token: session.token, body: { billing_cycle: form.billing_cycle || null, next_payment_date: form.next_payment_date || null } }));
+      if (Number(form.advance_amount) > 0) follow.push(apiRequest(`${base}/payments`, { method: "POST", token: session.token, body: { amount: Number(form.advance_amount), mode: form.advance_mode, reference: form.advance_reference, note: "Advance at onboarding" } }));
+      await Promise.allSettled(follow);
+      if (form.start_checklist) await apiRequest(`${base}/onboarding`, { token: session.token, fresh: true }).catch(() => {});
       router.push(`/customers/${r.customer_id}`);
     } catch (err) { setError(formatScopedError(err, "Failed to create customer.")); }
     finally { setSaving(false); }
@@ -272,7 +279,29 @@ export default function NewCustomerPage() {
               </select>
             </Label>
             <Label label="Onboarding Date"><input className={C.input} type="date" value={form.onboarding_date} onChange={set("onboarding_date")} /></Label>
-            <Label label="Total Value (₹)"><input className={C.input} type="number" value={form.total_value} onChange={set("total_value")} placeholder="0" /></Label>
+            <Label label="Contract Value (₹)"><input className={C.input} type="number" min="0" value={form.total_value} onChange={set("total_value")} placeholder="0" /></Label>
+            <Label label="Billing">
+              <select className={C.input} value={form.billing_cycle} onChange={set("billing_cycle")}>
+                <option value="">Not set</option><option value="one-time">One-time</option><option value="monthly">Monthly</option><option value="quarterly">Quarterly</option><option value="half-yearly">Half-yearly</option><option value="yearly">Yearly</option>
+              </select>
+            </Label>
+            <Label label="Advance Received Now (₹)"><input className={C.input} type="number" min="0" value={form.advance_amount} onChange={set("advance_amount")} placeholder="0 if nothing yet" /></Label>
+            <Label label="Paid By">
+              <select className={C.input} value={form.advance_mode} onChange={set("advance_mode")} disabled={!Number(form.advance_amount)}>
+                <option value="upi">UPI</option><option value="bank-transfer">Bank transfer</option><option value="cash">Cash</option><option value="cheque">Cheque</option><option value="card">Card</option><option value="other">Other</option>
+              </select>
+            </Label>
+            <Label label="Payment Reference / UTR"><input className={C.input} value={form.advance_reference} onChange={set("advance_reference")} disabled={!Number(form.advance_amount)} placeholder="Optional" /></Label>
+            <Label label="Next Payment Due"><input className={C.input} type="date" value={form.next_payment_date} onChange={set("next_payment_date")} /></Label>
+            {Number(form.total_value) > 0 ? (
+              <p className="sm:col-span-2 rounded-xl bg-slate-50 px-4 py-2.5 text-[13px] text-slate-600">
+                Pending after this: <b className="text-orange-700">₹{Math.max(0, Number(form.total_value) - Number(form.advance_amount || 0)).toLocaleString("en-IN")}</b> of ₹{Number(form.total_value).toLocaleString("en-IN")}
+              </p>
+            ) : null}
+            <label className="sm:col-span-2 flex items-start gap-2.5 rounded-xl bg-violet-50 px-4 py-3 text-[13px] text-violet-900 ring-1 ring-violet-100">
+              <input type="checkbox" className="mt-0.5" checked={form.start_checklist} onChange={(e) => setForm((f) => ({ ...f, start_checklist: e.target.checked }))} />
+              <span><b className="font-semibold">Start the onboarding checklist</b><span className="block text-[12px] text-violet-800">Welcome call, agreement, advance, logins, data import, training, go-live and a 30-day review, with due dates from the onboarding date.</span></span>
+            </label>
             <Label label="Opening Note" span="sm:col-span-2">
               <textarea className={`${C.input} min-h-[110px] resize-y`} rows={4} value={form.notes} onChange={set("notes")} placeholder="Capture the first note, relationship context, or next action…" />
             </Label>
