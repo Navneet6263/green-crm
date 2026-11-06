@@ -84,7 +84,10 @@ const ACCESS_ROUTE_RULES = [
   { prefix: "/support", accessKey: "support", label: "Support" },
   { prefix: "/documents", accessKey: "documents", label: "Documents" },
   { prefix: "/performance", accessKey: "performance", label: "Performance" },
+  { prefix: "/developer", accessKey: "developer_api", label: "Developer API" },
 ];
+// Features that stay off until the super admin switches them on.
+const OPT_IN_ACCESS = ["developer_api"];
 
 function parseServiceAccess(rawValue) {
   if (!rawValue) {
@@ -122,7 +125,7 @@ function getBlockedFeature(pathname, role, companyAccess) {
 function isAccessOff(companyAccess, accessKey) {
   if (!accessKey) return false;
   const keys = Array.isArray(accessKey) ? accessKey : [accessKey];
-  return keys.every((key) => companyAccess[key] === false);
+  return keys.every((key) => (OPT_IN_ACCESS.includes(key) ? companyAccess[key] !== true : companyAccess[key] === false));
 }
 
 function SidebarNavItem({ item, active, exactActive, collapsed }) {

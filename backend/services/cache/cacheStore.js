@@ -112,6 +112,7 @@ async function deletePrefix(prefix) {
 }
 
 module.exports = {
+  getRedisClient,
   deleteKey,
   deletePrefix,
   getJson,

@@ -1,197 +1,133 @@
 "use client";
 
 import Link from "next/link";
-import { ActionLink, AvatarLabel, Badge, EmptyState, MetricCard, MetricGrid, Notice, Panel, PageIntro, SECONDARY_BUTTON_CLASS } from "./ui";
-import { formatCurrency, formatDate, formatDateTime, formatNumber, isPastDate, titleize } from "./format";
+import { useCallback, useEffect, useState } from "react";
+import { apiRequest } from "../../lib/api";
+import CompanyTable from "./dashboard/CompanyTable";
+import GrowthChart from "./dashboard/GrowthChart";
+import { ActivityPanels, AdoptionPanel, AttentionPanel, HealthPanel, MixPanel } from "./dashboard/PlatformPanels";
+import { COLORS, P, Panel, Spark, money, num, pct } from "./dashboard/platform-ui";
 
-function buildAlerts({ safety, pendingDemos, unassignedTotal, overdueTasks, staleFollowUps }) {
-  const a = [];
-  if (safety?.suspended_companies) a.push({ title: `${formatNumber(safety.suspended_companies)} suspended workspaces`, tone: "rose", href: "/super-admin/companies" });
-  if (safety?.inactive_admins) a.push({ title: `${formatNumber(safety.inactive_admins)} inactive admins`, tone: "amber", href: "/super-admin/security" });
-  if (unassignedTotal) a.push({ title: `${formatNumber(unassignedTotal)} unassigned leads`, tone: "blue", href: "/leads" });
-  if (overdueTasks) a.push({ title: `${formatNumber(overdueTasks)} overdue tasks`, tone: "violet", href: "/tasks" });
-  if (pendingDemos) a.push({ title: `${formatNumber(pendingDemos)} pending demos`, tone: "emerald", href: "/super-admin/demo-requests" });
-  if (staleFollowUps) a.push({ title: `${formatNumber(staleFollowUps)} stale follow-ups`, tone: "amber", href: "/leads" });
-  return a.slice(0, 5);
+const RANGES = [[7, "7 days"], [30, "30 days"], [90, "90 days"]];
+
+function Stat({ label, value, hint, color, spark, href }) {
+  const body = (
+    <>
+      <p className="flex items-center gap-1.5 text-[12px] font-semibold text-slate-500"><i className="h-2 w-2 rounded-full" style={{ background: color }} />{label}</p>
+      <div className="mt-1.5 flex items-end justify-between gap-2">
+        <p className="min-w-0 break-words text-[19px] font-bold leading-tight tabular-nums tracking-tight text-slate-900 sm:text-[24px] sm:leading-none">{value}</p>
+        <span className="hidden sm:block"><Spark values={spark} color={color} /></span>
+      </div>
+      {hint ? <p className="mt-1.5 truncate text-[11.5px] text-slate-500">{hint}</p> : null}
+    </>
+  );
+  const cls = "block rounded-[14px] bg-white px-4 py-3.5 ring-1 ring-slate-200 transition";
+  return href ? <Link href={href} className={`${cls} hover:ring-brand-200`}>{body}</Link> : <div className={cls}>{body}</div>;
 }
 
-export default function SuperAdminDashboardContent({ session, data, error, loading }) {
-  const role = session?.user?.role || "";
-  const summary = data.summary || {};
-  const companies = data.companies?.items || [];
-  const users = data.users?.items || [];
-  const leads = data.leads?.items || [];
-  const unassignedLeads = data.unassignedLeads?.items || [];
-  const tasks = data.tasks?.items || [];
-  const auditLogs = data.auditLogs?.items || [];
-  const demoRequests = data.demoRequests?.items || [];
-  const teamsTotal = data.teams?.meta?.total || 0;
-  const customersTotal = data.customers?.meta?.total || 0;
-  const pendingTaskTotal = data.tasks?.meta?.total || 0;
-  const pendingDemoTotal = data.demoRequests?.meta?.total || 0;
-  const unassignedTotal = data.unassignedLeads?.meta?.total || 0;
-  const overdueTasks = tasks.filter(t => t.status === "pending" && isPastDate(t.due_date)).length;
-  const staleFollowUps = leads.filter(l => isPastDate(l.follow_up_date)).length;
-  const alerts = buildAlerts({ safety: data.safety, pendingDemos: pendingDemoTotal, unassignedTotal, overdueTasks, staleFollowUps });
+/** The platform console home: growth, every company's health, module use and what needs attention. */
+export default function SuperAdminDashboardContent({ session }) {
+  const [days, setDays] = useState(30);
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const isSuper = session?.user?.role === "super-admin";
 
-  if (loading) return <Notice tone="info" text="Loading…" />;
+  const load = useCallback(async () => {
+    if (!session?.token) return;
+    setLoading(true);
+    setError("");
+    try {
+      setData(await apiRequest(`/super-admin/overview?days=${days}`, { token: session.token, fresh: true }));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [session?.token, days]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const t = data?.totals || {};
+  const series = data?.series || [];
+  const spark = (key) => series.map((p) => p[key]);
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Good Morning" : hour < 17 ? "Good Afternoon" : "Good Evening";
 
   return (
-    <div className="space-y-5">
-      <Notice tone="error" text={error} />
-
-      <PageIntro
-        eyebrow="Platform Control"
-        title="Super Admin Console"
-        meta={<><Badge tone="violet">{titleize(role)}</Badge><Badge>{formatNumber(summary.companies || companies.length)} workspaces</Badge>{data.safety ? <Badge tone={data.safety.can_create_more ? "emerald" : "amber"}>{data.safety.can_create_more ? "Healthy" : "Near limit"}</Badge> : null}</>}
-        actions={<><Link href="/super-admin/users" className={SECONDARY_BUTTON_CLASS}>Users</Link><Link href="/super-admin/companies" className={SECONDARY_BUTTON_CLASS}>Tenants</Link></>}
-      />
-
-      <MetricGrid>
-        <MetricCard icon="company" label="Companies" value={formatNumber(summary.companies || companies.length)} note={`${formatNumber(companies.filter(c=>c.status==="active").length)} active`} tone="emerald" />
-        <MetricCard icon="users" label="Users" value={formatNumber(summary.users || users.length)} tone="blue" />
-        <MetricCard icon="leads" label="Leads" value={formatNumber(summary.leads || 0)} note={unassignedTotal ? `${formatNumber(unassignedTotal)} unassigned` : null} tone="amber" />
-        <MetricCard icon="customers" label="Customers" value={formatNumber(customersTotal)} tone="slate" />
-        <MetricCard icon="tasks" label="Tasks" value={formatNumber(pendingTaskTotal)} note={overdueTasks ? `${formatNumber(overdueTasks)} overdue` : null} tone="rose" />
-        <MetricCard icon="products" label="Products / Teams" value={`${formatNumber(summary.products || 0)} / ${formatNumber(teamsTotal)}`} tone="violet" />
-      </MetricGrid>
-
-      {/* Alerts + Quick Actions */}
-      <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-        <Panel eyebrow="Attention" title={`${alerts.length} items need action`}>
-          {alerts.length ? (
-            <div className="space-y-2">
-              {alerts.map(a => (
-                <Link key={a.title} href={a.href} className="flex items-center justify-between rounded-lg border border-slate-100 px-3.5 py-2.5 transition hover:bg-slate-50">
-                  <div className="flex items-center gap-2.5">
-                    <span className={`h-2 w-2 rounded-full ${a.tone === "rose" ? "bg-rose-500" : a.tone === "amber" ? "bg-amber-500" : a.tone === "violet" ? "bg-violet-500" : a.tone === "emerald" ? "bg-emerald-500" : "bg-blue-500"}`} />
-                    <span className="text-sm font-medium text-slate-800">{a.title}</span>
-                  </div>
-                  <span className="text-xs font-semibold text-slate-400">→</span>
-                </Link>
-              ))}
-            </div>
-          ) : <p className="text-sm text-slate-400">All clear — nothing needs attention.</p>}
-        </Panel>
-
-        <Panel eyebrow="Quick Access">
-          <div className="grid gap-2 sm:grid-cols-2">
-            {[
-              { href: "/super-admin/companies", icon: "company", label: "Workspaces", description: "Tenant status & access" },
-              { href: "/super-admin/users", icon: "users", label: "Users", description: "Identities & roles" },
-              { href: "/super-admin/security", icon: "security", label: "Security", description: "Guardrails & audit" },
-              { href: "/super-admin/settings", icon: "settings", label: "Settings", description: "Platform defaults" },
-            ].map(item => <ActionLink key={item.href} {...item} />)}
-          </div>
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <div className="rounded-lg bg-slate-50 px-3 py-2.5">
-              <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Demos</p>
-              <p className="mt-0.5 text-lg font-bold text-slate-900">{formatNumber(pendingDemoTotal)}</p>
-            </div>
-            <div className="rounded-lg bg-slate-50 px-3 py-2.5">
-              <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">High Priority</p>
-              <p className="mt-0.5 text-lg font-bold text-slate-900">{formatNumber(leads.filter(l => String(l.priority||"").toLowerCase() === "high").length)}</p>
-            </div>
-          </div>
-        </Panel>
-      </div>
-
-      {/* Tenants + Ownership */}
-      <div className="grid gap-4 xl:grid-cols-2">
-        <Panel eyebrow="Tenants" title="Workspaces" action={<Link href="/super-admin/companies" className={SECONDARY_BUTTON_CLASS}>All</Link>}>
-          {companies.length ? (
-            <div className="space-y-1.5">
-              {companies.map(c => (
-                <div key={c.company_id} className="flex items-center justify-between rounded-lg px-3 py-2 hover:bg-slate-50 transition">
-                  <AvatarLabel label={c.name} sublabel={`${c.slug || "—"} · ${formatDate(c.created_at)}`} tone="emerald" />
-                  <Badge tone={c.status === "active" ? "emerald" : c.status === "suspended" ? "rose" : "amber"}>{titleize(c.status || "trial")}</Badge>
-                </div>
-              ))}
-            </div>
-          ) : <EmptyState icon="company" title="No workspaces" description="Tenants will appear here." />}
-        </Panel>
-
-        <Panel eyebrow="Ownership" title="Needs attention" action={<Link href="/leads" className={SECONDARY_BUTTON_CLASS}>Leads</Link>}>
-          {unassignedLeads.length || staleFollowUps ? (
-            <div className="space-y-1.5">
-              {[...unassignedLeads, ...leads.filter(l => isPastDate(l.follow_up_date)).slice(0, 3)].slice(0, 6).map(l => (
-                <Link key={`${l.lead_id}-${l.company_id||""}`} href={`/leads/${l.lead_id}`} className="flex items-center justify-between rounded-lg px-3 py-2 hover:bg-slate-50 transition">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-slate-800">{l.company_name || l.contact_person || "Untitled"}</p>
-                    <p className="truncate text-[11px] text-slate-400">{l.contact_person || "—"} · {l.assigned_to_name || "No owner"}</p>
-                  </div>
-                  <Badge tone={l.assigned_to_name ? "amber" : "rose"}>{l.assigned_to_name ? "Stale" : "Unassigned"}</Badge>
-                </Link>
-              ))}
-            </div>
-          ) : <EmptyState icon="leads" title="All healthy" description="No ownership gaps found." />}
-        </Panel>
-      </div>
-
-      {/* Pipeline + Audit */}
-      <div className="grid gap-4 xl:grid-cols-2">
-        <Panel eyebrow="Pipeline" title="Recent leads" action={<Link href="/leads" className={SECONDARY_BUTTON_CLASS}>All</Link>}>
-          {leads.length ? (
-            <div className="space-y-1.5">
-              {leads.slice(0, 6).map(l => (
-                <Link key={l.lead_id} href={`/leads/${l.lead_id}`} className="flex items-center justify-between rounded-lg px-3 py-2.5 hover:bg-slate-50 transition">
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-slate-800">{l.company_name || "Untitled"}</p>
-                    <p className="truncate text-[11px] text-slate-400">{l.contact_person || "—"} · {formatCurrency(l.estimated_value || 0)} · {l.follow_up_date ? formatDateTime(l.follow_up_date) : "No follow-up"}</p>
-                  </div>
-                  <div className="flex shrink-0 gap-1.5 ml-3">
-                    <Badge tone={String(l.priority||"").toLowerCase() === "high" ? "rose" : "amber"}>{titleize(l.priority || "med")}</Badge>
-                    <Badge tone="blue">{titleize(l.workflow_stage || "sales")}</Badge>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          ) : <EmptyState icon="leads" title="No leads" description="Pipeline data will appear here." />}
-        </Panel>
-
-        <Panel eyebrow={role === "super-admin" ? "Audit" : "Users"} title={role === "super-admin" ? "Recent activity" : "Recent users"} action={<Link href={role === "super-admin" ? "/super-admin/audit-logs" : "/super-admin/users"} className={SECONDARY_BUTTON_CLASS}>All</Link>}>
-          {role === "super-admin" && auditLogs.length ? (
-            <div className="space-y-1.5">
-              {auditLogs.slice(0, 6).map(log => (
-                <div key={log.audit_id} className="flex items-center justify-between rounded-lg px-3 py-2 hover:bg-slate-50 transition">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-slate-800">{titleize(log.action || "activity")}</p>
-                    <p className="truncate text-[11px] text-slate-400">{log.user_email || "System"} · {formatDateTime(log.logged_at)}</p>
-                  </div>
-                  <Badge tone={log.company_id ? "blue" : "violet"}>{log.company_id || "Platform"}</Badge>
-                </div>
-              ))}
-            </div>
-          ) : users.length ? (
-            <div className="space-y-1.5">
-              {users.slice(0, 6).map(u => (
-                <div key={u.user_id} className="flex items-center justify-between rounded-lg px-3 py-2 hover:bg-slate-50 transition">
-                  <AvatarLabel label={u.name || "Unknown"} sublabel={u.email || "No email"} tone="blue" />
-                  <div className="flex gap-1.5"><Badge>{titleize(u.role || "user")}</Badge><Badge tone={u.is_active ? "emerald" : "rose"}>{u.is_active ? "Active" : "Off"}</Badge></div>
-                </div>
-              ))}
-            </div>
-          ) : <EmptyState icon="users" title="No data" description="Activity will appear here." />}
-        </Panel>
-      </div>
-
-      {/* Demos */}
-      {role === "super-admin" && demoRequests.length ? (
-        <Panel eyebrow="Demos" title="Pending requests" action={<Link href="/super-admin/demo-requests" className={SECONDARY_BUTTON_CLASS}>All</Link>}>
-          <div className="grid gap-2 lg:grid-cols-2">
-            {demoRequests.slice(0, 4).map(r => (
-              <div key={r.id} className="rounded-lg border border-slate-100 px-3.5 py-3">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-semibold text-slate-800">{r.name}</p>
-                  <Badge tone="amber">{titleize(r.status || "pending")}</Badge>
-                </div>
-                <p className="mt-1 text-[11px] text-slate-400">{r.company || "—"} · {r.email}</p>
-                <p className="mt-2 text-xs text-slate-600 line-clamp-2">{r.message || "No note."}</p>
-                <p className="mt-2 text-[11px] text-slate-400">{formatDateTime(r.created_at)}</p>
-              </div>
+    <div className="tw-buttons min-w-0 space-y-4 pb-10">
+      <header className="flex flex-wrap items-end justify-between gap-3 pt-1">
+        <div className="min-w-0">
+          <p className="text-[12px] font-semibold text-slate-500">{greeting}, {String(session?.user?.name || "").split(" ")[0] || "there"}</p>
+          <h1 className="text-[22px] font-bold tracking-tight text-slate-900">Platform overview</h1>
+          <p className="mt-0.5 text-[13px] text-slate-500">Every company on GreenCRM: growth, health and what needs a look.{data?.generated_at ? ` Updated ${new Date(data.generated_at).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" })}.` : ""}</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex gap-1 rounded-[10px] bg-slate-100 p-0.5">
+            {RANGES.map(([value, label]) => (
+              <button key={value} type="button" onClick={() => setDays(value)} aria-pressed={days === value}
+                className={`rounded-[8px] px-3 py-1.5 text-[12.5px] font-semibold transition ${days === value ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}>{label}</button>
             ))}
           </div>
-        </Panel>
+          <button type="button" className={P.small} onClick={load} disabled={loading}>{loading ? "Loading…" : "Refresh"}</button>
+          <Link href="/super-admin/companies" className="inline-flex h-8 items-center rounded-[8px] bg-brand-700 px-3 text-[12px] font-semibold text-white hover:bg-brand-800">Companies</Link>
+        </div>
+      </header>
+
+      {error ? <p className="rounded-[12px] bg-rose-50 px-3.5 py-2.5 text-[13px] text-rose-800 ring-1 ring-rose-100">{error}</p> : null}
+
+      {!data && loading ? (
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 2xl:grid-cols-6">{Array.from({ length: 6 }, (_, i) => <div key={i} className={`${P.panel} h-[104px] animate-pulse`} />)}</div>
+      ) : data ? (
+        <>
+          <div className={`grid grid-cols-2 gap-3 lg:grid-cols-3 2xl:grid-cols-6 ${loading ? "opacity-60" : ""}`}>
+            <Stat label="Companies" value={num(t.companies)} hint={`${num(t.companies_active)} active · ${num(t.companies_trial)} trial · +${num(t.companies_new)} new`} color={COLORS[3]} spark={spark("companies")} href="/super-admin/companies" />
+            <Stat label="People" value={num(t.users_active)} hint={`${num(t.users_seen_7d)} signed in this week (${pct(t.users_seen_7d, t.users_active)}%)`} color={COLORS[4]} spark={spark("users")} href="/super-admin/users" />
+            <Stat label="New leads" value={num(t.leads_new)} hint={`${num(t.leads)} leads in total`} color={COLORS[0]} spark={spark("leads")} />
+            <Stat label="Won value" value={money(t.won_value)} hint={`${num(t.leads_won)} deals won`} color={COLORS[1]} spark={spark("won")} />
+            <Stat label="Customers" value={num(t.customers)} hint={t.developer_companies ? `${num(t.developer_companies)} companies use the API` : "Across all companies"} color={COLORS[2]} />
+            <Stat label="Overdue tasks" value={num(t.tasks_overdue)} hint={`${num(t.tasks_pending)} open tasks`} color={COLORS[5]} />
+          </div>
+
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
+            <Panel title="Growth" subtitle={`Per day, last ${data.days} days`}>
+              <GrowthChart series={series} />
+              <div className="mt-4 grid grid-cols-2 gap-2 border-t border-slate-100 pt-3 sm:grid-cols-4">
+                {[
+                  ["Leads per day", num(Math.round((t.leads_new || 0) / Math.max(1, data.days)))],
+                  ["Win rate", `${pct(t.leads_won, t.leads_new)}%`],
+                  ["New people", num(t.users_new)],
+                  ["New companies", num(t.companies_new)],
+                ].map(([label, value]) => (
+                  <div key={label} className="rounded-[10px] bg-slate-50 px-3 py-2 ring-1 ring-slate-100"><p className="truncate text-[11px] text-slate-500">{label}</p><p className="text-[16px] font-bold tabular-nums text-slate-900">{value}</p></div>
+                ))}
+              </div>
+            </Panel>
+            <AttentionPanel data={data} />
+          </div>
+
+          <Panel title="Companies" subtitle="Who is using GreenCRM and who has gone quiet">
+            <CompanyTable companies={data.companies} days={data.days} />
+          </Panel>
+
+          <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+            <HealthPanel health={data.health} total={data.companies.length} />
+            <MixPanel roles={data.roles} sources={data.sources} days={data.days} />
+            <AdoptionPanel adoption={data.adoption} total={data.companies.length} />
+          </div>
+
+          {data.developer && (data.developer.api_7d || data.developer.capture_7d) ? (
+            <div className={`${P.panel} flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 text-[12.5px] text-slate-600`}>
+              <span className="font-bold text-slate-900">Developer API · last 7 days</span>
+              <span><b className="text-slate-900">{num(data.developer.api_7d)}</b> API calls</span>
+              <span><b className="text-slate-900">{num(data.developer.capture_7d)}</b> lead-link posts</span>
+              <span><b className={data.developer.failed_7d ? "text-rose-700" : "text-slate-900"}>{num(data.developer.failed_7d)}</b> failed</span>
+              <span><b className="text-slate-900">{num(t.developer_companies)}</b> companies switched on</span>
+            </div>
+          ) : null}
+
+          {isSuper ? <ActivityPanels demos={data.demos} audit={data.audit} /> : null}
+        </>
       ) : null}
     </div>
   );

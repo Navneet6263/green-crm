@@ -1,6 +1,8 @@
 // Tables for admin emails, their replies, and Discuss (group chat). Created on start-up if missing,
 // the same way the chat tables are; every change only adds tables or nullable columns.
 
+const { ensureDeveloperTables } = require("./developerTables");
+
 async function ensureEmailTables(pool) {
   await pool.request().query(`
     IF OBJECT_ID('email_nudges', 'U') IS NULL
@@ -248,6 +250,7 @@ async function ensureFeatureTables(pool) {
   await ensureCustomerTables(pool).catch((error) => console.warn("Customer tables check skipped:", error.message));
   await ensureEmailTables(pool).catch((error) => console.warn("Email tables check skipped:", error.message));
   await ensureDiscussColumns(pool).catch((error) => console.warn("Discuss columns check skipped:", error.message));
+  await ensureDeveloperTables(pool).catch((error) => console.warn("Developer tables check skipped:", error.message));
 }
 
 module.exports = { ensureFeatureTables };

@@ -219,6 +219,13 @@ const ICONS = {
       <path d="M5 20a7 7 0 0 1 14 0" />
     </>
   ),
+  code: (
+    <>
+      <path d="m8 8-4 4 4 4" />
+      <path d="m16 8 4 4-4 4" />
+      <path d="m13.5 5-3 14" />
+    </>
+  ),
   "chevron-down": (
     <>
       <path d="m6 9 6 6 6-6" />

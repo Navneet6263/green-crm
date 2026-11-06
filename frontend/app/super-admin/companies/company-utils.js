@@ -38,7 +38,7 @@ export function buildAccessState(rawValue) {
   return ACCESS_FEATURES.reduce(
     (acc, feature) => ({
       ...acc,
-      [feature.key]: feature.mandatory ? true : parsed[feature.key] !== false,
+      [feature.key]: feature.mandatory ? true : feature.optIn ? parsed[feature.key] === true : parsed[feature.key] !== false,
     }),
     {}
   );
@@ -88,7 +88,7 @@ export function normalizeCompanies(companies = []) {
 }
 
 export function getEnabledFeatureCount(access = {}) {
-  return ACCESS_FEATURES.filter((feature) => access[feature.key] !== false).length;
+  return ACCESS_FEATURES.filter((feature) => (feature.optIn ? access[feature.key] === true : access[feature.key] !== false)).length;
 }
 
 export function countLimitRoles(staffLimits = {}) {

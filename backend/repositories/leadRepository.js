@@ -272,7 +272,8 @@ function buildWhere(filters) {
     params.push(filters.priority);
   }
 
-  const dateColumn = filters.dateFilterType === "onboarded_date" ? "l.onboarded_date" : "l.created_at";
+  const dateColumn = filters.dateFilterType === "onboarded_date" ? "l.onboarded_date"
+    : filters.dateFilterType === "updated_at" ? "l.updated_at" : "l.created_at";
 
   if (filters.createdFrom) {
     conditions.push(`${dateColumn} >= ?`);

@@ -28,6 +28,7 @@ async function startServer() {
     require("./jobs/inboxSyncJob").startInboxSyncJob();
     require("./jobs/renewalReminderJob").startRenewalReminderJob();
     require("./jobs/reminderEmailJob").startReminderEmailJob();
+    require("./jobs/developerJob").startDeveloperJob();
   } catch (jobError) {
     console.error("Failed to start background jobs:", jobError.message);
   }

@@ -1,29 +1,27 @@
 "use client";
 
-import WorkspacePage from "../../components/dashboard/WorkspacePage";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import DashboardShell from "../../components/dashboard/DashboardShell";
 import SuperAdminDashboardContent from "../../components/superadmin/SuperAdminDashboardContent";
+import { PLATFORM_CONSOLE_ROLES, ROLE_HOME_ROUTE } from "../../lib/roles";
+import { loadSession } from "../../lib/session";
 
 export default function SuperAdminDashboard() {
+  const router = useRouter();
+  const [session, setSession] = useState(null);
+
+  useEffect(() => {
+    const active = loadSession();
+    if (!active) return router.replace("/login");
+    if (!PLATFORM_CONSOLE_ROLES.includes(active.user?.role)) return router.replace(ROLE_HOME_ROUTE[active.user?.role] || "/dashboard");
+    setSession(active);
+  }, [router]);
+
+  if (!session) return null;
   return (
-    <WorkspacePage
-      title="Super Admin Console"
-      allowedRoles={["super-admin", "platform-admin", "platform-manager"]}
-      hideTitle
-      requestBuilder={(session) => [
-        { key: "summary", path: "/dashboard/summary" },
-        { key: "companies", path: "/companies?page_size=8" },
-        { key: "users", path: "/users?page_size=8" },
-        { key: "leads", path: "/leads?page_size=8" },
-        { key: "unassignedLeads", path: "/leads?page_size=6&quick_filter=unassigned" },
-        { key: "tasks", path: "/tasks?page_size=8&status=pending" },
-        { key: "customers", path: "/customers?page_size=1" },
-        { key: "teams", path: "/teams?page_size=1" },
-        ...(["super-admin", "platform-admin"].includes(session?.user?.role) ? [{ key: "safety", path: "/super-admin/safety-status" }] : []),
-        ...(session?.user?.role === "super-admin" ? [{ key: "demoRequests", path: "/demo-requests?page_size=4&status=pending" }] : []),
-        ...(session?.user?.role === "super-admin" ? [{ key: "auditLogs", path: "/audit-logs?page_size=6" }] : []),
-      ]}
-    >
-      {(props) => <SuperAdminDashboardContent {...props} />}
-    </WorkspacePage>
+    <DashboardShell session={session} title="Super Admin Console" hideTitle heroStats={[]}>
+      <SuperAdminDashboardContent session={session} />
+    </DashboardShell>
   );
 }

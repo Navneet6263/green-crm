@@ -65,6 +65,8 @@ function createApp() {
 
   app.set("trust proxy", 1);
   app.use(require("./middlewares/requestTiming"));
+  // Public API and lead capture links: open to any website, with their own limits and errors.
+  app.use("/api/v1", require("./routes/publicApiRoutes"));
   app.use(cors(buildCorsOptions()));
   app.use(express.json({
     limit: "1mb",

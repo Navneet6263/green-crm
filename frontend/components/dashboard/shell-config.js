@@ -122,6 +122,7 @@ export const SIDEBAR_SECTIONS = {
     ]),
     SECTION("Insights", [
       ITEM("Support", "/support", "support", "support"),
+      ITEM("Developer", "/developer", "code", "developer_api"),
       ITEM("Settings", "/settings", "settings"),
     ]),
   ],

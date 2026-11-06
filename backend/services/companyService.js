@@ -4,6 +4,7 @@ const companyRepository = require("../repositories/companyRepository");
 const userRepository = require("../repositories/userRepository");
 const auditRepository = require("../repositories/auditRepository");
 const emailService = require("./emailService");
+const developerAccess = require("./developer/access");
 const { PLATFORM_COMPANY_ID } = require("../db/schema");
 const { ROLES } = require("../constants/roles");
 const { buildTalentId, createPrefixedId, slugify } = require("../utils/ids");
@@ -297,6 +298,17 @@ async function updateCompany(auth, companyId, payload) {
       updates[key] = payload[key];
     }
   });
+
+  // Module access is the company's plan: company admins cannot change it, and only the
+  // super admin can switch the Developer API on or off.
+  if (Object.prototype.hasOwnProperty.call(updates, "service_access")) {
+    if ([ROLES.SUPER_ADMIN, ROLES.PLATFORM_ADMIN].includes(auth.role)) {
+      updates.service_access = developerAccess.guardServiceAccess(auth.role, company.service_access, updates.service_access);
+    } else {
+      delete updates.service_access;
+    }
+    developerAccess.forget(companyId);
+  }
 
   if (Object.prototype.hasOwnProperty.call(payload, "settings_currency") || Object.prototype.hasOwnProperty.call(payload, "default_currency")) {
     updates.settings_currency = payload.settings_currency || payload.default_currency;

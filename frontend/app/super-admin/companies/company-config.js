@@ -19,6 +19,8 @@ export const ACCESS_FEATURES = [
   { key: "support", label: "Support", group: "Service", description: "Support inbox, escalations, and ticket visibility." },
   { key: "documents", label: "Documents", group: "Compliance", description: "Document review surfaces for legal and finance teams." },
   { key: "performance", label: "Performance", group: "Insights", description: "Team comparison and manager performance reporting." },
+  // Off until switched on here; only the super admin can change it. The company admin then gets the Developer page.
+  { key: "developer_api", label: "Developer API", group: "Developer", optIn: true, superAdminOnly: true, description: "API keys and lead capture links (website, Facebook, Google Ads, IndiaMART) for the company admin." },
 ];
 
 export const ROLE_LIMIT_FIELDS = [
@@ -35,10 +37,13 @@ export const ROLE_LIMIT_FIELDS = [
 const CORE_ACCESS_KEYS = ["dashboard", "leads", "customers", "workflow", "team_management", "communications", "attendance", "support"];
 const LITE_ACCESS_KEYS = ["dashboard", "team_management", "communications"];
 
+// Presets leave opt-in features (Developer API) as they are.
+const PRESET_FEATURES = ACCESS_FEATURES.filter((feature) => !feature.optIn);
+
 export const ACCESS_PRESETS = {
-  full: ACCESS_FEATURES.reduce((acc, feature) => ({ ...acc, [feature.key]: true }), {}),
-  core: ACCESS_FEATURES.reduce((acc, feature) => ({ ...acc, [feature.key]: CORE_ACCESS_KEYS.includes(feature.key) }), {}),
-  lite: ACCESS_FEATURES.reduce((acc, feature) => ({ ...acc, [feature.key]: LITE_ACCESS_KEYS.includes(feature.key) }), {}),
+  full: PRESET_FEATURES.reduce((acc, feature) => ({ ...acc, [feature.key]: true }), {}),
+  core: PRESET_FEATURES.reduce((acc, feature) => ({ ...acc, [feature.key]: CORE_ACCESS_KEYS.includes(feature.key) }), {}),
+  lite: PRESET_FEATURES.reduce((acc, feature) => ({ ...acc, [feature.key]: LITE_ACCESS_KEYS.includes(feature.key) }), {}),
 };
 
 export const FEATURE_ICON_MAP = {
@@ -56,6 +61,7 @@ export const FEATURE_ICON_MAP = {
   support: "support",
   documents: "documents",
   performance: "performance",
+  developer_api: "code",
 };
 
 export const FEATURE_GROUP_STYLES = {
@@ -93,6 +99,12 @@ export const FEATURE_GROUP_STYLES = {
     icon: "analytics",
     chip: "bg-fuchsia-100 text-fuchsia-700",
     cardOn: "border-fuchsia-200 bg-fuchsia-50",
+    cardOff: "border-slate-200 bg-white",
+  },
+  Developer: {
+    icon: "code",
+    chip: "bg-teal-100 text-teal-700",
+    cardOn: "border-teal-200 bg-teal-50",
     cardOff: "border-slate-200 bg-white",
   },
   Compliance: {

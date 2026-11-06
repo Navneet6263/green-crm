@@ -63,8 +63,8 @@ export default function PlatformCompaniesContent({ session, data, error, loading
     } catch (err) { setCreateNotice({ tone: "error", text: err.message }); } finally { setSubmitting(false); }
   }
 
-  function toggleFeature(k) { const f = ACCESS_FEATURES.find(i => i.key === k); if (!canManage || f?.mandatory) return; setAccessDraft(d => ({ ...d, [k]: !d[k] })); setAccessNotice(null); }
-  function applyPreset(p) { if (!canManage) return; const { ACCESS_PRESETS } = require("../../app/super-admin/companies/company-config"); setAccessDraft({ ...(ACCESS_PRESETS[p] || ACCESS_PRESETS.full) }); setAccessNotice(null); }
+  function toggleFeature(k) { const f = ACCESS_FEATURES.find(i => i.key === k); if (!canManage || f?.mandatory || (f?.superAdminOnly && role !== "super-admin")) return; setAccessDraft(d => ({ ...d, [k]: !d[k] })); setAccessNotice(null); }
+  function applyPreset(p) { if (!canManage) return; const { ACCESS_PRESETS } = require("../../app/super-admin/companies/company-config"); setAccessDraft(d => ({ ...d, ...(ACCESS_PRESETS[p] || ACCESS_PRESETS.full) })); setAccessNotice(null); }
 
   async function saveAccess() {
     if (!selected || !canManage) return; setSavingAccess(true); setAccessNotice(null);

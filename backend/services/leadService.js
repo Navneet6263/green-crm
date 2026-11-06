@@ -31,6 +31,8 @@ const {
   resolveTeamScope,
 } = require("./accessScopeService");
 const { assertValidTransition } = require("../utils/workflowStateMachine");
+// Webhooks for lead changes (Developer API); never blocks or fails a save.
+const leadEvents = require("./developer/leadEvents");
 
 const INVALID_LEAD_DATE = Symbol("invalid_lead_date");
 const PRIMARY_ASSIGNMENT_ACCESS_TYPE = "primary";
@@ -970,7 +972,7 @@ async function createLead(auth, payload) {
     );
   }
 
-  return db.withTransaction(async (transaction) => {
+  const result = await db.withTransaction(async (transaction) => {
     const createdLead = await leadRepository.createLead(
       {
         lead_id: await createPrefixedId("led"),
@@ -1056,6 +1058,8 @@ async function createLead(auth, payload) {
 
     return maskLeadForRole(createdLead, auth.role);
   });
+  leadEvents.created(result, auth);
+  return result;
 }
 
 async function updateLead(auth, leadId, payload) {
@@ -1218,6 +1222,8 @@ async function updateLead(auth, leadId, payload) {
   await require("./renewals/renewalReminders").scheduleLeadRenewal(updatedLead, auth.userId)
     .catch((error) => console.warn("[renewals] could not schedule:", error.message));
 
+  leadEvents.updated(lead, updatedLead, changes, auth);
+
   const sharedUsers = await leadAssignmentRepository.listSharedUsersByLead(
     updatedLead.lead_id,
     updatedLead.company_id
@@ -1264,6 +1270,7 @@ async function deleteLead(auth, leadId, payload = {}) {
     );
   });
 
+  leadEvents.deleted(lead, changeNote, auth);
   return { deleted: true };
 }
 
@@ -1679,6 +1686,7 @@ async function addLeadNote(auth, leadId, payload) {
     }, transaction);
   });
 
+  leadEvents.noteAdded(lead, content, auth);
   return { created: true };
 }
 

@@ -53,6 +53,7 @@ router.use("/chat", chatRoutes);
 router.use("/discuss", require("./discussRoutes"));
 router.use("/nudges", require("./nudgeRoutes"));
 router.use("/reports", require("./reportRoutes"));
+router.use("/developer", require("./developerRoutes"));
 router.use("/", leadTransferRoutes);
 
 module.exports = router;

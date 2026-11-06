@@ -72,7 +72,7 @@ function FeatureToggle({ feature, enabled, disabled, onToggle }) {
       </span>
       <div className="min-w-0 flex-1">
         <p className="text-[13px] font-semibold text-slate-900">{feature.label}</p>
-        <p className="truncate text-[11px] text-slate-400">{feature.group}{feature.mandatory ? " · Required" : ""}</p>
+        <p className="truncate text-[11px] text-slate-400">{feature.group}{feature.mandatory ? " · Required" : ""}{feature.superAdminOnly ? " · Super admin only" : ""}</p>
       </div>
       <span className={cn("h-5 w-5 rounded-full border-2 flex items-center justify-center", enabled ? "border-emerald-500 bg-emerald-500" : "border-slate-300")}>
         {enabled ? <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg> : null}
