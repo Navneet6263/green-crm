@@ -123,7 +123,7 @@ export default function NewLeadPage() {
     const list = [...recent, ...scopedProducts.filter((p) => !recent.includes(p))];
     return list.slice(0, 6);
   }, [history, scopedProducts]);
-  const ownerHint = !canAssign || resourceLoading ? "" : teamPending ? "Choose a team to see owners." : !users.length ? scopedUsersEmptyMessage(selectedTeam) : selectedTeam ? scopedOwnersHelperText(selectedTeam) : "";
+  const ownerHint = !canAssign || resourceLoading ? "" : teamPending ? "Choose a team to see owners." : !users.length ? scopedUsersEmptyMessage(selectedTeam) : selectedTeam ? `${scopedOwnersHelperText(selectedTeam)}${role === "sales" ? " For someone in another team, save the lead and use Transfer." : ""}` : "";
   const productHint = resourceLoading ? "" : teamPending ? "Choose a team to see products." : !scopedProducts.length ? scopedProductsEmptyMessage(selectedTeam) : selectedTeam ? scopedProductsHelperText(selectedTeam) : "";
 
   const set = (field, value) => {

@@ -96,7 +96,9 @@ export default function EditLeadPage() {
   const enabledStatuses = customization ? getEnabledStatuses(customization) : [];
 
   const role = session?.user?.role || "";
-  const canManageAssignment = canManageScopedAssignments(role);
+  // Sales may hand only their own lead to a teammate; other teams go through Transfer.
+  const canManageAssignment = canManageScopedAssignments(role)
+    && (role !== "sales" || (Boolean(originalLead) && originalLead.assigned_to === session?.user?.user_id));
   const teamSelectorVisible = shouldShowTeamSelector(role, teams);
   const teamSelectionPending = teamSelectorVisible && !form?.team_id;
   const selectedTeam = useMemo(() => teams.find((team) => team.team_id === form?.team_id) || null, [form?.team_id, teams]);

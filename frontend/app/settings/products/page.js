@@ -17,6 +17,14 @@ export default function ProductsPage() {
   const [editOpen, setEditOpen] = useState(false);
   const sel = p.selectedProduct;
   const canCreate = !(p.isPlatformConsole && !p.scopedCompanyId);
+  const drawerOpen = createOpen || (editOpen && Boolean(sel));
+  // Shown inside an open drawer too, otherwise a failed or finished save looks like nothing happened.
+  const alerts = (
+    <>
+      <AlertError message={p.error} onDismiss={() => p.setError("")} />
+      {!p.error ? <AlertSuccess message={p.notice} onDismiss={() => p.setNotice("")} /> : null}
+    </>
+  );
 
   const open = (id) => { p.setSelectedId(id); setEditOpen(true); };
   const create = async (e) => {
@@ -38,8 +46,7 @@ export default function ProductsPage() {
           <button type="button" className={T.gold} disabled={!canCreate} onClick={() => setCreateOpen(true)}>+ New product</button>
         </>
       )}>
-      <AlertError message={p.error} onDismiss={() => p.setError("")} />
-      {!p.error ? <AlertSuccess message={p.notice} onDismiss={() => p.setNotice("")} /> : null}
+      {drawerOpen ? null : alerts}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard label="Products" value={p.stats.total} accent="sky" />
@@ -55,7 +62,8 @@ export default function ProductsPage() {
 
       <SideDrawer open={createOpen} onClose={() => setCreateOpen(false)} title="New product" subtitle="Name it and pick a colour. You can change both later."
         footer={<div className="flex justify-end gap-2"><button type="button" className={T.ghost} onClick={() => setCreateOpen(false)}>Cancel</button><button type="submit" form="product-create" className={T.gold} disabled={p.creating || p.createTeamPending}>{p.creating ? "Creating…" : "Create product"}</button></div>}>
-        <form id="product-create" onSubmit={create}>
+        <form id="product-create" onSubmit={create} className="space-y-3">
+          {alerts}
           <ProductFields form={p.createForm} setForm={p.setCreateForm} teams={p.teams} showTeam={p.teamSelectorVisible} />
         </form>
       </SideDrawer>
@@ -65,6 +73,7 @@ export default function ProductsPage() {
         footer={p.canEditSelected ? <div className="flex justify-end"><button type="submit" form="product-edit" className={T.gold} disabled={p.saving || p.editTeamPending}>{p.saving ? "Saving…" : "Save changes"}</button></div> : null}>
         {sel ? (
           <div className="space-y-4">
+            {alerts}
             {!p.canEditSelected ? <p className="rounded-[12px] bg-sky-50 px-4 py-3 text-[12.5px] text-sky-800 ring-1 ring-sky-100">This product is shared with your team. You can tag your leads with it, but only the owning team or an admin can change it.</p> : null}
             <form id="product-edit" onSubmit={p.saveProduct} className="rounded-[14px] bg-white p-4 ring-1 ring-slate-200">
               <fieldset disabled={!p.canEditSelected} className="disabled:opacity-60">
@@ -78,8 +87,8 @@ export default function ProductsPage() {
                   <p className="text-[14px] font-bold text-slate-900">Share with other teams</p>
                   <p className="mt-0.5 text-[12.5px] text-slate-500">Picked teams can tag their leads with this product. They still cannot see the owning team&apos;s leads or customers.</p>
                 </div>
-                {!sel.team_id ? <p className="rounded-[10px] bg-amber-50 px-3 py-2 text-[12.5px] text-amber-800">Choose and save an owning team first.</p> : null}
-                <fieldset disabled={p.savingMappings || !sel.team_id} className="max-h-56 divide-y divide-slate-100 overflow-y-auto rounded-[12px] ring-1 ring-slate-200 disabled:opacity-60">
+                {!sel.team_id && !sel.mapped_team_ids?.length ? <p className="rounded-[10px] bg-amber-50 px-3 py-2 text-[12.5px] text-amber-800">This product has no owning team, so no team can use it on leads yet. Tick the teams that should use it and save.</p> : null}
+                <fieldset disabled={p.savingMappings} className="max-h-56 divide-y divide-slate-100 overflow-y-auto rounded-[12px] ring-1 ring-slate-200 disabled:opacity-60">
                   {p.teams.map((team) => {
                     const owner = team.team_id === sel.team_id;
                     return (
@@ -93,7 +102,7 @@ export default function ProductsPage() {
                   })}
                   {!p.teams.length ? <p className="px-3 py-4 text-center text-[12.5px] text-slate-400">No active teams yet.</p> : null}
                 </fieldset>
-                <div className="flex justify-end"><button type="submit" className={T.ghost} disabled={p.savingMappings || !sel.team_id}>{p.savingMappings ? "Saving…" : "Save sharing"}</button></div>
+                <div className="flex justify-end"><button type="submit" className={T.ghost} disabled={p.savingMappings}>{p.savingMappings ? "Saving…" : "Save sharing"}</button></div>
               </form>
             ) : null}
 

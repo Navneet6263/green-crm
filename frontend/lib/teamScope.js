@@ -118,8 +118,9 @@ export function filterRecordsByTeam(records, teamId) {
     return records || [];
   }
 
-  return (records || []).filter((record) => !record?.team_id || record.team_id === teamId
-    || (Array.isArray(record.mapped_team_ids) && record.mapped_team_ids.includes(teamId)));
+  // Same rule as the backend: a product with no owning team is usable only by the teams it is shared with.
+  return (records || []).filter((record) => record?.team_id === teamId
+    || (Array.isArray(record?.mapped_team_ids) && record.mapped_team_ids.includes(teamId)));
 }
 
 export async function loadTeamsForCompany(token, companyId, pageSize = 120) {

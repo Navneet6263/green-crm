@@ -252,7 +252,7 @@ async function mapProductTeams(auth, productId, payload) {
   const product = await productRepository.getProductById(productId);
   if (!product) throw new AppError("Product not found.", 404);
   assertCompanyAccess(auth, product.company_id);
-  if (!product.team_id) throw new AppError("Set the product's owning team before sharing it.", 400);
+  // A product with no owning team is usable by no team until it is shared, so sharing must work for it too.
   if (!Array.isArray(payload.team_ids) || payload.team_ids.some(id => typeof id !== "string" || !id.trim())) {
     throw new AppError("team_ids must be an array of team identifiers.", 400);
   }

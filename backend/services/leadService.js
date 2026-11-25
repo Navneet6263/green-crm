@@ -930,8 +930,9 @@ async function createLead(auth, payload) {
 
   let assignedTo = lead.assigned_to || auth.userId;
   if (assignedTo) {
-    if (!isManagerRole(auth.role) && assignedTo !== auth.userId) {
-      throw new AppError("Only admins and managers can assign leads to someone else.", 403);
+    // Sales may hand a new lead to a teammate; the owner-in-team check below keeps it inside the team.
+    if (!isManagerRole(auth.role) && auth.role !== ROLES.SALES && assignedTo !== auth.userId) {
+      throw new AppError("Only admins, managers and sales can assign leads to someone else.", 403);
     }
 
     assignedTo = (await ensureSameCompanyUser(assignedTo, companyId)).user_id;
@@ -1126,8 +1127,12 @@ async function updateLead(auth, leadId, payload) {
       [ROLES.SALES, ROLES.MARKETING].includes(auth.role) &&
       lead.assigned_to === auth.userId;
 
-    if (!MANAGER_ROLES.includes(auth.role) && !isDemoHandoff) {
-      throw new AppError("Only managers and admins can reassign leads.", 403);
+    // Sales may pass their own lead to a teammate. Outside the team they must use Transfer,
+    // which ensureUserBelongsToTeam below enforces.
+    const isSalesTeamHandoff = auth.role === ROLES.SALES && lead.assigned_to === auth.userId;
+
+    if (!MANAGER_ROLES.includes(auth.role) && !isDemoHandoff && !isSalesTeamHandoff) {
+      throw new AppError("Only managers and admins can reassign leads. Sales can reassign only their own leads.", 403);
     }
 
     updates.assigned_to = (await ensureSameCompanyUser(payload.assigned_to, lead.company_id)).user_id;
@@ -1275,7 +1280,8 @@ async function deleteLead(auth, leadId, payload = {}) {
 }
 
 async function assignLead(auth, leadId, payload) {
-  if (!MANAGER_ROLES.includes(auth.role)) {
+  // Sales are allowed here too; updateLead limits them to their own leads and their own team.
+  if (!MANAGER_ROLES.includes(auth.role) && auth.role !== ROLES.SALES) {
     throw new AppError("Only managers, admins, and super admins can assign leads.", 403);
   }
 

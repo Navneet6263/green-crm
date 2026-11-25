@@ -187,6 +187,18 @@ test("empty mapping list revokes sharing without changing product owner or recor
   assert.equal(result.team_id, "T1");
 });
 
+test("a product with no owning team can be shared, and only the picked teams may use it", async () => {
+  teamScope();
+  const unowned = { ...product, team_id: null, mapped_team_ids: [] };
+  mock.method(products, "getProductById", async () => unowned);
+  queryHandler = async () => [[]];
+  mock.method(audit, "createLog", async () => {});
+  mock.method(products, "replaceTeamMappings", async (_company, _id, ids) => assert.deepEqual(ids, ["T2", "T3"]));
+  await productService.mapProductTeams(admin(), "p1", { team_ids: ["T2", "T3"] });
+  assert.equal(productAccess.productAllowsTeam({ team_id: null, mapped_team_ids: ["T2"] }, "T2"), true);
+  assert.equal(productAccess.productAllowsTeam({ team_id: null, mapped_team_ids: ["T2"] }, "T1"), false);
+});
+
 test("product list passes team scope and marks shared products non-editable for managers", async () => {
   teamScope();
   mock.method(products, "listProducts", async filters => {

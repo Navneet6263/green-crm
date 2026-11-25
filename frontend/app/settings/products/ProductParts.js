@@ -102,7 +102,7 @@ export function ProductTable({ products, filteredProducts, leadCounts, loading, 
                         </span>
                       </span>
                     </td>
-                    <td className="px-4 py-2.5 text-slate-600">{teamBadgeLabel(p) || <span className="text-slate-400">Whole company</span>}{p.mapped_team_ids?.length ? <span className="ml-1.5 rounded-full bg-violet-50 px-1.5 py-px text-[10.5px] font-semibold text-violet-700">+{p.mapped_team_ids.length} shared</span> : null}</td>
+                    <td className="px-4 py-2.5 text-slate-600">{teamBadgeLabel(p) || <span className="text-amber-700">No owning team</span>}{p.mapped_team_ids?.length ? <span className="ml-1.5 rounded-full bg-violet-50 px-1.5 py-px text-[10.5px] font-semibold text-violet-700">+{p.mapped_team_ids.length} shared</span> : null}</td>
                     <td className="px-4 py-2.5"><span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11.5px] font-semibold ${active ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"}`}><span className={`h-1.5 w-1.5 rounded-full ${active ? "bg-emerald-500" : "bg-slate-400"}`} />{active ? "Active" : "Archived"}</span></td>
                     <td className="px-4 py-2.5 text-right font-semibold tabular-nums text-slate-800">{leadCounts[p.product_id] || 0}</td>
                     <td className="px-4 py-2.5 text-slate-500">{when(p.created_at)}</td>

@@ -47,7 +47,7 @@ export default function TransferLeadButton({ leadId, leadName, className = TRIGG
     setSearching(true);
     searchTimeoutRef.current = setTimeout(async () => {
       try {
-        const response = await apiRequest(`/users/search?q=${encodeURIComponent(searchQuery)}`, {
+        const response = await apiRequest(`/lead-transfers/recipients?q=${encodeURIComponent(searchQuery)}`, {
           token,
         });
         setUsers(response || []);
@@ -140,7 +140,7 @@ export default function TransferLeadButton({ leadId, leadName, className = TRIGG
             <div className="mt-4 rounded-[22px] border border-[#e2e8f0] bg-[#f8fafc] p-4 text-xs leading-relaxed text-[#64748b] font-semibold flex gap-3">
               <span className="text-sm shrink-0">ℹ️</span>
               <span>
-                This transfer is fully safe. Lead assignment, status, history, and metrics remain untouched. Only a descriptive note will be added to the lead activity logs.
+                The lead stays with you until the other person accepts it. Once they accept, it becomes theirs, with its status and history unchanged. You can pick someone in another team: the lead then moves to their team (their team must be allowed to use this lead&apos;s product).
               </span>
             </div>
 
@@ -169,7 +169,7 @@ export default function TransferLeadButton({ leadId, leadName, className = TRIGG
                 <div className="flex items-center justify-between rounded-[16px] border border-[#8fd0cb] bg-[#f8fafc] px-4 py-3 text-sm font-bold text-[#0f172a]">
                   <div>
                     <span className="block font-bold">{selectedUser.name}</span>
-                    <span className="block text-xs font-semibold text-[#94a3b8] capitalize mt-0.5">{selectedUser.role}</span>
+                    <span className="block text-xs font-semibold text-[#94a3b8] capitalize mt-0.5">{selectedUser.role}{selectedUser.team_names ? ` · ${selectedUser.team_names}` : " · No team"}</span>
                   </div>
                   <button
                     type="button"
@@ -187,7 +187,7 @@ export default function TransferLeadButton({ leadId, leadName, className = TRIGG
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search by name..."
+                  placeholder="Search anyone in the company by name or email..."
                   className={INPUT}
                   autoFocus
                 />
@@ -198,7 +198,7 @@ export default function TransferLeadButton({ leadId, leadName, className = TRIGG
                     {searching ? (
                       <div className="flex items-center justify-center gap-2 py-4 text-xs font-bold text-[#94a3b8]">
                         <Loader2 className="h-4 w-4 animate-spin text-[#8fd0cb]" />
-                        Searching team members...
+                        Searching people...
                       </div>
                     ) : users.length > 0 ? (
                       users.map((u) => (
@@ -213,7 +213,7 @@ export default function TransferLeadButton({ leadId, leadName, className = TRIGG
                         >
                           <div>
                             <span className="block font-bold text-[#0f172a]">{u.name}</span>
-                            <span className="block text-xs font-medium text-[#64748b] mt-0.5">{u.email}</span>
+                            <span className="block text-xs font-medium text-[#64748b] mt-0.5">{u.team_names || "No team"}</span>
                           </div>
                           <span className="rounded-full bg-white border border-[#e2e8f0] px-2.5 py-0.5 text-[10px] font-bold text-[#475569] uppercase mt-0.5">
                             {u.role}

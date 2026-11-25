@@ -124,7 +124,7 @@ export function useProducts() {
 
   async function saveTeamMappings(e) {
     e.preventDefault();
-    if (!canMapTeams || !selectedProduct?.team_id || savingMappings) return;
+    if (!canMapTeams || !selectedProduct || savingMappings) return;
     setSavingMappings(true); setError(""); setNotice("");
     try {
       await apiRequest(`/products/${selectedProduct.product_id}/teams`, { method: "PUT", token: session.token, body: { team_ids: mappedTeamIds } });

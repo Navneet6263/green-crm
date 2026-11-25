@@ -15,3 +15,13 @@ test("lead product dropdown retains explicitly mapped products without showing u
   assert.deepEqual(filterRecordsByTeam(rows, "T3").map(row => row.product_id), ["own", "shared"]);
   assert.deepEqual(filterRecordsByTeam(rows.map(row => ({ ...row, mapped_team_ids: [] })), "T3").map(row => row.product_id), ["own"]);
 });
+
+test("a product with no owning team shows only for teams it is shared with, and for no-team forms", () => {
+  const rows = [
+    { product_id: "unowned", team_id: null, mapped_team_ids: [] },
+    { product_id: "unowned-shared", team_id: null, mapped_team_ids: ["T3"] },
+  ];
+  assert.deepEqual(filterRecordsByTeam(rows, "T3").map(row => row.product_id), ["unowned-shared"]);
+  assert.deepEqual(filterRecordsByTeam(rows, "T1").map(row => row.product_id), []);
+  assert.deepEqual(filterRecordsByTeam(rows, "").map(row => row.product_id), ["unowned", "unowned-shared"]);
+});
