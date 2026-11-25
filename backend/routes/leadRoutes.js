@@ -1,6 +1,7 @@
 const express = require("express");
 
 const authenticate = require("../middlewares/authenticate");
+const { requireModule } = require("../middlewares/requireModule");
 const asyncHandler = require("../utils/asyncHandler");
 const callLogController = require("../controllers/callLogController");
 const leadController = require("../controllers/leadController");
@@ -15,6 +16,7 @@ const AppError = require("../utils/appError");
 const router = express.Router();
 
 router.use(asyncHandler(authenticate));
+router.use(requireModule("leads"));
 router.use('/:leadId/photos', require('./fieldPhotoRoutes'));
 
 const exportLimiter = createRateLimiter({ windowMs: 60000, max: 6, keyGenerator: (req) => `lead-export:${req.auth.companyId}:${req.auth.userId}` });

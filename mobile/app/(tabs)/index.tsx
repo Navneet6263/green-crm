@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { Redirect, router } from 'expo-router';
+import { crmOn } from '../../src/auth/modules';
 import { useSession } from '../../src/auth/SessionProvider';
 import { getFollowUps, getTasks } from '../../src/api/crm';
 import type { Bucket } from '../../src/api/types';
@@ -17,7 +18,14 @@ import { QuickActions } from '../../src/features/home/QuickActions';
 import { WorkCounts } from '../../src/features/home/WorkCounts';
 
 const buckets = [{ value: 'today', label: 'Today' }, { value: 'overdue', label: 'Overdue' }, { value: 'upcoming', label: 'Upcoming' }, { value: 'unscheduled', label: 'No date' }];
+/** A tracking-only company has no leads, so its app opens on the Tracker. */
 export default function Today() {
+  const { session } = useSession();
+  if (session && !crmOn(session)) return <Redirect href="/tracking" />;
+  return <TodayScreen />;
+}
+
+function TodayScreen() {
   const { session } = useSession();
   const [bucket, setBucket] = useState<Bucket>('today'), [page, setPage] = useState(1);
   const queue = useResource(`queue:${session?.user.user_id}:${bucket}:${page}`, () => getFollowUps(session!, bucket, page));

@@ -44,7 +44,7 @@ function thankYouPage(title, text) {
     + `<body style="margin:0;font-family:Arial,sans-serif;background:#FBF9F3;color:#1f2937;display:flex;min-height:100vh;align-items:center;justify-content:center">`
     + `<div style="max-width:420px;padding:32px;background:#fff;border-radius:16px;box-shadow:0 1px 3px rgba(0,0,0,.08);text-align:center">`
     + `<h1 style="font-size:22px;margin:0 0 8px;color:#0C605D">${safe(title)}</h1><p style="margin:0;font-size:15px;line-height:1.5">${safe(text)}</p>`
-    + `<p style="margin:20px 0 0"><a href="javascript:history.back()" style="color:#0C605D">Go back</a></p></div></body></html>`;
+    + `<p style="margin:20px 0 0;font-size:13px;color:#64748b">You can close this page now.</p></div></body></html>`;
 }
 
 /** A form may pick its own thank-you page only on the same website as the link's saved one. */
@@ -73,7 +73,7 @@ router.post("/capture/:token", limits.byVisitor, limits.byLink, logRequests("cap
   if (wantsPage(req)) {
     const target = safeRedirect(String(body._redirect || "").trim(), req.developer.redirect);
     if (target) return res.redirect(303, target);
-    return res.status(200).type("html").send(thankYouPage("Thank you!", "We have your details. Our team will get in touch with you soon."));
+    return res.status(200).set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'").type("html").send(thankYouPage("Thank you!", "We have your details. Our team will get in touch with you soon."));
   }
   return send(res, { received: true, lead_id: result.lead_id, duplicate: result.duplicate }, null, result.duplicate ? 200 : 201);
 }));
@@ -131,7 +131,7 @@ router.use((error, req, res, _next) => {
   if (!known && status === 500) console.error("[api v1]", error);
   res.locals.errorMessage = message;
   if (req.path.startsWith("/capture/") && wantsPage(req)) {
-    return res.status(status).type("html").send(thankYouPage("Sorry, that did not go through", message));
+    return res.status(status).set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'").type("html").send(thankYouPage("Sorry, that did not go through", message));
   }
   return res.status(status).json({
     success: false, error: message, code: known ? error.code || null : null,

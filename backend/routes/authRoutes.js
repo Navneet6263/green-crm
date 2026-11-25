@@ -21,6 +21,7 @@ router.use(asyncHandler(authenticate));
 
 router.get("/check-auth", asyncHandler(authController.checkAuth));
 router.post("/logout", asyncHandler(authController.logout));
+router.post("/logout-everywhere", asyncHandler(authController.logoutEverywhere));
 router.get("/verify", asyncHandler(authController.verify));
 router.get("/me", asyncHandler(authController.me));
 router.get("/profile", asyncHandler(authController.me));

@@ -1,5 +1,5 @@
 export type User = { user_id: string; name: string; email: string; role: string; company_id: string };
-export type Profile = { user: User; company?: { company_id: string; name: string } | null };
+export type Profile = { user: User; company?: { company_id: string; name: string; service_access?: Record<string, unknown> | string | null } | null };
 export type Session = Profile & { token: string; offline?: boolean };
 export type Page<T> = { items: T[]; total: number; page: number; totalPages: number };
 export type Bucket = 'today' | 'overdue' | 'upcoming' | 'unscheduled';

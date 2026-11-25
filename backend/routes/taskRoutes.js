@@ -1,6 +1,7 @@
 const express = require("express");
 
 const authenticate = require("../middlewares/authenticate");
+const { requireModule } = require("../middlewares/requireModule");
 const asyncHandler = require("../utils/asyncHandler");
 const taskController = require("../controllers/taskController");
 const { createRateLimiter } = require("../middlewares/rateLimiter");
@@ -11,6 +12,7 @@ const { loadExport, buildTaskWorkbook, exportCatalog } = require("../services/ta
 const router = express.Router();
 
 router.use(asyncHandler(authenticate));
+router.use(requireModule("tasks", "calendar"));
 
 const exportLimiter = createRateLimiter({ windowMs: 60000, max: 6, keyGenerator: (req) => `task-export:${req.auth.companyId}:${req.auth.userId}` });
 

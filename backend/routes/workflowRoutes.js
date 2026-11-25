@@ -1,6 +1,7 @@
 const express = require("express");
 
 const authenticate = require("../middlewares/authenticate");
+const { requireModule } = require("../middlewares/requireModule");
 const asyncHandler = require("../utils/asyncHandler");
 const workflowController = require("../controllers/workflowController");
 
@@ -11,6 +12,7 @@ const multipartUpload = express.raw({
 });
 
 router.use(asyncHandler(authenticate));
+router.use(requireModule("workflow"));
 
 router.get("/my-assigned", asyncHandler(workflowController.myAssigned));
 router.get("/tracker", asyncHandler(workflowController.tracker));

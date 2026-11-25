@@ -121,6 +121,7 @@ async function resetPassword(auth, userId, payload) {
     password: await hashPassword(nextPassword),
     is_temporary_password: 0,
   });
+  await require("./auth/sessions").revokeSessions(user.user_id);
 
   await auditRepository.createLog({
     audit_id: await createPrefixedId("aud"),

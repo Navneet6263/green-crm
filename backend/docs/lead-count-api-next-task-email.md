@@ -13,7 +13,7 @@ The URL, GET method and authentication remain unchanged. Keep using the existing
 valid key; you do not need to create a new one. Its existing expiry still applies.
 
 ```text
-GET https://greencall.online/api/integrations/v1/employee-lead-counts
+GET https://crm.greencall.in/api/integrations/v1/employee-lead-counts
 Authorization: Bearer <your existing key>
 ```
 

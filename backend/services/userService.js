@@ -25,7 +25,8 @@ function sanitizeUser(user) {
     return null;
   }
 
-  const { password: _pw, ...safeUser } = user;
+  // Never send the password hash or the two-factor secret to the browser.
+  const { password: _pw, two_factor_secret: _tfs, ...safeUser } = user;
   const sanitized = {
     ...safeUser,
     talent_id: buildTalentId(safeUser.company_id, safeUser.user_id),

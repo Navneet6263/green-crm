@@ -9,7 +9,7 @@ export default function SuperAdminCompaniesPage() {
       title="Companies"
       allowedRoles={["super-admin", "platform-admin", "platform-manager"]}
       hideTitle
-      requestBuilder={() => [{ key: "companies", path: "/companies?page_size=24" }]}
+      requestBuilder={() => [{ key: "companies", path: "/companies?page_size=100" }]}
     >
       {(props) => <PlatformCompaniesContent {...props} />}
     </WorkspacePage>

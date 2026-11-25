@@ -29,7 +29,7 @@ export default function DashboardMock() {
         <span className="h-2.5 w-2.5 rounded-full bg-rose-400" />
         <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
         <span className="h-2.5 w-2.5 rounded-full bg-brand-400" />
-        <span className="ml-3 hidden flex-1 rounded-md bg-white px-3 py-1 text-[11px] text-slate-400 sm:block">greencall.online/dashboard</span>
+        <span className="ml-3 hidden flex-1 rounded-md bg-white px-3 py-1 text-[11px] text-slate-400 sm:block">crm.greencall.in/dashboard</span>
       </div>
 
       <div className="grid grid-cols-[150px_1fr] max-md:grid-cols-1">

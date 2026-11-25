@@ -251,6 +251,7 @@ async function ensureFeatureTables(pool) {
   await ensureEmailTables(pool).catch((error) => console.warn("Email tables check skipped:", error.message));
   await ensureDiscussColumns(pool).catch((error) => console.warn("Discuss columns check skipped:", error.message));
   await ensureDeveloperTables(pool).catch((error) => console.warn("Developer tables check skipped:", error.message));
+  await require("../services/auth/sessions").ensureColumn(pool).catch((error) => console.warn("Session column check skipped:", error.message));
 }
 
 module.exports = { ensureFeatureTables };

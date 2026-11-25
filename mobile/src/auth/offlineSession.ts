@@ -8,7 +8,7 @@ export async function cacheVerifiedSession(session: Session) {
   const { user_id, company_id, name, email, role } = session.user;
   await SecureStore.setItemAsync(KEY, JSON.stringify({ base: API_BASE, verifiedAt: Date.now(), session: {
     token: session.token, user: { user_id, company_id, name, email, role },
-    company: session.company ? { company_id: session.company.company_id, name: session.company.name } : null,
+    company: session.company ? { company_id: session.company.company_id, name: session.company.name, service_access: session.company.service_access ?? null } : null,
   } }), { keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY });
 }
 export async function loadOfflineSession(): Promise<Session | null> {

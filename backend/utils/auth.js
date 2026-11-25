@@ -36,23 +36,39 @@ async function verifyPassword(password, storedHash) {
   return crypto.timingSafeEqual(Buffer.from(hash, "hex"), Buffer.from(derivedKey, "hex"));
 }
 
+const DEV_SECRET = "greencrm-dev-secret";
+const MIN_SECRET_LENGTH = 32;
+const isDevOrTest = () => ["development", "test"].includes(process.env.NODE_ENV) || Boolean(process.env.NODE_TEST_CONTEXT);
+
+// The well-known development secret is only allowed on a developer machine or in tests. Anywhere
+// else a missing or short secret would let anyone forge a login token, so the server refuses it.
 function getSigningSecret() {
-  return process.env.AUTH_SECRET || process.env.JWT_SECRET || "greencrm-dev-secret";
+  const secret = process.env.AUTH_SECRET || process.env.JWT_SECRET || "";
+  if (secret.length >= MIN_SECRET_LENGTH && secret !== DEV_SECRET) return secret;
+  if (isDevOrTest()) return secret || DEV_SECRET;
+  throw new Error(`JWT_SECRET (or AUTH_SECRET) must be set to a random value of at least ${MIN_SECRET_LENGTH} characters.`);
+}
+
+/** Called at start-up so a missing secret stops the server with a clear message instead of later. */
+function assertSigningSecret() {
+  getSigningSecret();
+}
+
+function sign(input) {
+  return crypto
+    .createHmac("sha256", getSigningSecret())
+    .update(input)
+    .digest("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "");
 }
 
 function signToken(payload) {
   const header = { alg: "HS256", typ: "JWT" };
   const encodedHeader = base64UrlEncode(JSON.stringify(header));
   const encodedPayload = base64UrlEncode(JSON.stringify(payload));
-  const signature = crypto
-    .createHmac("sha256", getSigningSecret())
-    .update(`${encodedHeader}.${encodedPayload}`)
-    .digest("base64")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/g, "");
-
-  return `${encodedHeader}.${encodedPayload}.${signature}`;
+  return `${encodedHeader}.${encodedPayload}.${sign(`${encodedHeader}.${encodedPayload}`)}`;
 }
 
 function buildTimedToken(payload, expiresInSeconds) {
@@ -72,19 +88,23 @@ function verifyToken(token) {
     return null;
   }
 
-  const expectedSignature = crypto
-    .createHmac("sha256", getSigningSecret())
-    .update(`${encodedHeader}.${encodedPayload}`)
-    .digest("base64")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/g, "");
-
-  if (expectedSignature !== signature) {
+  const expected = Buffer.from(sign(`${encodedHeader}.${encodedPayload}`));
+  const given = Buffer.from(signature);
+  if (expected.length !== given.length || !crypto.timingSafeEqual(expected, given)) {
     return null;
   }
 
-  const payload = JSON.parse(base64UrlDecode(encodedPayload));
+  let header;
+  let payload;
+  try {
+    header = JSON.parse(base64UrlDecode(encodedHeader));
+    payload = JSON.parse(base64UrlDecode(encodedPayload));
+  } catch (_error) {
+    return null;
+  }
+  if (header?.alg !== "HS256" || !payload || typeof payload !== "object") {
+    return null;
+  }
 
   if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
     return null;
@@ -109,6 +129,7 @@ function buildAuthToken(user) {
 }
 
 module.exports = {
+  assertSigningSecret,
   buildAuthToken,
   buildTimedToken,
   hashPassword,

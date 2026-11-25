@@ -6,6 +6,14 @@ const { initializeDatabase } = require("./db/connection");
 const PORT = Number(process.env.PORT || 5000);
 
 async function startServer() {
+  // Without a strong login secret anyone could forge sign-ins, so refuse to start.
+  try {
+    require("./utils/auth").assertSigningSecret();
+  } catch (error) {
+    console.error(`Failed to start server: ${error.message}`);
+    process.exit(1);
+  }
+
   const app = createApp();
 
   app.listen(PORT, () => {

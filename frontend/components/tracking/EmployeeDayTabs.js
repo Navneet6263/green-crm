@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { formatMinutes, formatTime } from "./trackingClient";
 
-const EMPTY = "rounded-[14px] bg-slate-50 px-4 py-6 text-center text-sm text-slate-400";
+const EMPTY = "rounded-[12px] bg-slate-50 px-4 py-8 text-center text-[13px] text-slate-500 ring-1 ring-slate-100";
 
 function Visits({ visits }) {
   if (!visits.length) return <p className={EMPTY}>No client visits marked on this day.</p>;
@@ -12,7 +12,7 @@ function Visits({ visits }) {
       {visits.map((v, i) => (
         <li key={`${v.at}-${i}`} className="relative flex gap-3">
           <span className={`relative z-10 grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-bold ring-4 ring-white ${v.mocked ? "bg-rose-500 text-white" : "bg-amber-400 text-slate-900"}`}>{i + 1}</span>
-          <div className="min-w-0 flex-1 rounded-[14px] bg-slate-50 px-3 py-2">
+          <div className="min-w-0 flex-1 rounded-[12px] bg-slate-50 px-3 py-2 ring-1 ring-slate-100">
             <div className="flex items-center justify-between gap-2">
               <p className="truncate text-sm font-semibold text-slate-900">{v.label}</p>
               <span className="shrink-0 text-xs font-semibold text-slate-500">{formatTime(v.at)}</span>
@@ -20,7 +20,7 @@ function Visits({ visits }) {
             <p className="text-xs text-slate-500">
               {v.accuracy !== null ? `±${Math.round(v.accuracy)} m` : "No GPS fix"}
               {v.mocked ? <span className="ml-1 font-semibold text-rose-600">· Mocked GPS</span> : null}
-              {v.latitude !== null ? <> · <a className="font-semibold text-indigo-600" target="_blank" rel="noopener noreferrer" href={`https://www.google.com/maps?q=${v.latitude},${v.longitude}`}>Map ↗</a></> : null}
+              {v.latitude !== null ? <> · <a className="font-semibold text-brand-700" target="_blank" rel="noopener noreferrer" href={`https://www.google.com/maps?q=${v.latitude},${v.longitude}`}>Map ↗</a></> : null}
             </p>
           </div>
         </li>
@@ -34,7 +34,7 @@ function Trips({ trips }) {
   return (
     <div className="space-y-2">
       {trips.map((t, i) => (
-        <div key={t.session_id} className="rounded-[14px] border border-slate-100 p-3">
+        <div key={t.session_id} className="rounded-[12px] p-3 ring-1 ring-slate-200">
           <div className="flex items-center justify-between">
             <p className="text-sm font-bold text-slate-900">Trip {i + 1}</p>
             <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${t.active ? "bg-emerald-50 text-emerald-700" : t.stopped_at ? "bg-slate-100 text-slate-600" : "bg-amber-50 text-amber-700"}`}>
@@ -65,12 +65,12 @@ export default function EmployeeDayTabs({ day }) {
   ];
 
   return (
-    <div className="rounded-[24px] border border-slate-200/60 bg-white p-4 shadow-sm">
-      <div className="flex gap-1.5 overflow-x-auto pb-1">
+    <div className="rounded-[14px] bg-white p-4 ring-1 ring-slate-200">
+      <div className="flex gap-0.5 overflow-x-auto rounded-[10px] bg-slate-100 p-0.5 [scrollbar-width:none]">
         {tabs.map(([key, label, count]) => (
-          <button key={key} type="button" onClick={() => setTab(key)}
-            className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold ring-1 transition ${tab === key ? "bg-[#0c605d] text-white ring-[#0c605d]" : "bg-white text-slate-600 ring-slate-200"}`}>
-            {label} · {count}
+          <button key={key} type="button" onClick={() => setTab(key)} aria-pressed={tab === key}
+            className={`shrink-0 rounded-[8px] px-2.5 py-1.5 text-[12px] font-semibold transition ${tab === key ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}>
+            {label} <span className="tabular-nums text-slate-400">{count}</span>
           </button>
         ))}
       </div>

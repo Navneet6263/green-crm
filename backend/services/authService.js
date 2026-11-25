@@ -1,3 +1,4 @@
+const { publicCompany } = require("../utils/publicCompany");
 const db = require("../db/connection");
 const companyRepository = require("../repositories/companyRepository");
 const platformAccessRepository = require("../repositories/platformAccessRepository");
@@ -5,6 +6,9 @@ const userRepository = require("../repositories/userRepository");
 const auditRepository = require("../repositories/auditRepository");
 const emailService = require("./emailService");
 const loginOtp = require("./auth/loginOtp");
+const loginGuard = require("./auth/loginGuard");
+const sessions = require("./auth/sessions");
+const crypto = require("crypto");
 const { MAX_SUPER_ADMINS, ROLES } = require("../constants/roles");
 const { PLATFORM_COMPANY_ID } = require("../db/schema");
 const { buildAuthToken, buildTimedToken, hashPassword, verifyPassword, verifyToken } = require("../utils/auth");
@@ -15,12 +19,18 @@ const { getAuthCacheKey, rememberRevokedAuthKey } = require("../utils/requestAut
 const { initializeCompanyCommunicationControls } = require("./communication/companyCommunicationSetupService");
 const { ensureInitialCompanyTeam } = require("./teamProvisioningService");
 
+// Short fingerprint of the stored password hash; changes whenever the password changes.
+function passwordVersion(user) {
+  return crypto.createHash("sha256").update(String(user?.password || "")).digest("hex").slice(0, 16);
+}
+
 function sanitizeUser(user) {
   if (!user) {
     return null;
   }
 
-  const { password: _pw, ...safeUser } = user;
+  // Never send the password hash or the two-factor secret to the browser.
+  const { password: _pw, two_factor_secret: _tfs, ...safeUser } = user;
   return {
     ...safeUser,
     talent_id: buildTalentId(safeUser.company_id, safeUser.user_id),
@@ -157,7 +167,7 @@ async function registerCompany(payload) {
   });
 
   return {
-    company: result.company,
+    company: publicCompany(result.company),
     user: await hydrateUser(result.user),
     token: buildAuthToken(result.user),
   };
@@ -176,10 +186,13 @@ async function login(payload) {
     throw new AppError("Invalid credentials.", 401);
   }
 
+  loginGuard.assertNotLocked(user);
   const passwordMatches = await verifyPassword(password, user.password);
   if (!passwordMatches) {
+    await loginGuard.recordFailure(user);
     throw new AppError("Invalid credentials.", 401);
   }
+  await loginGuard.recordSuccess(user);
 
   if (!user.is_active) {
     throw new AppError("User account is not active.", 401);
@@ -196,7 +209,7 @@ async function login(payload) {
 
 async function completeLogin(user) {
   await userRepository.updateLastLogin(user.user_id);
-  const company = await companyRepository.getCompanyWithSettings(user.company_id);
+  const company = publicCompany(await companyRepository.getCompanyWithSettings(user.company_id));
 
   return {
     user: await hydrateUser(user),
@@ -215,7 +228,7 @@ async function verifyLoginCode(payload) {
 
 async function getProfile(auth) {
   const user = await userRepository.getUserById(auth.userId);
-  const company = await companyRepository.getCompanyWithSettings(auth.companyId);
+  const company = publicCompany(await companyRepository.getCompanyWithSettings(auth.companyId));
 
   if (!user) {
     throw new AppError("User not found.", 404);
@@ -281,6 +294,7 @@ async function forgotPassword(payload) {
       sub: user.user_id,
       company_id: user.company_id,
       purpose: "password-reset",
+      pwv: passwordVersion(user),
     },
     60 * 30
   );
@@ -294,7 +308,8 @@ async function forgotPassword(payload) {
     platformCompany,
     resetUrl,
   });
-  const exposeDebugPreview = process.env.NODE_ENV !== "production";
+  // Only on a developer's machine: the server's NODE_ENV may be unset, and the link must never reach a stranger.
+  const exposeDebugPreview = process.env.NODE_ENV === "development";
 
   await auditRepository.createLog({
     audit_id: await createPrefixedId("aud"),
@@ -340,6 +355,10 @@ async function resetPassword(payload) {
   if (!user) {
     throw new AppError("User not found.", 404);
   }
+  // A link stops working once the password has changed, so an old or used link cannot be replayed.
+  if (tokenPayload.pwv !== passwordVersion(user)) {
+    throw new AppError("This reset link was already used or is too old. Ask for a new one.", 400);
+  }
 
   await userRepository.updateUser(
     user.user_id,
@@ -361,6 +380,8 @@ async function resetPassword(payload) {
     details: null,
   });
 
+  await sessions.revokeSessions(user.user_id);
+  await loginGuard.recordSuccess(user);
   return { reset: true };
 }
 
@@ -380,7 +401,7 @@ async function updateProfile(auth, payload) {
 
   return {
     user: sanitizeUser(updatedUser),
-    company: await companyRepository.getCompanyWithSettings(user.company_id),
+    company: publicCompany(await companyRepository.getCompanyWithSettings(user.company_id)),
   };
 }
 
@@ -418,7 +439,25 @@ async function changePassword(auth, payload) {
     details: null,
   });
 
-  return { changed: true };
+  // Every other device is signed out; this one gets a fresh login token so it stays in.
+  await sessions.revokeSessions(user.user_id);
+  return { changed: true, token: buildAuthToken(user) };
+}
+
+/** Signs the person out on every device and browser, this one included. */
+async function logoutEverywhere(auth) {
+  await sessions.revokeSessions(auth.userId);
+  await auditRepository.createLog({
+    audit_id: await createPrefixedId("aud"),
+    company_id: auth.companyId,
+    action: "auth.signed_out_everywhere",
+    performed_by: auth.userId,
+    target_user: auth.userId,
+    user_email: auth.email,
+    user_role: auth.role,
+    details: null,
+  });
+  return { logged_out_everywhere: true };
 }
 
 async function getSuperAdminStatus() {
@@ -440,6 +479,7 @@ module.exports = {
   getSuperAdminStatus,
   login,
   logout,
+  logoutEverywhere,
   registerCompany,
   resetPassword,
   updateProfile,

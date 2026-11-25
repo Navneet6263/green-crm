@@ -2,9 +2,9 @@ import DashboardIcon from "../../../components/dashboard/icons";
 import { ACCESS_FEATURES, CONTROL_NOTES, CREATE_FORM_GROUPS, FEATURE_GROUP_STYLES, FEATURE_ICON_MAP, ROLE_LIMIT_FIELDS, SETTINGS_FORM_GROUPS } from "./company-config";
 import { avatar, cn, countLimitRoles, describeSmtp, getEnabledFeatureCount, getStatusClasses, titleize } from "./company-utils";
 
-const INPUT = "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-50";
+const INPUT = "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-brand-300 focus:ring-2 focus:ring-brand-50";
 const BTN = "inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-[13px] font-semibold transition disabled:opacity-50";
-const BTN_P = `${BTN} bg-indigo-600 text-white hover:bg-indigo-700`;
+const BTN_P = `${BTN} bg-brand-700 text-white hover:bg-brand-800`;
 const BTN_S = `${BTN} border border-slate-200 bg-white text-slate-700 hover:bg-slate-50`;
 
 function Head({ eyebrow, title, desc, action }) {
@@ -38,8 +38,8 @@ function FormControl({ field, value, onChange }) {
 
 function FieldGroup({ group, values, onChange }) {
   return (
-    <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-3.5">
-      <p className="mb-2.5 text-[11px] font-bold uppercase tracking-wide text-indigo-600">{group.eyebrow}</p>
+    <div className="rounded-[14px] bg-white p-4 ring-1 ring-slate-200">
+      <p className="mb-2.5 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">{group.eyebrow}</p>
       <p className="mb-3 text-xs text-slate-500">{group.title}</p>
       <div className="grid gap-2.5 md:grid-cols-2">
         {group.fields.map(f => <Field key={f.key} label={f.label} hint={f.hint} full={f.full}><FormControl field={f} value={values[f.key] ?? ""} onChange={onChange} /></Field>)}
@@ -51,11 +51,11 @@ function FieldGroup({ group, values, onChange }) {
 function CompanyTile({ company, selected, onClick }) {
   const st = getStatusClasses(company.status);
   return (
-    <button type="button" onClick={onClick} className={cn("w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition", selected ? "bg-indigo-600 text-white shadow-md" : "hover:bg-slate-50 border border-slate-100")}>
-      <span className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-lg text-[11px] font-bold", selected ? "bg-white/20 text-white" : "bg-indigo-100 text-indigo-700")}>{avatar(company.name)}</span>
+    <button type="button" onClick={onClick} className={cn("w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition", selected ? "bg-brand-700 text-white shadow-md" : "hover:bg-slate-50 border border-slate-100")}>
+      <span className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-lg text-[11px] font-bold", selected ? "bg-white/20 text-white" : "bg-brand-100 text-brand-800")}>{avatar(company.name)}</span>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold">{company.name}</p>
-        <p className={cn("truncate text-[11px]", selected ? "text-indigo-100" : "text-slate-400")}>{company.slug} · {describeSmtp(company)}</p>
+        <p className={cn("truncate text-[11px]", selected ? "text-brand-100" : "text-slate-400")}>{company.slug} · {describeSmtp(company)}</p>
       </div>
       <span className={cn("rounded-md px-1.5 py-0.5 text-[10px] font-bold", selected ? "bg-white/20 text-white" : st.badge)}>{titleize(company.status)}</span>
     </button>
@@ -109,7 +109,7 @@ export function CompanyDirectorySection({ companies, metrics, selectedCompany, s
         {selectedCompany ? (
           <>
             <div className="flex items-center gap-3 mb-4">
-              <span className="grid h-10 w-10 place-items-center rounded-xl bg-indigo-600 text-sm font-bold text-white">{avatar(selectedCompanyName)}</span>
+              <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand-700 text-sm font-bold text-white">{avatar(selectedCompanyName)}</span>
               <div className="min-w-0">
                 <p className="truncate text-sm font-bold text-slate-900">{selectedCompanyName}</p>
                 <p className="text-[11px] text-slate-400">{selectedCompany.slug} · {selectedCompany.admin_email || "—"}</p>
@@ -173,6 +173,7 @@ export function AccessSection({ selectedCompany, selectedCompanyName, selectedFe
           <button className={BTN_S} type="button" onClick={() => onApplyPreset("full")} disabled={!canManageTenant}>All</button>
           <button className={BTN_S} type="button" onClick={() => onApplyPreset("core")} disabled={!canManageTenant}>Core</button>
           <button className={BTN_S} type="button" onClick={() => onApplyPreset("lite")} disabled={!canManageTenant}>Lite</button>
+          <button className={BTN_S} type="button" onClick={() => onApplyPreset("tracking")} disabled={!canManageTenant}>Tracking</button>
         </div>
       </div>
       <NoticeBanner notice={accessNotice} className="mb-3" />
@@ -195,8 +196,8 @@ export function TenantSettingsSection({ selectedCompany, selectedCompanyName, ca
       <div className="grid gap-3 xl:grid-cols-2">
         {SETTINGS_FORM_GROUPS.map(g => <FieldGroup key={g.key} group={g} values={settingsDraft} onChange={onFieldChange} />)}
         {/* Role Limits */}
-        <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-3.5">
-          <p className="mb-2.5 text-[11px] font-bold uppercase tracking-wide text-indigo-600">Staff Limits</p>
+        <div className="rounded-[14px] bg-white p-4 ring-1 ring-slate-200">
+          <p className="mb-2.5 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Staff Limits</p>
           <p className="mb-3 text-xs text-slate-500">Leave blank for unlimited.</p>
           <div className="grid gap-2 md:grid-cols-2">
             {ROLE_LIMIT_FIELDS.map(f => (

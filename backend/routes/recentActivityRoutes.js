@@ -2,12 +2,14 @@ const express = require('express');
 const router = express.Router();
 const recentActivityController = require('../controllers/recentActivityController');
 const authenticate = require('../middlewares/authenticate');
+const { requireModule } = require('../middlewares/requireModule');
 const { createRateLimiter } = require('../middlewares/rateLimiter');
 
 const reportLimiter = createRateLimiter({ windowMs: 60000, max: 6, keyGenerator: req => `recent-updates-report:${req.auth.companyId}:${req.auth.userId}` });
 
 // All routes require authentication
 router.use(authenticate);
+router.use(requireModule('leads'));
 
 // GET /api/recent-activity/notes - Get recent notes across leads and customers
 router.get('/notes', recentActivityController.getRecentNotes.bind(recentActivityController));

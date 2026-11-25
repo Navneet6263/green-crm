@@ -102,7 +102,7 @@ export default function TrackingMap({ people = [], paths = [], pins = [], select
   }, [ready, selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className={`relative overflow-hidden rounded-[20px] border border-slate-200 bg-slate-100 ${className}`}>
+    <div className={`relative overflow-hidden rounded-[14px] bg-slate-100 ring-1 ring-slate-200 ${className}`}>
       <div ref={box} className="absolute inset-0" />
       {!ready && !error ? <div className="absolute inset-0 grid place-items-center text-sm font-medium text-slate-500">Loading map…</div> : null}
       {error ? <div className="absolute inset-0 grid place-items-center p-6 text-center text-sm font-medium text-rose-600">{error}</div> : null}

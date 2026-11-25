@@ -83,11 +83,10 @@ export default function SystemSettingsContent({ session, data, error, loading, r
       {loading ? <Notice tone="info" text="Loading system settings..." className="mb-4" /> : null}
 
       {!loading ? (
-        <div className="space-y-6">
+        <div className="tw-buttons min-w-0 space-y-4 pb-10">
           <PageIntro
-            eyebrow="Platform Defaults"
-            title="System-wide email and auth defaults"
-            description="These defaults power future invites, reset emails, and sender identity whenever a tenant has not overridden its own delivery profile."
+            title="System settings"
+            description="Default mail sender, login link and invite emails, used whenever a company has not set its own."
             meta={
               <>
                 <Badge tone="violet">Super Admin only</Badge>

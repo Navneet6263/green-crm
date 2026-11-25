@@ -1,11 +1,13 @@
 const router = require('express').Router();
 const authenticate = require('../middlewares/authenticate');
+const { requireModule } = require('../middlewares/requireModule');
 const asyncHandler = require('../utils/asyncHandler');
 const AppError = require('../utils/appError');
 const repository = require('../repositories/fieldTrackingRepository');
 const { assertSales, normalizeEvent, uuid } = require('../services/tracking/validation');
 const { createRateLimiter } = require('../middlewares/rateLimiter');
 router.use(asyncHandler(authenticate));
+router.use(requireModule('field_tracking'));
 router.use((req, _res, next) => { assertSales(req.auth); next(); });
 router.use(createRateLimiter({ windowMs: 60000, max: 60, keyGenerator: req => `${req.auth.companyId}:${req.auth.userId}` }));
 router.post('/sync', asyncHandler(async (req, res) => {

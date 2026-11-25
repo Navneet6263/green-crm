@@ -5,6 +5,8 @@ const userRepository = require("../repositories/userRepository");
 const auditRepository = require("../repositories/auditRepository");
 const emailService = require("./emailService");
 const developerAccess = require("./developer/access");
+const { forgetModuleAccess } = require("../middlewares/requireModule");
+const { planFor } = require("../constants/plans");
 const { PLATFORM_COMPANY_ID } = require("../db/schema");
 const { ROLES } = require("../constants/roles");
 const { buildTalentId, createPrefixedId, slugify } = require("../utils/ids");
@@ -23,7 +25,8 @@ function sanitizeUser(user) {
     return null;
   }
 
-  const { password: _pw, ...safeUser } = user;
+  // Never send the password hash or the two-factor secret to the browser.
+  const { password: _pw, two_factor_secret: _tfs, ...safeUser } = user;
   return safeUser;
 }
 
@@ -129,13 +132,19 @@ async function createCompany(auth, payload) {
 
   const adminPassword =
     String(payload.admin_password || "").trim() || buildTemporaryPassword();
+  // A plan (for example "tracking") fills module access and seat limits; limits typed in the form win.
+  const plan = payload.plan ? planFor(payload.plan) : null;
+  if (payload.plan && !plan) {
+    throw new AppError("Unknown plan.", 400);
+  }
   const serviceSettings = mergeDeep(
     {
       onboarding_profile: {
         source: "super-admin-company-create",
       },
+      ...(plan ? { plan: payload.plan } : {}),
     },
-    buildServiceSettingsPatch(payload)
+    buildServiceSettingsPatch(plan?.limits && !payload.staff_limits ? { ...payload, staff_limits: plan.limits } : payload)
   );
 
   if (
@@ -172,6 +181,10 @@ async function createCompany(auth, payload) {
       },
       transaction
     );
+
+    if (plan?.access) {
+      await companyRepository.updateCompany(companyId, { service_access: plan.access }, transaction);
+    }
 
     await initializeCompanyCommunicationControls(companyId, transaction);
 
@@ -308,6 +321,7 @@ async function updateCompany(auth, companyId, payload) {
       delete updates.service_access;
     }
     developerAccess.forget(companyId);
+    forgetModuleAccess(companyId);
   }
 
   if (Object.prototype.hasOwnProperty.call(payload, "settings_currency") || Object.prototype.hasOwnProperty.call(payload, "default_currency")) {

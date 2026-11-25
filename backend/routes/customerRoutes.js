@@ -1,12 +1,14 @@
 const express = require("express");
 
 const authenticate = require("../middlewares/authenticate");
+const { requireModule } = require("../middlewares/requireModule");
 const asyncHandler = require("../utils/asyncHandler");
 const customerController = require("../controllers/customerController");
 
 const router = express.Router();
 
 router.use(asyncHandler(authenticate));
+router.use(requireModule("customers"));
 
 router.get("/", asyncHandler(customerController.list));
 router.post("/", asyncHandler(customerController.create));

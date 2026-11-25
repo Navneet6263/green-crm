@@ -15,6 +15,8 @@ export const ACCESS_FEATURES = [
   { key: "calendar", label: "Calendar", group: "Execution", description: "Follow-up schedule, meetings, and date visibility." },
   { key: "communications", label: "Communications", group: "Service", description: "Alerts, activity feed, and message-focused surfaces." },
   { key: "attendance", label: "Attendance / Location", group: "Execution", description: "Standalone punch in and punch out module with office IP checks." },
+  { key: "field_tracking", label: "Field Tracking", group: "Execution", description: "Live map of field staff from the mobile app, routes and visit reports." },
+  { key: "discuss", label: "Discuss", group: "Service", description: "Team chat rooms and direct messages inside the CRM." },
   { key: "analytics", label: "Analytics", group: "Insights", description: "Performance dashboards, source mix, and conversion insight." },
   { key: "support", label: "Support", group: "Service", description: "Support inbox, escalations, and ticket visibility." },
   { key: "documents", label: "Documents", group: "Compliance", description: "Document review surfaces for legal and finance teams." },
@@ -39,12 +41,27 @@ const LITE_ACCESS_KEYS = ["dashboard", "team_management", "communications"];
 
 // Presets leave opt-in features (Developer API) as they are.
 const PRESET_FEATURES = ACCESS_FEATURES.filter((feature) => !feature.optIn);
+const TRACKING_ACCESS_KEYS = ["dashboard", "field_tracking", "attendance", "team_management"];
 
 export const ACCESS_PRESETS = {
   full: PRESET_FEATURES.reduce((acc, feature) => ({ ...acc, [feature.key]: true }), {}),
   core: PRESET_FEATURES.reduce((acc, feature) => ({ ...acc, [feature.key]: CORE_ACCESS_KEYS.includes(feature.key) }), {}),
   lite: PRESET_FEATURES.reduce((acc, feature) => ({ ...acc, [feature.key]: LITE_ACCESS_KEYS.includes(feature.key) }), {}),
+  tracking: PRESET_FEATURES.reduce((acc, feature) => ({ ...acc, [feature.key]: TRACKING_ACCESS_KEYS.includes(feature.key) }), {}),
 };
+
+// Plans offered when a company is created (the backend has the same list in constants/plans.js).
+export const PLAN_OPTIONS = [
+  { key: "full", label: "Full CRM", tagline: "Everything GreenCRM does", includes: ["Leads, customers and pipeline", "Tasks, calendar and email", "Field tracking and attendance", "No seat limit"], seats: null },
+  { key: "tracking", label: "Tracking only", tagline: "Live field tracking, nothing else", includes: ["Live map of field staff", "Routes, visits and day reports", "Attendance punch in / out", "1 admin, 1 manager, 1 sales"], seats: { admin: 1, manager: 1, sales: 1, marketing: 0, support: 0, "legal-team": 0, "finance-team": 0, viewer: 0 } },
+];
+
+/** "full", "tracking" or "custom", read from a company's module switches. */
+export function planOf(access = {}) {
+  const on = (key) => access[key] !== false;
+  if (!on("leads") && !on("customers") && on("field_tracking")) return "tracking";
+  return PRESET_FEATURES.every((feature) => on(feature.key)) ? "full" : "custom";
+}
 
 export const FEATURE_ICON_MAP = {
   dashboard: "dashboard",
@@ -61,6 +78,8 @@ export const FEATURE_ICON_MAP = {
   support: "support",
   documents: "documents",
   performance: "performance",
+  field_tracking: "map",
+  discuss: "message",
   developer_api: "code",
 };
 
@@ -134,6 +153,7 @@ export const STATUS_STYLES = {
 };
 
 export const CREATE_COMPANY_INITIAL_STATE = {
+  plan: "full",
   name: "",
   slug: "",
   admin_name: "",

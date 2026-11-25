@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { apiRequest } from "../../lib/api";
 import { formatDateTime, titleize } from "./format";
-import { Badge, EmptyState, INPUT_CLASS, Notice, PageIntro, PRIMARY_BUTTON_CLASS, SECONDARY_BUTTON_CLASS } from "./ui";
+import { Badge, EmptyState, INPUT_CLASS, MetricCard, Notice, PageIntro, PRIMARY_BUTTON_CLASS, SECONDARY_BUTTON_CLASS } from "./ui";
 
 function daysFromNow(d) { if (!d) return null; return Math.floor((new Date(d).setHours(0,0,0,0) - new Date().setHours(0,0,0,0)) / 86400000); }
 function dateLabel(d) { const diff = daysFromNow(d); if (diff === null) return ""; if (diff === 0) return "Today"; if (diff === 1) return "Tomorrow"; if (diff === -1) return "Yesterday"; if (diff > 1 && diff <= 7) return `In ${diff} days`; if (diff < -1 && diff >= -7) return `${Math.abs(diff)} days ago`; return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short" }); }
@@ -20,7 +20,7 @@ function NoteInput({ requestId, token, onSaved }) {
   return (
     <div className="flex gap-2 mt-2">
       <input className={`${INPUT_CLASS} text-xs`} value={note} onChange={e => setNote(e.target.value)} placeholder="Add note… (how was demo, next step)" onKeyDown={e => e.key === "Enter" && save()} />
-      <button type="button" onClick={save} disabled={saving || !note.trim()} className="shrink-0 rounded-lg bg-indigo-600 px-2.5 py-1.5 text-[11px] font-semibold text-white hover:bg-indigo-700 disabled:opacity-50 transition">{saving ? "…" : "Save"}</button>
+      <button type="button" onClick={save} disabled={saving || !note.trim()} className="shrink-0 rounded-lg bg-brand-700 px-2.5 py-1.5 text-[11px] font-semibold text-white hover:bg-brand-800 disabled:opacity-50 transition">{saving ? "…" : "Save"}</button>
     </div>
   );
 }
@@ -28,10 +28,10 @@ function NoteInput({ requestId, token, onSaved }) {
 function DemoCard({ r, token, onStatusChange, updatingId, onRefresh }) {
   const isPending = r.status === "pending";
   const diff = daysFromNow(r.demo_date || r.created_at);
-  const urgency = isPending && (diff === 0 || diff === 1) ? "border-amber-200 bg-amber-50/50" : isPending ? "border-slate-100 bg-white" : "border-slate-100 bg-slate-50/50";
+  const urgency = isPending && (diff === 0 || diff === 1) ? "bg-amber-50/60 ring-amber-200" : isPending ? "bg-white ring-slate-200" : "bg-white ring-slate-200 opacity-90";
 
   return (
-    <div className={`rounded-xl border p-3.5 transition hover:shadow-sm ${urgency}`}>
+    <div className={`rounded-[14px] p-4 ring-1 transition hover:ring-brand-200 ${urgency}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2.5">
           <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[11px] font-bold text-white ${isPending ? "bg-amber-500" : "bg-emerald-600"}`}>{ini(r.name)}</span>
@@ -44,13 +44,13 @@ function DemoCard({ r, token, onStatusChange, updatingId, onRefresh }) {
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
-          {r.demo_date ? <span className="rounded-md bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-700">{dateLabel(r.demo_date)}</span> : null}
+          {r.demo_date ? <span className="rounded-md bg-brand-50 px-2 py-0.5 text-[10px] font-bold text-brand-800">{dateLabel(r.demo_date)}</span> : null}
           <span className="text-[10px] text-slate-400">{dateLabel(r.created_at)}</span>
         </div>
       </div>
 
       {r.message ? <p className="mt-2 text-xs text-slate-600 line-clamp-2">{r.message}</p> : null}
-      {r.notes ? <p className="mt-1.5 rounded-md bg-indigo-50/60 px-2.5 py-1.5 text-[11px] text-indigo-800 font-medium">📝 {r.notes}</p> : null}
+      {r.notes ? <p className="mt-1.5 rounded-md bg-brand-50/60 px-2.5 py-1.5 text-[11px] text-brand-900 font-medium">📝 {r.notes}</p> : null}
 
       <div className="mt-2.5 flex items-center justify-between">
         <p className="text-[10px] text-slate-400">Requested {formatDateTime(r.created_at)}{r.demo_date ? ` · Demo: ${formatDateTime(r.demo_date)}` : ""}</p>
@@ -112,36 +112,37 @@ export default function DemoRequestsContent({ session, data, error, loading, ref
   if (loading) return <Notice tone="info" text="Loading demos…" />;
 
   return (
-    <div className="space-y-4">
+    <div className="tw-buttons min-w-0 space-y-4 pb-10">
       <Notice tone="error" text={error} />
       {notice ? <Notice tone={notice.tone} text={notice.text} /> : null}
 
-      <PageIntro eyebrow="Demos" title="Demo Requests" meta={<><Badge tone="amber">{pending} pending</Badge><Badge tone="emerald">{reviewed} reviewed</Badge><Badge>{requests.length} total</Badge></>} />
+      <PageIntro title="Demo requests" description="People who asked to see GreenCRM. Reply, add a note after the call, and mark them reviewed." meta={<><Badge tone="amber">{pending} pending</Badge><Badge tone="emerald">{reviewed} reviewed</Badge><Badge>{requests.length} total</Badge></>} />
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-xl border border-amber-100 bg-amber-50/50 px-4 py-3"><p className="text-[10px] font-bold uppercase text-amber-600">Pending</p><p className="mt-0.5 text-xl font-bold text-slate-900">{pending}</p></div>
-        <div className="rounded-xl border border-indigo-100 bg-indigo-50/50 px-4 py-3"><p className="text-[10px] font-bold uppercase text-indigo-600">Upcoming</p><p className="mt-0.5 text-xl font-bold text-slate-900">{groups.upcoming.length}</p></div>
-        <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 px-4 py-3"><p className="text-[10px] font-bold uppercase text-emerald-600">Reviewed</p><p className="mt-0.5 text-xl font-bold text-slate-900">{reviewed}</p></div>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <MetricCard label="Waiting for a reply" value={pending} note="Pending requests" tone="amber" />
+        <MetricCard label="Demos coming up" value={groups.upcoming.length} note="Today or later" tone="teal" />
+        <MetricCard label="Reviewed" value={reviewed} note="Done or replied" tone="emerald" />
+        <MetricCard label="Last 7 days" value={groups.recent.length + groups.upcoming.filter((r) => daysFromNow(r.created_at) >= -7).length} note={`${requests.length} requests in total`} tone="blue" />
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap items-center gap-2">
-        <input className={`${INPUT_CLASS} max-w-xs`} value={query} onChange={e => setQuery(e.target.value)} placeholder="Search name, company, email…" />
-        <select className={`${INPUT_CLASS} w-auto`} value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+      <div className="grid items-center gap-2 rounded-[14px] bg-white p-3 ring-1 ring-slate-200 sm:grid-cols-[minmax(0,1fr)_170px_auto]">
+        <input className={INPUT_CLASS} value={query} onChange={e => setQuery(e.target.value)} placeholder="Search name, company, email…" />
+        <select className={INPUT_CLASS} value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
           <option value="all">All</option>
           <option value="pending">Pending</option>
           <option value="reviewed">Reviewed</option>
         </select>
-        <span className="ml-auto text-xs text-slate-400">{filtered.length} results</span>
+        <span className="text-[12px] text-slate-500 sm:text-right">{filtered.length} shown</span>
       </div>
 
       {/* Upcoming Demos */}
       {groups.upcoming.length ? (
         <div>
           <div className="flex items-center gap-2 mb-2">
-            <span className="h-2 w-2 rounded-full bg-indigo-500 animate-pulse" />
-            <p className="text-[12px] font-bold uppercase tracking-wide text-indigo-600">Upcoming Demos ({groups.upcoming.length})</p>
+            <span className="h-2 w-2 rounded-full bg-brand-600 animate-pulse" />
+            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-brand-700">Upcoming Demos ({groups.upcoming.length})</p>
           </div>
           <div className="space-y-2">
             {groups.upcoming.map(r => <DemoCard key={r.id} r={r} token={session.token} onStatusChange={handleStatus} updatingId={updatingId} onRefresh={refresh} />)}
@@ -152,7 +153,7 @@ export default function DemoRequestsContent({ session, data, error, loading, ref
       {/* Recent */}
       {groups.recent.length ? (
         <div>
-          <p className="text-[12px] font-bold uppercase tracking-wide text-slate-400 mb-2">Recent — Last 7 Days ({groups.recent.length})</p>
+          <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400 mb-2">Recent — Last 7 Days ({groups.recent.length})</p>
           <div className="space-y-2">
             {groups.recent.map(r => <DemoCard key={r.id} r={r} token={session.token} onStatusChange={handleStatus} updatingId={updatingId} onRefresh={refresh} />)}
           </div>
@@ -162,7 +163,7 @@ export default function DemoRequestsContent({ session, data, error, loading, ref
       {/* Older */}
       {groups.older.length ? (
         <div>
-          <p className="text-[12px] font-bold uppercase tracking-wide text-slate-400 mb-2">Older ({groups.older.length})</p>
+          <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400 mb-2">Older ({groups.older.length})</p>
           <div className="space-y-2">
             {groups.older.map(r => <DemoCard key={r.id} r={r} token={session.token} onStatusChange={handleStatus} updatingId={updatingId} onRefresh={refresh} />)}
           </div>

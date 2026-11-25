@@ -1,213 +1,212 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { apiRequest } from "../../lib/api";
+import SideDrawer from "../ui/SideDrawer";
 import { formatDateTime, titleize } from "./format";
-import { Badge, EmptyState, INPUT_CLASS, Modal, Notice, PageIntro, Panel, PRIMARY_BUTTON_CLASS, SECONDARY_BUTTON_CLASS, GHOST_BUTTON_CLASS, SUB_PANEL_CLASS } from "./ui";
+import { Badge, INPUT_CLASS, MetricCard, Modal, Notice, PageIntro, PRIMARY_BUTTON_CLASS, SECONDARY_BUTTON_CLASS, GHOST_BUTTON_CLASS } from "./ui";
 
 const PLATFORM_ROLES = ["platform-admin", "platform-manager"];
 const TENANT_ROLES = ["admin", "manager", "sales", "marketing", "support", "legal-team", "finance-team", "viewer"];
+const isPlatformRoot = (r) => r === "super-admin" || PLATFORM_ROLES.includes(r);
+const isPlatformOp = (r) => PLATFORM_ROLES.includes(r);
+const ini = (n = "?") => String(n).split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join("") || "?";
+const blankForm = { name: "", email: "", password: "", role: "admin", company_id: "", managed_company_ids: [] };
 
-function isPlatformRoot(r) { return r === "super-admin" || PLATFORM_ROLES.includes(r); }
-function isPlatformOp(r) { return PLATFORM_ROLES.includes(r); }
-function ini(n = "?") { return String(n).split(" ").filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase()).join("") || "?"; }
+function ago(value) {
+  if (!value) return "Never";
+  const days = Math.floor((Date.now() - new Date(value).getTime()) / 86400000);
+  return days < 1 ? "Today" : days === 1 ? "Yesterday" : days < 60 ? `${days} d ago` : formatDateTime(value);
+}
 
-function CompanyGroup({ name, count, users, expanded, onToggle, onReset, onToggleUser, togglingId, companyId, onSuspend, suspending, status, isPlatform }) {
+function CreateUserDrawer({ open, onClose, form, setForm, companies, roleOptions, onSubmit, submitting }) {
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const label = "block space-y-1 text-[12px] font-semibold text-slate-600";
   return (
-    <div className="rounded-xl border border-slate-100 overflow-hidden">
-      <div className="flex items-center bg-white">
-        <button type="button" onClick={onToggle} className="flex flex-1 items-center justify-between px-4 py-3 hover:bg-slate-50 transition">
-          <div className="flex items-center gap-3">
-            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-indigo-600 text-[11px] font-bold text-white">{ini(name)}</span>
-            <span className="text-sm font-semibold text-slate-900">{name}</span>
-          </div>
-          <div className="flex items-center gap-2.5">
-            <span className="rounded-md bg-indigo-50 px-2 py-0.5 text-[11px] font-bold text-indigo-700">{count} users</span>
-            {status ? <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold ${status === "active" ? "bg-emerald-50 text-emerald-700" : status === "suspended" ? "bg-rose-50 text-rose-600" : "bg-amber-50 text-amber-700"}`}>{status}</span> : null}
-            <svg className={`h-4 w-4 text-slate-400 transition ${expanded ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
-          </div>
-        </button>
-        {!isPlatform && companyId && onSuspend ? (
-          <button type="button" onClick={() => onSuspend(companyId, name, status)} disabled={suspending === companyId} className={`mr-3 rounded-md px-2.5 py-1 text-[11px] font-semibold transition ${status === "suspended" ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100" : "bg-rose-50 text-rose-600 hover:bg-rose-100"}`}>
-            {suspending === companyId ? "…" : status === "suspended" ? "Activate" : "Suspend"}
-          </button>
+    <SideDrawer open={open} onClose={onClose} title="New user" subtitle="A login for a company or for the platform team"
+      footer={<div className="flex justify-end gap-2"><button type="button" className={SECONDARY_BUTTON_CLASS} onClick={onClose}>Cancel</button><button type="submit" form="create-user" className={PRIMARY_BUTTON_CLASS} disabled={submitting}>{submitting ? "Creating…" : "Create user"}</button></div>}>
+      <form id="create-user" onSubmit={onSubmit} className="space-y-4">
+        <section className="grid gap-3 rounded-[14px] bg-white p-4 ring-1 ring-slate-200 sm:grid-cols-2">
+          <label className={label}><span>Name</span><input className={INPUT_CLASS} value={form.name} onChange={(e) => set("name", e.target.value)} required /></label>
+          <label className={label}><span>Email</span><input className={INPUT_CLASS} type="email" value={form.email} onChange={(e) => set("email", e.target.value)} required /></label>
+          <label className={label}><span>Password</span><input className={INPUT_CLASS} type="password" value={form.password} onChange={(e) => set("password", e.target.value)} placeholder="Leave empty to make one" /></label>
+          <label className={label}><span>Role</span>
+            <select className={INPUT_CLASS} value={form.role} onChange={(e) => setForm((f) => ({ ...f, role: e.target.value, company_id: isPlatformRoot(e.target.value) ? "" : f.company_id }))}>
+              {roleOptions.map((r) => <option key={r} value={r}>{titleize(r)}</option>)}
+            </select>
+          </label>
+          {!isPlatformRoot(form.role) ? (
+            <label className={`${label} sm:col-span-2`}><span>Company</span>
+              <select className={INPUT_CLASS} value={form.company_id} onChange={(e) => set("company_id", e.target.value)} required>
+                <option value="">Choose a company</option>
+                {companies.map((c) => <option key={c.company_id} value={c.company_id}>{c.name}</option>)}
+              </select>
+              <span className="block text-[11px] font-normal text-slate-400">The company&apos;s seat limits apply.</span>
+            </label>
+          ) : null}
+        </section>
+        {isPlatformOp(form.role) ? (
+          <section className="rounded-[14px] bg-white p-4 ring-1 ring-slate-200">
+            <p className="text-[13.5px] font-bold text-slate-900">Companies this person manages</p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {companies.map((c) => {
+                const on = form.managed_company_ids.includes(c.company_id);
+                return <button key={c.company_id} type="button" aria-pressed={on} onClick={() => set("managed_company_ids", on ? form.managed_company_ids.filter((x) => x !== c.company_id) : [...form.managed_company_ids, c.company_id])}
+                  className={`rounded-full px-2.5 py-1 text-[12px] font-semibold ring-1 transition ${on ? "bg-brand-50 text-brand-800 ring-brand-200" : "bg-white text-slate-600 ring-slate-200 hover:bg-slate-50"}`}>{c.name}</button>;
+              })}
+            </div>
+          </section>
         ) : null}
-      </div>
-      {expanded ? (
-        <div className="border-t border-slate-100 bg-slate-50/50 divide-y divide-slate-100">
-          {users.map(u => {
-            const active = u.is_active !== false;
-            return (
-              <div key={u.user_id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-white transition">
-                <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-md text-[10px] font-bold text-white ${active ? "bg-emerald-600" : "bg-slate-400"}`}>{ini(u.name)}</span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className="truncate text-sm font-medium text-slate-900">{u.name || "Unknown"}</p>
-                    <Badge tone={active ? "emerald" : "rose"}>{active ? "Active" : "Off"}</Badge>
-                    <Badge>{titleize(u.role)}</Badge>
-                  </div>
-                  <p className="truncate text-[11px] text-slate-400">{u.email}{u.last_login_at ? ` · Last: ${formatDateTime(u.last_login_at)}` : ""}</p>
-                </div>
-                <div className="flex shrink-0 gap-1.5">
-                  <button type="button" onClick={() => onReset(u)} className="rounded-md bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-600 hover:bg-slate-200 transition">Reset</button>
-                  <button type="button" onClick={() => onToggleUser(u)} disabled={togglingId === u.user_id} className={`rounded-md px-2 py-1 text-[11px] font-semibold transition ${active ? "bg-rose-50 text-rose-600 hover:bg-rose-100" : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"}`}>
-                    {togglingId === u.user_id ? "…" : active ? "Disable" : "Enable"}
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      ) : null}
-    </div>
+      </form>
+    </SideDrawer>
   );
 }
 
+/** Every login on the platform in one table: filter by company, role or status; reset passwords and switch people on or off. */
 export default function PlatformUsersContent({ session, data, error, loading, refresh }) {
   const isSuperAdmin = session?.user?.role === "super-admin";
-  const [form, setForm] = useState({ name: "", email: "", password: "", role: "admin", company_id: "", managed_company_ids: [] });
+  const [form, setForm] = useState(blankForm);
   const [notice, setNotice] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [togglingId, setTogglingId] = useState("");
   const [query, setQuery] = useState("");
+  const [company, setCompany] = useState("");
+  const [roleFilter, setRoleFilter] = useState("");
+  const [status, setStatus] = useState("");
   const [resetTarget, setResetTarget] = useState(null);
   const [resetPw, setResetPw] = useState("");
   const [resetting, setResetting] = useState(false);
-  const [expandedCompanies, setExpandedCompanies] = useState(new Set());
   const [showCreate, setShowCreate] = useState(false);
-  const [suspending, setSuspending] = useState("");
 
   const users = data.users?.items || [];
   const companies = data.companies?.items || [];
-  const safety = data.safety || {};
   const roleOptions = isSuperAdmin ? ["super-admin", ...PLATFORM_ROLES, ...TENANT_ROLES] : TENANT_ROLES;
+  const active = users.filter((u) => u.is_active !== false && u.is_active !== 0);
+  const seenWeek = users.filter((u) => u.last_login_at && Date.now() - new Date(u.last_login_at).getTime() < 7 * 86400000).length;
 
-  // Group users by company
-  const companiesById = useMemo(() => new Map(companies.map(c => [c.company_id, c])), [companies]);
-  const grouped = useMemo(() => {
+  const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const filtered = users.filter(u => {
-      if (!q) return true;
-      return [u.name, u.email, u.role, u.company_name].filter(Boolean).some(v => String(v).toLowerCase().includes(q));
-    });
-    const map = new Map();
-    // Platform users group
-    const platform = filtered.filter(u => isPlatformRoot(u.role));
-    if (platform.length) map.set("__platform__", { name: "Platform Operators", users: platform });
-    // Company groups
-    const companyMap = new Map();
-    filtered.filter(u => !isPlatformRoot(u.role)).forEach(u => {
-      const key = u.company_id || "__none__";
-      const name = u.company_name || "No Company";
-      const status = companiesById.get(u.company_id)?.status || "";
-      if (!companyMap.has(key)) companyMap.set(key, { name, users: [], status, companyId: u.company_id });
-      companyMap.get(key).users.push(u);
-    });
-    // Sort by user count desc
-    [...companyMap.entries()].sort((a, b) => b[1].users.length - a[1].users.length).forEach(([k, v]) => map.set(k, v));
-    return map;
-  }, [users, query]);
-
-  function toggle(key) { setExpandedCompanies(s => { const n = new Set(s); n.has(key) ? n.delete(key) : n.add(key); return n; }); }
-  function expandAll() { setExpandedCompanies(new Set(grouped.keys())); }
-  function collapseAll() { setExpandedCompanies(new Set()); }
+    return users.filter((u) => {
+      const on = u.is_active !== false && u.is_active !== 0;
+      if (company === "__platform__" ? !isPlatformRoot(u.role) : company && u.company_id !== company) return false;
+      if (roleFilter && u.role !== roleFilter) return false;
+      if (status && (status === "active") !== on) return false;
+      return !q || [u.name, u.email, u.role, u.company_name, u.phone].filter(Boolean).some((v) => String(v).toLowerCase().includes(q));
+    }).sort((a, b) => new Date(b.last_login_at || 0) - new Date(a.last_login_at || 0));
+  }, [users, query, company, roleFilter, status]);
 
   async function handleCreate(e) {
-    e.preventDefault(); setSubmitting(true); setNotice(null);
+    e.preventDefault();
+    setSubmitting(true);
+    setNotice(null);
     try {
       const body = { name: form.name, email: form.email, password: form.password, role: form.role, ...(isPlatformOp(form.role) ? { managed_company_ids: form.managed_company_ids } : {}), ...(!isPlatformRoot(form.role) && form.company_id ? { company_id: form.company_id } : {}) };
       const r = await apiRequest("/auth/create-employee", { method: "POST", token: session.token, body });
-      const pw = r?.temporary_password ? ` Password: ${r.temporary_password}` : "";
-      setNotice({ tone: "success", text: `User created for ${form.email}.${pw}` });
-      setForm({ name: "", email: "", password: "", role: "admin", company_id: "", managed_company_ids: [] });
-      setShowCreate(false); await refresh();
+      setNotice({ tone: "success", text: `Login created for ${form.email}.${r?.temporary_password ? ` Password: ${r.temporary_password}` : ""}` });
+      setForm(blankForm);
+      setShowCreate(false);
+      await refresh();
     } catch (err) { setNotice({ tone: "error", text: err.message }); } finally { setSubmitting(false); }
   }
 
   async function handleToggle(u) {
-    setTogglingId(u.user_id); setNotice(null);
-    try { await apiRequest(u.is_active ? `/super-admin/deactivate/${u.user_id}` : `/super-admin/activate/${u.user_id}`, { method: "PUT", token: session.token }); setNotice({ tone: "success", text: `${u.name} ${u.is_active ? "disabled" : "enabled"}.` }); await refresh(); }
+    const on = u.is_active !== false && u.is_active !== 0;
+    if (on && !window.confirm(`Switch off ${u.name || u.email}? They are signed out and cannot sign in.`)) return;
+    setTogglingId(u.user_id);
+    setNotice(null);
+    try { await apiRequest(on ? `/super-admin/deactivate/${u.user_id}` : `/super-admin/activate/${u.user_id}`, { method: "PUT", token: session.token }); setNotice({ tone: "success", text: `${u.name} ${on ? "switched off" : "switched on"}.` }); await refresh(); }
     catch (err) { setNotice({ tone: "error", text: err.message }); } finally { setTogglingId(""); }
   }
 
   async function handleReset(e) {
-    e.preventDefault(); if (!resetTarget) return; setResetting(true); setNotice(null);
-    try { await apiRequest(`/super-admin/reset-password/${resetTarget.user_id}`, { method: "PUT", token: session.token, body: { password: resetPw } }); setNotice({ tone: "success", text: `Password reset for ${resetTarget.email}.` }); setResetTarget(null); setResetPw(""); await refresh(); }
+    e.preventDefault();
+    setResetting(true);
+    setNotice(null);
+    try { await apiRequest(`/super-admin/reset-password/${resetTarget.user_id}`, { method: "PUT", token: session.token, body: { password: resetPw } }); setNotice({ tone: "success", text: `Password changed for ${resetTarget.email}.` }); setResetTarget(null); setResetPw(""); await refresh(); }
     catch (err) { setNotice({ tone: "error", text: err.message }); } finally { setResetting(false); }
-  }
-
-  async function handleSuspendCompany(companyId, name, currentStatus) {
-    const newStatus = currentStatus === "suspended" ? "active" : "suspended";
-    if (!window.confirm(`${newStatus === "suspended" ? "Suspend" : "Activate"} "${name}"?`)) return;
-    setSuspending(companyId); setNotice(null);
-    try {
-      await apiRequest(`/companies/${companyId}`, { method: "PUT", token: session.token, body: { status: newStatus } });
-      setNotice({ tone: "success", text: `${name} is now ${newStatus}.` }); await refresh();
-    } catch (err) { setNotice({ tone: "error", text: err.message }); } finally { setSuspending(""); }
   }
 
   if (loading) return <Notice tone="info" text="Loading users…" />;
 
   return (
-    <>
-      <div className="space-y-4">
-        <Notice tone="error" text={error} />
-        {notice ? <Notice tone={notice.tone} text={notice.text} /> : null}
+    <div className="tw-buttons min-w-0 space-y-4 pb-10">
+      <PageIntro title="Platform users" description="Every login across all companies. Change passwords and switch people on or off from here."
+        actions={<><button type="button" className={SECONDARY_BUTTON_CLASS} onClick={refresh}>Refresh</button><button type="button" className={PRIMARY_BUTTON_CLASS} onClick={() => setShowCreate(true)}>+ New user</button></>} />
+      <Notice tone="error" text={error} />
+      {notice ? <Notice tone={notice.tone} text={notice.text} /> : null}
 
-        <PageIntro eyebrow="Users" title="Platform Users" meta={<><Badge tone="violet">{users.length} total</Badge><Badge tone="emerald">{users.filter(u => u.is_active !== false).length} active</Badge><Badge>{companies.length} companies</Badge></>} actions={<button type="button" onClick={() => setShowCreate(!showCreate)} className={showCreate ? SECONDARY_BUTTON_CLASS : PRIMARY_BUTTON_CLASS}>{showCreate ? "Close" : "+ Create User"}</button>} />
-
-        {/* Create Form — collapsible */}
-        {showCreate ? (
-          <div className="rounded-2xl border border-slate-100 bg-white p-5">
-            <form onSubmit={handleCreate}>
-              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-                <label className="space-y-1"><span className="text-[11px] font-semibold text-slate-500">Name</span><input className={INPUT_CLASS} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required /></label>
-                <label className="space-y-1"><span className="text-[11px] font-semibold text-slate-500">Email</span><input className={INPUT_CLASS} type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} required /></label>
-                <label className="space-y-1"><span className="text-[11px] font-semibold text-slate-500">Password</span><input className={INPUT_CLASS} type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="Auto-generate" /></label>
-                <label className="space-y-1"><span className="text-[11px] font-semibold text-slate-500">Role</span><select className={INPUT_CLASS} value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value, company_id: isPlatformRoot(e.target.value) ? "" : f.company_id }))}>{roleOptions.map(r => <option key={r} value={r}>{titleize(r)}</option>)}</select></label>
-                {!isPlatformRoot(form.role) ? <label className="space-y-1"><span className="text-[11px] font-semibold text-slate-500">Company</span><select className={INPUT_CLASS} value={form.company_id} onChange={e => setForm(f => ({ ...f, company_id: e.target.value }))} required><option value="">Select</option>{companies.map(c => <option key={c.company_id} value={c.company_id}>{c.name}</option>)}</select></label> : null}
-              </div>
-              {isPlatformOp(form.role) ? (
-                <div className="mt-3"><p className="text-[11px] font-semibold text-slate-500 mb-2">Managed Companies</p><div className="flex flex-wrap gap-2">{companies.map(c => { const on = form.managed_company_ids.includes(c.company_id); return <button key={c.company_id} type="button" onClick={() => setForm(f => ({ ...f, managed_company_ids: on ? f.managed_company_ids.filter(x => x !== c.company_id) : [...f.managed_company_ids, c.company_id] }))} className={`rounded-lg border px-2.5 py-1 text-xs font-semibold transition ${on ? "border-indigo-300 bg-indigo-50 text-indigo-700" : "border-slate-200 text-slate-600 hover:bg-slate-50"}`}>{c.name}</button>; })}</div></div>
-              ) : null}
-              <div className="mt-3 flex gap-2">
-                <button className={PRIMARY_BUTTON_CLASS} type="submit" disabled={submitting}>{submitting ? "Creating…" : "Create"}</button>
-                <button type="button" className={SECONDARY_BUTTON_CLASS} onClick={() => setShowCreate(false)}>Cancel</button>
-              </div>
-            </form>
-          </div>
-        ) : null}
-
-        {/* Search + Controls */}
-        <div className="flex flex-wrap items-center gap-2">
-          <input className={`${INPUT_CLASS} max-w-xs`} value={query} onChange={e => setQuery(e.target.value)} placeholder="Search users…" />
-          <button type="button" onClick={expandAll} className="rounded-lg bg-slate-100 px-2.5 py-1.5 text-[11px] font-semibold text-slate-600 hover:bg-slate-200 transition">Expand All</button>
-          <button type="button" onClick={collapseAll} className="rounded-lg bg-slate-100 px-2.5 py-1.5 text-[11px] font-semibold text-slate-600 hover:bg-slate-200 transition">Collapse All</button>
-          <span className="ml-auto text-xs text-slate-400">{users.length} users · {grouped.size} groups</span>
-        </div>
-
-        {/* Company-wise Accordion */}
-        {grouped.size ? (
-          <div className="space-y-2">
-            {[...grouped.entries()].map(([key, { name, users: grpUsers, status, companyId }]) => (
-              <CompanyGroup key={key} name={name} count={grpUsers.length} users={grpUsers} expanded={expandedCompanies.has(key)} onToggle={() => toggle(key)} onReset={u => { setResetTarget(u); setResetPw(""); }} onToggleUser={handleToggle} togglingId={togglingId} companyId={companyId} onSuspend={isSuperAdmin ? handleSuspendCompany : null} suspending={suspending} status={status} isPlatform={key === "__platform__"} />
-            ))}
-          </div>
-        ) : <EmptyState icon="users" title="No users found" description="Try a different search." />}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <MetricCard label="People" value={users.length} note={`${active.length} active`} tone="violet" />
+        <MetricCard label="Signed in this week" value={seenWeek} note={`${users.length ? Math.round((seenWeek / users.length) * 100) : 0}% of everyone`} tone="emerald" />
+        <MetricCard label="Platform team" value={users.filter((u) => isPlatformRoot(u.role)).length} note="Super admins and operators" tone="teal" />
+        <MetricCard label="Switched off" value={users.length - active.length} note="Cannot sign in" tone="rose" />
       </div>
 
-      {/* Reset Password Modal */}
+      <div className="rounded-[14px] bg-white ring-1 ring-slate-200">
+        <div className="grid gap-2 border-b border-slate-100 p-3 md:grid-cols-[minmax(0,1fr)_180px_150px_130px]">
+          <input className={INPUT_CLASS} value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search name, email, phone or company" />
+          <select className={INPUT_CLASS} value={company} onChange={(e) => setCompany(e.target.value)} aria-label="Company">
+            <option value="">All companies</option>
+            <option value="__platform__">Platform team</option>
+            {companies.map((c) => <option key={c.company_id} value={c.company_id}>{c.name}</option>)}
+          </select>
+          <select className={INPUT_CLASS} value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} aria-label="Role">
+            <option value="">Any role</option>
+            {["super-admin", ...PLATFORM_ROLES, ...TENANT_ROLES, "expert"].map((r) => <option key={r} value={r}>{titleize(r)}</option>)}
+          </select>
+          <select className={INPUT_CLASS} value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Status">
+            <option value="">Any status</option><option value="active">Active</option><option value="off">Switched off</option>
+          </select>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[860px] text-left text-[12.5px]">
+            <thead className="text-[11px] uppercase tracking-wider text-slate-400">
+              <tr>{["Person", "Company", "Role", "Status", "Last sign-in", ""].map((h) => <th key={h} className="px-4 py-2.5 font-bold">{h}</th>)}</tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {rows.map((u) => {
+                const on = u.is_active !== false && u.is_active !== 0;
+                return (
+                  <tr key={u.user_id} className="transition hover:bg-slate-50">
+                    <td className="px-4 py-2.5">
+                      <div className="flex items-center gap-2.5">
+                        <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-[10px] text-[11px] font-bold text-white ${on ? "bg-brand-700" : "bg-slate-400"}`}>{ini(u.name)}</span>
+                        <span className="min-w-0"><span className="block truncate font-semibold text-slate-900">{u.name || "Unknown"}</span><span className="block truncate text-[11px] text-slate-500">{u.email}</span></span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-2.5 text-slate-700">{isPlatformRoot(u.role) ? <Badge tone="teal">Platform</Badge> : u.company_name || "–"}</td>
+                    <td className="px-4 py-2.5"><Badge tone={u.role === "super-admin" ? "violet" : u.role === "admin" ? "blue" : "slate"}>{titleize(u.role)}</Badge></td>
+                    <td className="px-4 py-2.5"><Badge tone={on ? "emerald" : "rose"}>{on ? "Active" : "Off"}</Badge></td>
+                    <td className="whitespace-nowrap px-4 py-2.5 text-slate-600">{ago(u.last_login_at)}</td>
+                    <td className="px-4 py-2.5">
+                      <div className="flex justify-end gap-1.5">
+                        <button type="button" className={GHOST_BUTTON_CLASS} onClick={() => { setResetTarget(u); setResetPw(""); }}>Password</button>
+                        <button type="button" disabled={togglingId === u.user_id || u.user_id === session?.user?.user_id} onClick={() => handleToggle(u)}
+                          className={`${GHOST_BUTTON_CLASS} ${on ? "text-rose-700" : "text-emerald-700"}`}>{togglingId === u.user_id ? "…" : on ? "Switch off" : "Switch on"}</button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+              {!rows.length ? <tr><td colSpan={6} className="px-4 py-10 text-center text-[13px] text-slate-500">Nobody matches.</td></tr> : null}
+            </tbody>
+          </table>
+        </div>
+        <p className="border-t border-slate-100 px-4 py-2.5 text-[12px] text-slate-500">{rows.length} of {users.length} people · newest sign-in first</p>
+      </div>
+
+      <CreateUserDrawer open={showCreate} onClose={() => setShowCreate(false)} form={form} setForm={setForm} companies={companies} roleOptions={roleOptions} onSubmit={handleCreate} submitting={submitting} />
       {resetTarget ? (
-        <Modal title={`Reset: ${resetTarget.name || resetTarget.email}`} onClose={() => setResetTarget(null)}>
+        <Modal title={`New password for ${resetTarget.name || resetTarget.email}`} description="They can sign in with it right away. Share it privately." onClose={() => setResetTarget(null)}>
           <form onSubmit={handleReset} className="space-y-3">
-            <input className={INPUT_CLASS} type="password" value={resetPw} onChange={e => setResetPw(e.target.value)} placeholder="New password (min 8)" minLength={8} required />
-            <div className="flex gap-2">
-              <button className={PRIMARY_BUTTON_CLASS} type="submit" disabled={resetting}>{resetting ? "Saving…" : "Save"}</button>
+            <input className={INPUT_CLASS} type="password" value={resetPw} onChange={(e) => setResetPw(e.target.value)} placeholder="At least 8 characters" minLength={8} required autoFocus />
+            <div className="flex justify-end gap-2">
               <button type="button" className={SECONDARY_BUTTON_CLASS} onClick={() => setResetTarget(null)}>Cancel</button>
+              <button className={PRIMARY_BUTTON_CLASS} type="submit" disabled={resetting}>{resetting ? "Saving…" : "Save password"}</button>
             </div>
           </form>
         </Modal>
       ) : null}
-    </>
+    </div>
   );
 }

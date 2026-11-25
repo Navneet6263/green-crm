@@ -80,7 +80,7 @@ npm run web
 
 On Windows use `npm.cmd` if PowerShell blocks `npm.ps1`.
 Web runs at http://localhost:3010. Use an existing **sales** employee account.
-The default API is **https://greencall.online/api**: live buttons can change real data.
+The default API is **https://crm.greencall.in/api**: live buttons can change real data.
 Use an approved staging company/account, not customer data, for acceptance tests.
 
 Set `mobile/.env` using `.env.example` to override the API:

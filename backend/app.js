@@ -6,6 +6,8 @@ const routes = require("./routes");
 const { globalRateLimiter } = require("./middlewares/rateLimiter");
 const { errorHandler, notFoundHandler } = require("./middlewares/errorHandler");
 const responseWrapper = require("./middlewares/responseWrapper");
+const securityHeaders = require("./middlewares/securityHeaders");
+const { protectUploads } = require("./middlewares/protectUploads");
 
 const DEFAULT_LOCAL_ORIGINS = [
   "http://localhost:3000",
@@ -51,7 +53,8 @@ function buildCorsOptions() {
         return;
       }
 
-      callback(new Error("Origin not allowed by CORS"));
+      // Unknown sites get no CORS permission (the browser blocks them); not a server error.
+      callback(null, false);
     },
   };
 }
@@ -64,7 +67,9 @@ function createApp() {
   };
 
   app.set("trust proxy", 1);
+  app.disable("x-powered-by");
   app.use(require("./middlewares/requestTiming"));
+  app.use(securityHeaders);
   // Public API and lead capture links: open to any website, with their own limits and errors.
   app.use("/api/v1", require("./routes/publicApiRoutes"));
   app.use(cors(buildCorsOptions()));
@@ -88,8 +93,10 @@ function createApp() {
     });
   });
 
-  app.use("/api/uploads", express.static(uploadsRoot, { fallthrough: false, index: false }));
-  app.use("/uploads", express.static(uploadsRoot, { fallthrough: false, index: false }));
+  // Lead documents need a signed-in person who may open that lead (see protectUploads).
+  const staticOptions = { fallthrough: false, index: false, dotfiles: "deny", cacheControl: false };
+  app.use("/api/uploads", protectUploads, express.static(uploadsRoot, staticOptions));
+  app.use("/uploads", protectUploads, express.static(uploadsRoot, staticOptions));
   app.use("/api", routes);
   app.use(notFoundHandler);
   app.use(errorHandler);

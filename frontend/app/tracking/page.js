@@ -6,20 +6,30 @@ import { useRouter } from "next/navigation";
 
 import DashboardShell from "../../components/dashboard/DashboardShell";
 import ExportPanel from "../../components/tracking/ExportPanel";
+import LiveTeamList, { statusLine } from "../../components/tracking/LiveTeamList";
 import TrackingMap from "../../components/tracking/TrackingMap";
-import { REFRESH_MS, STATUS_META, formatTime, initials, timeAgo } from "../../components/tracking/trackingClient";
+import { REFRESH_MS, STATUS_META, formatTime, initials } from "../../components/tracking/trackingClient";
 import { apiRequest } from "../../lib/api";
 import { loadSession } from "../../lib/session";
 
 const ORDER = { live: 0, idle: 1, off: 2 };
 const escapeHtml = (text) => String(text ?? "").replace(/[<>&"']/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&#39;" }[c]));
+const SCOPE = { company: "Whole company", team: "Your teams", self: "Just you" };
 
-function statusLine(employee, now) {
-  if (employee.status === "live") return `Live · updated ${timeAgo(employee.last_fix?.at, now)}`;
-  if (employee.status === "idle") return employee.last_fix ? `No update for ${timeAgo(employee.last_fix.at, now).replace(" ago", "")}` : "Tracking started · waiting for GPS";
-  return employee.last_stopped_at ? `Tracking off · stopped ${timeAgo(employee.last_stopped_at, now)}` : "Tracking off";
+function Stat({ label, value, hint, color, pulse }) {
+  return (
+    <div className="rounded-[14px] bg-white px-4 py-3.5 ring-1 ring-slate-200">
+      <p className="flex items-center gap-1.5 text-[12px] font-semibold text-slate-500">
+        <span className="relative flex h-2 w-2">{pulse ? <span className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-60" style={{ background: color }} /> : null}<span className="relative inline-flex h-2 w-2 rounded-full" style={{ background: color }} /></span>
+        {label}
+      </p>
+      <p className="mt-1.5 text-[24px] font-bold leading-none tabular-nums tracking-tight text-slate-900">{value}</p>
+      <p className="mt-1.5 truncate text-[11.5px] text-slate-500">{hint}</p>
+    </div>
+  );
 }
 
+/** Live field team: who is out, where they are, and their visits today. */
 export default function FieldTrackingPage() {
   const router = useRouter();
   const [session, setSession] = useState(null);
@@ -29,6 +39,7 @@ export default function FieldTrackingPage() {
   const [filter, setFilter] = useState("all");
   const [selectedId, setSelectedId] = useState(null);
   const [now, setNow] = useState(Date.now());
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     const stored = loadSession();
@@ -39,12 +50,15 @@ export default function FieldTrackingPage() {
 
   const load = useCallback(async () => {
     if (!session) return;
+    setRefreshing(true);
     try {
       setBoard(await apiRequest("/team-tracking/live", { token: session.token, fresh: true }));
       setNow(Date.now());
       setError("");
     } catch (err) {
       setError(err.message);
+    } finally {
+      setRefreshing(false);
     }
   }, [session]);
 
@@ -58,10 +72,11 @@ export default function FieldTrackingPage() {
   }, [session, load]);
 
   const employees = useMemo(() => {
-    const list = (board?.employees || [])
+    const q = query.trim().toLowerCase();
+    return (board?.employees || [])
       .filter((e) => filter === "all" || e.status === filter)
-      .filter((e) => !query || `${e.name} ${e.phone || ""}`.toLowerCase().includes(query.toLowerCase()));
-    return list.sort((a, b) => ORDER[a.status] - ORDER[b.status] || a.name.localeCompare(b.name));
+      .filter((e) => !q || `${e.name} ${e.phone || ""}`.toLowerCase().includes(q))
+      .sort((a, b) => ORDER[a.status] - ORDER[b.status] || a.name.localeCompare(b.name));
   }, [board, filter, query]);
 
   const people = useMemo(() => employees
@@ -72,89 +87,82 @@ export default function FieldTrackingPage() {
       label: initials(e.name),
       color: STATUS_META[e.status].color,
       title: e.name,
-      html: `<div style="font-family:Arial;min-width:180px"><b>${escapeHtml(e.name)}</b><br/>${escapeHtml(statusLine(e, now))}${e.last_visit ? `<br/>Last visit: ${escapeHtml(e.last_visit.label)} (${escapeHtml(formatTime(e.last_visit.at))})` : ""}<br/><a href="/tracking/${encodeURIComponent(e.user_id)}" style="color:#157672;font-weight:700">Open full day →</a></div>`,
+      html: `<div style="font-family:Arial;min-width:190px;line-height:1.45"><b style="font-size:14px">${escapeHtml(e.name)}</b><br/><span style="color:#475569">${escapeHtml(statusLine(e, now))}</span>${e.last_visit ? `<br/><span style="color:#475569">Last visit: ${escapeHtml(e.last_visit.label)} (${escapeHtml(formatTime(e.last_visit.at))})</span>` : ""}<br/><a href="/tracking/${encodeURIComponent(e.user_id)}" style="color:#0c605d;font-weight:700">Open full day →</a></div>`,
     })), [employees, now]);
 
   const counts = board?.counts || { total: 0, live: 0, idle: 0, off: 0 };
-  const tabs = [["all", "All", counts.total], ["live", "Live", counts.live], ["idle", "No update", counts.idle], ["off", "Off", counts.off]];
+  const all = board?.employees || [];
+  const visits = all.reduce((sum, e) => sum + (e.visits_today || 0), 0);
+  const leaders = [...all].filter((e) => e.visits_today).sort((a, b) => b.visits_today - a.visits_today).slice(0, 5);
+  const out = counts.live + counts.idle;
 
   return (
     <DashboardShell session={session} title="Field Tracking" hideTitle heroStats={[]}>
-      <section className="tw-buttons space-y-5">
-        <div className="flex flex-col gap-4 rounded-[24px] border border-slate-200/60 bg-white p-5 shadow-sm md:p-6 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-indigo-500">{board?.scope === "company" ? "Whole company" : "Your teams"}</p>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">Live Field Team</h1>
-            <p className="mt-1 text-sm text-slate-500">
-              Refreshes every 30 seconds{board ? ` · last updated ${formatTime(board.generated_at)}` : ""}. Location is shown only while an employee has started tracking.
-            </p>
+      <div className="tw-buttons min-w-0 space-y-4 pb-10">
+        <header className="flex flex-wrap items-end justify-between gap-3 pt-1">
+          <div className="min-w-0">
+            <p className="text-[12px] font-semibold text-slate-500">{SCOPE[board?.scope] || "Field team"}</p>
+            <h1 className="text-[22px] font-bold tracking-tight text-slate-900">Live field team</h1>
+            <p className="mt-0.5 text-[13px] text-slate-500">Where your people are right now. A person shows on the map only after they tap Start tracking in the app.</p>
           </div>
-          <div className="grid grid-cols-4 gap-2">
-            {[["Live", counts.live, "text-emerald-600"], ["No update", counts.idle, "text-amber-600"], ["Off", counts.off, "text-slate-500"], ["Total", counts.total, "text-slate-900"]].map(([label, value, tone]) => (
-              <div key={label} className="rounded-[16px] bg-slate-50 px-4 py-3 text-center">
-                <p className={`text-2xl font-bold ${tone}`}>{value}</p>
-                <p className="text-[11px] font-semibold text-slate-500">{label}</p>
+          <div className="flex items-center gap-2">
+            <span className="hidden items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-[12px] font-semibold text-slate-600 ring-1 ring-slate-200 sm:inline-flex">
+              <span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" /><span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" /></span>
+              Auto-refresh · {board ? formatTime(board.generated_at) : "--"}
+            </span>
+            <button type="button" onClick={load} disabled={refreshing} className="inline-flex h-9 items-center rounded-[10px] bg-white px-3.5 text-[13px] font-semibold text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50 disabled:opacity-60">{refreshing ? "Refreshing…" : "Refresh"}</button>
+          </div>
+        </header>
+
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <Stat label="Live now" value={counts.live} hint={counts.total ? `${Math.round((counts.live / counts.total) * 100)}% of the field team` : "Nobody yet"} color="#10b981" pulse={counts.live > 0} />
+          <Stat label="No recent update" value={counts.idle} hint="Started, but no GPS for a while" color="#f59e0b" />
+          <Stat label="Tracking off" value={counts.off} hint={`${out} of ${counts.total} are out today`} color="#94a3b8" />
+          <Stat label="Client visits today" value={visits} hint={leaders[0] ? `Most: ${leaders[0].name} (${leaders[0].visits_today})` : "No visit marked yet"} color="#e8bd00" />
+        </div>
+
+        {error ? <p className="rounded-[12px] bg-rose-50 px-3.5 py-2.5 text-[13px] text-rose-800 ring-1 ring-rose-100">{error}</p> : null}
+
+        <div className="grid gap-4 lg:grid-cols-[360px_minmax(0,1fr)]">
+          <LiveTeamList board={board} employees={employees} filter={filter} setFilter={setFilter} query={query} setQuery={setQuery} selectedId={selectedId} onLocate={setSelectedId} now={now} />
+
+          <div className="min-w-0 space-y-4">
+            <div className="relative">
+              <TrackingMap people={people} selectedId={selectedId} onSelect={setSelectedId} fitKey={filter} className="h-[600px]" />
+              <div className="pointer-events-none absolute bottom-3 left-3 flex flex-wrap gap-1.5">
+                {["live", "idle"].map((key) => (
+                  <span key={key} className="inline-flex items-center gap-1.5 rounded-full bg-white/95 px-2.5 py-1 text-[11.5px] font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200">
+                    <i className={`h-2 w-2 rounded-full ${STATUS_META[key].dot}`} />{STATUS_META[key].label} · {counts[key]}
+                  </span>
+                ))}
               </div>
-            ))}
-          </div>
-        </div>
-
-        {error ? <div className="rounded-[16px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div> : null}
-
-        <div className="grid gap-5 lg:grid-cols-[380px_1fr]">
-          <div className="flex min-h-0 flex-col rounded-[24px] border border-slate-200/60 bg-white p-4 shadow-sm">
-            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search employee…"
-              className="w-full rounded-[12px] border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-indigo-300 focus:bg-white" />
-            <div className="mt-3 flex gap-1.5 overflow-x-auto">
-              {tabs.map(([key, label, count]) => (
-                <button key={key} type="button" onClick={() => setFilter(key)}
-                  className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ring-1 transition ${filter === key ? "bg-slate-900 text-white ring-slate-900" : "bg-white text-slate-600 ring-slate-200"}`}>
-                  {label} · {count}
-                </button>
-              ))}
             </div>
-            <div className="mt-3 max-h-[560px] space-y-2 overflow-y-auto pr-1">
-              {!board ? <p className="py-8 text-center text-sm text-slate-400">Loading team…</p> : null}
-              {board && !employees.length ? <p className="py-8 text-center text-sm text-slate-400">No sales employees match.</p> : null}
-              {employees.map((e) => {
-                const meta = STATUS_META[e.status];
-                const active = e.user_id === selectedId;
-                return (
-                  <div key={e.user_id} className={`rounded-[16px] border p-3 transition ${active ? "border-indigo-300 bg-indigo-50/50" : "border-slate-100 hover:border-slate-200 hover:bg-slate-50"}`}>
-                    <div className="flex items-start gap-3">
-                      <span className="relative grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#0c605d] text-sm font-bold text-white">
-                        {initials(e.name)}
-                        <span className={`absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full ring-2 ring-white ${meta.dot}`} />
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-bold text-slate-900">{e.name}</p>
-                        <p className={`text-xs ${e.status === "live" ? "text-emerald-700" : e.status === "idle" ? "text-amber-700" : "text-slate-400"}`}>{statusLine(e, now)}</p>
-                        <p className="mt-1 truncate text-xs text-slate-500">
-                          {e.last_visit ? `📍 ${e.last_visit.label} · ${formatTime(e.last_visit.at)}` : "No visit marked yet"} · {e.visits_today} today
-                        </p>
-                      </div>
-                    </div>
-                    <div className="mt-2 flex gap-2 pl-[52px]">
-                      {e.status !== "off" && e.last_fix ? (
-                        <button type="button" onClick={() => setSelectedId(e.user_id)} className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-indigo-700 ring-1 ring-indigo-200 hover:bg-indigo-50">Locate</button>
-                      ) : null}
-                      <Link href={`/tracking/${encodeURIComponent(e.user_id)}`} className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50">View day →</Link>
-                    </div>
-                  </div>
-                );
-              })}
+
+            <div className="grid gap-4 xl:grid-cols-2">
+              <section className="rounded-[14px] bg-white p-4 ring-1 ring-slate-200">
+                <p className="text-[14px] font-bold text-slate-900">Most visits today</p>
+                <p className="text-[12px] text-slate-500">Client visits marked in the app</p>
+                {leaders.length ? (
+                  <ol className="mt-3 space-y-2">
+                    {leaders.map((e, i) => (
+                      <li key={e.user_id} className="grid grid-cols-[20px_minmax(0,120px)_minmax(0,1fr)_auto] items-center gap-2 text-[12.5px]">
+                        <span className="font-bold text-slate-400">{i + 1}</span>
+                        <Link href={`/tracking/${encodeURIComponent(e.user_id)}`} className="truncate font-semibold text-slate-800 hover:text-brand-700">{e.name}</Link>
+                        <span className="h-2 overflow-hidden rounded-full bg-slate-100"><span className="block h-full rounded-full bg-[#e8bd00]" style={{ width: `${(e.visits_today / leaders[0].visits_today) * 100}%` }} /></span>
+                        <b className="tabular-nums text-slate-900">{e.visits_today}</b>
+                      </li>
+                    ))}
+                  </ol>
+                ) : <p className="py-6 text-center text-[13px] text-slate-500">No visits marked yet today.</p>}
+              </section>
+              {session ? (
+                <ExportPanel token={session.token} title="Team report (Excel)" subtitle="Trips, distance, visits and attendance for everyone" fileName="GreenCRM-team-field-report"
+                  path={(from, to) => `/team-tracking/export?from=${from}&to=${to}`} />
+              ) : null}
             </div>
           </div>
-
-          <div className="space-y-5">
-            <TrackingMap people={people} selectedId={selectedId} onSelect={setSelectedId} fitKey={filter} className="h-[560px]" />
-            {session ? (
-              <ExportPanel token={session.token} title="Team report (Excel)" fileName="GreenCRM-team-field-report"
-                path={(from, to) => `/team-tracking/export?from=${from}&to=${to}`} />
-            ) : null}
-          </div>
         </div>
-      </section>
+      </div>
     </DashboardShell>
   );
 }

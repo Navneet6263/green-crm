@@ -18,11 +18,10 @@ export default function SecurityContent({ session, data, error, loading }) {
       {loading ? <Notice tone="info" text="Loading security posture..." className="mb-4" /> : null}
 
       {!loading ? (
-        <div className="space-y-6">
+        <div className="tw-buttons min-w-0 space-y-4 pb-10">
           <PageIntro
-            eyebrow="Safety Controls"
-            title="Platform security and recovery posture"
-            description="See guardrails, tenant suspension risk, and which admins are currently blocked so the platform team can step in before work stalls."
+            title="Security"
+            description="Guardrails, suspended companies and blocked admins, so the platform team can step in before work stops."
             meta={
               <>
                 <Badge tone="violet">{titleize(session?.user?.role || "platform")}</Badge>

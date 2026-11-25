@@ -8,7 +8,7 @@ verified separately; a local code change does not update the running AWS backend
 
 Existing public URL (unchanged by this update):
 
-`GET https://greencall.online/api/integrations/v1/employee-lead-counts`
+`GET https://crm.greencall.in/api/integrations/v1/employee-lead-counts`
 
 Local backend URL: `http://localhost:5000/api/integrations/v1/employee-lead-counts`
 (use the actual configured backend port if different).
@@ -261,7 +261,7 @@ Hi [Name],
 Please build a separate Python application on your computer. We will provide a
 read-only GreenCRM API. You do not need our CRM source code or SQL Server access.
 
-API: https://greencall.online/api/integrations/v1/employee-lead-counts
+API: https://crm.greencall.in/api/integrations/v1/employee-lead-counts
 Method: GET
 Authentication: Authorization: Bearer <key shared securely separately>
 

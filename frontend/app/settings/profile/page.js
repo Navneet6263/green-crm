@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import SettingsLayout, { S } from "../../../components/settings/SettingsLayout";
 import { apiRequest } from "../../../lib/api";
-import { loadSession, saveSession } from "../../../lib/session";
+import { clearSession, loadSession, saveSession } from "../../../lib/session";
 
 const initials = (v = "User") => String(v).split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase() || "").join("") || "U";
 const titleize = (v) => String(v || "").replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
@@ -21,6 +21,7 @@ export default function ProfileSettingsPage() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
   const [show, setShow] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
 
   useEffect(() => {
     const s = loadSession();
@@ -50,10 +51,31 @@ export default function ProfileSettingsPage() {
     if (passwords.new_password !== passwords.confirm) { setError("The two new passwords do not match."); return; }
     setError(""); setMessage(""); setSavingPassword(true);
     try {
-      await apiRequest("/auth/change-password", { method: "PUT", token: session.token, body: { current_password: passwords.current_password, new_password: passwords.new_password } });
+      const r = await apiRequest("/auth/change-password", { method: "PUT", token: session.token, body: { current_password: passwords.current_password, new_password: passwords.new_password } });
+      // Other devices are signed out; this one keeps working with the new token.
+      if (r?.token) {
+        const next = { ...session, token: r.token };
+        saveSession(next);
+        setSession(next);
+      }
       setPasswords({ current_password: "", new_password: "", confirm: "" });
-      setMessage("Password changed.");
+      setMessage("Password changed. You were signed out on every other device.");
     } catch (err) { setError(err.message); } finally { setSavingPassword(false); }
+  }
+
+  async function signOutEverywhere() {
+    if (!window.confirm("Sign out on every device and browser, this one too? You will need your password to sign in again.")) return;
+    setSigningOut(true);
+    setError("");
+    try {
+      await apiRequest("/auth/logout-everywhere", { method: "POST", token: session.token });
+    } catch (err) {
+      setError(err.message);
+      setSigningOut(false);
+      return;
+    }
+    clearSession();
+    router.replace("/login");
   }
 
   const user = session?.user || {};
@@ -103,6 +125,17 @@ export default function ProfileSettingsPage() {
           </div>
         </form>
       </div>
+
+      <section className={`${S.cardPad} flex flex-wrap items-center justify-between gap-3`}>
+        <div className="min-w-0">
+          <h2 className={S.sectionTitle}>Signed in somewhere else?</h2>
+          <p className="text-[12.5px] text-slate-500">If you used GreenCRM on another computer or phone, or think someone else can open your account, sign out everywhere. Every device will need your password again.</p>
+        </div>
+        <button type="button" onClick={signOutEverywhere} disabled={signingOut || !session}
+          className="inline-flex h-9 items-center rounded-[10px] bg-white px-3.5 text-[13px] font-semibold text-rose-700 ring-1 ring-rose-200 transition hover:bg-rose-50 disabled:opacity-50">
+          {signingOut ? "Signing out…" : "Sign out of all devices"}
+        </button>
+      </section>
     </SettingsLayout>
   );
 }

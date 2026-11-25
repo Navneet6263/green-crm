@@ -25,7 +25,7 @@ for an app that already has one. Keep existing package IDs for in-place upgrades
 Ensure the EAS preview environment contains the intended backend URL (currently LIVE CRM):
 
 ```cmd
-npx.cmd eas-cli@latest env:set --name EXPO_PUBLIC_API_URL --value https://greencall.online/api --environment preview --visibility plaintext
+npx.cmd eas-cli@latest env:set --name EXPO_PUBLIC_API_URL --value https://crm.greencall.in/api --environment preview --visibility plaintext
 npx.cmd eas-cli@latest build --platform android --profile preview
 ```
 

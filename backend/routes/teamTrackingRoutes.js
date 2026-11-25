@@ -1,5 +1,6 @@
 const router = require('express').Router();
 const authenticate = require('../middlewares/authenticate');
+const { requireModule } = require('../middlewares/requireModule');
 const asyncHandler = require('../utils/asyncHandler');
 const AppError = require('../utils/appError');
 const { createRateLimiter } = require('../middlewares/rateLimiter');
@@ -10,6 +11,7 @@ const { buildEmployeeWorkbook, buildTeamWorkbook } = require('../services/tracki
 
 // Web dashboard view of field tracking: sales see themselves, managers their teams, admins the company.
 router.use(asyncHandler(authenticate));
+router.use(requireModule('field_tracking'));
 router.use(createRateLimiter({ windowMs: 60000, max: 90, keyGenerator: req => `team-tracking:${req.auth.companyId}:${req.auth.userId}` }));
 const exportLimiter = createRateLimiter({ windowMs: 60000, max: 6, keyGenerator: req => `team-tracking-export:${req.auth.companyId}:${req.auth.userId}` });
 

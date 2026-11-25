@@ -1,5 +1,6 @@
 const express = require("express");
 const authenticate = require("../middlewares/authenticate");
+const { requireModule } = require("../middlewares/requireModule");
 const asyncHandler = require("../utils/asyncHandler");
 const { createRateLimiter } = require("../middlewares/rateLimiter");
 const discuss = require("../services/discuss/discussService");
@@ -14,6 +15,7 @@ router.get("/stream", (req, _res, next) => {
 }, asyncHandler(authenticate), (req, res) => hub.connect(req, res));
 
 router.use(asyncHandler(authenticate));
+router.use(requireModule("discuss"));
 
 const sendLimit = createRateLimiter({ windowMs: 60000, max: 60, keyGenerator: (req) => `discuss:${req.auth.companyId}:${req.auth.userId}` });
 const ok = (fn) => asyncHandler(async (req, res) => res.json({ data: await fn(req) }));

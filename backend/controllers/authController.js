@@ -27,6 +27,11 @@ async function logout(req, res) {
   res.json({ data });
 }
 
+async function logoutEverywhere(req, res) {
+  const data = await authService.logoutEverywhere(req.auth);
+  res.json({ data });
+}
+
 async function forgotPassword(req, res) {
   const data = await authService.forgotPassword(req.body);
   res.json({ data });
@@ -88,6 +93,7 @@ async function superAdminStatus(req, res) {
 }
 
 module.exports = {
+  logoutEverywhere,
   changePassword,
   checkAuth,
   createEmployee,

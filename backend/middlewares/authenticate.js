@@ -4,6 +4,7 @@ const { PLATFORM_OPERATOR_ROLES } = require("../constants/roles");
 const userRepository = require("../repositories/userRepository");
 const { verifyToken } = require("../utils/auth");
 const AppError = require("../utils/appError");
+const { isRevoked } = require("../services/auth/sessions");
 const {
   cacheAuthState,
   clearPendingAuthState,
@@ -34,6 +35,11 @@ async function resolveAuthState(payload, cacheKey) {
     throw new AppError("User account is not active", 401);
   }
 
+  if (isRevoked(user, payload)) {
+    rememberRevokedAuthKey(cacheKey, payload.exp);
+    throw new AppError("You were signed out. Please sign in again.", 401);
+  }
+
   const managedCompanyIds = PLATFORM_OPERATOR_ROLES.includes(user.role)
     ? await platformAccessRepository.listCompanyIdsByUser(user.user_id)
     : [];
@@ -61,7 +67,8 @@ async function authenticate(req, _res, next) {
 
     const payload = verifyToken(token);
 
-    if (!payload) {
+    // Only login tokens open the API; a password-reset link token (it has a purpose) never does.
+    if (!payload || payload.purpose) {
       next(new AppError("Invalid or expired token", 401));
       return;
     }

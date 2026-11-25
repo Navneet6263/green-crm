@@ -85,6 +85,10 @@ const ACCESS_ROUTE_RULES = [
   { prefix: "/documents", accessKey: "documents", label: "Documents" },
   { prefix: "/performance", accessKey: "performance", label: "Performance" },
   { prefix: "/developer", accessKey: "developer_api", label: "Developer API" },
+  { prefix: "/tracking", accessKey: "field_tracking", label: "Field Tracking" },
+  { prefix: "/discuss", accessKey: "discuss", label: "Discuss" },
+  { prefix: "/email", accessKey: "communications", label: "Email" },
+  { prefix: "/recent-updates", accessKey: "leads", label: "Recent Updates" },
 ];
 // Features that stay off until the super admin switches them on.
 const OPT_IN_ACCESS = ["developer_api"];
@@ -242,6 +246,14 @@ export default function DashboardShell({ session: initialSession, children, titl
     () => getBlockedFeature(pathname, role, companyAccess),
     [companyAccess, pathname, role]
   );
+  const isConsole = PLATFORM_CONSOLE_ROLES.includes(role);
+  const moduleOn = (key) => isConsole || !isAccessOff(companyAccess, key);
+  // A tracking-only company has no CRM dashboard: its home is the live map.
+  useEffect(() => {
+    if (pathname === "/dashboard" && !isConsole && isAccessOff(companyAccess, ["leads", "customers"]) && !isAccessOff(companyAccess, "field_tracking")) {
+      router.replace("/tracking");
+    }
+  }, [pathname, isConsole, companyAccess, router]);
   const visibleNotifications = useMemo(
     () =>
       notificationFilter === "unread"
@@ -511,29 +523,29 @@ export default function DashboardShell({ session: initialSession, children, titl
               <span className="sr-only">{title || roleMeta.label}</span>
 
               <div className="ml-auto flex items-center gap-1.5">
-                {role !== "expert" ? (
+                {role !== "expert" && !isConsole ? (
                   <div className="hidden items-center gap-1.5 lg:flex">
-                    <Link href="/leads/new" prefetch={false}
+                    {moduleOn("leads") ? <Link href="/leads/new" prefetch={false}
                       className="inline-flex h-9 items-center gap-1.5 rounded-[10px] bg-brand-700 px-3.5 text-[13px] font-semibold text-white shadow-sm transition hover:bg-brand-800">
                       <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M12 5v14M5 12h14" /></svg>
                       Add Lead
-                    </Link>
-                    <Link href="/customers/new" prefetch={false}
+                    </Link> : null}
+                    {moduleOn("customers") ? <Link href="/customers/new" prefetch={false}
                       className="inline-flex h-9 items-center gap-1.5 rounded-[10px] border border-slate-200 bg-white px-3 text-[13px] font-semibold text-slate-700 transition hover:border-brand-200 hover:text-brand-800">
                       Add Customer
-                    </Link>
+                    </Link> : null}
                   </div>
                 ) : null}
 
                 <ThemeToggle />
-                {role !== "expert" ? <HeaderQuickActions token={session?.token} /> : null}
-                {role !== "expert" ? (
+                {role !== "expert" ? <HeaderQuickActions token={session?.token} discussOn={moduleOn("discuss")} /> : null}
+                {role !== "expert" && moduleOn("leads") ? (
                   <Link href="/recent-updates" prefetch={false} title="Recent updates" aria-label="Recent updates"
                     className="grid h-9 w-9 place-items-center rounded-[10px] text-slate-500 transition hover:bg-slate-100 hover:text-slate-800">
                     <DashboardIcon name="notes" className="h-[18px] w-[18px]" />
                   </Link>
                 ) : null}
-                {role !== "expert" ? (
+                {role !== "expert" && moduleOn("communications") ? (
                   <Link href="/email" prefetch={false} title="Email" aria-label="Open email"
                     className="grid h-9 w-9 place-items-center rounded-[10px] text-slate-500 transition hover:bg-slate-100 hover:text-slate-800">
                     <DashboardIcon name="mail" className="h-[18px] w-[18px]" />
