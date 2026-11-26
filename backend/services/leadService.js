@@ -227,6 +227,14 @@ function getImportNumber(row, keys, fallback = 0) {
   return Number.isFinite(numericValue) ? numericValue : fallback;
 }
 
+// Sheets often fill an unknown phone or email with "-", "NA" or "nil". Those count as blank,
+// so a row with only one of the two still goes in.
+const CONTACT_PLACEHOLDER = /^(-+|\.+|0+|na|n\/a|nil|null|none|not available|not provided)$/i;
+const importContact = (value) => {
+  const text = String(value ?? "").trim();
+  return CONTACT_PLACEHOLDER.test(text) ? "" : text;
+};
+
 function buildBulkImportLeadPayload(row, defaultCompanyId = null) {
   const assignedCode = getImportValue(row, [
     "assigned_to",
@@ -248,8 +256,8 @@ function buildBulkImportLeadPayload(row, defaultCompanyId = null) {
     shared_user_ids: sharedUserIds,
     contact_person: getImportValue(row, ["contact_person", "contact_person_name"]) || "",
     company_name: getImportValue(row, ["company_name"]) || "",
-    email: getImportValue(row, ["email"]) || "",
-    phone: getImportValue(row, ["phone"]) || "",
+    email: importContact(getImportValue(row, ["email"])),
+    phone: importContact(getImportValue(row, ["phone"])),
     industry: getImportValue(row, ["industry"]),
     lead_source: getImportValue(row, ["lead_source", "source"]) || "website",
     follow_up_date: getImportValue(row, ["follow_up_date"]),

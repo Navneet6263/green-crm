@@ -1,6 +1,11 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const ExcelJS = require('exceljs');
+
+// No test here may reach a real database.
+const connectionPath = require.resolve('../db/connection');
+const noDatabase = async () => { throw new Error('Unexpected database access in test'); };
+require.cache[connectionPath] = { id: connectionPath, filename: connectionPath, loaded: true, exports: { query: noDatabase, withTransaction: noDatabase } };
 const { parseImportFile, buildImportTemplate } = require('../services/leads/leadImport');
 
 async function xlsx(rows) {
@@ -47,6 +52,23 @@ test('the template can be read back by the importer', async () => {
   assert.equal(headers[0], 'Company');
   assert.ok(headers.includes('Advance received'));
   assert.equal(rows[0][0], 'Kapoor Steels');
+});
+
+test('bulk upload needs only one of phone or email; "-" or "NA" counts as blank', async () => {
+  const leadService = require('../services/leadService');
+  const base = { contact_person: 'A', company_name: 'Acme', product_id: 'P1' };
+  // Without `partial`, validation stops the file before any save, so only the failing rows are reported.
+  const result = await leadService.bulkUpload({ companyId: 'C1', userId: 'A1', role: 'admin' }, {
+    rows: [
+      { ...base, phone: '9810012345', email: '-', __row_number: 2 },
+      { ...base, phone: 'NA', email: 'a@acme.in', __row_number: 3 },
+      { ...base, phone: '-', email: 'n/a', __row_number: 4 },
+      { ...base, phone: '', email: '', __row_number: 5 },
+    ],
+  });
+  assert.equal(result.aborted, true);
+  assert.deepEqual(result.errors.map((e) => e.row), [4, 5]);
+  assert.match(result.errors[0].message, /email or phone is required/);
 });
 
 test('bulk upload reports exactly which rows saved and which did not', async () => {

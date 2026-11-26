@@ -39,7 +39,10 @@ export function autoMatchColumns(headers) {
   return map;
 }
 
-export const cleanPhone = (value) => String(value || "").replace(/^'/, "").replace(/\.0+$/, "").replace(/[\s\-()]/g, "");
+// "-", "NA", "nil" and the like mean "not known": treated as blank, so one of phone or email is enough.
+const CONTACT_PLACEHOLDER = /^(-+|\.+|0+|na|n\/a|nil|null|none|not available|not provided)$/i;
+export const blankIfPlaceholder = (value) => (CONTACT_PLACEHOLDER.test(String(value || "").trim()) ? "" : String(value || "").trim());
+export const cleanPhone = (value) => blankIfPlaceholder(String(value || "").replace(/^'/, "").replace(/\.0+$/, "")).replace(/[\s\-()]/g, "");
 const number = (value) => String(value || "").replace(/[₹,\s]|rs\.?|inr/gi, "");
 
 function findByName(list, value, ...keys) {
@@ -79,7 +82,7 @@ export function buildImportRow(cells, index, map, { products, users, defaults })
     contact_person: contact || company,
     company_name: company || contact,
     phone: cleanPhone(get("phone")),
-    email: get("email"),
+    email: blankIfPlaceholder(get("email")),
     product_id: productId,
     team_id: defaults.team_id || "",
     assigned_to: owner,
