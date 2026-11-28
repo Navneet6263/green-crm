@@ -24,30 +24,33 @@ const ICONS = {
   money: <><path d="M7 5h10M7 9h10M11 5c3 0 4.5 1.6 4.5 4S14 13 11 13H8l7 6" /></>,
 };
 
-// Where each card's explanation opens, so it never runs off the screen (2, 4 or 8 cards per row).
-const tipSide = (index) => [
-  index % 2 ? "right-0" : "left-0",
-  index % 4 >= 2 ? "md:right-0 md:left-auto" : "md:left-0 md:right-auto",
-  index >= 4 ? "xl:right-0 xl:left-auto" : "xl:left-0 xl:right-auto",
-].join(" ");
+const share = (part, whole) => (whole > 0 ? Math.min(100, Math.max(0, (part / whole) * 100)) : 0);
 
-function Tile({ label, value, hint, color, icon, alert, href, info, index }) {
+function Tile({ label, value, hint, chip, meter, color, icon, alert, href, info }) {
   // The link covers the card; the "i" button sits above it, so a button is never inside a link.
   return (
-    <div className="relative rounded-[12px] bg-white p-3.5 ring-1 ring-slate-200 transition focus-within:z-20 focus-within:ring-brand-300 hover:z-20 hover:-translate-y-px hover:shadow-sm">
-      {href ? <Link href={href} prefetch={false} aria-label={`${label}: ${value}. Open the list`} className="absolute inset-0 z-[1] rounded-[12px]" /> : null}
-      <span className="flex items-start justify-between gap-2">
-        <span className="min-w-0 text-[12px] font-semibold leading-snug text-slate-500">
-          {label}
-          {info ? <span className="ml-1 inline-block align-[-3px]"><InfoTip label={label} panelClassName={tipSide(index)}>{info}</InfoTip></span> : null}
+    <div className="relative flex h-full min-w-0 flex-col rounded-[14px] bg-white p-4 ring-1 ring-slate-200 transition focus-within:z-20 focus-within:ring-brand-300 hover:z-20 hover:shadow-[0_8px_24px_-12px_rgba(15,23,42,0.25)]">
+      {href ? <Link href={href} prefetch={false} aria-label={`${label}: ${value}. Open the list`} className="absolute inset-0 z-[1] rounded-[14px]" /> : null}
+      <div className="flex items-center gap-2.5">
+        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[9px]" style={{ background: `${color}1a`, color }} aria-hidden="true">
+          <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">{ICONS[icon]}</svg>
         </span>
-        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-[8px]" style={{ background: `${color}1f`, color }} aria-hidden="true">
-          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">{ICONS[icon]}</svg>
-        </span>
-      </span>
-      <span className={`mt-1 block text-[24px] font-bold leading-none tracking-tight tabular-nums ${alert ? "text-rose-700" : "text-slate-900"}`}>{value}</span>
-      {hint ? <span className="mt-1.5 block truncate text-[11.5px] text-slate-500" title={hint}>{hint}</span> : null}
-      <span className="absolute inset-x-3 bottom-0 h-[3px] rounded-t-full" style={{ background: color }} aria-hidden="true" />
+        <span className="line-clamp-2 min-w-0 flex-1 text-[13px] font-semibold leading-tight text-slate-600">{label}</span>
+        {info ? <InfoTip label={label}>{info}</InfoTip> : null}
+      </div>
+      <div className="mt-3 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+        <span className={`text-[28px] font-bold leading-none tracking-tight tabular-nums ${alert ? "text-rose-700" : "text-slate-900"}`}>{value}</span>
+        {chip ? <span className={`rounded-full px-2 py-0.5 text-[11.5px] font-semibold ${chip.tone}`}>{chip.text}</span> : null}
+      </div>
+      {hint ? <p className="mt-1.5 truncate text-[12.5px] text-slate-500" title={hint}>{hint}</p> : null}
+      {meter ? (
+        <div className="mt-auto pt-3">
+          <div className="h-1.5 overflow-hidden rounded-full bg-slate-100" role="img" aria-label={meter.caption}>
+            <div className="h-full rounded-full" style={{ width: `${share(meter.part, meter.whole)}%`, background: color }} />
+          </div>
+          <p className="mt-1 truncate text-[11.5px] text-slate-500">{meter.caption}</p>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -55,8 +58,8 @@ function Tile({ label, value, hint, color, icon, alert, href, info, index }) {
 export function KpiWidget({ state, range, canTeam, showMoney }) {
   const k = state?.data;
   if (state?.error) return <WidgetFrame title="Key numbers" error={state.error} />;
-  if (!k) return <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8">{Array.from({ length: 8 }, (_, i) => <div key={i} className="h-[96px] animate-pulse rounded-[12px] bg-white ring-1 ring-slate-200" />)}</div>;
-  return <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8">{kpiTiles(k, range, canTeam, showMoney).map((t, index) => <Tile key={t.label} index={index} {...t} />)}</div>;
+  if (!k) return <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">{Array.from({ length: 8 }, (_, i) => <div key={i} className="h-[132px] animate-pulse rounded-[14px] bg-white ring-1 ring-slate-200" />)}</div>;
+  return <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">{kpiTiles(k, range, canTeam, showMoney).map((t) => <Tile key={t.label} {...t} />)}</div>;
 }
 
 /** The eight key numbers. "All time" shows totals; any other period narrows every card to that period. */
@@ -76,16 +79,19 @@ function kpiTiles(k, range, canTeam, showMoney) {
   const byFollowUp = all ? {} : { from_date: range.from, to_date: range.to, date_filter_type: "follow_up_date" };
   return [
     { label: all ? "Total leads" : "Leads added", icon: "leads", color: BLUE, value: count(c.added), href: all ? "/leads" : leadsHref(period),
-      hint: `${count(c.still_open)} still open`,
+      hint: `${count(c.won)} won · ${count(c.lost)} lost`,
+      meter: { part: c.still_open, whole: c.added, caption: `${pct(c.still_open, c.added)} still open (${count(c.still_open)})` },
       info: all ? <>Every lead in this view, excluding deleted ones. {scopeNote}</> : <>Leads created {when}. Every card in this row follows the same period. {scopeNote}</> },
     { label: "Won", icon: "won", color: GREEN, value: count(c.won), href: leadsHref({ ...period, status: "closed-won" }),
-      hint: showMoney ? `${money(c.won_value)} · ${winRate}` : winRate,
+      chip: closed ? { text: `${pct(c.won, closed)} win rate`, tone: "bg-emerald-50 text-emerald-700" } : null,
+      hint: showMoney ? `${money(c.won_value)} won value` : closed ? `${count(c.lost)} lost` : winRate,
       info: <>Leads marked <b>Closed won</b> or <b>Onboarded</b>{ofPeriod}. Win rate = won ÷ (won + lost), so leads still open do not pull it down.</> },
     { label: "Open pipeline", icon: "pipeline", color: TEAL, value: money(c.open_value), href: leadsHref({ ...period, status: "active" }),
-      hint: `${count(c.still_open)} open leads`,
+      hint: c.still_open ? `${count(c.still_open)} open leads · avg ${money(Math.round(c.open_value / c.still_open))}` : "No open leads",
       info: <>Total <b>lead value</b> of leads that are still open (not won, not lost){ofPeriod}. It is business that may come in, not money received. Keep the lead value filled on every lead so this stays right.</> },
     { label: "Follow-ups overdue", icon: "overdue", color: ROSE, alert: overdue > 0, value: count(overdue), href: leadsHref({ ...byFollowUp, follow_up: "overdue" }),
-      hint: all ? "Date passed, lead still open" : `of ${count(p.followupsDue)} due`,
+      hint: all ? "Date passed, lead still open" : `of ${count(p.followupsDue)} due in the period`,
+      meter: all ? { part: overdue, whole: c.still_open, caption: `${pct(overdue, c.still_open)} of open leads are waiting` } : { part: overdue, whole: p.followupsDue, caption: `${pct(overdue, p.followupsDue)} of follow-ups missed` },
       info: <>Open leads whose follow-up date {all ? "has passed" : `was ${when} and has passed`}. These people are waiting for a call.</> },
     { label: all || isToday ? "Follow-ups today" : "Follow-ups due", icon: "today", color: ORANGE, value: count(all ? k.now.today : p.followupsDue), href: leadsHref(all ? { follow_up: "today" } : { ...byFollowUp, status: "active" }),
       hint: all || isToday ? "Due today" : `${count(Math.max(0, p.followupsDue - p.followupsOverdue))} still to do`,
@@ -98,7 +104,8 @@ function kpiTiles(k, range, canTeam, showMoney) {
       info: <>Notes written on leads {all ? "so far" : when}{canTeam ? ", by everyone in this view" : ", by you"}. It shows how actively the team works the leads.</> },
     showMoney
       ? { label: "Payment received", icon: "money", color: GOLD, value: money(all ? c.received : p.received),
-        hint: `${money(c.pending)} pending`,
+        hint: `${money(c.pending)} pending on won deals`,
+      meter: { part: all ? c.received : p.received, whole: (all ? c.received : p.received) + c.pending, caption: `${pct(all ? c.received : p.received, (all ? c.received : p.received) + c.pending)} collected` },
         info: (
           <>
             <b className="block text-slate-800">Payment received</b>

@@ -260,6 +260,10 @@ function buildWhere(filters) {
     conditions.push("l.assigned_to IS NOT NULL");
   } else if (filters.quickFilter === "unassigned") {
     conditions.push("l.assigned_to IS NULL");
+  } else if (filters.quickFilter === "won") {
+    // Won means the deal closed: closed-won, or already onboarded after closing.
+    conditions.push("l.status IN (?, ?)");
+    params.push("closed-won", "onboarded");
   } else if (filters.quickFilter === "transferred") {
     conditions.push("l.workflow_stage IN (?, ?, ?)");
     params.push("legal", "finance", "completed");
@@ -337,12 +341,12 @@ async function getLeadCounts(filters, executor) {
         SUM(CASE WHEN l.created_at >= ? THEN 1 ELSE 0 END) AS new_this_week,
         SUM(CASE WHEN l.status IN (${open}) AND l.updated_at < ? THEN 1 ELSE 0 END) AS stale,
         SUM(CASE WHEN l.status IN (${open}) AND l.priority IN ('high', 'urgent') THEN 1 ELSE 0 END) AS high_priority,
-        SUM(CASE WHEN l.status = 'closed-won' THEN 1 ELSE 0 END) AS won,
+        SUM(CASE WHEN l.status IN ('closed-won', 'onboarded') THEN 1 ELSE 0 END) AS won,
         SUM(CASE WHEN l.status = 'closed-lost' THEN 1 ELSE 0 END) AS lost,
         SUM(CASE WHEN l.status IN (${open}) THEN COALESCE(l.estimated_value, 0) ELSE 0 END) AS pipeline_value,
         SUM(COALESCE(l.advance_received, 0)) AS advance_received,
         SUM(COALESCE(l.estimated_value, 0)) AS lead_value,
-        SUM(CASE WHEN COALESCE(l.total_lead_value, l.estimated_value, 0) > COALESCE(l.advance_received, 0)
+        SUM(CASE WHEN l.status IN ('closed-won', 'onboarded') AND COALESCE(l.total_lead_value, l.estimated_value, 0) > COALESCE(l.advance_received, 0)
           THEN COALESCE(l.total_lead_value, l.estimated_value, 0) - COALESCE(l.advance_received, 0) ELSE 0 END) AS pending_amount,
         SUM(CASE WHEN COALESCE(l.advance_received, 0) > 0 THEN 1 ELSE 0 END) AS paid_leads
       FROM leads l

@@ -6,6 +6,7 @@ const QUICK_FILTERS = [
   { value: "active", label: "Open pipeline" },
   { value: "working", label: "Contacted + working" },
   { value: "pending", label: "New + pending" },
+  { value: "won", label: "Won + onboarded" },
   { value: "assigned", label: "Assigned" },
   { value: "unassigned", label: "Unassigned" },
   { value: "transferred", label: "Transferred" },

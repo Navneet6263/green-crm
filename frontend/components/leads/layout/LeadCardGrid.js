@@ -1,30 +1,33 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import InfoTip from "../../dashboard/home/InfoTip";
 import { DEFAULT_CARDS } from "../workspace/leadWorkspaceConfig";
 
 const TONES = { slate: "text-slate-900", brand: "text-brand-800", danger: "text-rose-700", gold: "text-gold-800", green: "text-emerald-700" };
 const ICON_BTN = "grid h-6 w-6 place-items-center rounded-[6px] bg-white text-slate-500 shadow-sm ring-1 ring-slate-200 hover:text-slate-900 disabled:opacity-30";
 
-function StatCard({ label, value, hint, tone = "slate", active, onClick, editing, onEdit, onRemove, onMove, first, last }) {
-  const Tag = onClick && !editing ? "button" : "div";
+function StatCard({ label, value, hint, info, tone = "slate", active, onClick, editing, onEdit, onRemove, onMove, first, last }) {
+  const clickable = Boolean(onClick) && !editing;
+  // The click target covers the card; the "i" and edit buttons sit above it, so no button is inside another.
   return (
-    <div className="group relative min-w-0">
-      <Tag type={Tag === "button" ? "button" : undefined} onClick={editing ? undefined : onClick} aria-pressed={Tag === "button" ? Boolean(active) : undefined}
-        className={`block h-full w-full rounded-[14px] bg-white p-3.5 text-left ring-1 transition ${editing ? "outline-2 outline-dashed outline-offset-2 outline-slate-300 ring-slate-200" : active ? "ring-2 ring-brand-500" : "ring-slate-200"} ${Tag === "button" ? "cursor-pointer hover:ring-brand-300" : ""}`}>
-        <span className="block truncate pr-5 text-[12px] font-semibold text-slate-500">{label}</span>
-        <span className={`mt-1 block text-[22px] font-bold leading-none tracking-tight tabular-nums ${TONES[tone]}`}>{value}</span>
-        {hint ? <span className="mt-1.5 block truncate text-[11.5px] text-slate-400">{hint}</span> : null}
-      </Tag>
+    <div className={`group relative min-w-0 rounded-[14px] bg-white p-3.5 ring-1 transition focus-within:z-20 hover:z-20 ${editing ? "outline-2 outline-dashed outline-offset-2 outline-slate-300 ring-slate-200" : active ? "ring-2 ring-brand-500" : "ring-slate-200"} ${clickable ? "hover:ring-brand-300 hover:shadow-[0_8px_24px_-14px_rgba(15,23,42,0.3)]" : ""}`}>
+      {clickable ? <button type="button" onClick={onClick} aria-pressed={Boolean(active)} aria-label={`${label}: ${value}. Show these leads`} className="absolute inset-0 z-[1] rounded-[14px]" /> : null}
+      <span className="flex items-center gap-1.5 pr-6">
+        <span className="truncate text-[12.5px] font-semibold text-slate-600">{label}</span>
+        {info && !editing ? <InfoTip label={label}>{info}</InfoTip> : null}
+      </span>
+      <span className={`mt-1.5 block text-[24px] font-bold leading-none tracking-tight tabular-nums ${TONES[tone]}`}>{value}</span>
+      {hint ? <span className="mt-1.5 block truncate text-[12px] text-slate-500" title={hint}>{hint}</span> : null}
       {editing ? (
-        <span className="absolute -right-1.5 -top-1.5 flex gap-1">
+        <span className="absolute -right-1.5 -top-1.5 z-[2] flex gap-1">
           <button type="button" onClick={() => onMove(-1)} disabled={first} aria-label={`Move ${label} earlier`} className={ICON_BTN}>←</button>
           <button type="button" onClick={() => onMove(1)} disabled={last} aria-label={`Move ${label} later`} className={ICON_BTN}>→</button>
           <button type="button" onClick={onRemove} aria-label={`Remove ${label}`} className={`${ICON_BTN} hover:bg-rose-50 hover:text-rose-600`}>×</button>
         </span>
       ) : (
         <button type="button" onClick={onEdit} aria-label="Edit cards" title="Edit cards"
-          className="absolute right-2 top-2 grid h-6 w-6 place-items-center rounded-[6px] text-slate-300 opacity-0 transition hover:bg-slate-100 hover:text-slate-700 focus:opacity-100 group-hover:opacity-100">
+          className="absolute right-2 top-2 z-[2] grid h-6 w-6 place-items-center rounded-[6px] text-slate-300 opacity-0 transition hover:bg-slate-100 hover:text-slate-700 focus:opacity-100 group-hover:opacity-100">
           <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4Z" /></svg>
         </button>
       )}
@@ -87,14 +90,21 @@ export default function LeadCardGrid({ cards, available, onChange, counts, listM
             <button type="button" onClick={() => setEditing(false)} className="rounded-full bg-brand-700 px-3 py-1 font-semibold text-white hover:bg-brand-800">Done</button>
           </>
         ) : (
+          <>
+          <span className="mr-auto inline-flex items-center gap-1.5 text-slate-500">
+            {counts?.filtered
+              ? <><span className="h-1.5 w-1.5 rounded-full bg-brand-600" aria-hidden="true" /><b className="font-semibold text-brand-800">Filtered</b> · the numbers follow the filters below</>
+              : "Numbers for all the leads you can see. Filters below narrow them."}
+          </span>
           <button type="button" onClick={() => setEditing(true)} className="inline-flex items-center gap-1 font-semibold text-slate-400 hover:text-brand-700">
             <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4Z" /></svg>Edit cards
           </button>
+          </>
         )}
       </div>
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(138px,1fr))] gap-3">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(188px,1fr))] gap-3">
         {shown.map((card, i) => (
-          <StatCard key={card.key} label={card.label} value={counts ? card.value(counts, listMeta) : "–"} hint={counts ? card.hint(counts, listMeta) : ""} tone={card.tone || "slate"}
+          <StatCard key={card.key} label={card.label} info={card.info} value={counts ? card.value(counts, listMeta) : "–"} hint={counts ? card.hint(counts, listMeta) : ""} tone={card.tone || "slate"}
             active={card.view ? activeView === card.view : false} onClick={card.view || card.href ? () => onCardClick(card) : undefined}
             editing={editing} onEdit={() => setEditing(true)} onRemove={() => onChange(cards.filter((k) => k !== card.key))} onMove={(step) => move(card.key, step)}
             first={i === 0} last={i === shown.length - 1} />

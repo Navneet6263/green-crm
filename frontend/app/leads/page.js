@@ -27,6 +27,7 @@ import { useLeadExport } from "../../components/leads/shared/useLeadExport";
 import { fetchLeadExportRows } from "../../components/leads/shared/leadExportUtils";
 import { useLeadFilterFields } from "../../components/leads/shared/useLeadFilterFields";
 import { useLeadFilterState } from "../../components/leads/shared/useLeadFilterState";
+import { useLeadCounts } from "../../components/leads/shared/useLeadCounts";
 import { useLeadListData } from "../../components/leads/shared/useLeadListData";
 import { useLeadOwnershipActions } from "../../components/leads/shared/useLeadOwnershipActions";
 import { useLeadSelection } from "../../components/leads/shared/useLeadSelection";
@@ -64,7 +65,6 @@ function LeadsPageContent() {
   const [columns, setColumns] = useState(DEFAULT_COLUMNS);
   const [cards, setCards] = useState(DEFAULT_CARDS);
   const [customViews, setCustomViews] = useState([]);
-  const [counts, setCounts] = useState(null);
   const [dataSeed, setDataSeed] = useState(0);
   const { accessError, booting, companies, session } = useLeadSessionAccess();
   
@@ -126,16 +126,8 @@ function LeadsPageContent() {
   const changeViewMode = (next) => { setViewMode(next); savePrefs({ viewMode: next }); };
   const changePageSize = (next) => { setPageSize(next); records.setPage(1); savePrefs({ pageSize: next }); };
 
-  // Card and view counts follow who/what is in scope, not the status or follow-up view chosen.
-  const { company_id: countCompany, team_ids: countTeam, assigned_to: countOwner, product_id: countProduct, lead_source: countSource } = filters.leadQueryBase;
-  useEffect(() => {
-    if (!session?.token) return undefined;
-    let cancelled = false;
-    apiRequest(buildQueryPath("/leads/counts", { company_id: countCompany, team_ids: countTeam, assigned_to: countOwner, product_id: countProduct, lead_source: countSource }), { token: session.token, fresh: true })
-      .then((data) => { if (!cancelled) setCounts(data); })
-      .catch(() => { if (!cancelled) setCounts(null); });
-    return () => { cancelled = true; };
-  }, [session?.token, countCompany, countTeam, countOwner, countProduct, countSource, refreshSeed, dataSeed]);
+  // Card and view counts follow who, what and when (team, person, product, source, dates, search).
+  const counts = useLeadCounts(session?.token, filters.leadQueryBase, [refreshSeed, dataSeed]);
 
   const views = useMemo(() => builtInViews({ canManage, userId: session?.user?.user_id }), [canManage, session?.user?.user_id]);
   const activeView = useMemo(() => {

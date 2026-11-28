@@ -50,7 +50,7 @@ export function useLeadFilterState({ role, session }) {
   const canManage = MANAGER_ROLES.includes(role);
   const scopedCompanyId = isPlatformConsole && company !== "all" ? company : undefined;
   const teamCompanyId = isPlatformConsole ? scopedCompanyId : session?.user?.company_id || session?.company?.company_id || "";
-  const quickFilter = useMemo(() => (["active", "working", "pending", "assigned", "unassigned", "transferred"].includes(status) ? status : undefined), [status]);
+  const quickFilter = useMemo(() => (["active", "working", "pending", "won", "assigned", "unassigned", "transferred"].includes(status) ? status : undefined), [status]);
 
   useEffect(() => {
     if (hasFixedAssigneeScope && session?.user?.user_id) {

@@ -6,13 +6,17 @@ import { useEffect, useId, useRef, useState } from "react";
  * Small "i" button that explains a number. Opens on hover, keyboard focus or tap,
  * and closes on Escape, a tap outside, or moving away.
  */
-export default function InfoTip({ label, children, panelClassName = "left-0" }) {
+export default function InfoTip({ label, children, panelClassName = "auto" }) {
   const [open, setOpen] = useState(false);
+  // "auto": open towards whichever side of the screen has room.
+  const [side, setSide] = useState("left-0");
   const id = useId();
   const ref = useRef(null);
 
   useEffect(() => {
     if (!open) return undefined;
+    const box = ref.current?.getBoundingClientRect();
+    if (box) setSide(box.left > window.innerWidth / 2 ? "right-0" : "left-0");
     const onKey = (event) => { if (event.key === "Escape") setOpen(false); };
     const onDown = (event) => { if (!ref.current?.contains(event.target)) setOpen(false); };
     document.addEventListener("keydown", onKey);
@@ -30,7 +34,7 @@ export default function InfoTip({ label, children, panelClassName = "left-0" }) 
       </button>
       {open ? (
         <span id={id} role="tooltip"
-          className={`absolute top-[calc(100%+6px)] z-30 w-[min(280px,calc(100vw-2rem))] ${panelClassName} rounded-[10px] bg-white p-3 text-left text-[12px] font-normal leading-[1.45] text-slate-600 shadow-[0_12px_32px_-8px_rgba(15,23,42,0.35)] ring-1 ring-slate-200`}>
+          className={`absolute top-[calc(100%+6px)] z-30 w-[min(280px,calc(100vw-2rem))] ${panelClassName === "auto" ? side : panelClassName} rounded-[10px] bg-white p-3 text-left text-[12px] font-normal leading-[1.45] text-slate-600 shadow-[0_12px_32px_-8px_rgba(15,23,42,0.35)] ring-1 ring-slate-200`}>
           {children}
         </span>
       ) : null}
