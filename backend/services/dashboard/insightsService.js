@@ -73,14 +73,18 @@ const BUILDERS = {
     const { auth, scope, range, canTeam, query } = ctx;
     const taskScope = canTeam ? { team_ids: query.team_ids || undefined, assigned_to: query.assigned_to || undefined } : { mine: "1" };
     const todayStart = getIndiaDayStartUtc(new Date());
-    const [now, cohort, updates, overdueTasks, todayTasks] = await Promise.all([
+    // A chosen period narrows every card: tasks and follow-ups due in it, money received in it.
+    const inPeriod = range.all ? {} : { due_from: range.start.toISOString(), due_to: new Date(range.end.getTime() + 1).toISOString() };
+    const [now, cohort, updates, overdueTasks, todayTasks, period, periodTasks] = await Promise.all([
       leadRepository.getLeadCounts(scope),
       repo.getCohortTotals(ctx.rangeFilters),
       repo.countUpdates(scope, range.start, range.end, canTeam ? query.assigned_to || null : auth.userId),
-      taskTotal(auth, { ...taskScope, due_bucket: "overdue", open_only: "1" }),
+      taskTotal(auth, { ...taskScope, ...inPeriod, due_bucket: "overdue", open_only: "1" }),
       taskTotal(auth, { ...taskScope, open_only: "1", due_from: todayStart.toISOString(), due_to: new Date(todayStart.getTime() + DAY_MS).toISOString() }),
+      range.all ? null : repo.getPeriodActivity(scope, range.start, range.end, todayStart),
+      range.all ? null : taskTotal(auth, { ...taskScope, ...inPeriod, open_only: "1" }),
     ]);
-    return { now, cohort, updates, tasks: { overdue: overdueTasks, today: todayTasks } };
+    return { now, cohort, updates, tasks: { overdue: overdueTasks, today: todayTasks, inPeriod: periodTasks }, period };
   },
 
   async myday(ctx) {

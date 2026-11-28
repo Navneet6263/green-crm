@@ -273,6 +273,7 @@ function buildWhere(filters) {
   }
 
   const dateColumn = filters.dateFilterType === "onboarded_date" ? "l.onboarded_date"
+    : filters.dateFilterType === "follow_up_date" ? "l.follow_up_date"
     : filters.dateFilterType === "updated_at" ? "l.updated_at" : "l.created_at";
 
   if (filters.createdFrom) {

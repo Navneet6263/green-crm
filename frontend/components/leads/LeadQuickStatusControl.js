@@ -121,13 +121,9 @@ ${wonData.note}`;
           ...(wonData ? wonData.body : {}),
         },
       });
-      const scheduled = await createNextFollowUp(demoFollowUp, description, submittedStatus);
-
-      await apiRequest(`/leads/${lead.lead_id}/activity`, {
-        method: "POST",
-        token,
-        body: { description, type: scheduled ? "task" : "updated" },
-      });
+      // The server already records the change (one note + one activity entry). Writing a second
+      // activity from here is what made every status change show twice in the timeline.
+      await createNextFollowUp(demoFollowUp, description, submittedStatus);
 
       setNextStatus(String(updatedLead.status || submittedStatus).toLowerCase());
       onUpdated?.(updatedLead, {});

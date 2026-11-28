@@ -4,9 +4,12 @@ const { OPEN_PIPELINE_STATUSES } = require("../constants/lead");
 
 // Every query starts from the viewer's lead scope (same rules as the Leads page).
 const OPEN = `l.status IN (${OPEN_PIPELINE_STATUSES.map((s) => `'${s}'`).join(", ")})`;
-const WON = "l.status = 'closed-won'";
+// Onboarded customers were won first, so they count as won too.
+const WON = "l.status IN ('closed-won', 'onboarded')";
 const LOST = "l.status = 'closed-lost'";
 const TOTAL_VALUE = "COALESCE(l.total_lead_value, l.estimated_value, 0)";
+// Money still to collect: only on won deals. An open lead's value is pipeline, not money owed.
+const PENDING = `CASE WHEN ${WON} AND ${TOTAL_VALUE} > COALESCE(l.advance_received, 0) THEN ${TOTAL_VALUE} - COALESCE(l.advance_received, 0) ELSE 0 END`;
 const num = (value) => Number(value || 0);
 
 async function rows(sql, params) {
@@ -28,7 +31,10 @@ async function getCohortTotals(rangeFilters) {
       SUM(CASE WHEN ${LOST} THEN 1 ELSE 0 END) AS lost,
       SUM(CASE WHEN ${OPEN} THEN 1 ELSE 0 END) AS still_open,
       SUM(COALESCE(l.estimated_value, 0)) AS value,
-      SUM(CASE WHEN ${WON} THEN ${TOTAL_VALUE} ELSE 0 END) AS won_value
+      SUM(CASE WHEN ${WON} THEN ${TOTAL_VALUE} ELSE 0 END) AS won_value,
+      SUM(CASE WHEN ${OPEN} THEN COALESCE(l.estimated_value, 0) ELSE 0 END) AS open_value,
+      SUM(COALESCE(l.advance_received, 0)) AS received,
+      SUM(${PENDING}) AS pending
     FROM leads l ${where}`, params);
   return Object.fromEntries(Object.entries(row || {}).map(([k, v]) => [k, num(v)]));
 }
@@ -102,7 +108,7 @@ const MEASURES = {
   value: "SUM(COALESCE(l.estimated_value, 0))",
   won_value: `SUM(CASE WHEN ${WON} THEN ${TOTAL_VALUE} ELSE 0 END)`,
   advance: "SUM(COALESCE(l.advance_received, 0))",
-  pending: `SUM(CASE WHEN ${TOTAL_VALUE} > COALESCE(l.advance_received, 0) AND NOT ${LOST} THEN ${TOTAL_VALUE} - COALESCE(l.advance_received, 0) ELSE 0 END)`,
+  pending: `SUM(${PENDING})`,
 };
 
 async function getCustomBreakdown(rangeFilters, dimension, measure) {
@@ -184,11 +190,32 @@ async function getPeopleActivity(companyId, userIds, from, to) {
 }
 
 /** Money in scope now, payments made in the period, and payments due soon. */
+/**
+ * What happened inside the period, whenever the lead was added: follow-ups planned in it
+ * (and how many of those are now late), and money received in it (by payment date, or the
+ * day the lead was added when no payment date was entered).
+ */
+async function getPeriodActivity(scopeFilters, from, to, todayStart) {
+  const { where, params } = scoped(scopeFilters);
+  const inPeriod = "l.follow_up_date >= ? AND l.follow_up_date <= ?";
+  const paidOn = "COALESCE(l.payment_date, l.created_at)";
+  const [row] = await rows(`
+    SELECT SUM(CASE WHEN ${OPEN} AND ${inPeriod} THEN 1 ELSE 0 END) AS followups_due,
+      SUM(CASE WHEN ${OPEN} AND ${inPeriod} AND l.follow_up_date < ? THEN 1 ELSE 0 END) AS followups_overdue,
+      SUM(CASE WHEN ${paidOn} >= ? AND ${paidOn} <= ? THEN COALESCE(l.advance_received, 0) ELSE 0 END) AS received,
+      SUM(CASE WHEN ${paidOn} >= ? AND ${paidOn} <= ? AND COALESCE(l.advance_received, 0) > 0 THEN 1 ELSE 0 END) AS payments
+    FROM leads l ${where}`, [from, to, from, to, todayStart, from, to, from, to, ...params]);
+  return {
+    followupsDue: num(row?.followups_due), followupsOverdue: num(row?.followups_overdue),
+    received: num(row?.received), payments: num(row?.payments),
+  };
+}
+
 async function getPayments(scopeFilters, from, to, dueUntil) {
   const { where, params } = scoped(scopeFilters);
   const [totals] = await rows(`
     SELECT SUM(COALESCE(l.advance_received, 0)) AS advance,
-      SUM(CASE WHEN ${TOTAL_VALUE} > COALESCE(l.advance_received, 0) AND NOT ${LOST} THEN ${TOTAL_VALUE} - COALESCE(l.advance_received, 0) ELSE 0 END) AS pending,
+      SUM(${PENDING}) AS pending,
       SUM(CASE WHEN l.payment_date >= ? AND l.payment_date <= ? THEN COALESCE(l.advance_received, 0) ELSE 0 END) AS received_in_period,
       SUM(CASE WHEN l.payment_date >= ? AND l.payment_date <= ? THEN 1 ELSE 0 END) AS payments_in_period
     FROM leads l ${where}`, [from, to, from, to, ...params]);
@@ -236,4 +263,4 @@ async function getSourceByOwner(rangeFilters) {
   return result.map((r) => ({ source: r.source, owner: r.owner, team: r.team, total: num(r.total), won: num(r.won) }));
 }
 
-module.exports = { DIMENSIONS, MEASURES, getMonthlyTrend, getCustomBreakdown, getCohortTotals, getBreakdown, getDailyTrend, getOwnerStats, getPeopleActivity, getPayments, getWorkflow, countUpdates, getSourceByOwner };
+module.exports = { DIMENSIONS, MEASURES, getPeriodActivity, getMonthlyTrend, getCustomBreakdown, getCohortTotals, getBreakdown, getDailyTrend, getOwnerStats, getPeopleActivity, getPayments, getWorkflow, countUpdates, getSourceByOwner };

@@ -3,9 +3,6 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import LeadCollaboratorPanel from "../details/LeadCollaboratorPanel";
-import LeadOwnerControls from "../details/LeadOwnerControls";
-import LeadTransferPanel from "../details/LeadTransferPanel";
 import LeadTasksPanel from "../lead360/LeadTasksPanel";
 import LeadTimeline from "../lead360/LeadTimeline";
 import { NextStepCard, PaymentCard, QuickNote } from "../lead360/LeadSummaryCards";
@@ -16,6 +13,7 @@ import { PRIORITY_TONE } from "../shared/leadPageConstants";
 import { leadPrimaryName, leadSecondaryName, titleizeLeadValue } from "../shared/leadPageFormatters";
 import { apiRequest } from "../../../lib/api";
 import EmailButton from "../../email/EmailButton";
+import LeadManageTab from "./LeadManageTab";
 import { LeadAvatar, Pill, telHref, whatsappHref } from "./LeadsTable";
 import { formatDay } from "./leadWorkspaceConfig";
 
@@ -210,29 +208,7 @@ export default function LeadDrawer({
           </section>
         ) : null}
 
-        {tab === "manage" ? (
-          <>
-            {canManage ? (
-              <div>
-                <LeadOwnerControls archiveLead={shared.archiveLead} assigning={shared.assigning} canManage={canManage} company={shared.company} deleting={shared.deleting}
-                  isPlatformConsole={shared.isPlatformConsole} lead={lead} onOwnerChange={shared.onOwnerChange} onOwnerNoteChange={shared.onOwnerNoteChange} owner={shared.owner}
-                  ownerNote={shared.ownerNote} ownerUsersMessage={shared.ownerUsersMessage} saveOwner={shared.saveOwner} teamUsers={shared.teamUsers} />
-              </div>
-            ) : null}
-            <div>
-              <LeadCollaboratorPanel addCollaborator={shared.saveCollaborator} canManage collaboratorUsersMessage={shared.collaboratorUsersMessage} lead={lead} pendingCollaborator={shared.pendingCollaborator}
-                removeCollaborator={shared.removeCollaborator} removingCollaboratorId={shared.removingCollaboratorId} savingCollaborators={shared.savingCollaborators}
-                setPendingCollaborator={shared.setPendingCollaborator} teamUsers={shared.teamUsers} />
-            </div>
-            {canTransfer ? (
-              <section className="rounded-[12px] bg-emerald-50 p-4 ring-1 ring-emerald-200">
-                <LeadTransferPanel canTransfer={canTransfer} legalTeam={shared.legalTeam} legalTransferNote={shared.legalTransferNote} legalTransferOwner={shared.legalTransferOwner}
-                  legalUsersMessage={shared.legalUsersMessage} scopedLegalUsers={shared.scopedLegalUsers} setLegalTransferNote={shared.setLegalTransferNote}
-                  setLegalTransferOwner={shared.setLegalTransferOwner} transferLeadToLegal={shared.transferLeadToLegal} transferring={shared.transferring} />
-              </section>
-            ) : null}
-          </>
-        ) : null}
+        {tab === "manage" ? <LeadManageTab lead={lead} canManage={canManage} canTransfer={canTransfer} shared={shared} /> : null}
       </div>
     </aside>
   );

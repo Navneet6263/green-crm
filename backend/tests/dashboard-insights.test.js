@@ -13,6 +13,7 @@ db.query = async (sql, params) => {
   if (/AS name, COUNT\(\*\) AS total/.test(sql)) return [[{ name: 'website', total: 8, won: 1, lost: 1, still_open: 6, value: 100000, won_value: 50000 }]];
   if (/AS day, COUNT/.test(sql)) return [[{ day: '2026-11-02', total: 3, won: 1 }]];
   if (/COUNT\(\*\) AS added/.test(sql)) return [[{ added: 10, won: 2, lost: 1, still_open: 7, value: 200000, won_value: 90000 }]];
+  if (/AS followups_due/.test(sql)) return [[{ followups_due: 4, followups_overdue: 1, received: 15000, payments: 2 }]];
   if (/FROM lead_notes n\s+INNER JOIN/.test(sql)) return [[{ total: 14 }]];
   if (/FROM users u\s+WHERE u.company_id/.test(sql)) return [[{ user_id: 'U1', name: 'Rahul', role: 'sales', last_login_at: null, updates: 4, leads_added: 2, calls: 1, last_note: null, last_activity: null }]];
   return [[]];
@@ -72,6 +73,21 @@ test('widgets come back filled, and the trend has every day', async () => {
   assert.equal(res.widgets.trend.data[1].total, 3);
   assert.equal(res.widgets.usage.data[0].quiet, true);
   assert.equal(res.widgets.myday.data.overdue.items[0].leadId, 'L1');
+});
+
+test('a chosen period narrows every key number; all time keeps the totals', async () => {
+  calls.length = 0;
+  const res = await getInsights(admin, { from: '2026-11-01', to: '2026-11-03', widgets: 'kpis' });
+  const k = res.widgets.kpis.data;
+  assert.deepEqual(k.period, { followupsDue: 4, followupsOverdue: 1, received: 15000, payments: 2 });
+  assert.equal(k.tasks.inPeriod, 2);
+  const cohort = calls.find((c) => /COUNT\(\*\) AS added/.test(c.sql)).sql;
+  assert.match(cohort, /open_value/);
+  // Pending money is counted on won deals only (won or onboarded), never on open or lost leads.
+  assert.match(cohort, /CASE WHEN l\.status IN \('closed-won', 'onboarded'\) AND/);
+  const all = await getInsights(admin, { period: 'all', widgets: 'kpis' });
+  assert.equal(all.widgets.kpis.data.period, null);
+  assert.equal(all.widgets.kpis.data.tasks.inPeriod, null);
 });
 
 test('every SQL statement lines up its values with its placeholders', async () => {

@@ -24,6 +24,7 @@ export default function LeadDateFilters({
         options={[
           { value: "created_at", label: "Lead Created Date" },
           { value: "onboarded_date", label: "Onboarded Date" },
+          { value: "follow_up_date", label: "Follow-up Date" },
         ]}
         kickerClassName={kickerClassName}
         inputClassName={inputClassName}

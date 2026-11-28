@@ -10,7 +10,15 @@ const ACTIVITY_TONES = {
 };
 const FILTERS = [["all", "All"], ["talk", "Calls & follow-ups"], ["status", "Status"], ["note", "Notes"], ["system", "System"]];
 
-const normalise = (value) => String(value || "").replace(/^Lead (updated|reassigned)\.\s*/i, "").replace(/\s+/g, " ").trim().toLowerCase();
+// Text for comparing a note with an activity entry: no "Lead updated." prefix, each line once,
+// spaces folded. Older status changes saved the status line twice in the activity copy.
+const normalise = (value) => {
+  const lines = String(value || "").replace(/^Lead (updated|reassigned)\.\s*/i, "").split(/\n/)
+    .map((line) => line.replace(/\s+/g, " ").trim().toLowerCase()).filter(Boolean);
+  return [...new Set(lines)].join(" ");
+};
+const MIN_MATCH = 12;
+const repeats = (a, b) => a === b || (a.length >= MIN_MATCH && b.length >= MIN_MATCH && (a.includes(b) || b.includes(a)));
 
 /** Notes and activity in one list. Activity that only repeats a note is left out. */
 export function buildTimeline(notes = [], activity = []) {
@@ -21,7 +29,7 @@ export function buildTimeline(notes = [], activity = []) {
   });
   activity.forEach((a, i) => {
     const text = normalise(a.description);
-    if (text && written.some((w) => w && (w === text || w.startsWith(text) || text.startsWith(w)))) return;
+    if (text && written.some((w) => w && repeats(w, text))) return;
     items.push({ key: `a-${a.activity_id || i}`, source: "activity", at: a.created_at, by: a.created_by_name, type: a.type, text: a.description, group: ["call", "email", "meeting", "comment", "task"].includes(a.type) ? "talk" : "system" });
   });
   return items.sort((x, y) => new Date(y.at) - new Date(x.at));

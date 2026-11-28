@@ -7,6 +7,7 @@ export async function runArchiveLead({
   clearSelection,
   leadId,
   leads,
+  note,
   onArchived,
   sessionToken,
   setDeleting,
@@ -15,11 +16,12 @@ export async function runArchiveLead({
   setPicked,
 }) {
   const lead = leads.find((item) => item.lead_id === leadId);
-  if (!window.confirm(`Archive "${lead?.company_name || "this lead"}"?`)) {
+  // The Manage tab asks for the reason on the card itself; older callers still get the browser prompts.
+  if (!note && !window.confirm(`Archive "${lead?.company_name || "this lead"}"?`)) {
     return;
   }
 
-  const archiveNote = window.prompt("Archive note is required. Why are you archiving this lead?")?.trim();
+  const archiveNote = String(note || "").trim() || window.prompt("Archive note is required. Why are you archiving this lead?")?.trim();
   if (!archiveNote) {
     setError("Archive note is required.");
     return;

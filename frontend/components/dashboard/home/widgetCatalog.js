@@ -2,7 +2,7 @@
 export const TEAM_ROLES = ["admin", "manager"];
 
 export const WIDGETS = [
-  { key: "kpis", title: "Key numbers", description: "Leads added, won, pipeline, overdue and today", roles: ["admin", "manager", "sales", "marketing", "legal-team", "finance-team", "support", "viewer"], size: "full" },
+  { key: "kpis", title: "Key numbers", description: "Leads, won, pipeline, follow-ups, tasks and payments for the chosen period", roles: ["admin", "manager", "sales", "marketing", "legal-team", "finance-team", "support", "viewer"], size: "full" },
   { key: "myday", title: "My day", description: "Your overdue and today's follow-ups, and tasks", roles: ["admin", "manager", "sales", "marketing", "support"], size: "full" },
   { key: "team", title: "Team performance", description: "Top people by leads, won, open and overdue", roles: TEAM_ROLES, size: "half" },
   { key: "sources", title: "Lead sources", description: "Where leads came from and how many converted", roles: ["admin", "manager", "sales", "marketing", "legal-team", "finance-team", "support", "viewer"], size: "half" },
@@ -10,7 +10,7 @@ export const WIDGETS = [
   { key: "funnel", title: "Status of new leads", description: "Leads added in the period, by status now", roles: ["admin", "manager", "sales", "marketing", "legal-team", "finance-team", "support", "viewer"], size: "half" },
   { key: "products", title: "Products", description: "Leads and won per product", roles: ["admin", "manager", "sales", "marketing", "legal-team", "finance-team", "support", "viewer"], size: "half" },
   { key: "usage", title: "CRM use", description: "Who is active and who has gone quiet", roles: TEAM_ROLES, size: "half" },
-  { key: "payments", title: "Payments", description: "Advance, pending and payments due soon", roles: ["admin", "manager", "sales", "marketing", "finance-team"], size: "half" },
+  { key: "payments", title: "Payments", description: "Payment received, pending and payments due soon", roles: ["admin", "manager", "sales", "marketing", "finance-team"], size: "half" },
   { key: "workflow", title: "Legal & finance", description: "Won deals moving through legal and finance", roles: ["admin", "manager", "legal-team", "finance-team"], size: "half" },
   { key: "recent", title: "Recent updates", description: "Latest notes on leads and customers", roles: ["admin", "manager", "sales", "marketing", "legal-team", "finance-team", "support", "viewer"], size: "half" },
 ];
@@ -40,7 +40,7 @@ export const CHART_DIMENSIONS = [
 ];
 export const CHART_MEASURES = [
   ["count", "Number of leads"], ["won", "Won deals"], ["open", "Still open"], ["lost", "Lost"],
-  ["value", "Estimated value", "money"], ["won_value", "Won value", "money"], ["advance", "Advance received", "money"], ["pending", "Payment pending", "money"],
+  ["value", "Estimated value", "money"], ["won_value", "Won value", "money"], ["advance", "Payment received", "money"], ["pending", "Payment pending (won deals)", "money"],
 ];
 export const CHART_TYPES = [["bars", "Bars"], ["columns", "Columns"], ["table", "Table"]];
 export const CHART_IDEAS = [

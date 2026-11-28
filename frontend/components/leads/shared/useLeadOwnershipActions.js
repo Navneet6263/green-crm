@@ -132,11 +132,12 @@ export function useLeadOwnershipActions({
     }
   }
 
-  async function archiveLead(leadId) {
+  async function archiveLead(leadId, note) {
     await runArchiveLead({
       clearSelection,
       leadId,
       leads,
+      note,
       onArchived,
       sessionToken: session.token,
       setDeleting,

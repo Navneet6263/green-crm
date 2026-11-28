@@ -290,6 +290,8 @@ function LeadsPageContent() {
     legalTransferOwner: ownershipActions.legalTransferOwner,
     legalUsersMessage,
     onOwnerChange: ownershipActions.setOwner,
+    pageError: error,
+    pageNotice: notice,
     onInlineNoteSaved: handleInlineNoteSaved,
     onOwnerNoteChange: ownershipActions.setOwnerNote,
     owner: ownershipActions.owner,

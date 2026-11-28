@@ -131,15 +131,23 @@ async function buildDashboardReport(auth, query = {}) {
         line("Lost", k.cohort.lost);
         line("Still open", k.cohort.still_open);
         line("Won value", k.cohort.won_value, "", "inr");
+        line("Open pipeline", k.cohort.open_value, "Value of these leads that are still open", "inr");
+        line("Payment pending", k.cohort.pending, "Won deals: value minus payment received", "inr");
         line("Updates written", k.updates);
+        if (k.period) {
+          section("Inside the period");
+          line("Follow-ups due", k.period.followupsDue);
+          line("Follow-ups overdue", k.period.followupsOverdue);
+          line("Tasks overdue", k.tasks.overdue);
+          line("Payment received", k.period.received, `${k.period.payments} payments`, "inr");
+        }
         section("Right now");
         line("Open leads", k.now.open_leads);
         line("Open pipeline", k.now.pipeline_value, "", "inr");
         line("Follow-ups overdue", k.now.overdue);
         line("Follow-ups today", k.now.today);
-        line("Tasks overdue", k.tasks.overdue);
-        line("Advance received", k.now.advance_received, "", "inr");
-        line("Pending amount", k.now.pending_amount, "", "inr");
+        if (!k.period) line("Tasks overdue", k.tasks.overdue);
+        line("Payment received", k.now.advance_received, "", "inr");
       }
       if (data("sources")) {
         section("Top sources");

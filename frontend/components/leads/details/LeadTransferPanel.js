@@ -1,65 +1,37 @@
 "use client";
 
 import { formatWorkflowOwnerIdentity } from "../../../lib/workflowOwners";
-import {
-  LEAD_INPUT_CLASS,
-  LEAD_KICKER_CLASS,
-  LEAD_PRIMARY_BUTTON_CLASS,
-} from "../shared/leadPageConstants";
+import ManageCard, { FIELD, FIELD_LABEL, PRIMARY_BTN } from "./ManageCard";
 
+/** A won lead goes to the legal team next: pick who checks it and say what to check. */
 export default function LeadTransferPanel({
-  canTransfer,
-  legalTeam,
-  legalTransferNote,
-  legalTransferOwner,
-  legalUsersMessage,
-  scopedLegalUsers,
-  setLegalTransferNote,
-  setLegalTransferOwner,
-  transferLeadToLegal,
-  transferring,
+  canTransfer, legalTeam, legalTransferNote, legalTransferOwner, legalUsersMessage, scopedLegalUsers,
+  setLegalTransferNote, setLegalTransferOwner, transferLeadToLegal, transferring,
 }) {
-  if (!canTransfer) {
-    return null;
-  }
-
+  if (!canTransfer) return null;
   return (
-    <div className="rounded-[24px] border border-[#dce8cf] bg-[#f5fbf0] p-4">
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-        <div>
-          <p className={LEAD_KICKER_CLASS}>Closed Won</p>
-          <h4 className="mt-2 text-lg font-semibold text-[#0f172a]">Transfer this lead to legal</h4>
-        </div>
-        <div className="grid gap-3 xl:min-w-[420px] xl:grid-cols-[0.9fr_1.1fr_auto]">
-          <label className="space-y-2">
-            <span className={LEAD_KICKER_CLASS}>Legal Owner</span>
-            <select className={LEAD_INPUT_CLASS} value={legalTransferOwner} onChange={(event) => setLegalTransferOwner(event.target.value)}>
-              <option value="">Assign later</option>
-              {legalTeam.map((item) => (
-                <option key={item.user_id} value={item.user_id}>
-                  {formatWorkflowOwnerIdentity(item.name, item.user_id, "Legal user")}
-                </option>
-              ))}
-            </select>
-            {!scopedLegalUsers.length ? <p className="text-xs font-medium text-[#0c605d]">{legalUsersMessage}</p> : null}
-          </label>
-          <label className="space-y-2">
-            <span className={LEAD_KICKER_CLASS}>Transfer Note *</span>
-            <textarea
-              rows="3"
-              value={legalTransferNote}
-              onChange={(event) => setLegalTransferNote(event.target.value)}
-              placeholder="What should legal check next for this won lead?"
-              className={`${LEAD_INPUT_CLASS} min-h-[120px] resize-y`}
-            />
-          </label>
-          <div className="flex items-end">
-            <button className={LEAD_PRIMARY_BUTTON_CLASS} type="button" disabled={transferring || !legalTransferNote.trim()} onClick={transferLeadToLegal}>
-              {transferring ? "Transferring..." : "Transfer to Legal"}
-            </button>
-          </div>
+    <ManageCard icon="legal" tone="emerald" title="Send to legal" subtitle="This deal is won. Legal checks the agreement next, then finance."
+      badge={<span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wide text-emerald-700 ring-1 ring-emerald-100">Won</span>}>
+      <div className="grid gap-3">
+        <label className="block">
+          <span className={FIELD_LABEL}>Legal owner</span>
+          <select className={`${FIELD} h-9 py-0`} value={legalTransferOwner} onChange={(event) => setLegalTransferOwner(event.target.value)}>
+            <option value="">Assign later</option>
+            {legalTeam.map((item) => <option key={item.user_id} value={item.user_id}>{formatWorkflowOwnerIdentity(item.name, item.user_id, "Legal user")}</option>)}
+          </select>
+          {!scopedLegalUsers.length ? <span className="mt-1 block text-[11.5px] text-slate-500">{legalUsersMessage}</span> : null}
+        </label>
+        <label className="block">
+          <span className={FIELD_LABEL}>What should legal check?</span>
+          <textarea rows={2} value={legalTransferNote} onChange={(event) => setLegalTransferNote(event.target.value)}
+            placeholder="For example: MOU signed by email, check the payment terms" className={`${FIELD} resize-y`} />
+        </label>
+        <div className="flex justify-end">
+          <button type="button" className={PRIMARY_BTN} disabled={transferring || !legalTransferNote.trim()} onClick={transferLeadToLegal}>
+            {transferring ? "Sending…" : "Send to legal"}
+          </button>
         </div>
       </div>
-    </div>
+    </ManageCard>
   );
 }
