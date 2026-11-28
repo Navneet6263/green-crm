@@ -3,7 +3,7 @@ import { request } from './runtime';
 import type { Lead, Session, Task } from './types';
 import { extendedLeadPayload, type ExtendedLeadInput } from './leadFields';
 
-export const leadStatuses = ['new', 'pending', 'contacted', 'qualified', 'proposal', 'negotiation', 'on-hold', 'booked-demo', 'demo-done', 'trial-started', 'closed-won', 'onboarded', 'closed-lost'];
+export const leadStatuses = ['new', 'hot', 'warm', 'cold', 'pending', 'contacted', 'qualified', 'proposal', 'negotiation', 'on-hold', 'booked-demo', 'demo-done', 'trial-started', 'closed-won', 'onboarded', 'closed-lost'];
 export type LeadInput = ExtendedLeadInput & {
   company_name: string; contact_person: string; phone: string; email: string;
   product_id: string; team_id: string; address_street: string; address_city: string;

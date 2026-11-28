@@ -26,6 +26,9 @@ export function getLeadStatusOptions(enabledStatuses = []) {
 export const LEAD_STATUS_OPTIONS = [
   ...QUICK_FILTERS,
   { value: "new", label: "New" },
+  { value: "hot", label: "Hot" },
+  { value: "warm", label: "Warm" },
+  { value: "cold", label: "Cold" },
   { value: "pending", label: "Pending" },
   { value: "contacted", label: "Contacted" },
   { value: "qualified", label: "Qualified" },

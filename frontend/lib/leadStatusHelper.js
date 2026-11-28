@@ -24,6 +24,9 @@ export function getEnabledStatuses(customization) {
 export function getDefaultStatuses() {
   return [
     "new",
+    "hot",
+    "warm",
+    "cold",
     "pending",
     "contacted",
     "qualified",
@@ -41,6 +44,9 @@ export function getDefaultStatuses() {
 export function getStatusLabel(status) {
   const labels = {
     "new": "New",
+    "hot": "Hot",
+    "warm": "Warm",
+    "cold": "Cold",
     "pending": "Pending",
     "contacted": "Contacted",
     "qualified": "Qualified",
@@ -59,6 +65,9 @@ export function getStatusLabel(status) {
 export function getStatusColor(status) {
   const colors = {
     "new": "blue",
+    "hot": "orange",
+    "warm": "yellow",
+    "cold": "cyan",
     "pending": "yellow",
     "contacted": "purple",
     "qualified": "cyan",

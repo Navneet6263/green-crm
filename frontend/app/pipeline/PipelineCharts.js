@@ -86,7 +86,7 @@ export function TrendChart({ series }) {
   );
 }
 
-const STATUS_ORDER = ["new", "pending", "contacted", "qualified", "booked-demo", "demo-done", "trial-started", "proposal", "negotiation", "on-hold", "closed-won", "closed-lost"];
+const STATUS_ORDER = ["new", "hot", "warm", "cold", "pending", "contacted", "qualified", "booked-demo", "demo-done", "trial-started", "proposal", "negotiation", "on-hold", "closed-won", "closed-lost"];
 const statusColor = (key) => (key === "closed-won" ? "bg-emerald-500" : key === "closed-lost" ? "bg-rose-400" : "bg-brand-500");
 
 /** Leads by status, in pipeline order: count, share and value. */

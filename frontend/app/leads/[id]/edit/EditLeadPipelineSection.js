@@ -4,7 +4,7 @@ import { getStatusLabel } from "../../../../lib/leadStatusHelper";
 export function EditPipelineSection({ form, productChoices, teamSelectionPending, productEmptyMessage, onChange, enabledStatuses = [] }) {
   // Use provided enabled statuses or fall back to all statuses
   const statuses = enabledStatuses.length > 0 ? enabledStatuses : [
-    "new", "pending", "contacted", "qualified", "proposal", "negotiation",
+    "new", "hot", "warm", "cold", "pending", "contacted", "qualified", "proposal", "negotiation",
     "on-hold", "booked-demo", "demo-done", "trial-started", "closed-won", "closed-lost"
   ];
 

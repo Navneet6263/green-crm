@@ -1,5 +1,8 @@
 export const LEAD_STATUS_ORDER = [
   "new",
+  "hot",
+  "warm",
+  "cold",
   "pending",
   "contacted",
   "on-hold",
@@ -16,6 +19,9 @@ export const LEAD_STATUS_ORDER = [
 
 export const LEAD_OPEN_STATUSES = [
   "new",
+  "hot",
+  "warm",
+  "cold",
   "pending",
   "contacted",
   "on-hold",
@@ -30,6 +36,9 @@ export const LEAD_OPEN_STATUSES = [
 
 export const LEAD_STATUS_LABELS = {
   new: "New",
+  hot: "Hot",
+  warm: "Warm",
+  cold: "Cold",
   pending: "Pending",
   contacted: "Contacted",
   "on-hold": "On Hold",
@@ -46,6 +55,9 @@ export const LEAD_STATUS_LABELS = {
 
 export const LEAD_STATUS_BADGES = {
   new: "bg-[#eef5ff] text-[#2563eb] ring-[#cfe0ff]",
+  hot: "bg-[#fff0ee] text-[#c2410c] ring-[#fbd0c4]",
+  warm: "bg-[#fff7e0] text-[#a16207] ring-[#f3dfa2]",
+  cold: "bg-[#eaf4fb] text-[#0369a1] ring-[#c9e2f2]",
   pending: "bg-[#fff4d9] text-[#8d6e27] ring-[#ecdcae]",
   contacted: "bg-[#ecfbff] text-[#0f8da8] ring-[#c8eef4]",
   "on-hold": "bg-[#f1f5f9] text-[#475569] ring-[#e2e8f0]",
@@ -62,6 +74,9 @@ export const LEAD_STATUS_BADGES = {
 
 export const LEAD_STATUS_ACCENTS = {
   new: ["rgba(79,140,255,.12)", "#2f6fdd"],
+  hot: ["rgba(234,88,12,.14)", "#c2410c"],
+  warm: ["rgba(234,179,8,.16)", "#a16207"],
+  cold: ["rgba(14,165,233,.14)", "#0369a1"],
   pending: ["rgba(245,164,45,.14)", "#b96a00"],
   contacted: ["rgba(56,189,248,.14)", "#0077b8"],
   "on-hold": ["rgba(100,116,139,.14)", "#475569"],
@@ -78,6 +93,9 @@ export const LEAD_STATUS_ACCENTS = {
 
 export const LEAD_STATUS_COLORS = {
   new: "#4f8cff",
+  hot: "#ea580c",
+  warm: "#eab308",
+  cold: "#0ea5e9",
   pending: "#d7a13d",
   contacted: "#33c5dc",
   "on-hold": "#64748b",

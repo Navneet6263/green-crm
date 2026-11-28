@@ -3,6 +3,9 @@ import DashboardIcon from "../dashboard/icons";
 
 const DEFAULT_STATUSES = [
   { value: "new", label: "New", color: "blue" },
+  { value: "hot", label: "Hot", color: "orange" },
+  { value: "warm", label: "Warm", color: "yellow" },
+  { value: "cold", label: "Cold", color: "cyan" },
   { value: "pending", label: "Pending", color: "yellow" },
   { value: "contacted", label: "Contacted", color: "purple" },
   { value: "qualified", label: "Qualified", color: "cyan" },

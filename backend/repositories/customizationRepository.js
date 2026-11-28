@@ -36,6 +36,9 @@ function getDefaultCustomization() {
   return {
     lead_statuses: [
       "new",
+      "hot",
+      "warm",
+      "cold",
       "pending",
       "contacted",
       "qualified",

@@ -9,7 +9,7 @@ const PAGE = 1000;
 const MAX_PAGES = 20;
 const MAX_UPDATES = 15;
 const CLOSED = ['closed-won', 'closed-lost'];
-const STATUS_ORDER = ['new', 'pending', 'contacted', 'on-hold', 'qualified', 'proposal', 'negotiation', 'booked-demo', 'demo-done', 'trial-started', 'closed-won', 'onboarded', 'closed-lost'];
+const STATUS_ORDER = ['new', 'hot', 'warm', 'cold', 'pending', 'contacted', 'on-hold', 'qualified', 'proposal', 'negotiation', 'booked-demo', 'demo-done', 'trial-started', 'closed-won', 'onboarded', 'closed-lost'];
 
 const num = (value) => Number(value || 0);
 const isOpen = (lead) => !CLOSED.includes(String(lead.status || '').toLowerCase());

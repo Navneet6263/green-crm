@@ -1,5 +1,8 @@
 const LEAD_STATUSES = [
   "new",
+  "hot",
+  "warm",
+  "cold",
   "pending",
   "contacted",
   "qualified",
@@ -16,6 +19,9 @@ const LEAD_STATUSES = [
 
 const OPEN_PIPELINE_STATUSES = [
   "new",
+  "hot",
+  "warm",
+  "cold",
   "pending",
   "contacted",
   "qualified",
